@@ -1,0 +1,329 @@
+{
+  "package": "Wayvro Claude-only Blueprint v5 + Phase 0 (2026-10-09)",
+  "generated_on": "2026-10-09",
+  "generator": "docs/phase0/tools/regen-manifest.js",
+  "manifest_excludes_self": true,
+  "file_count_excluding_manifest": 64,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 140,
+      "sha256": "ebf6cd8c60b1309162f3b5f9896c8854a4e743f90b869fe1d3079b1baf0daf1d"
+    },
+    {
+      "path": "ALL_FILES_INDEX.md",
+      "bytes": 6928,
+      "sha256": "6b5417536ffd229c495ff470a1cbf312c203d3d753c9acbbf3e3b738b0c593e8"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 14930,
+      "sha256": "49567ae20654e643e621b3b9e44a3c6b7c2bd6c304be3ad07a63cdc2798c19df"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7679,
+      "sha256": "524ddf9ea193f07761e419aa72fd3c4b0d519f0fe2c77e56bfd3c21aa18a89de"
+    },
+    {
+      "path": "V5_VALIDATION_SUMMARY.json",
+      "bytes": 3233,
+      "sha256": "3e7ab938865be398b59dbc0512b7eabb82c364278e475cafb5365fe2bdf4ad43"
+    },
+    {
+      "path": "docs/00_README_AND_STATUS.md",
+      "bytes": 6480,
+      "sha256": "68c9d29f998445e959793f535d91212eaef9cee97fc653a34a82809bbb7d0533"
+    },
+    {
+      "path": "docs/01_COMPETITION_AND_STRATEGY.md",
+      "bytes": 5802,
+      "sha256": "7d634fe85eed153673f27f66af7af39f271bdcb20e55d1d56f80103e2e9635d8"
+    },
+    {
+      "path": "docs/02_PRODUCT_HIERARCHY.md",
+      "bytes": 7479,
+      "sha256": "7713d90e08b5fcf08a2bdfc83e55ff585766109081d910adf9bd37314573b8d9"
+    },
+    {
+      "path": "docs/03_FEATURE_INVENTORY.md",
+      "bytes": 83743,
+      "sha256": "0a68d0af773a3be7adf4556340aae184d0aadefbcabbf0b4ad076ffe787c0c46"
+    },
+    {
+      "path": "docs/04_LIFECYCLES_DISPATCH_POOLING.md",
+      "bytes": 8189,
+      "sha256": "d28baff707c39dea16778a085717be5fdf23c639736cd673a24ecf94f15976b0"
+    },
+    {
+      "path": "docs/05_TRUST_SAFETY_AND_COMPLIANCE.md",
+      "bytes": 6571,
+      "sha256": "7969a9f6b1b9bae4c56de3e0d6a170ec8902b7271ea993700d6324aa4bed76d9"
+    },
+    {
+      "path": "docs/06_TECH_ARCHITECTURE.md",
+      "bytes": 9074,
+      "sha256": "26201c23c54dbdfd78a1d6576eac4a91f9944a9a25de514a1e35e93cec0374a1"
+    },
+    {
+      "path": "docs/07_DATA_MONEY_API_CONTRACTS.md",
+      "bytes": 6302,
+      "sha256": "adbc619ca9b78e529796ab9f11668c5b05e597a9e26ccc8d8fd3d0e22f663d14"
+    },
+    {
+      "path": "docs/08_DESIGN_SYSTEM_AND_ACCESSIBILITY.md",
+      "bytes": 4243,
+      "sha256": "a9e6e82ef7f7e7da40da9e0cf2df9208be025a4e9698c1859a9d5bc9e78ed33d"
+    },
+    {
+      "path": "docs/09_INFRA_BUDGET_AND_PROVIDERS.md",
+      "bytes": 6836,
+      "sha256": "920b2f32a312d6e7f4248b1e388735d42f24e3a0ea26b87e7c8c1b9ca02db707"
+    },
+    {
+      "path": "docs/10_SECURITY_TESTING_AND_RELIABILITY.md",
+      "bytes": 5621,
+      "sha256": "e499e4ed6450fdac8f207a8dfb5c4a66979a88096f17d53a616725652d167fcf"
+    },
+    {
+      "path": "docs/11_COMPANY_OPERATIONS_AND_GTM.md",
+      "bytes": 3561,
+      "sha256": "5318bfc13c3f782f868ca2cd690ea5080f5f9a2ba6dc414608eb186e55be7917"
+    },
+    {
+      "path": "docs/12_PHASE_PLAN_AND_GATES.md",
+      "bytes": 10682,
+      "sha256": "74e0eba33e13df674bddf707ea9bc403504a8225d8bc8825ed66d2ba497c4452"
+    },
+    {
+      "path": "docs/13_CLAUDE_ONLY_ENGINEERING_WORKFLOW.md",
+      "bytes": 7983,
+      "sha256": "4875fea9dbd9d6cd504424ac483e379c6acc3d86752d9c7298c764eb6533d5bc"
+    },
+    {
+      "path": "docs/14_ACCEPTANCE_TRACEABILITY_AND_METRICS.md",
+      "bytes": 6578,
+      "sha256": "1347a4a75d8c35d46bd59d821b4725144e0dfb158f9019a3e14bbdce047fb031"
+    },
+    {
+      "path": "docs/15_RISKS_AND_FAILURE_MODES.md",
+      "bytes": 7727,
+      "sha256": "c65434124c7e6552097d52715ca8481d2cdab83b6c8b5cfd2d3a75e19362d958"
+    },
+    {
+      "path": "docs/16_RESEARCH_AND_DECISIONS.md",
+      "bytes": 12640,
+      "sha256": "30991dc5d00083db8aafa8f3b28d46a2b2318bd4187ff37a90b6c0bd566595df"
+    },
+    {
+      "path": "docs/17_QUICK_START.md",
+      "bytes": 1573,
+      "sha256": "44dc888172186894ddf32a8642bbb4f038735a4a21e8adb3a06960270e25d786"
+    },
+    {
+      "path": "docs/18_IDENTITY_AUTH_AND_KYC.md",
+      "bytes": 11223,
+      "sha256": "fd37e9d5732aa2c6114dc8741ba19e5314856ff04de6f6efd37fb9964570ef32"
+    },
+    {
+      "path": "docs/19_COMPLETENESS_AUDIT_CHECKLIST.md",
+      "bytes": 4838,
+      "sha256": "57e7b162ce171ee5d922e227b4e41b5b11bfaa67997187170fb97391705d2edd"
+    },
+    {
+      "path": "docs/20_V3_A_TO_Z_GAP_AUDIT.md",
+      "bytes": 3484,
+      "sha256": "f687b1bb2a813477af910f349e58a4afef32878c3fc90b735e273452344e069b"
+    },
+    {
+      "path": "docs/21_MASTER_COVERAGE_MATRIX.md",
+      "bytes": 4444,
+      "sha256": "55f7068b3b865b6d6b2af99bda59fc0dff3d8668df142e199922353e06f11e74"
+    },
+    {
+      "path": "docs/22_LAUNCH_BLOCKERS_AND_EXTERNAL_DEPENDENCIES.md",
+      "bytes": 3094,
+      "sha256": "5de9b00588767e19f46be40d9c33d274e247f20365389bfe072b708a1ea9d67c"
+    },
+    {
+      "path": "docs/23_FOUNDER_PROMPT_TRACEABILITY.md",
+      "bytes": 10185,
+      "sha256": "13d88a73cca9ded52025dd0eb6ba91b7b1ceb33f13983407e20e7992ac068ac4"
+    },
+    {
+      "path": "docs/24_V4_SECOND_PASS_GAP_AUDIT.md",
+      "bytes": 5187,
+      "sha256": "d51b7a65a2e1600f13c365aff44edde2efdd495cdce317bfe0905103f788b845"
+    },
+    {
+      "path": "docs/25_STARTUP_GOVERNANCE_AND_COMPANY_CONTROLS.md",
+      "bytes": 2306,
+      "sha256": "f5469fb8b35db8c0e9cd5694d89926715bdd63dd545eb8928b067dbb4be896df"
+    },
+    {
+      "path": "docs/26_COMPLETENESS_CLOSURE_PROTOCOL.md",
+      "bytes": 1921,
+      "sha256": "adc0e42eefd3ad5766580abf5601046fd93b00ab4cba55757732190186a99592"
+    },
+    {
+      "path": "docs/27_ENGINEERING_GUARDRAILS_AND_CHANGE_SAFETY.md",
+      "bytes": 8367,
+      "sha256": "cd9718e9fdbc8f1001ab974fce8e9933c08d1c88c3183e608cb8f6017c8e2acb"
+    },
+    {
+      "path": "docs/28_APP_SURFACES_AND_REPO_TOPOLOGY.md",
+      "bytes": 11569,
+      "sha256": "539996b3d479dcdf61dcc64d03eea554d02a274bc2ea9a44f6cfadf7935e3b19"
+    },
+    {
+      "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
+      "bytes": 17388,
+      "sha256": "d2ca3f41dfe0388a70c42ced45a83f171387757e8d12f044383aa70fa09f59db"
+    },
+    {
+      "path": "docs/phase0/PHASE0_ARCHITECTURE_PROPOSAL.md",
+      "bytes": 15821,
+      "sha256": "951daf93cfcdd211edb8e88cc6a9c36dfd559a652cf70e2f31af6d4a35190276"
+    },
+    {
+      "path": "docs/phase0/PHASE0_CLOSURE_HANDOFF.md",
+      "bytes": 11079,
+      "sha256": "32cb5d05313f1eca77bed54221c893edc1f5e6458fb9229a91c74e681bcdba2b"
+    },
+    {
+      "path": "docs/phase0/PHASE0_COMPETITOR_MATRIX.md",
+      "bytes": 9516,
+      "sha256": "a128a8aec376c5eae70c1427087b2631ac2510b802d17a6e4cb0bf4f48c207db"
+    },
+    {
+      "path": "docs/phase0/PHASE0_COST_PROVIDER_MATRIX.md",
+      "bytes": 9539,
+      "sha256": "f0f93e5d85f3f382314f9a46491dd318d6c02eab3959f26f8bfaa2d4ac115f11"
+    },
+    {
+      "path": "docs/phase0/PHASE0_ENGINEERING_GUARDRAILS.md",
+      "bytes": 13309,
+      "sha256": "a45d23b6a7d922a1c58cf4007d43886c40eda37849bf45e0431636ded27068a1"
+    },
+    {
+      "path": "docs/phase0/PHASE0_GAP_REPORT.md",
+      "bytes": 21014,
+      "sha256": "adcba5e4073eea287885d75e41d41a40cdeafef1ec17745a6dd127e727b712bf"
+    },
+    {
+      "path": "docs/phase0/PHASE0_HANDOFF_REPORT.md",
+      "bytes": 19868,
+      "sha256": "a8c19709ce0b2b2dc90e21425b655f2eb37d379614baa0b2ec4daa4f25f47ccf"
+    },
+    {
+      "path": "docs/phase0/PHASE0_JOURNEYS_AND_STATE_MACHINES.md",
+      "bytes": 13150,
+      "sha256": "f880eacc81a5e5fc15e6ffcd3bc51a7b1d2272d7f1c836eb3a399f3b905cd324"
+    },
+    {
+      "path": "docs/phase0/PHASE0_LAUNCH_BLOCKERS.md",
+      "bytes": 13397,
+      "sha256": "1749941b270da4e04c6f87ff15fddf3f9247d07779039b1443ec08fed6beac51"
+    },
+    {
+      "path": "docs/phase0/PHASE0_PHASE1_PROMPT_PROPOSED.md",
+      "bytes": 7753,
+      "sha256": "0dba6763f0b57b00a45f97c81cc74bcf4ff6e66c3caba63c1a9a804702479a7b"
+    },
+    {
+      "path": "docs/phase0/PHASE0_REQUIREMENT_COVERAGE.csv",
+      "bytes": 146329,
+      "sha256": "098129c1f4ce3b849d08edc0108996405910d8e1197eed003dfd1cc68eca3d7f"
+    },
+    {
+      "path": "docs/phase0/PHASE0_REQUIREMENT_COVERAGE.json",
+      "bytes": 335370,
+      "sha256": "344c76e6175967d34cc203dde595066ba79f8b2a28bd364b23ac5ef2bd6273d8"
+    },
+    {
+      "path": "docs/phase0/PHASE0_SECURITY_PRIVACY.md",
+      "bytes": 13581,
+      "sha256": "eb50b241ecd30176fd4fa28b85bb3cbcd2a1e9dca8ecae5d081ed457d5092e77"
+    },
+    {
+      "path": "docs/phase0/PHASE0_UNIFIED_APP_ROLE_MODEL.md",
+      "bytes": 15185,
+      "sha256": "cee71b370d95ae52841be390057e91f0a01b96ddf071cbd0cb6b9ae78cd0cd18"
+    },
+    {
+      "path": "docs/phase0/research/R1_COMPETITOR_RESEARCH_2026-10-09.md",
+      "bytes": 19624,
+      "sha256": "232405fef45c101d171385d302f62d8cd4091a7b56b4280085b26197ea2275df"
+    },
+    {
+      "path": "docs/phase0/research/R2_REGULATORY_RESEARCH_2026-10-09.md",
+      "bytes": 22202,
+      "sha256": "797bcf90848d6ebc40a9f0bf217a1682e2f69b65951ffdda1bd4aa6bdbecf957"
+    },
+    {
+      "path": "docs/phase0/research/R3_PAYMENTS_RESEARCH_2026-10-09.md",
+      "bytes": 15821,
+      "sha256": "77723e4fd619d29ba7dc4dd63c9961c819eab916a1016f50bb685c159a60c7fb"
+    },
+    {
+      "path": "docs/phase0/research/R4_MOBILE_PLATFORM_RESEARCH_2026-10-09.md",
+      "bytes": 20741,
+      "sha256": "704ffb78e5eedb934093e61a3df908768c15330b3c27bfc1818671e03dc17070"
+    },
+    {
+      "path": "docs/phase0/research/R5_PROVIDER_COST_RESEARCH_2026-10-09.md",
+      "bytes": 15521,
+      "sha256": "cfaffe48eefe2d15287a258771ade89d8ac9fb05d8cb48ea0671c317865989e9"
+    },
+    {
+      "path": "docs/phase0/research/R6_SAFETY_OPS_MARKET_RESEARCH_2026-10-09.md",
+      "bytes": 16595,
+      "sha256": "6cb6f2b983296a2a5813306220f96eaf7df073be4bca38a165e79f9659209ff5"
+    },
+    {
+      "path": "docs/phase0/tools/coverage-map-1.js",
+      "bytes": 27193,
+      "sha256": "c8813a8787da27e91c215564aa842d1e28c6c34d3503f4d8e40537cf1cd8505b"
+    },
+    {
+      "path": "docs/phase0/tools/coverage-map-2.js",
+      "bytes": 24338,
+      "sha256": "63f39d7e940a31855734d17443a8e6ee07d2941491cb52167dec1020f7f53941"
+    },
+    {
+      "path": "docs/phase0/tools/coverage-map-3.js",
+      "bytes": 8909,
+      "sha256": "07e6384d00bb0341c3738e54deec5d080db7499e9cd1b51c05b4e2116042196b"
+    },
+    {
+      "path": "docs/phase0/tools/coverage-map-new.js",
+      "bytes": 11888,
+      "sha256": "7554d0a2e9adb189c9b32d054d1c882a9807217f64ee79ba9c43f340a4424a93"
+    },
+    {
+      "path": "docs/phase0/tools/phase0-coverage.js",
+      "bytes": 11188,
+      "sha256": "ec95c4934275387260d29d3512709249ab8f2b61b15c14f5c47446c5b84765b7"
+    },
+    {
+      "path": "docs/phase0/tools/regen-manifest.js",
+      "bytes": 11672,
+      "sha256": "014ef8a793d5723d525b51ab55a75997fd693ce1f3302dd881c8508b9c2dc73b"
+    },
+    {
+      "path": "docs/requirements-register.json",
+      "bytes": 507604,
+      "sha256": "345fe9e699ae338244861c1d33d9c8b0be704a414b149aac2b732ef8556fd499"
+    },
+    {
+      "path": "prompts/PHASE_0_DISCOVERY_CLAUDE.md",
+      "bytes": 9561,
+      "sha256": "a91a405a06bd165974fbf0773a44114efad56aa6b08593c826fcd2996a8d5e24"
+    },
+    {
+      "path": "prompts/PHASE_REPORT_HANDOFF_TO_CHATGPT.md",
+      "bytes": 1222,
+      "sha256": "beab78a8c8c6bef1f0fb1c3ca9e4b58ec018e36e61d8c99a579b6849f8543f29"
+    }
+  ]
+}

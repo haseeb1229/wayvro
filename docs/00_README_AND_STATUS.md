@@ -1,0 +1,64 @@
+# 00 — Authority, Product Intent, Definitions
+
+## Authority order
+1. Applicable law, verified safety obligations, qualified legal/accounting/privacy advice, binding vendor/store restrictions and customer/data safety.
+2. Explicit founder decisions and approved ADRs.
+3. Audited current repository branch/commit + CI/runtime evidence.
+4. Approved current phase specification, tests and requirement traceability.
+5. This discovery pack and historical audit notes.
+
+Historical v3/v4 audit files remain evidence of how gaps were found; they are **not** allowed to override a newer founder decision or current v5 canonical docs.
+
+## Product identity
+- Canonical product/brand name: **Wayvro**.
+- Pronunciation: **WAY-VRO**.
+- Founder-locked for current product/repository planning; Claude must not rename/rebrand without explicit founder instruction.
+- This name lock does not prove company-name/trademark/domain/store/social availability.
+
+## Mission
+Build Wayvro as a high-quality Pakistan-first mobility marketplace, beginning with a controlled Lahore launch and designed to expand across vehicle classes and service verticals without becoming a fragile prototype.
+
+The product must combine strong consumer UX with serious dispatch, location, money, safety, support, fraud, compliance and operations systems. Attractive screens do not compensate for weak backend integrity; backend sophistication does not compensate for poor rider/driver UX.
+
+## Founder-locked public mobile architecture
+Wayvro uses **one public mobile app**.
+
+Inside that app:
+- **Rider mode** handles passenger journeys and related services.
+- The same account may create/apply for a **Driver/Partner profile**.
+- After verification/approval, the user may switch to **Driver/Partner mode** and later switch back to Rider mode.
+- Future partner earning capabilities (for example delivery/courier where approved) should extend the partner capability model rather than force a second public Wayvro app unless a later founder-approved ADR changes this decision.
+
+The visual mode switch is not a security boundary. Server-side account, profile, KYC/compliance, vehicle/service eligibility and restriction state remain authoritative. See `docs/28_APP_SURFACES_AND_REPO_TOPOLOGY.md` and requirements `V01–V14`.
+
+## Release definitions
+- **Documentation complete:** every known domain is indexed; every canonical requirement has disposition/owner/phase/test family or a clearly tagged external decision.
+- **Development ready:** core architecture, account/role model, contracts, local environment and first vertical slice are approved with no unresolved foundational contradiction.
+- **Internal demo:** synthetic/test accounts only; no public real paid riders or unverified drivers.
+- **Controlled pilot:** verified drivers, screened pilot riders, functioning support/safety response, compliant payments/settlement, required insurance/regulatory evidence and tested rollback.
+- **Public city launch:** proven incident operations, enough supply density, compliant store/vendor/legal setup, monitored reliability, backups/recovery and rollback readiness.
+- **Scale expansion:** economics, reliability and operational capacity justify more zones/cities/services.
+
+## Hard stops
+- No real trip with an unapproved/ineligible driver or vehicle.
+- No real-money stored-value/customer wallet business without appropriate regulated partner/legal basis.
+- No storage of raw card PAN/CVV by Wayvro unless a qualified PCI-compliant architecture and provider arrangement explicitly requires/allows it; default is tokenized PSP handling.
+- No fake NADRA/police/insurance/emergency/payment integrations or labels.
+- No blanket mandatory passenger CNIC/biometric collection without verified purpose, necessity, consent/legal basis, retention controls and accessible fallback.
+- No automated face score alone authorizes a driver.
+- Never algorithmically infer gender from face, selfie, name, CNIC number, photograph or any other proxy. Women-focused eligibility uses only an explicit, consent-based, privacy-minimised, counsel-reviewed policy with qualified human review, fallback and appeal; an attribute explicitly present on an authoritative document may be checked only for that counsel-approved purpose, and identity evidence is never shown to riders or drivers.
+- No public launch from a developer laptop/home internet.
+- No claiming 24/7 support/safety response until staffing/coverage actually exists.
+- No production use of unsupported hobby/free tiers where sleeping, rate limits, SLA/terms or data rules make real rides unsafe.
+
+## Initial accountability
+The founder owns product decisions initially, but production launch requires qualified outside help where needed: transport/legal, privacy/biometrics, tax/accounting, insurance, payments, security testing and real-world safety operations.
+
+## Geographic assumption
+Lahore/Punjab is the initial operating context for research and controlled launch planning. Multi-city architecture should avoid hardcoding Lahore into domain rules, but actual launch must obey city/province-specific rules.
+
+## v5 authority note
+v5 supersedes v4.1. The incorrect separate Rider/Driver-app default is removed. The existing A-to-Z baseline remains, and `V01–V14` explicitly define the founder-approved unified public app and its security/permission/release consequences. Current requirement total is **531** across 13 macro phases (0–12) after the Phase 0 pass of 2026-10-09 (511 v5 + 20 Phase 0 additions; see `docs/phase0/PHASE0_GAP_REPORT.md`). Phase 0 challenged the pack and recorded dispositions for every ID; “v5” is not a claim of final completeness or legal approval, and Phase 0 output remains a proposal until founder/ChatGPT review.
+
+## Phase 0 status note (2026-10-09)
+Phase 0 deliverables live under `docs/phase0/` and are indexed in `ALL_FILES_INDEX.md`. Canonical resolutions made in Phase 0: one driver-capability state machine (`PHASE0_UNIFIED_APP_ROLE_MODEL.md` §3), trip status separated from settlement status (§10), one monorepo tree (`PHASE0_ARCHITECTURE_PROPOSAL.md` §3), current launch blockers (`PHASE0_LAUNCH_BLOCKERS.md`). Founder decisions FD-01..FD-14 were recorded in the founder-review closure pass of 2026-10-09 (`docs/phase0/PHASE0_CLOSURE_HANDOFF.md`); they remain subject to their external gates. Priority codes were redefined (README): timing is controlled by target phase + release gate, not priority alone. No implementation has started.

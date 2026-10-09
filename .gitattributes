@@ -1,0 +1,2 @@
+# Keep documentation bytes identical across platforms so V5_FILE_MANIFEST.json SHA-256 hashes stay valid on every clone.
+* text=auto eol=lf
