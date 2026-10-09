@@ -1,0 +1,31 @@
+{
+  // Knip (ADR-027): unused files, exports and dependencies. CI runs both `knip` (tests count as consumers) and
+  // `knip --production` (only production entry points count).
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["java"],
+  // Disposable spike harnesses have their own package.json/lockfile outside the workspace (tests/spikes/README.md).
+  "ignore": ["tests/spikes/**"],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.mjs!", "infra/ci/**/*.mjs!"],
+      "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!"],
+    },
+    "apps/api": { "entry": ["src/main.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    "apps/worker": {
+      "entry": ["src/main.ts!"],
+      "project": ["src/**/*.ts!", "test/**/*.ts"],
+      // EXPLAINED EXCEPTION (production mode only): the transactional-outbox relay and idempotent-consumer skeletons are
+      // required by the Phase 1 scope but have no production caller until the outbox table ships with the first
+      // event-producing context. Removal gate: wire both into src/main.ts in that phase, then delete this ignore.
+      "ignore": ["src/outbox/relay.ts", "src/consumer/idempotent-consumer.ts"],
+    },
+    "apps/realtime": { "entry": ["src/main.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    "apps/web-public": { "project": ["src/**/*.{ts,tsx}!"] },
+    "apps/web-ops": { "project": ["src/**/*.{ts,tsx}!"] },
+    "packages/*": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!"] },
+    "packages/server-runtime": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    "packages/config": { "entry": ["src/index.ts!", "src/check-flags.ts!"], "project": ["src/**/*.ts!"] },
+    "packages/contracts": { "entry": ["src/index.ts!", "src/generate-openapi.ts!"], "project": ["src/**/*.ts!"] },
+    "packages/db": { "entry": ["src/index.ts!", "src/bin/migrate.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+  },
+}

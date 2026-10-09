@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "wayvro-local",
+      "credentials": [
+        {
+          "accessKey": "wayvro-local-access",
+          "secretKey": "wayvro-local-secret-not-for-production"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

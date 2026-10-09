@@ -1,0 +1,40 @@
+{
+  "name": "@wayvro/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Wayvro realtime gateway (NestJS 12 + Socket.IO + Redis adapter, ADR-005b). Phase 1: fail-closed authenticated-connection shape and snapshot-resync hello only.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
+  },
+  "dependencies": {
+    "@fastify/helmet": "13.1.1",
+    "@nestjs/common": "12.1.2",
+    "@nestjs/core": "12.1.2",
+    "@nestjs/platform-fastify": "12.1.2",
+    "@nestjs/platform-socket.io": "12.1.2",
+    "@nestjs/websockets": "12.1.2",
+    "@socket.io/redis-adapter": "8.3.0",
+    "@wayvro/config": "workspace:*",
+    "@wayvro/contracts": "workspace:*",
+    "@wayvro/observability": "workspace:*",
+    "@wayvro/server-runtime": "workspace:*",
+    "fastify": "5.12.5",
+    "ioredis": "6.0.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "socket.io": "4.8.3",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "socket.io-client": "4.8.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

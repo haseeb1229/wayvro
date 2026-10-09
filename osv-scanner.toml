@@ -1,0 +1,23 @@
+# osv-scanner exceptions (Q09: documented, owner, expiry). Each entry is a build/dev-tooling dependency that is not
+# reachable with untrusted input in Wayvro and has no safe upgrade today. CI fails again when an exception expires.
+# Owner: founder (haseeb1229). Review every exception before its ignoreUntil date.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-09
+reason = "braces 3.0.3 (no fixed release): stack-exhaustion DoS needs attacker-controlled deeply nested glob patterns; only reached via micromatch in lint/build tooling with patterns from repository config."
+
+[[IgnoredVulns]]
+id = "GHSA-86w9-cpqp-85rv"
+ignoreUntil = 2027-01-09
+reason = "node-forge 1.4.0 (no fixed release): RSA PKCS#1 v1.5 verification flaw; used only by @expo/cli (developer CLI) for EAS Update code signing, which is disabled (app.config.ts updates.enabled=false); never bundled into the app."
+
+[[IgnoredVulns]]
+id = "GHSA-w5hq-g745-h8pq"
+ignoreUntil = 2027-01-09
+reason = "uuid 7.0.3 via xcode@3.0.1 (@expo/config-plugins): missing bounds check only when callers pass their own buffer to v3/v5/v6; used at prebuild time to generate iOS project ids, never with untrusted input; upgrade blocked by the transitive pin."
+
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+ignoreUntil = 2027-01-09
+reason = "esbuild 0.18.20 via drizzle-kit/@esbuild-kit: the advisory concerns esbuild's development server (permissive CORS); drizzle-kit only uses esbuild to load its config file and never starts a server. Also present in the SP-03 disposable spike lockfile."

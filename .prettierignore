@@ -1,0 +1,22 @@
+# Generated / vendored / evidence artefacts
+pnpm-lock.yaml
+**/dist/
+**/.next/
+**/coverage/
+**/.turbo/
+**/next-env.d.ts
+packages/contracts/openapi/
+packages/db/migrations/meta/
+apps/wayvro-mobile/android/
+apps/wayvro-mobile/ios/
+apps/wayvro-mobile/.expo/
+# Phase 0 planning package: hashed by docs/phase0/tools/regen-manifest.js; reformatting would only churn the manifest.
+docs/
+prompts/
+CLAUDE.md
+README.md
+ALL_FILES_INDEX.md
+V5_FILE_MANIFEST.json
+V5_VALIDATION_SUMMARY.json
+# Disposable spike evidence with their own lockfiles and recorded results
+tests/spikes/
