@@ -1,0 +1,35 @@
+{
+  "$comment": "Q49/GR-10 Android manifest permission allowlist for the release AAB of the ONE public Wayvro app. A permission not listed here fails CI. Adding one requires a requirement ID, a just-in-time request design and founder review (CLAUDE.md §9). `${applicationId}` is substituted by the checker.",
+  "phase": "Phase 1 shell (no rider/driver features yet)",
+  "allowed": [
+    {
+      "name": "android.permission.INTERNET",
+      "justification": "API, realtime and update traffic. Normal (install-time) permission, no runtime prompt."
+    },
+    {
+      "name": "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+      "justification": "Signature-level permission AndroidX core declares for non-exported dynamic broadcast receivers on API < 33. Grants nothing to other apps."
+    }
+  ],
+  "forbidden": [
+    {
+      "name": "android.permission.USE_FULL_SCREEN_INTENT",
+      "reason": "M26/ADR-033: ride offers never depend on full-screen intents; not requested by default."
+    },
+    {
+      "name": "android.permission.ACCESS_BACKGROUND_LOCATION",
+      "reason": "Driver-only, gated behind SP-01 and an approved driver flow; never in the Phase 1 shell."
+    },
+    { "name": "android.permission.FOREGROUND_SERVICE_LOCATION", "reason": "Driver-only location foreground service; gated behind SP-01." },
+    { "name": "android.permission.ACCESS_FINE_LOCATION", "reason": "Requested just in time by a later rider/driver feature, not by the shell." },
+    { "name": "android.permission.ACCESS_COARSE_LOCATION", "reason": "Requested just in time by a later feature, not by the shell." },
+    { "name": "android.permission.CAMERA", "reason": "KYC/evidence capture only, Phase 2+, behind its own gate." },
+    { "name": "android.permission.RECORD_AUDIO", "reason": "No audio feature is approved (ADR-021 open)." },
+    { "name": "android.permission.SYSTEM_ALERT_WINDOW", "reason": "Development-only overlay; must never reach a release build." },
+    { "name": "android.permission.READ_EXTERNAL_STORAGE", "reason": "Not needed; scoped storage/photo picker only when a feature requires it." },
+    { "name": "android.permission.WRITE_EXTERNAL_STORAGE", "reason": "Not needed." },
+    { "name": "android.permission.READ_CONTACTS", "reason": "No contacts feature approved." },
+    { "name": "android.permission.READ_PHONE_STATE", "reason": "Not needed; device identifiers are not collected." },
+    { "name": "android.permission.POST_NOTIFICATIONS", "reason": "Requested just in time when notifications ship (Phase 4+), not by the shell." }
+  ]
+}

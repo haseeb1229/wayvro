@@ -1,0 +1,22 @@
+# SP-AND evidence: pnpm isolated node-linker on Windows — native build failure (excerpt of build-logs/assembleDebug-isolated-linker-FAILED.log)
+# Command: JAVA_HOME=<Temurin 17.0.20.1> ./gradlew --no-daemon assembleDebug -PreactNativeArchitectures=x86_64,arm64-v8a
+C/C++:   The object file directory
+C/C++:     <repo>/tests/spikes/sp-and-android-build/node_modules/.pnpm/expo-modules-core@57.0.21_r_4d77be8b739c6d31433f50003ea98509/node_modules/expo-modules-core/android/.cxx/Debug/1c36701t/arm64-v8a/CMakeFiles/expo-modules-core.dir/./
+C/C++:   has 232 characters.  The maximum full path to an object file is 250
+C/C++:   characters (see CMAKE_OBJECT_PATH_MAX).  Object file
+C/C++:     C_/<repo>/tests/spikes/sp-and-android-build/node_modules/.pnpm/expo-modules-core@57.0.21_r_4d77be8b739c6d31433f50003ea98509/node_modules/expo-modules-core/common/cpp/EventEmitter.cpp.o
+C/C++:   cannot be safely placed under this directory.  The build may not work
+C/C++:   correctly.
+
+> Task :expo-modules-core:buildCMakeDebug[arm64-v8a]
+C/C++: CMake Warning in CMakeLists.txt:
+C/C++:   The object file directory
+...
+* What went wrong:
+Execution failed for task ':expo-modules-core:buildCMakeDebug[arm64-v8a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `C:\Dev\Wayvro\tests\spikes\sp-and-android-build\node_modules\.pnpm\expo-modules-core@57.0.21_r_4d77be8b739c6d31433f50003ea98509\node_modules\expo-modules-core\android\.cxx\Debug\1c36701t\arm64-v8a'
+  [0/1] Re-running CMake...
+  -- Configuring done
+  -- Generating done
+  -- Build files have been written to: C:/Dev/Wayvro/tests/spikes/sp-and-android-build/node_modules/.pnpm/expo-modules-core@57.0.21_r_4d77be8b739c6d31433f50003ea98509/node_modules/expo-modules-core/android/.cxx/Debug/1c36701t/arm64-v8a
+BUILD FAILED in 1h 41m 28s

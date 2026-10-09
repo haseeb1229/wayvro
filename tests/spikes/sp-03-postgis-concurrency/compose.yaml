@@ -1,0 +1,24 @@
+# DISPOSABLE spike database. Project name wayvro-spike-sp03; tmpfs storage (no volume is created,
+# nothing persists after `down`). Bound to localhost only.
+services:
+  postgis:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+    environment:
+      POSTGRES_USER: spike
+      POSTGRES_PASSWORD: spike-local-only
+      POSTGRES_DB: sp03
+    command: ["postgres", "-c", "max_connections=400", "-c", "shared_buffers=256MB", "-c", "track_io_timing=on"]
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spike -d sp03"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

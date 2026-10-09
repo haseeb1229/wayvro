@@ -1,0 +1,1007 @@
+{
+  "at": "2026-10-09T10:42:40.741Z",
+  "rounds": 20,
+  "attempts": 100,
+  "overallCorrect": true,
+  "results": [
+    {
+      "strategy": "cas-raw",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 96.198,
+        "p95": 160.555,
+        "p99": 191.574,
+        "max": 218.683,
+        "mean": 97.468
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 39.13,
+        "p95": 59.591,
+        "p99": 73.395,
+        "max": 73.395,
+        "mean": 39.524
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-raw",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 143.642,
+        "p95": 252.629,
+        "p99": 275.805,
+        "max": 300.052,
+        "mean": 148.993
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 73.343,
+        "p95": 133.706,
+        "p99": 145.127,
+        "max": 145.127,
+        "mean": 86.38
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-raw",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 80.248,
+        "p95": 196.241,
+        "p99": 262.486,
+        "max": 289.369,
+        "mean": 87.587
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 24.645,
+        "p95": 47.322,
+        "p99": 176.021,
+        "max": 176.021,
+        "mean": 33.879
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-drizzle",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 127.584,
+        "p95": 239.223,
+        "p99": 745.047,
+        "max": 778.316,
+        "mean": 153.255
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 59.486,
+        "p95": 96.876,
+        "p99": 611.453,
+        "max": 611.453,
+        "mean": 90.902
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-drizzle",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 196.963,
+        "p95": 270.799,
+        "p99": 297.093,
+        "max": 310.53,
+        "mean": 198.181
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 126.407,
+        "p95": 163.42,
+        "p99": 174.7,
+        "max": 174.7,
+        "mean": 129.498
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-drizzle",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 114.707,
+        "p95": 184.58,
+        "p99": 205.554,
+        "max": 219.81,
+        "mean": 115.79
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 51.615,
+        "p95": 63.783,
+        "p99": 66.328,
+        "max": 66.328,
+        "mean": 50.91
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-kysely",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 101.194,
+        "p95": 189.005,
+        "p99": 636.075,
+        "max": 654.016,
+        "mean": 122.488
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 43.404,
+        "p95": 52.011,
+        "p99": 306.139,
+        "max": 306.139,
+        "mean": 55.95
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-kysely",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 152.565,
+        "p95": 236.762,
+        "p99": 263.991,
+        "max": 283.504,
+        "mean": 153.961
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 78.769,
+        "p95": 128.56,
+        "p99": 137.205,
+        "max": 137.205,
+        "mean": 89.72
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "cas-kysely",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 101.758,
+        "p95": 197.176,
+        "p99": 368.435,
+        "max": 399.469,
+        "mean": 110.005
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 41.556,
+        "p95": 53.128,
+        "p99": 62.188,
+        "max": 62.188,
+        "mean": 40.32
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-raw",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 79.011,
+        "p95": 128.044,
+        "p99": 137.69,
+        "max": 144.329,
+        "mean": 79.2
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 25.539,
+        "p95": 32.427,
+        "p99": 33.167,
+        "max": 33.167,
+        "mean": 26.132
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-raw",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 92.653,
+        "p95": 148.038,
+        "p99": 174.661,
+        "max": 197.803,
+        "mean": 93.416
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 37.319,
+        "p95": 53.737,
+        "p99": 55.083,
+        "max": 55.083,
+        "mean": 40.115
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-raw",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 145.021,
+        "p95": 512.769,
+        "p99": 1691.938,
+        "max": 1770.243,
+        "mean": 218.945
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 47.411,
+        "p95": 120.025,
+        "p99": 130.855,
+        "max": 130.855,
+        "mean": 58.592
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-nowait-raw",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 0,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 1980,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 110.086,
+        "p95": 250.233,
+        "p99": 291.87,
+        "max": 311.211,
+        "mean": 121.003
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 153.425,
+        "p95": 295.989,
+        "p99": 311.211,
+        "max": 311.211,
+        "mean": 168.251
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-nowait-raw",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 0,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 1980,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 81.744,
+        "p95": 171.711,
+        "p99": 208.098,
+        "max": 384.209,
+        "mean": 98.517
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 114.494,
+        "p95": 208.896,
+        "p99": 384.209,
+        "max": 384.209,
+        "mean": 138.298
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-nowait-raw",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 0,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 1980,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 68.821,
+        "p95": 195.533,
+        "p99": 219.406,
+        "max": 576.558,
+        "mean": 88.01
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 87.376,
+        "p95": 323.038,
+        "p99": 576.558,
+        "max": 576.558,
+        "mean": 144.152
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-skip-locked-raw",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 34.224,
+        "p95": 57.883,
+        "p99": 100.277,
+        "max": 131.967,
+        "mean": 38.115
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 45.669,
+        "p95": 64.178,
+        "p99": 131.967,
+        "max": 131.967,
+        "mean": 52.546
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-skip-locked-raw",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 52.813,
+        "p95": 71.168,
+        "p99": 82.104,
+        "max": 86.56,
+        "mean": 52.833
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 65.887,
+        "p95": 85.572,
+        "p99": 86.56,
+        "max": 86.56,
+        "mean": 67.588
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "for-update-skip-locked-raw",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 28.309,
+        "p95": 40.719,
+        "p99": 49.456,
+        "max": 59.404,
+        "mean": 29.306
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 38.408,
+        "p95": 50.132,
+        "p99": 59.404,
+        "max": 59.404,
+        "mean": 40.527
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "serializable-raw",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 0,
+        "serialization_failure": 1980,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 110.87,
+        "p95": 174.106,
+        "p99": 186.108,
+        "max": 189.718,
+        "mean": 117.779
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 83.163,
+        "p95": 144.401,
+        "p99": 161.195,
+        "max": 161.195,
+        "mean": 86.545
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "serializable-raw",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 0,
+        "serialization_failure": 1980,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 182.605,
+        "p95": 256.506,
+        "p99": 271.892,
+        "max": 277.423,
+        "mean": 188.07
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 160.68,
+        "p95": 223.62,
+        "p99": 245.412,
+        "max": 245.412,
+        "mean": 167.038
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "serializable-raw",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 0,
+        "serialization_failure": 1980,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 123.644,
+        "p95": 178.215,
+        "p99": 199.668,
+        "max": 202.134,
+        "mean": 123.759
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 90.72,
+        "p95": 136.72,
+        "p99": 174.164,
+        "max": 174.164,
+        "mean": 99.403
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "unique-index-only-raw",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 7.889,
+        "p95": 11.715,
+        "p99": 13.502,
+        "max": 20.007,
+        "mean": 8.124
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 7.236,
+        "p95": 11.432,
+        "p99": 11.543,
+        "max": 11.543,
+        "mean": 8.193
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "unique-index-only-raw",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 6.885,
+        "p95": 10.6,
+        "p99": 12.06,
+        "max": 14.438,
+        "mean": 7.141
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 7.106,
+        "p95": 11.151,
+        "p99": 11.493,
+        "max": 11.493,
+        "mean": 8.089
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "unique-index-only-raw",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 20,
+      "roundsWithDuplicateAssignment": 0,
+      "verdict": "PASS",
+      "outcomes": {
+        "won": 20,
+        "conflict": 1980,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 7.051,
+        "p95": 11.072,
+        "p99": 12.343,
+        "max": 14.436,
+        "mean": 7.373
+      },
+      "winnerLatencyMs": {
+        "n": 20,
+        "p50": 7.289,
+        "p95": 10.548,
+        "p99": 11.749,
+        "max": 11.749,
+        "mean": 7.496
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "NEGATIVE-CONTROL-naive-unguarded",
+      "scenario": "A-one-ride-100-drivers",
+      "describe": "one ride offered to 100 drivers; all accept simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 0,
+      "roundsWithDuplicateAssignment": 20,
+      "verdict": "NEGATIVE CONTROL DETECTED DUPLICATES (harness sensitive)",
+      "outcomes": {
+        "won": 1890,
+        "conflict": 110,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 88.879,
+        "p95": 177.164,
+        "p99": 439.341,
+        "max": 458.102,
+        "mean": 109.73
+      },
+      "winnerLatencyMs": {
+        "n": 1890,
+        "p50": 89.974,
+        "p95": 177.456,
+        "p99": 439.847,
+        "max": 458.102,
+        "mean": 112.489
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "NEGATIVE-CONTROL-naive-unguarded",
+      "scenario": "B-one-driver-100-rides",
+      "describe": "one driver holds offers for 100 different rides; accepts all simultaneously",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 0,
+      "roundsWithDuplicateAssignment": 20,
+      "verdict": "NEGATIVE CONTROL DETECTED DUPLICATES (harness sensitive)",
+      "outcomes": {
+        "won": 1880,
+        "conflict": 120,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 89.443,
+        "p95": 163.23,
+        "p99": 188.618,
+        "max": 195.423,
+        "mean": 93.588
+      },
+      "winnerLatencyMs": {
+        "n": 1880,
+        "p50": 91.778,
+        "p95": 163.81,
+        "p99": 189.58,
+        "max": 195.423,
+        "mean": 96.569
+      },
+      "unexpectedErrors": []
+    },
+    {
+      "strategy": "NEGATIVE-CONTROL-naive-unguarded",
+      "scenario": "C-same-offer-100-retries",
+      "describe": "one driver re-sends the same accept 100 times (retry storm / double tap)",
+      "rounds": 20,
+      "attemptsPerRound": 100,
+      "roundsWithExactlyOneWinnerAndInvariants": 0,
+      "roundsWithDuplicateAssignment": 20,
+      "verdict": "NEGATIVE CONTROL DETECTED DUPLICATES (harness sensitive)",
+      "outcomes": {
+        "won": 1941,
+        "conflict": 59,
+        "serialization_failure": 0,
+        "unique_violation": 0,
+        "deadlock": 0,
+        "lock_not_available": 0,
+        "error": 0
+      },
+      "deadlocks": 0,
+      "attemptLatencyMs": {
+        "n": 2000,
+        "p50": 94.913,
+        "p95": 174.328,
+        "p99": 190.776,
+        "max": 195.553,
+        "mean": 108.309
+      },
+      "winnerLatencyMs": {
+        "n": 1941,
+        "p50": 96.106,
+        "p95": 174.501,
+        "p99": 191.024,
+        "max": 195.553,
+        "mean": 109.78
+      },
+      "unexpectedErrors": []
+    }
+  ]
+}

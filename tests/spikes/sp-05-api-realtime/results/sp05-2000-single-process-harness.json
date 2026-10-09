@@ -1,0 +1,91 @@
+{
+  "at": "2026-10-09T11:12:55.989Z",
+  "clients": 2000,
+  "entities": 500,
+  "updateRatePerSecond": 100,
+  "updatesCommitted": 3055,
+  "forgedTokenHandshake": "rejected: unauthorized",
+  "connectedInitially": 2000,
+  "initialConnectPlusSnapshotMs": {
+    "n": 2000,
+    "p50": 4641,
+    "p95": 4972,
+    "p99": 4982,
+    "max": 5016
+  },
+  "gatewayRssMb": {
+    "before": [
+      102,
+      103
+    ],
+    "withClientsConnected": [
+      133,
+      136
+    ]
+  },
+  "steadyStateDeliveryMs": {
+    "n": 6460,
+    "p50": 3,
+    "p95": 8,
+    "p99": 15,
+    "max": 28
+  },
+  "allDeliveryMs": {
+    "n": 10895,
+    "p50": 3,
+    "p95": 387,
+    "p99": 751,
+    "max": 1105
+  },
+  "kills": [
+    {
+      "port": 4101,
+      "affectedClients": 1000
+    },
+    {
+      "port": 4102,
+      "affectedClients": 2000
+    }
+  ],
+  "recoveriesObserved": 3000,
+  "recoveriesCompleted": 3000,
+  "recoveryFromDisconnectMs": {
+    "n": 3000,
+    "p50": 3235,
+    "p95": 4508,
+    "p99": 4597,
+    "max": 4661
+  },
+  "recoveryFromKillMs": {
+    "n": 3000,
+    "p50": 4150,
+    "p95": 5066,
+    "p99": 5097,
+    "max": 5106
+  },
+  "recoveryReconnectPhaseMs": {
+    "n": 3000,
+    "p50": 2879,
+    "p95": 3719,
+    "p99": 3923,
+    "max": 4003
+  },
+  "recoverySnapshotPhaseMs": {
+    "n": 3000,
+    "p50": 598,
+    "p95": 919,
+    "p99": 943,
+    "max": 1153
+  },
+  "harnessEventLoopDelayMs": {
+    "p50": 15.540223,
+    "p99": 99.155967,
+    "max": 738.197503
+  },
+  "gapSnapshotFetches": 125,
+  "staleOrDuplicateEventsIgnored": 26,
+  "failedConnectAttempts": 0,
+  "connectedAtEnd": 2000,
+  "clientsWithStateMismatchVsDatabase": 0,
+  "verdict": "PASS"
+}

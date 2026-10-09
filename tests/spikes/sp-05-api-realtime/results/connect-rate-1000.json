@@ -1,0 +1,104 @@
+{
+  "at": "2026-10-09T11:24:37.751Z",
+  "results": [
+    {
+      "target": "nestjs-12-fastify + platform-socket.io",
+      "run": 1,
+      "n": 1000,
+      "wallMs": 1428,
+      "p50": 1167,
+      "p95": 1201,
+      "failed": 0,
+      "connectsPerSecond": 700,
+      "gatewayCpuSeconds": 1.5
+    },
+    {
+      "target": "nestjs-12-fastify + platform-socket.io",
+      "run": 2,
+      "n": 1000,
+      "wallMs": 994,
+      "p50": 829,
+      "p95": 834,
+      "failed": 0,
+      "connectsPerSecond": 1006,
+      "gatewayCpuSeconds": 1.17
+    },
+    {
+      "target": "nestjs-12-fastify + platform-socket.io",
+      "run": 3,
+      "n": 1000,
+      "wallMs": 1381,
+      "p50": 1141,
+      "p95": 1160,
+      "failed": 0,
+      "connectsPerSecond": 724,
+      "gatewayCpuSeconds": 1.09
+    },
+    {
+      "target": "plain socket.io (node:http)",
+      "run": 1,
+      "n": 1000,
+      "wallMs": 1892,
+      "p50": 1627,
+      "p95": 1678,
+      "failed": 0,
+      "connectsPerSecond": 529,
+      "gatewayCpuSeconds": 1.66
+    },
+    {
+      "target": "plain socket.io (node:http)",
+      "run": 2,
+      "n": 1000,
+      "wallMs": 909,
+      "p50": 709,
+      "p95": 730,
+      "failed": 0,
+      "connectsPerSecond": 1100,
+      "gatewayCpuSeconds": 1
+    },
+    {
+      "target": "plain socket.io (node:http)",
+      "run": 3,
+      "n": 1000,
+      "wallMs": 791,
+      "p50": 622,
+      "p95": 631,
+      "failed": 0,
+      "connectsPerSecond": 1264,
+      "gatewayCpuSeconds": 0.94
+    },
+    {
+      "target": "raw ws (fallback floor; no rooms/fan-out)",
+      "run": 1,
+      "n": 1000,
+      "wallMs": 629,
+      "p50": 500,
+      "p95": 553,
+      "failed": 0,
+      "connectsPerSecond": 1590,
+      "gatewayCpuSeconds": 0.77
+    },
+    {
+      "target": "raw ws (fallback floor; no rooms/fan-out)",
+      "run": 2,
+      "n": 1000,
+      "wallMs": 629,
+      "p50": 462,
+      "p95": 525,
+      "failed": 0,
+      "connectsPerSecond": 1590,
+      "gatewayCpuSeconds": 0.63
+    },
+    {
+      "target": "raw ws (fallback floor; no rooms/fan-out)",
+      "run": 3,
+      "n": 1000,
+      "wallMs": 472,
+      "p50": 357,
+      "p95": 389,
+      "failed": 0,
+      "connectsPerSecond": 2119,
+      "gatewayCpuSeconds": 0.56
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "at": "2026-10-09T11:25:36.954Z",
+  "clients": 1000,
+  "clientWorkerProcesses": 2,
+  "entities": 500,
+  "updateRatePerSecond": 100,
+  "updatesCommitted": 2750,
+  "forgedTokenHandshake": "rejected: unauthorized",
+  "connectedInitially": 1000,
+  "initialConnectWallMs": 3128,
+  "initialConnectPlusSnapshotMs": {
+    "n": 1000,
+    "p50": 2573,
+    "p95": 2983,
+    "p99": 3014,
+    "max": 3017
+  },
+  "gatewayRssMb": {
+    "before": [
+      97,
+      98
+    ],
+    "withClientsConnected": [
+      110,
+      110
+    ]
+  },
+  "steadyStateDeliveryMs": {
+    "n": 3220,
+    "p50": 1,
+    "p95": 7,
+    "p99": 19,
+    "max": 40
+  },
+  "allDeliveryMs": {
+    "n": 5178,
+    "p50": 1,
+    "p95": 17,
+    "p99": 239,
+    "max": 478
+  },
+  "kills": [
+    {
+      "port": 4101,
+      "affectedClients": 500,
+      "unrecoveredAfter30s": 0,
+      "recoveryFromKillMs": {
+        "n": 500,
+        "p50": 1366,
+        "p95": 1530,
+        "p99": 1535,
+        "max": 1538
+      }
+    },
+    {
+      "port": 4102,
+      "affectedClients": 1000,
+      "unrecoveredAfter30s": 0,
+      "recoveryFromKillMs": {
+        "n": 1000,
+        "p50": 1791,
+        "p95": 2227,
+        "p99": 2255,
+        "max": 2265
+      }
+    }
+  ],
+  "recoveriesObserved": 1500,
+  "recoveriesCompleted": 1500,
+  "recoveryFromKillMs": {
+    "n": 1500,
+    "p50": 1497,
+    "p95": 2215,
+    "p99": 2252,
+    "max": 2265
+  },
+  "recoveryFromDisconnectMs": {
+    "n": 1500,
+    "p50": 1420,
+    "p95": 2062,
+    "p99": 2157,
+    "max": 2172
+  },
+  "recoveryReconnectPhaseMs": {
+    "n": 1500,
+    "p50": 1230,
+    "p95": 1874,
+    "p99": 1952,
+    "max": 1971
+  },
+  "recoverySnapshotPhaseMs": {
+    "n": 1500,
+    "p50": 174,
+    "p95": 523,
+    "p99": 567,
+    "max": 577
+  },
+  "clientHarnessEventLoopDelayMs": [
+    {
+      "p50": 15.515647,
+      "p99": 91.684863,
+      "max": 375.390207
+    },
+    {
+      "p50": 15.491071,
+      "p99": 64.126975,
+      "max": 370.409471
+    }
+  ],
+  "gapSnapshotFetches": 19,
+  "staleOrDuplicateEventsIgnored": 17,
+  "failedConnectAttempts": 0,
+  "connectedAtEnd": 1000,
+  "clientsWithStateMismatchVsDatabase": 0,
+  "verdict": "PASS"
+}

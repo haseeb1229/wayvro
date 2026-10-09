@@ -1,0 +1,27 @@
+{
+  "name": "@wayvro-spike/sp-03-postgis-concurrency",
+  "private": true,
+  "version": "0.0.0",
+  "description": "DISPOSABLE Phase-1 spike SP-03: PostGIS candidate lookup + concurrent assignment. Evidence harness only, not production code.",
+  "type": "module",
+  "scripts": {
+    "db:up": "docker compose -f compose.yaml -p wayvro-spike-sp03 up -d --wait",
+    "db:down": "docker compose -f compose.yaml -p wayvro-spike-sp03 down",
+    "migrations": "tsx src/migrations-test.ts",
+    "bench": "tsx src/bench-query.ts",
+    "concurrency": "tsx src/concurrency.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.3",
+    "kysely": "0.29.6",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3"
+  }
+}

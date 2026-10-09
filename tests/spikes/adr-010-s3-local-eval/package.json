@@ -1,0 +1,13 @@
+{
+  "name": "@wayvro-spike/adr-010-s3-local-eval",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0"
+  },
+  "description": "DISPOSABLE ADR-010 evidence: S3 semantics of the local SeaweedFS dev server (SigV4, presigned PUT/GET, tamper/expiry rejection, multipart).",
+  "scripts": {
+    "eval": "node eval.mjs"
+  }
+}
