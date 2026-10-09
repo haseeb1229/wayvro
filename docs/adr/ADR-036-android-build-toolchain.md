@@ -61,7 +61,7 @@ Built with `scripts/android-build.mjs` (JDK 17.0.20.1 enforced, `expo prebuild -
 | `android-build.mjs debug` (dev client) | **PASS** | `BUILD SUCCESSFUL in 17m 9s`; `app-debug.apk` 102.4 MB, ABIs arm64-v8a + x86_64, target SDK 36 |
 | Debug-only permission | noted | the **debug** APK also declares `SYSTEM_ALERT_WINDOW`, re-added by React Native's debug manifest for the developer overlay; release builds are clean and gated. The debug APK is never distributed |
 
-The release AAB is signed with the generated debug key (not an upload artefact) and was removed from disk by the subsequent `prebuild --clean` of the debug build; the gate reports were retained. CI (`android` job) rebuilds both on Linux with Temurin 17 and uploads the AAB and reports as workflow artefacts.
+The release AAB is signed with the generated debug key (not an upload artefact) and was removed from disk by the subsequent `prebuild --clean` of the debug build; the gate reports were retained. CI (`android` job) rebuilds both on Linux with Temurin 17. The first CI run (37958066382) passed every gate (`BUILD SUCCESSFUL in 9m 18s`; 16 KB 14/14 with zipalign PASS ×2; permissions INTERNET + AndroidX internal only) but uploaded only the reports, because the debug step's `prebuild --clean` had already deleted the AAB. `scripts/android-build.mjs` now copies the gated AAB into `build-reports/`, which CI uploads with `if-no-files-found: error`.
 
 ## Decision
 1. **Primary direction confirmed:** Expo SDK 57 development builds (RN 0.86) for the one public Wayvro app, built with **JDK 17 pinned** by `scripts/android-build.mjs` (refuses any other JDK major; never the machine default) and Temurin 17 in CI.

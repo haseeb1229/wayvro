@@ -187,7 +187,6 @@ jobs:
         with:
           name: android-build-${{ github.sha }}
           retention-days: 7
-          if-no-files-found: warn
-          path: |
-            apps/wayvro-mobile/build-reports/
-            apps/wayvro-mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          # build-reports/ holds the gate reports and a copy of the gated release AAB (debug-key signed; not an upload artefact).
+          path: apps/wayvro-mobile/build-reports/

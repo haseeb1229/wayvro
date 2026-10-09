@@ -221,8 +221,8 @@
     },
     {
       "path": "docs/adr/ADR-036-android-build-toolchain.md",
-      "bytes": 8666,
-      "sha256": "93cabb282e40993da0f7dbb1960a1db6a3c287f509fac799685e4b7ba93f8d9a"
+      "bytes": 9005,
+      "sha256": "e8ae811412be8e9e1f824b43ad038429939435cc513adaaafb4ceac02e75b937"
     },
     {
       "path": "docs/adr/ADR-037-local-development-infrastructure.md",

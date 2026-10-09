@@ -11,7 +11,7 @@
  * The release AAB is signed with the generated DEBUG keystore: it proves the build, it is NOT an upload artefact.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -80,7 +80,9 @@ if (MODE === 'release') {
     join(REPORTS, '16kb-report.json'),
   ]);
   gate('check-permissions.mjs', ['--report', join(REPORTS, 'permissions-report.json')]);
-  console.log(`\nandroid-build: release AAB ${aab} passed the 16 KB and permission gates`);
+  // Keep the gated AAB outside android/: a later `prebuild --clean` (e.g. the debug build) deletes that directory.
+  copyFileSync(aab, join(REPORTS, 'app-release.aab'));
+  console.log(`\nandroid-build: release AAB ${aab} passed the 16 KB and permission gates (copied to ${REPORTS})`);
 } else {
   console.log(`\nandroid-build: debug APK at ${join(ANDROID, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')}`);
 }
