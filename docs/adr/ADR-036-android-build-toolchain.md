@@ -49,8 +49,19 @@ node infra/ci/android/check-permissions.mjs --aab <aab> --bundletool <jar>
 | Install/launch on a device or emulator | **NOT RUN** | no physical device attached and no emulator system image installed; real-device behaviour is the SP-01/SP-02 gate before Phase 3 (FD-13) |
 | iOS | **NOT RUN** | no macOS/EAS/App Store environment approved in Phase 1; Android results say nothing about iOS |
 
-## Reproduction in the monorepo app (`apps/wayvro-mobile`)
-_Recorded after the monorepo build completes — see the section appended below._
+## Reproduction in the monorepo app (`apps/wayvro-mobile`, hoisted workspace)
+Built with `scripts/android-build.mjs` (JDK 17.0.20.1 enforced, `expo prebuild --clean` then Gradle) on the same machine, 2026-10-09:
+
+| Step | Result | Detail |
+|---|---|---|
+| expo-doctor inside the monorepo | PASS | 21/21 |
+| `android-build.mjs release` | **PASS** | `BUILD SUCCESSFUL in 21m 28s` (509 tasks; Gradle/Maven caches warm) |
+| 16 KB / ABI gate | **PASS** | ABIs exactly arm64-v8a + armeabi-v7a; 14/14 64-bit libs 16 KB-aligned; `zipalign -P 16` PASS on both split APKs (`docs/phase1/evidence/wayvro-mobile-release-16kb-report.json`) |
+| Permission gate | **PASS** | release manifest of `dev.wayvro.app` declares only `android.permission.INTERNET` and `dev.wayvro.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`; `debuggable` false (`docs/phase1/evidence/wayvro-mobile-release-permissions-report.json`) |
+| `android-build.mjs debug` (dev client) | **PASS** | `BUILD SUCCESSFUL in 17m 9s`; `app-debug.apk` 102.4 MB, ABIs arm64-v8a + x86_64, target SDK 36 |
+| Debug-only permission | noted | the **debug** APK also declares `SYSTEM_ALERT_WINDOW`, re-added by React Native's debug manifest for the developer overlay; release builds are clean and gated. The debug APK is never distributed |
+
+The release AAB is signed with the generated debug key (not an upload artefact) and was removed from disk by the subsequent `prebuild --clean` of the debug build; the gate reports were retained. CI (`android` job) rebuilds both on Linux with Temurin 17 and uploads the AAB and reports as workflow artefacts.
 
 ## Decision
 1. **Primary direction confirmed:** Expo SDK 57 development builds (RN 0.86) for the one public Wayvro app, built with **JDK 17 pinned** by `scripts/android-build.mjs` (refuses any other JDK major; never the machine default) and Temurin 17 in CI.

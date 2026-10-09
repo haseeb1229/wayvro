@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 /*
- * Regenerates V5_FILE_MANIFEST.json (SHA-256 of every tracked file, excluding itself) and V5_VALIDATION_SUMMARY.json
- * (package consistency checks) after Phase 0 changes. Node >= 18, no dependencies.
+ * Regenerates V5_FILE_MANIFEST.json (SHA-256 of every file of the documentation/planning package, excluding itself) and
+ * V5_VALIDATION_SUMMARY.json (package consistency checks). Node >= 18, no dependencies.
  * Usage: node docs/phase0/tools/regen-manifest.js [--check]   (--check: exit 1 if manifest is stale or checks fail)
+ *
+ * Scope (Phase 1, 2026-10-09): the manifest covers the planning package — the root governance files listed in
+ * PACKAGE_ROOT_FILES plus everything under docs/ and prompts/. Source code, lockfiles and machine-specific build output
+ * (android/, dist/, .next/, .turbo/ …) are integrity-protected by Git and CI instead; hashing them made the manifest
+ * unreproducible and forced a regeneration on every code commit. The prohibited separate-app path check still scans the
+ * WHOLE repository (see `repoFiles`).
  */
 'use strict';
 const fs = require('fs');
@@ -14,6 +20,8 @@ const MANIFEST = path.join(ROOT, 'V5_FILE_MANIFEST.json');
 const SUMMARY = path.join(ROOT, 'V5_VALIDATION_SUMMARY.json');
 const CHECK = process.argv.includes('--check');
 const IGNORE_DIRS = new Set(['.git', 'node_modules', '.claude']);
+const PACKAGE_ROOT_FILES = ['.gitattributes', 'ALL_FILES_INDEX.md', 'CLAUDE.md', 'README.md', 'V5_VALIDATION_SUMMARY.json'];
+const PACKAGE_DIRS = ['docs', 'prompts'];
 
 function walk(dir, out) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -25,13 +33,20 @@ function walk(dir, out) {
 }
 const rel = (p) => path.relative(ROOT, p).split(path.sep).join('/');
 const sha = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+function packageFiles() {
+  const out = PACKAGE_ROOT_FILES.filter((f) => fs.existsSync(path.join(ROOT, f)));
+  for (const d of PACKAGE_DIRS) out.push(...walk(path.join(ROOT, d), []).map(rel));
+  return out.sort();
+}
 
-const files = walk(ROOT, []).map(rel).filter((p) => p !== 'V5_FILE_MANIFEST.json').sort();
+const files = packageFiles();
+const repoFiles = walk(ROOT, []).map(rel);
 const manifest = {
   package: 'Wayvro Claude-only Blueprint v5 + Phase 0 (2026-10-09)',
   generated_on: '2026-10-09',
   generator: 'docs/phase0/tools/regen-manifest.js',
   manifest_excludes_self: true,
+  scope: { root_files: PACKAGE_ROOT_FILES, directories: PACKAGE_DIRS, note: 'documentation/planning package only; code and build output are protected by Git + CI' },
   file_count_excluding_manifest: files.length,
   files: files.map((p) => { const b = fs.readFileSync(path.join(ROOT, p)); return { path: p, bytes: b.length, sha256: sha(b) }; }),
 };
@@ -76,7 +91,7 @@ for (const p of ['README.md', 'ALL_FILES_INDEX.md', 'docs/00_README_AND_STATUS.m
   if (/\b511\b(?![^.\n]*(?:v5|original|Phase 0|baseline|\+ 20))/.test(t)) stale511.push(p);
 }
 if (stale511.length) problems.push('unqualified 511 count in: ' + stale511.join(', '));
-const prohibited = files.filter((f) => /apps\/(wayvro-)?(rider|driver)[-_]?app/i.test(f));
+const prohibited = repoFiles.filter((f) => /apps\/(wayvro-)?(rider|driver)[-_]?app/i.test(f));
 if (prohibited.length) problems.push('prohibited separate-app paths: ' + prohibited.join(', '));
 
 // Founder-review closure checks (2026-10-09). "Active" docs exclude preserved research evidence and historical audits;
@@ -122,7 +137,7 @@ const summary = {
   package: 'Wayvro Claude-only Blueprint v5 + Phase 0 dispositioned baseline',
   generated_on: '2026-10-09',
   generator: 'docs/phase0/tools/regen-manifest.js',
-  status: problems.length ? 'FAIL — see problems' : 'PASS — internal consistency and founder-review closure checks passed; Phase 1 not started; NOT implementation-approved',
+  status: problems.length ? 'FAIL — see problems' : 'PASS — internal consistency and founder-review closure checks passed (documentation package only; says nothing about code, CI or approvals)',
   product_name: 'Wayvro', product_name_locked: true,
   public_mobile_topology: { one_public_wayvro_app: true, rider_mode: true, approved_driver_partner_profile_and_mode: true, separate_public_rider_driver_apps: false, server_authorization_not_ui_mode_switch: true },
   requirements: {
@@ -150,7 +165,7 @@ if (CHECK) {
   fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
   // Manifest hash of summary must be computed after summary is written; write summary first, then manifest including it.
   fs.writeFileSync(SUMMARY, JSON.stringify(summary, null, 2) + '\n');
-  const files2 = walk(ROOT, []).map(rel).filter((p) => p !== 'V5_FILE_MANIFEST.json').sort();
+  const files2 = packageFiles();
   manifest.file_count_excluding_manifest = files2.length;
   manifest.files = files2.map((p) => { const b = fs.readFileSync(path.join(ROOT, p)); return { path: p, bytes: b.length, sha256: sha(b) }; });
   fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');

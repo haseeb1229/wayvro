@@ -3,7 +3,21 @@
   "generated_on": "2026-10-09",
   "generator": "docs/phase0/tools/regen-manifest.js",
   "manifest_excludes_self": true,
-  "file_count_excluding_manifest": 64,
+  "scope": {
+    "root_files": [
+      ".gitattributes",
+      "ALL_FILES_INDEX.md",
+      "CLAUDE.md",
+      "README.md",
+      "V5_VALIDATION_SUMMARY.json"
+    ],
+    "directories": [
+      "docs",
+      "prompts"
+    ],
+    "note": "documentation/planning package only; code and build output are protected by Git + CI"
+  },
+  "file_count_excluding_manifest": 78,
   "files": [
     {
       "path": ".gitattributes",
@@ -12,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 6928,
-      "sha256": "6b5417536ffd229c495ff470a1cbf312c203d3d753c9acbbf3e3b738b0c593e8"
+      "bytes": 8155,
+      "sha256": "b139360400f2ddcea54f65e1d7895f66a775a2c5506dc6c7e73d5a48efd445be"
     },
     {
       "path": "CLAUDE.md",
@@ -22,18 +36,18 @@
     },
     {
       "path": "README.md",
-      "bytes": 7679,
-      "sha256": "524ddf9ea193f07761e419aa72fd3c4b0d519f0fe2c77e56bfd3c21aa18a89de"
+      "bytes": 7827,
+      "sha256": "adbb8fe3626199485af625c9d6c61eadbb38d8984c1f83eb83363b78d8ac7fa0"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
-      "bytes": 3233,
-      "sha256": "3e7ab938865be398b59dbc0512b7eabb82c364278e475cafb5365fe2bdf4ad43"
+      "bytes": 3254,
+      "sha256": "988bfd30d36bd9f5495a4ecca58b70e21b23a0a0090d6efd975fcf8d944f423e"
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 6480,
-      "sha256": "68c9d29f998445e959793f535d91212eaef9cee97fc653a34a82809bbb7d0533"
+      "bytes": 6859,
+      "sha256": "a283e1157927e1c2c533ce68af1f4330c108b864389aa96fc5edd90f57dc3029"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -92,8 +106,8 @@
     },
     {
       "path": "docs/12_PHASE_PLAN_AND_GATES.md",
-      "bytes": 10682,
-      "sha256": "74e0eba33e13df674bddf707ea9bc403504a8225d8bc8825ed66d2ba497c4452"
+      "bytes": 11319,
+      "sha256": "5dd38553bde8cd8b42e691a40f3d5288fa5afa555b25406d1dd60799aaacb4c4"
     },
     {
       "path": "docs/13_CLAUDE_ONLY_ENGINEERING_WORKFLOW.md",
@@ -176,9 +190,59 @@
       "sha256": "539996b3d479dcdf61dcc64d03eea554d02a274bc2ea9a44f6cfadf7935e3b19"
     },
     {
+      "path": "docs/adr/ADR-004-query-layer-and-migrations.md",
+      "bytes": 11798,
+      "sha256": "86e1429de45249d5767c108d376a95a606f726c98f3610bb67845b9525716ceb"
+    },
+    {
+      "path": "docs/adr/ADR-005-api-framework.md",
+      "bytes": 5859,
+      "sha256": "70b4993517a011f47ca63a0d79daf7f85740e019b76b24a8d4b297379d00d8ed"
+    },
+    {
+      "path": "docs/adr/ADR-005b-realtime-transport.md",
+      "bytes": 7595,
+      "sha256": "c28d8a7e1684459f18335767e45dd79d00d88c7819a72d77bc6349276d81b080"
+    },
+    {
+      "path": "docs/adr/ADR-010-object-storage-local-s3.md",
+      "bytes": 5237,
+      "sha256": "834eabccc55101c8b69fc80528a819e8713eba78785d7acc4f768e95235dcdd8"
+    },
+    {
+      "path": "docs/adr/ADR-027-ci-quality-and-dead-code-tooling.md",
+      "bytes": 6319,
+      "sha256": "78d1c90a39d258a604fb217524e893d157cc399737c20951f976a9a023e729a0"
+    },
+    {
+      "path": "docs/adr/ADR-034-monorepo-tooling-and-runtime.md",
+      "bytes": 4923,
+      "sha256": "70bb590188072365bda8034f74a9e920913462c6fe72230baa014e829bb30666"
+    },
+    {
+      "path": "docs/adr/ADR-036-android-build-toolchain.md",
+      "bytes": 8666,
+      "sha256": "93cabb282e40993da0f7dbb1960a1db6a3c287f509fac799685e4b7ba93f8d9a"
+    },
+    {
+      "path": "docs/adr/ADR-037-local-development-infrastructure.md",
+      "bytes": 3413,
+      "sha256": "5c20f83ed1a25ba56de042cd709fe6c9cef2038f890838c03f021d65e6172015"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "bytes": 2153,
+      "sha256": "da03fc638102de5f0a1e8e825d026c3bd9904d2f59b423ff4c3e7cd14597d5ad"
+    },
+    {
+      "path": "docs/operations/developer-setup.md",
+      "bytes": 4906,
+      "sha256": "03eb51b91de1d0c203189a7678b5653dc14c5667d0d65891f01e101c5254c91d"
+    },
+    {
       "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
-      "bytes": 17388,
-      "sha256": "d2ca3f41dfe0388a70c42ced45a83f171387757e8d12f044383aa70fa09f59db"
+      "bytes": 17942,
+      "sha256": "38ad6f983cd5a2b3cb984ac58c9bfa97a0e6dd3e71d274f95d38477c4c78ea9a"
     },
     {
       "path": "docs/phase0/PHASE0_ARCHITECTURE_PROPOSAL.md",
@@ -301,14 +365,34 @@
       "sha256": "7554d0a2e9adb189c9b32d054d1c882a9807217f64ee79ba9c43f340a4424a93"
     },
     {
+      "path": "docs/phase0/tools/package.json",
+      "bytes": 233,
+      "sha256": "395a2827219fbb4a8db6fe2767c02de97818d7e77c671b8a3a47d94971a74d1a"
+    },
+    {
       "path": "docs/phase0/tools/phase0-coverage.js",
       "bytes": 11188,
       "sha256": "ec95c4934275387260d29d3512709249ab8f2b61b15c14f5c47446c5b84765b7"
     },
     {
       "path": "docs/phase0/tools/regen-manifest.js",
-      "bytes": 11672,
-      "sha256": "014ef8a793d5723d525b51ab55a75997fd693ce1f3302dd881c8508b9c2dc73b"
+      "bytes": 12692,
+      "sha256": "76bd25639da7c0540742976852c3f17ad168ce76357d7987cd0037128b17376e"
+    },
+    {
+      "path": "docs/phase1/PHASE1_HANDOFF_REPORT.md",
+      "bytes": 10387,
+      "sha256": "638d7d344722e8d294b3452793113bd9d3643c1cc31935a54b393ae26148d4dc"
+    },
+    {
+      "path": "docs/phase1/evidence/wayvro-mobile-release-16kb-report.json",
+      "bytes": 6242,
+      "sha256": "639affb4a05dc0fffd6bc6041015dfa90f5d23f99f3ff153f05a23311ab14c88"
+    },
+    {
+      "path": "docs/phase1/evidence/wayvro-mobile-release-permissions-report.json",
+      "bytes": 219,
+      "sha256": "7277f93068abc2461151ec9ed8a6b7654f97c31dea658da4d43fda7be34d765e"
     },
     {
       "path": "docs/requirements-register.json",

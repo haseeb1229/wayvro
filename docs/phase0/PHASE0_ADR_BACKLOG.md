@@ -79,3 +79,6 @@ Spikes are **bounded evidence tasks, not product implementations**: code lives u
 **Device procurement (FD-13):** start with available/borrowed real devices plus emulators; acquire representative physical Android devices progressively before the SP-01/device-matrix gates; cover Samsung, Xiaomi and Transsion (Tecno/Infinix)/Vivo classes before production release; have at least one real iPhone before serious iOS release/pilot validation.
 
 ## F. Founder decisions — recorded in `PHASE0_GAP_REPORT.md` §7 (closure pass, 2026-10-09).
+
+## G. Phase 1 results (2026-10-09, branch `phase-1/foundation`, pending founder/ChatGPT review)
+SP-AND, SP-03 and SP-05 were executed; their results and the resulting decisions are recorded in `docs/adr/` (index `docs/adr/README.md`): ADR-004, ADR-005, ADR-005b, ADR-010 (local server only), ADR-027, ADR-034, ADR-036 and the new ADR-037 (local infrastructure). Rows above keep their Phase 0 wording as history; where they differ, the Phase 1 ADR files are current once the founder approves Phase 1. SP-01, SP-02, SP-04 and later spikes remain NOT RUN.
