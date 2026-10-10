@@ -28,6 +28,14 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-042](ADR-042-postgresql-jobs.md) | Background jobs on PostgreSQL (`SKIP LOCKED`), not BullMQ | ACCEPTED on P2.1 evidence |
 | [ADR-045](ADR-045-production-test-double-isolation.md) | Production test-double isolation (F-01) | ACCEPTED on P2.1 evidence — ART-ISO 39/39 |
 
-ADR-039 (staff WebAuthn), ADR-040 (OIDC/`jose`), ADR-041 (evidence vault), ADR-043 (mobile additions) and ADR-044 (policy content) remain **proposals** in `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` until their micro-phases.
+## Phase 2 full-branch decisions (2026-10-11) — ACCEPTED on evidence, pending founder/ChatGPT review (branch `phase-2/identity-controlled-onboarding`, not merged)
+
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-044](ADR-044-policy-content-package.md) | Policy content as a versioned, immutable workspace package (+ Playwright/axe web E2E) | ACCEPTED on P2.2 evidence |
+
+ADR-038 and ADR-042 were corrected on this branch after the P2.1 review (lookup-rotation locking; per-claim lease tokens).
+
+ADR-039 (staff WebAuthn), ADR-040 (OIDC/`jose`), ADR-041 (evidence vault) and ADR-043 (mobile additions) remain **proposals** in `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` until their micro-phases.
 
 Founder-locked decisions that are not repeated here: ADR-001 (name), ADR-026 (one public Wayvro app), ADR-035 (modular monolith baseline) — see the Phase 0 backlog.

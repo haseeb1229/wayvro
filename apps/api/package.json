@@ -27,6 +27,7 @@
     "@wayvro/domain": "workspace:*",
     "@wayvro/field-crypto": "workspace:*",
     "@wayvro/identity-core": "workspace:*",
+    "@wayvro/legal-content": "workspace:*",
     "@wayvro/observability": "workspace:*",
     "@wayvro/provider-interfaces": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",

@@ -5,7 +5,7 @@
  */
 const CLIENT_APPS = '^apps/(wayvro-mobile|web-public|web-ops)/';
 const SERVER_ONLY_WORKSPACE =
-  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config)/)';
+  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core)/)';
 // Development/test-only workspace packages (ADR-045): never reachable from production source.
 const DEV_ONLY_WORKSPACE = '(^packages/(provider-test-doubles|test-support)/|node_modules/@wayvro/(provider-test-doubles|test-support)/)';
 const SERVER_ONLY_NPM = 'node_modules/(pg|pg-pool|ioredis|drizzle-orm|fastify|@nestjs/[^/]+|socket\\.io|pino|@opentelemetry/[^/]+)/';

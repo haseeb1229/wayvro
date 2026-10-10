@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 97,
+  "file_count_excluding_manifest": 99,
   "files": [
     {
       "path": ".gitattributes",
@@ -245,14 +245,19 @@
       "sha256": "d67a8b978a2766553bcdb852419877f05aee526f27ac1a1b2acf716a4e3fc44a"
     },
     {
+      "path": "docs/adr/ADR-044-policy-content-package.md",
+      "bytes": 3960,
+      "sha256": "cece07a777d8bb44abfadb5bb129d7ae54caa58b818bd0611172853428b9c5e7"
+    },
+    {
       "path": "docs/adr/ADR-045-production-test-double-isolation.md",
       "bytes": 6435,
       "sha256": "9206ae5d9b5462cc7e4e60185a50207065d6952ee9b57aa8f39f047f6502ee0b"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 3572,
-      "sha256": "9f91970d8886fcdbc71329a1543c40bd4add9fa4ae454476e5ba97cb2c8e856d"
+      "bytes": 4041,
+      "sha256": "1c30acde51c8f36d4449df0313f86dc0b79cd6e65b7010050c6872e89de09e3d"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -448,6 +453,11 @@
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_PROMPT_PROPOSED.md",
       "bytes": 5569,
       "sha256": "243eda3b9e4f6effd75564b5c017ade936edac83b29db0c71e49489bc19bbc51"
+    },
+    {
+      "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
+      "bytes": 4856,
+      "sha256": "8444e78134d3a3b16a507f306267d31535d52a96a3602117ec242792c65f2200"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",

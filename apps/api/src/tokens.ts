@@ -8,6 +8,8 @@ export const SERVICE_INFO = Symbol('SERVICE_INFO');
 export const OTP_SERVICE = Symbol('OTP_SERVICE');
 export const SESSION_SERVICE = Symbol('SESSION_SERVICE');
 export const ACCOUNT_SERVICE = Symbol('ACCOUNT_SERVICE');
+export const CONSENT_SERVICE = Symbol('CONSENT_SERVICE');
+export const LEGAL_DB = Symbol('LEGAL_DB');
 
 export interface ServiceInfo {
   readonly service: string;

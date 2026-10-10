@@ -1,0 +1,33 @@
+/** Copy for the legal pages (CLAUDE.md §10: no scattered copy). Urdu pending native review. */
+export const LEGAL_STRINGS = {
+  en: {
+    indexTitle: 'Legal and policy documents',
+    indexIntro: 'Wayvro publishes every policy here as a dated, versioned page. Earlier versions stay available.',
+    changelogTitle: 'Policy change log',
+    changelogLink: 'Change log',
+    version: 'Version',
+    effective: 'Effective',
+    summary: 'What changed',
+    fingerprint: 'Content fingerprint (SHA-256)',
+    placeholderBanner: 'PLACEHOLDER — NOT FOR PRODUCTION — pending counsel approval',
+    superseded: 'This version has been superseded. Read the current version:',
+    otherLanguage: 'اردو',
+    otherLanguageLabel: 'Read in Urdu',
+    back: 'All policies',
+  },
+  ur: {
+    indexTitle: 'قانونی اور پالیسی دستاویزات',
+    indexIntro: 'ویورو ہر پالیسی یہاں تاریخ اور ورژن کے ساتھ شائع کرتا ہے۔ پرانے ورژن بھی دستیاب رہتے ہیں۔',
+    changelogTitle: 'پالیسی تبدیلیوں کا ریکارڈ',
+    changelogLink: 'تبدیلیوں کا ریکارڈ',
+    version: 'ورژن',
+    effective: 'نافذ',
+    summary: 'کیا بدلا',
+    fingerprint: 'متن کی شناخت (SHA-256)',
+    placeholderBanner: 'عارضی متن — پروڈکشن کے لیے نہیں — قانونی مشیر کی منظوری زیرِ التوا',
+    superseded: 'یہ ورژن تبدیل ہو چکا ہے۔ موجودہ ورژن پڑھیں:',
+    otherLanguage: 'English',
+    otherLanguageLabel: 'Read in English',
+    back: 'تمام پالیسیاں',
+  },
+} as const;

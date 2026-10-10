@@ -7,8 +7,8 @@
   "ignore": ["tests/spikes/**"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.mjs!", "infra/ci/**/*.mjs!"],
-      "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!"],
+      "entry": ["scripts/*.mjs!", "infra/ci/**/*.mjs!", "tests/e2e-web/**/*.spec.ts"],
+      "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!", "tests/e2e-web/**/*.ts"],
     },
     // The local runner (ADR-045) is a non-production entry: it may use the dev-only test doubles.
     "apps/api": { "entry": ["src/main.ts!", "dev/main.local.ts"], "project": ["src/**/*.ts!", "dev/**/*.ts", "test/**/*.ts"] },

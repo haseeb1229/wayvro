@@ -31,6 +31,8 @@ export interface RouteContract {
   readonly auth: 'public' | 'session';
   readonly request?: z.ZodType;
   readonly params?: z.ZodObject;
+  /** Query-string parameters (all optional unless the schema says otherwise). */
+  readonly query?: z.ZodObject;
   /** Response schema per status; `null` means the status has no body (204). */
   readonly responses: Readonly<Record<number, z.ZodType | null>>;
 }

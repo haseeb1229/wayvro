@@ -9,6 +9,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateFromEnvironment } from '../src/cli.js';
 import { createDatabase, runMigrations } from '../src/index.js';
+import { TOTAL_MIGRATIONS } from './journal.js';
 
 const ADMIN_URL = process.env['DATABASE_URL'];
 if (!ADMIN_URL) throw new Error('DATABASE_URL is required for integration tests (start infra with `pnpm infra:up`)');
@@ -38,7 +39,7 @@ afterAll(async () => {
 describe('migrations against real PostgreSQL + PostGIS', () => {
   it('migrate from a clean database installs PostGIS and the identity core', async () => {
     const result = await runMigrations(testUrl);
-    expect(result).toEqual({ appliedBefore: 0, appliedAfter: 2 });
+    expect(result).toEqual({ appliedBefore: 0, appliedAfter: TOTAL_MIGRATIONS });
     const c = new pg.Client({ connectionString: testUrl });
     await c.connect();
     const ext = await c.query<{ extversion: string }>(`select extversion from pg_extension where extname = 'postgis'`);
@@ -51,11 +52,13 @@ describe('migrations against real PostgreSQL + PostGIS', () => {
   });
 
   it('re-running migrations is a no-op', async () => {
-    expect(await runMigrations(testUrl)).toEqual({ appliedBefore: 2, appliedAfter: 2 });
+    expect(await runMigrations(testUrl)).toEqual({ appliedBefore: TOTAL_MIGRATIONS, appliedAfter: TOTAL_MIGRATIONS });
   });
 
   it('migrateFromEnvironment validates config and reports the result', async () => {
-    await expect(migrateFromEnvironment({ WAYVRO_ENV: 'test', DATABASE_URL: testUrl })).resolves.toBe('migrations: 0 applied, 2 total (WAYVRO_ENV=test)');
+    await expect(migrateFromEnvironment({ WAYVRO_ENV: 'test', DATABASE_URL: testUrl })).resolves.toBe(
+      `migrations: 0 applied, ${String(TOTAL_MIGRATIONS)} total (WAYVRO_ENV=test)`,
+    );
     await expect(migrateFromEnvironment({ WAYVRO_ENV: 'test' })).rejects.toThrow(/DATABASE_URL/);
   });
 
@@ -65,7 +68,7 @@ describe('migrations against real PostgreSQL + PostGIS', () => {
       encoding: 'utf8',
     });
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain('migrations: 0 applied, 2 total');
+    expect(r.stdout).toContain(`migrations: 0 applied, ${String(TOTAL_MIGRATIONS)} total`);
   });
 
   it('the connection foundation answers readiness pings and reports failure without throwing', async () => {

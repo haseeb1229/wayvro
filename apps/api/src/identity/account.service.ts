@@ -8,6 +8,7 @@ import { appendAudit } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import type { Principal } from '../auth/policy.js';
 import type { ApiConfig } from '../config.js';
+import { requiredActionsFor } from '../legal/consent.service.js';
 import { success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
 import { securityEvent } from './session.service.js';
 
@@ -37,7 +38,7 @@ export class AccountService {
       account: { id: row.id, status: 'ACTIVE', displayName: row.display_name, preferredLocale: row.preferred_locale, createdAt: row.created_at.toISOString() },
       session: { id: principal.sessionId, assurance: 'OTP', accessTokenExpiresAt: principal.accessExpiresAt.toISOString() },
       riderProfile: { id: row.rider_profile_id, status: 'ACTIVE' },
-      requiredActions: [],
+      requiredActions: await requiredActionsFor(this.db, principal.accountId),
     };
   }
 

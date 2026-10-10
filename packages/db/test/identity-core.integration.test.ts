@@ -4,21 +4,20 @@
  * (F-08: the owner/superuser never proves authorization). Throwaway databases only.
  */
 import { randomBytes, randomUUID } from 'node:crypto';
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { createRestrictedLogin, createTestDatabase, type RestrictedLogin, type TestDatabase } from '@wayvro/test-support';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MIGRATIONS_FOLDER, runMigrations } from '../src/index.js';
+import { runMigrations } from '../src/index.js';
+import { MIGRATION_TAGS, TOTAL_MIGRATIONS, migrateFirst } from './journal.js';
 
 const ADMIN_URL = process.env['DATABASE_URL'];
 if (!ADMIN_URL) throw new Error('DATABASE_URL is required for integration tests (start infra with `pnpm infra:up`)');
 const adminUrl: string = ADMIN_URL;
 
 const bytes = (n: number): Buffer => randomBytes(n);
+/** Every application schema created by the migrations (grows additively with later micro-phases). */
+const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal'] as const;
+const APP_SCHEMAS_SQL = APP_SCHEMAS.map((s) => `'${s}'`).join(',');
 const pgCode = async (p: Promise<unknown>): Promise<string | undefined> => {
   try {
     await p;
@@ -68,40 +67,28 @@ afterAll(async () => {
   await database.drop();
 });
 
-describe('0001_identity_core migration lifecycle', () => {
-  it('clean -> latest applies both migrations', async () => {
-    expect(await runMigrations(database.url)).toEqual({ appliedBefore: 0, appliedAfter: 2 });
+describe('migration lifecycle (every migration)', () => {
+  it('clean -> latest applies every migration', async () => {
+    expect(await runMigrations(database.url)).toEqual({ appliedBefore: 0, appliedAfter: TOTAL_MIGRATIONS });
   });
 
   it('re-running is a no-op', async () => {
-    expect(await runMigrations(database.url)).toEqual({ appliedBefore: 2, appliedAfter: 2 });
+    expect(await runMigrations(database.url)).toEqual({ appliedBefore: TOTAL_MIGRATIONS, appliedAfter: TOTAL_MIGRATIONS });
   });
 
-  it('previous (0000 only) -> latest applies exactly 0001', async () => {
-    const previous = await createTestDatabase(adminUrl);
-    try {
-      // A migrations folder containing only 0000 reproduces the Phase 1 schema state.
-      const folder = mkdtempSync(join(tmpdir(), 'wayvro-prev-'));
-      mkdirSync(join(folder, 'meta'));
-      copyFileSync(join(MIGRATIONS_FOLDER, '0000_postgis.sql'), join(folder, '0000_postgis.sql'));
-      writeFileSync(
-        join(folder, 'meta', '_journal.json'),
-        JSON.stringify({
-          version: '7',
-          dialect: 'postgresql',
-          entries: [{ idx: 0, version: '7', when: 1791547587276, tag: '0000_postgis', breakpoints: true }],
-        }),
-      );
-      const c = new pg.Client({ connectionString: previous.url });
-      await c.connect();
-      await migrate(drizzle(c), { migrationsFolder: folder });
-      await c.end();
-      expect(await runMigrations(previous.url)).toEqual({ appliedBefore: 1, appliedAfter: 2 });
-      expect(await runMigrations(previous.url)).toEqual({ appliedBefore: 2, appliedAfter: 2 });
-    } finally {
-      await previous.drop();
-    }
-  });
+  // Every previous supported schema state (after migrations 0..n-1) upgrades to latest, then re-runs as a no-op.
+  for (let n = 1; n < TOTAL_MIGRATIONS; n++) {
+    it(`previous (${MIGRATION_TAGS[n - 1] ?? '?'}) -> latest applies exactly the remaining ${String(TOTAL_MIGRATIONS - n)}`, async () => {
+      const previous = await createTestDatabase(adminUrl);
+      try {
+        await migrateFirst(previous.url, n);
+        expect(await runMigrations(previous.url)).toEqual({ appliedBefore: n, appliedAfter: TOTAL_MIGRATIONS });
+        expect(await runMigrations(previous.url)).toEqual({ appliedBefore: TOTAL_MIGRATIONS, appliedAfter: TOTAL_MIGRATIONS });
+      } finally {
+        await previous.drop();
+      }
+    });
+  }
 
   it('creates NOLOGIN group roles and makes wayvro_migrator (never an app role) the owner of every object', async () => {
     const roles = await owner.query<{ rolname: string; rolcanlogin: boolean; rolsuper: boolean }>(
@@ -111,20 +98,25 @@ describe('0001_identity_core migration lifecycle', () => {
     expect(roles.rows.every((r) => !r.rolcanlogin && !r.rolsuper)).toBe(true);
     const owners = await owner.query<{ owner: string }>(
       `select distinct pg_get_userbyid(c.relowner) owner from pg_class c join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname in ('identity','profile','platform','audit') and c.relkind in ('r','i','S')`,
+        where n.nspname in (${APP_SCHEMAS_SQL}) and c.relkind in ('r','i','S')`,
     );
     expect(owners.rows.map((r) => r.owner)).toEqual(['wayvro_migrator']);
     const schemaOwners = await owner.query<{ nspname: string; owner: string }>(
-      `select nspname, pg_get_userbyid(nspowner) owner from pg_namespace where nspname in ('identity','profile','platform','audit') order by 1`,
+      `select nspname, pg_get_userbyid(nspowner) owner from pg_namespace where nspname in (${APP_SCHEMAS_SQL}) order by 1`,
     );
-    expect(schemaOwners.rows.map((r) => r.owner)).toEqual(['wayvro_migrator', 'wayvro_migrator', 'wayvro_migrator', 'wayvro_migrator']);
+    expect(schemaOwners.rows.map((r) => r.nspname)).toEqual([...APP_SCHEMAS].sort());
+    expect(new Set(schemaOwners.rows.map((r) => r.owner))).toEqual(new Set(['wayvro_migrator']));
     const publicGrants = await owner.query(
-      `select 1 from information_schema.role_table_grants where grantee = 'PUBLIC' and table_schema in ('identity','profile','platform','audit')`,
+      `select 1 from information_schema.role_table_grants where grantee = 'PUBLIC' and table_schema in (${APP_SCHEMAS_SQL})`,
     );
+    const functionOwners = await owner.query<{ owner: string }>(
+      `select distinct pg_get_userbyid(p.proowner) owner from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in (${APP_SCHEMAS_SQL})`,
+    );
+    expect(functionOwners.rows.map((r) => r.owner)).toEqual(['wayvro_migrator']);
     expect(publicGrants.rowCount).toBe(0);
   });
 
-  it('creates only the P2.1 tables (no later-phase table)', async () => {
+  it('schema inventory: exactly the tables of the applied migrations (no table ahead of its micro-phase)', async () => {
     const tables = await owner.query<{ t: string }>(
       `select table_schema || '.' || table_name t from information_schema.tables where table_schema in ('identity','profile','platform','audit','legal','compliance','vault','staff','catalog') order by 1`,
     );
@@ -134,11 +126,15 @@ describe('0001_identity_core migration lifecycle', () => {
       'identity.account_devices',
       'identity.account_phones',
       'identity.accounts',
+      'identity.age_declarations',
+      'identity.consent_records',
       'identity.otp_challenges',
       'identity.phone_lookup_index',
       'identity.refresh_tokens',
       'identity.security_events',
       'identity.sessions',
+      'legal.age_eligibility_policies',
+      'legal.policy_documents',
       'platform.idempotency_records',
       'platform.jobs',
       'platform.key_rotations',

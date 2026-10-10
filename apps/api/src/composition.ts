@@ -17,6 +17,8 @@ import { AccountService } from './identity/account.service.js';
 import { OtpAbuseControls } from './identity/otp-abuse.js';
 import { OtpService } from './identity/otp.service.js';
 import { SessionService } from './identity/session.service.js';
+import { ConsentService } from './legal/consent.service.js';
+import { preparePolicyRegistry } from './legal/policy-registry.js';
 import { IdempotencyStore } from './platform/idempotency.js';
 
 export interface ApiRuntime {
@@ -57,12 +59,15 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
   });
   const sessions = new SessionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, policy: config });
   const accounts = new AccountService(db.pool, idempotency, config);
+  const consents = new ConsentService(db.pool, cipher, idempotency, config);
+  // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
+  await preparePolicyRegistry(db.pool, config.WAYVRO_ENV, log);
   const app = await createApp({
     info: { service: 'api', version: config.WAYVRO_BUILD_VERSION },
     readinessChecks: [databaseCheck(db), redisProbe],
     log,
     trustProxy: config.TRUST_PROXY,
-    identity: { otp, sessions, accounts, sessionStore: db.pool },
+    identity: { otp, sessions, accounts, consents, legalStore: db.pool, sessionStore: db.pool },
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {

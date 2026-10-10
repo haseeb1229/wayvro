@@ -20,6 +20,7 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_STEP_UP_REQUIRED: { status: 403, message: 'Please verify your phone number again to continue.' },
   WAYVRO_E_PAYLOAD_TOO_LARGE: { status: 413, message: 'The request body is too large.' },
   WAYVRO_E_UNSUPPORTED_MEDIA_TYPE: { status: 415, message: 'The request content type is not supported.' },
+  WAYVRO_E_CONFLICT: { status: 409, message: 'This request conflicts with the current state. Please refresh and try again.' },
 };
 
 export class WayvroError extends Error {

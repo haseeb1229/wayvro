@@ -1,0 +1,28 @@
+{
+  "name": "@wayvro/legal-content",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Data-only policy texts (ADR-044): versioned, immutable, per-locale legal/policy documents with SHA-256 content hashes. Consumed by web-public (canonical pages) and the API (policy registry, consent hash checks). Placeholder texts only until counsel approval (EG-02).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

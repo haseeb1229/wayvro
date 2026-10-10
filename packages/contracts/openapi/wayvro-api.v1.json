@@ -115,7 +115,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -459,7 +460,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -542,7 +544,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -625,7 +628,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -708,7 +712,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -791,7 +796,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -874,7 +880,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1084,7 +1091,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1167,7 +1175,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1250,7 +1259,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1333,7 +1343,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1416,7 +1427,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1664,7 +1676,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1747,7 +1760,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1830,7 +1844,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1913,7 +1928,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -1996,7 +2012,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2195,7 +2212,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2278,7 +2296,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2361,7 +2380,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2444,7 +2464,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2527,7 +2548,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2657,7 +2679,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2740,7 +2763,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -2979,7 +3003,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3183,7 +3208,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3266,7 +3292,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3349,7 +3376,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3533,7 +3561,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3674,7 +3703,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3757,7 +3787,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -3840,7 +3871,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -4023,7 +4055,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -4106,7 +4139,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -4189,7 +4223,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -4272,7 +4307,8 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -4449,7 +4485,1840 @@
                                 "WAYVRO_E_OTP_LOCKED",
                                 "WAYVRO_E_STEP_UP_REQUIRED",
                                 "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/policies": {
+      "get": {
+        "operationId": "listPolicies",
+        "summary": "Current version of every policy in a locale (version, hash, status, canonical path, change summary).",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en",
+                "ur"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/PolicyList",
+                  "$defs": {
+                    "PolicyList": {
+                      "type": "object",
+                      "properties": {
+                        "policies": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/$defs/PolicySummary"
+                          }
+                        }
+                      },
+                      "required": [
+                        "policies"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "PolicySummary": {
+                      "type": "object",
+                      "properties": {
+                        "policyKey": {
+                          "type": "string",
+                          "enum": [
+                            "TERMS",
+                            "PRIVACY",
+                            "DRIVER_PARTNER_AGREEMENT",
+                            "BIOMETRIC_KYC_NOTICE",
+                            "COMMUNITY_GUIDELINES",
+                            "CANCELLATION_REFUND",
+                            "AGE_ELIGIBILITY"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "ur"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PLACEHOLDER_NOT_FOR_PRODUCTION",
+                            "APPROVED"
+                          ]
+                        },
+                        "effectiveAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "materialChange": {
+                          "type": "boolean"
+                        },
+                        "contentSha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "canonicalPath": {
+                          "type": "string",
+                          "pattern": "^\\/legal\\/[a-z0-9-]+\\/v\\d+$"
+                        },
+                        "requiredFor": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ACCOUNT",
+                              "DRIVER_APPLICATION"
+                            ]
+                          }
+                        },
+                        "changeSummary": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "policyKey",
+                        "version",
+                        "locale",
+                        "title",
+                        "status",
+                        "effectiveAt",
+                        "materialChange",
+                        "contentSha256",
+                        "canonicalPath",
+                        "requiredFor",
+                        "changeSummary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/policies/{policyKey}/versions/{version}": {
+      "get": {
+        "operationId": "getPolicyDocument",
+        "summary": "One immutable policy version in a locale, including its text.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "policyKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "enum": [
+                "TERMS",
+                "PRIVACY",
+                "DRIVER_PARTNER_AGREEMENT",
+                "BIOMETRIC_KYC_NOTICE",
+                "COMMUNITY_GUIDELINES",
+                "CANCELLATION_REFUND",
+                "AGE_ELIGIBILITY"
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,5}$"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en",
+                "ur"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/PolicyDocument",
+                  "$defs": {
+                    "PolicyDocument": {
+                      "type": "object",
+                      "properties": {
+                        "policyKey": {
+                          "type": "string",
+                          "enum": [
+                            "TERMS",
+                            "PRIVACY",
+                            "DRIVER_PARTNER_AGREEMENT",
+                            "BIOMETRIC_KYC_NOTICE",
+                            "COMMUNITY_GUIDELINES",
+                            "CANCELLATION_REFUND",
+                            "AGE_ELIGIBILITY"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "ur"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PLACEHOLDER_NOT_FOR_PRODUCTION",
+                            "APPROVED"
+                          ]
+                        },
+                        "effectiveAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "materialChange": {
+                          "type": "boolean"
+                        },
+                        "contentSha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "canonicalPath": {
+                          "type": "string",
+                          "pattern": "^\\/legal\\/[a-z0-9-]+\\/v\\d+$"
+                        },
+                        "requiredFor": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ACCOUNT",
+                              "DRIVER_APPLICATION"
+                            ]
+                          }
+                        },
+                        "changeSummary": {
+                          "type": "string"
+                        },
+                        "body": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "sections": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "heading": {
+                                    "type": "string"
+                                  },
+                                  "paragraphs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "heading",
+                                  "paragraphs"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "title",
+                            "sections"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "policyKey",
+                        "version",
+                        "locale",
+                        "title",
+                        "status",
+                        "effectiveAt",
+                        "materialChange",
+                        "contentSha256",
+                        "canonicalPath",
+                        "requiredFor",
+                        "changeSummary",
+                        "body"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/age-eligibility-policy": {
+      "get": {
+        "operationId": "getAgeEligibilityPolicy",
+        "summary": "The current age-eligibility policy version and the declaration it requires (no threshold is hard-coded in clients).",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/AgeEligibilityPolicy",
+                  "$defs": {
+                    "AgeEligibilityPolicy": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PLACEHOLDER_NOT_FOR_PRODUCTION",
+                            "APPROVED"
+                          ]
+                        },
+                        "riderDeclarationMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "AFFIRM_MINIMUM_AGE",
+                            "DATE_OF_BIRTH_REQUIRED"
+                          ]
+                        },
+                        "riderMinimumAge": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "effectiveAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "version",
+                        "status",
+                        "riderDeclarationMode",
+                        "riderMinimumAge",
+                        "effectiveAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/consents": {
+      "get": {
+        "operationId": "listConsents",
+        "summary": "Acceptance status of every policy that requires acceptance, for the calling account.",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ConsentStatusList",
+                  "$defs": {
+                    "ConsentStatusList": {
+                      "type": "object",
+                      "properties": {
+                        "policies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "policyKey": {
+                                "type": "string",
+                                "enum": [
+                                  "TERMS",
+                                  "PRIVACY",
+                                  "DRIVER_PARTNER_AGREEMENT",
+                                  "BIOMETRIC_KYC_NOTICE",
+                                  "COMMUNITY_GUIDELINES",
+                                  "CANCELLATION_REFUND",
+                                  "AGE_ELIGIBILITY"
+                                ]
+                              },
+                              "requiredFor": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ACCOUNT",
+                                    "DRIVER_APPLICATION"
+                                  ]
+                                }
+                              },
+                              "currentVersion": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "acceptedVersion": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "lastAction": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "ACCEPTED",
+                                      "DECLINED",
+                                      "WITHDRAWN"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "acceptanceRequired": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "policyKey",
+                              "requiredFor",
+                              "currentVersion",
+                              "acceptedVersion",
+                              "lastAction",
+                              "acceptanceRequired"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "policies"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordConsent",
+        "summary": "Accept, decline or withdraw the CURRENT version of a policy (bound to its exact content hash).",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/ConsentRequest",
+                "$defs": {
+                  "ConsentRequest": {
+                    "type": "object",
+                    "properties": {
+                      "policyKey": {
+                        "type": "string",
+                        "enum": [
+                          "TERMS",
+                          "PRIVACY",
+                          "DRIVER_PARTNER_AGREEMENT",
+                          "BIOMETRIC_KYC_NOTICE",
+                          "COMMUNITY_GUIDELINES",
+                          "CANCELLATION_REFUND",
+                          "AGE_ELIGIBILITY"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "locale": {
+                        "type": "string",
+                        "enum": [
+                          "en",
+                          "ur"
+                        ]
+                      },
+                      "contentSha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "ACCEPTED",
+                          "DECLINED",
+                          "WITHDRAWN"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "policyKey",
+                      "version",
+                      "locale",
+                      "contentSha256",
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ConsentRecorded",
+                  "$defs": {
+                    "ConsentRecorded": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "policyKey": {
+                          "type": "string",
+                          "enum": [
+                            "TERMS",
+                            "PRIVACY",
+                            "DRIVER_PARTNER_AGREEMENT",
+                            "BIOMETRIC_KYC_NOTICE",
+                            "COMMUNITY_GUIDELINES",
+                            "CANCELLATION_REFUND",
+                            "AGE_ELIGIBILITY"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "ur"
+                          ]
+                        },
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "ACCEPTED",
+                            "DECLINED",
+                            "WITHDRAWN"
+                          ]
+                        },
+                        "recordedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "requiredActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ACCEPT_POLICIES",
+                              "AGE_DECLARATION",
+                              "PHONE_STEP_UP",
+                              "RECOVERY_REVIEW"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "policyKey",
+                        "version",
+                        "locale",
+                        "action",
+                        "recordedAt",
+                        "requiredActions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/age-declarations": {
+      "post": {
+        "operationId": "recordAgeDeclaration",
+        "summary": "Record the age declaration the current age-eligibility policy requires (DOB only if the policy requires it).",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/AgeDeclarationRequest",
+                "$defs": {
+                  "AgeDeclarationRequest": {
+                    "type": "object",
+                    "properties": {
+                      "policyVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "affirmed": {
+                        "type": "boolean",
+                        "const": true
+                      },
+                      "dateOfBirth": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "policyVersion"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/AgeDeclarationRecorded",
+                  "$defs": {
+                    "AgeDeclarationRecorded": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "policyVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "declarationMode": {
+                          "type": "string",
+                          "enum": [
+                            "AFFIRM_MINIMUM_AGE",
+                            "DATE_OF_BIRTH_REQUIRED"
+                          ]
+                        },
+                        "recordedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "requiredActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ACCEPT_POLICIES",
+                              "AGE_DECLARATION",
+                              "PHONE_STEP_UP",
+                              "RECOVERY_REVIEW"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "policyVersion",
+                        "declarationMode",
+                        "recordedAt",
+                        "requiredActions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                                "WAYVRO_E_CONFLICT"
                               ]
                             },
                             "message": {
@@ -4525,7 +6394,8 @@
                       "WAYVRO_E_OTP_LOCKED",
                       "WAYVRO_E_STEP_UP_REQUIRED",
                       "WAYVRO_E_PAYLOAD_TOO_LARGE",
-                      "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                      "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE",
+                      "WAYVRO_E_CONFLICT"
                     ]
                   },
                   "message": {

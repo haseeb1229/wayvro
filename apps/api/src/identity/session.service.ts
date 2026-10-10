@@ -19,6 +19,7 @@ import { appendAudit, sqlState, uuidv7 } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import type { Principal } from '../auth/policy.js';
 import type { ApiConfig } from '../config.js';
+import { requiredActionsFor } from '../legal/consent.service.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome } from '../platform/idempotency.js';
 import type { OtpAbuseControls } from './otp-abuse.js';
 import { installationHash, installationScope } from './otp.service.js';
@@ -188,7 +189,7 @@ export class SessionService {
       outcome: 'SUCCESS',
     });
     await this.deps.abuse.recordVerified(e164.slice(0, 6));
-    const body: SessionCreated = { ...tokens, isNewAccount: isNew, requiredActions: [] };
+    const body: SessionCreated = { ...tokens, isNewAccount: isNew, requiredActions: await requiredActionsFor(tx, accountId) };
     return success(201, body);
   }
 

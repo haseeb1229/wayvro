@@ -22,6 +22,8 @@ export const ERROR_CODES = [
   'WAYVRO_E_STEP_UP_REQUIRED',
   'WAYVRO_E_PAYLOAD_TOO_LARGE',
   'WAYVRO_E_UNSUPPORTED_MEDIA_TYPE',
+  // P2.2 (additive)
+  'WAYVRO_E_CONFLICT',
 ] as const;
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);

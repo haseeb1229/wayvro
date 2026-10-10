@@ -17,6 +17,8 @@ const SERVER_ONLY_PACKAGES = [
   '@wayvro/provider-test-doubles',
   '@wayvro/test-support',
   '@wayvro/config',
+  '@wayvro/field-crypto',
+  '@wayvro/identity-core',
 ];
 // Development/test-only packages (ADR-045): production source of any app/package must never import them.
 const DEV_ONLY_PACKAGES = ['@wayvro/provider-test-doubles', '@wayvro/test-support'];
@@ -147,6 +149,7 @@ export default tseslint.config(
         { type: 'pkg-db', pattern: 'packages/db/{src,test}/**', partialMatch: false },
         { type: 'pkg-server-runtime', pattern: 'packages/server-runtime/{src,test}/**', partialMatch: false },
         { type: 'pkg-web-security', pattern: 'packages/web-security/{src,test}/**', partialMatch: false },
+        { type: 'pkg-legal-content', pattern: 'packages/legal-content/{src,test}/**', partialMatch: false },
       ],
     },
     rules: {
@@ -189,7 +192,10 @@ export default tseslint.config(
             // Packages never import apps.
             { from: { element: { type: 'pkg-*' } }, disallow: { to: { element: { types: { anyOf: ALL_APPS } } } } },
             // Pure packages stay pure.
-            { from: { element: { types: { anyOf: ['pkg-domain', 'pkg-contracts', 'pkg-web-security'] } } }, disallow: { to: { element: { type: 'pkg-*' } } } },
+            {
+              from: { element: { types: { anyOf: ['pkg-domain', 'pkg-contracts', 'pkg-web-security', 'pkg-legal-content'] } } },
+              disallow: { to: { element: { type: 'pkg-*' } } },
+            },
             // One app, two isolated modes: Rider and Driver/Partner features never import each other (V06/V11).
             { from: { element: { type: 'mobile-feature-rider' } }, disallow: { to: { element: { type: 'mobile-feature-driver' } } } },
             { from: { element: { type: 'mobile-feature-driver' } }, disallow: { to: { element: { type: 'mobile-feature-rider' } } } },

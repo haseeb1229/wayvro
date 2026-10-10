@@ -2,9 +2,10 @@ import { z } from 'zod';
 import { ErrorEnvelopeSchema } from './errors.js';
 import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
+import { LEGAL_ROUTES } from './legal.js';
 import { IDENTITY_ROUTES } from './routes.js';
 
-export const API_ROUTES: readonly RouteContract[] = [...HEALTH_ROUTES, ...IDENTITY_ROUTES];
+export const API_ROUTES: readonly RouteContract[] = [...HEALTH_ROUTES, ...IDENTITY_ROUTES, ...LEGAL_ROUTES];
 
 type JsonObject = Record<string, unknown>;
 
@@ -29,6 +30,12 @@ export function buildOpenApiDocument(version: string, routes: readonly RouteCont
     if (route.params) {
       for (const [name, schema] of Object.entries(route.params.shape)) {
         parameters.push({ name, in: 'path', required: true, schema: jsonSchema(schema as z.ZodType, 'input') });
+      }
+    }
+    if (route.query) {
+      for (const [name, schema] of Object.entries(route.query.shape)) {
+        const field = schema as z.ZodType;
+        parameters.push({ name, in: 'query', required: !field.safeParse(undefined).success, schema: jsonSchema(field, 'input') });
       }
     }
     paths[route.path] = {

@@ -2,7 +2,7 @@
   "name": "@wayvro/web-public",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayvro public website (Next.js). Phase 1: shell page, health route, nonce CSP and security headers only.",
+  "description": "Wayvro public website (Next.js): shell page, canonical versioned legal/policy pages (W05), nonce CSP and security headers.",
   "type": "module",
   "scripts": {
     "build": "next build",
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@wayvro/contracts": "workspace:*",
+    "@wayvro/legal-content": "workspace:*",
     "@wayvro/web-security": "workspace:*",
     "next": "16.3.8",
     "react": "19.2.3",

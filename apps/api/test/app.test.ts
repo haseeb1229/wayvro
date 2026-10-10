@@ -60,6 +60,8 @@ const identity: IdentityServices = {
   otp: {} as IdentityServices['otp'],
   sessions: {} as IdentityServices['sessions'],
   accounts: {} as IdentityServices['accounts'],
+  consents: {} as IdentityServices['consents'],
+  legalStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as IdentityServices['legalStore'],
   // No session row ever matches: every bearer token is unknown.
   sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as IdentityServices['sessionStore'],
 };

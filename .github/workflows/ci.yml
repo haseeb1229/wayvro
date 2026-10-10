@@ -195,3 +195,35 @@ jobs:
           if-no-files-found: error
           # build-reports/ holds the gate reports and a copy of the gated release AAB (debug-key signed; not an upload artefact).
           path: apps/wayvro-mobile/build-reports/
+
+  e2e-web:
+    name: Web E2E (Playwright + axe) against production builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Production builds of the web surfaces
+        run: pnpm turbo run build --filter '@wayvro/web-public...' --filter '@wayvro/web-ops...'
+      - name: Install the Chromium revision pinned by @playwright/test (with OS dependencies)
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Playwright + axe
+        run: pnpm test:e2e:web
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report-${{ github.sha }}
+          retention-days: 7
+          path: build-logs/playwright-report/

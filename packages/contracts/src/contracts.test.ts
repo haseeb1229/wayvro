@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   API_ROUTES,
+  AgeDeclarationRequestSchema,
+  ConsentRequestSchema,
+  LEGAL_ROUTES,
   ErrorEnvelopeSchema,
   OtpChallengeRequestSchema,
   ProfileUpdateRequestSchema,
@@ -159,5 +162,33 @@ describe('OpenAPI generation', () => {
 
   it('is deterministic', () => {
     expect(JSON.stringify(buildOpenApiDocument('1.0.0'))).toBe(JSON.stringify(buildOpenApiDocument('1.0.0')));
+  });
+});
+
+describe('P2.2 legal contracts', () => {
+  it('age declarations carry exactly one of affirmed or dateOfBirth and never unknown fields', () => {
+    expect(AgeDeclarationRequestSchema.safeParse({ policyVersion: 1, affirmed: true }).success).toBe(true);
+    expect(AgeDeclarationRequestSchema.safeParse({ policyVersion: 1, dateOfBirth: '1990-01-31' }).success).toBe(true);
+    expect(AgeDeclarationRequestSchema.safeParse({ policyVersion: 1 }).success).toBe(false);
+    expect(AgeDeclarationRequestSchema.safeParse({ policyVersion: 1, affirmed: true, dateOfBirth: '1990-01-31' }).success).toBe(false);
+    expect(AgeDeclarationRequestSchema.safeParse({ policyVersion: 1, affirmed: false }).success).toBe(false);
+    expect(AgeDeclarationRequestSchema.safeParse({ policyVersion: 1, affirmed: true, accountId: 'x' }).success).toBe(false);
+  });
+
+  it('consents bind a policy version to a lower-case SHA-256 hex digest', () => {
+    const ok = { policyKey: 'TERMS', version: 1, locale: 'en', contentSha256: 'a'.repeat(64), action: 'ACCEPTED' };
+    expect(ConsentRequestSchema.safeParse(ok).success).toBe(true);
+    expect(ConsentRequestSchema.safeParse({ ...ok, contentSha256: 'A'.repeat(64) }).success).toBe(false);
+    expect(ConsentRequestSchema.safeParse({ ...ok, locale: 'ur-Latn' }).success).toBe(false);
+    expect(ConsentRequestSchema.safeParse({ ...ok, policyKey: 'NOPE' }).success).toBe(false);
+  });
+
+  it('the generated OpenAPI document exposes the locale query parameter and every legal route', () => {
+    const doc = buildOpenApiDocument('test') as {
+      paths: Record<string, Record<string, { parameters: Array<{ name: string; in: string; required: boolean }> }>>;
+    };
+    const list = doc.paths['/v1/legal/policies']?.['get'];
+    expect(list?.parameters).toContainEqual(expect.objectContaining({ name: 'locale', in: 'query', required: false }));
+    for (const r of LEGAL_ROUTES) expect(doc.paths[r.path]?.[r.method.toLowerCase()]).toBeDefined();
   });
 });

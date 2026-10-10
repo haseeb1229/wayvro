@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { openWithRing, parseEnvelope, sealWithKey, type FieldContext } from './envelope.js';
 import type { KeyRing } from './keyring.js';
 
-/** Key classes used by P2.1. Lookup and MAC keys are independent keys, never derived from encryption keys. */
+/** Key classes (P2.1 + later micro-phases, additive). Lookup and MAC keys are independent keys, never derived from encryption keys. */
 export const KEY_CLASSES = {
   /** phone numbers (P-CONTACT) */
   contact: 'contact',
@@ -19,6 +19,8 @@ export const KEY_CLASSES = {
   jobSecrets: 'job_secrets',
   /** keyed digests of abuse-control dimensions (client IP prefixes, installations) in rate-limit keys and challenges */
   riskSignals: 'risk_signals',
+  /** dates of birth (P-IDENTITY-NUMBERS; only when an approved policy requires one) */
+  identityDates: 'identity_dates',
 } as const;
 export type KeyClass = (typeof KEY_CLASSES)[keyof typeof KEY_CLASSES];
 

@@ -15,12 +15,17 @@ import { AccountController } from './identity/account.controller.js';
 import { AuthController } from './identity/auth.controller.js';
 import type { OtpService } from './identity/otp.service.js';
 import type { SessionService } from './identity/session.service.js';
-import { ACCOUNT_SERVICE, OTP_SERVICE, READINESS_CHECKS, SERVICE_INFO, SESSION_SERVICE, type ServiceInfo } from './tokens.js';
+import type { ConsentService } from './legal/consent.service.js';
+import { LegalController } from './legal/legal.controller.js';
+import { ACCOUNT_SERVICE, CONSENT_SERVICE, LEGAL_DB, OTP_SERVICE, READINESS_CHECKS, SERVICE_INFO, SESSION_SERVICE, type ServiceInfo } from './tokens.js';
 
 interface IdentityServices {
   readonly otp: OtpService;
   readonly sessions: SessionService;
   readonly accounts: AccountService;
+  readonly consents: ConsentService;
+  /** Connection used for read-only policy-registry queries (current age-eligibility policy). */
+  readonly legalStore: Queryable;
   /** Connection used by the policy guard to verify bearer access tokens against the session table. */
   readonly sessionStore: Queryable;
 }
@@ -50,7 +55,7 @@ export function routeManifest(app: NestFastifyApplication): readonly string[] {
  * The controllers of the deployable API. Every handler must declare a route policy (default deny).
  * @internal exported for the route-policy completeness test.
  */
-export const API_CONTROLLERS: readonly Type[] = [HealthController, AuthController, AccountController];
+export const API_CONTROLLERS: readonly Type[] = [HealthController, AuthController, AccountController, LegalController];
 
 @Module({})
 class ApiModule {
@@ -64,6 +69,8 @@ class ApiModule {
         { provide: OTP_SERVICE, useValue: deps.identity.otp },
         { provide: SESSION_SERVICE, useValue: deps.identity.sessions },
         { provide: ACCOUNT_SERVICE, useValue: deps.identity.accounts },
+        { provide: CONSENT_SERVICE, useValue: deps.identity.consents },
+        { provide: LEGAL_DB, useValue: deps.identity.legalStore },
         { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore) },
       ],
     };
