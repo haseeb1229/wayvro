@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 79,
+  "file_count_excluding_manifest": 92,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 8186,
-      "sha256": "6694a115c364f013d03d2090e8407c6f18a03c9abd705041302f7f6d19f8a54f"
+      "bytes": 8761,
+      "sha256": "3218b5d65e8200a0e0dfdff3a92d51acae3c7f4fd5e8851fdcb985c885abb7da"
     },
     {
       "path": "CLAUDE.md",
@@ -398,6 +398,71 @@
       "path": "docs/phase1/evidence/wayvro-mobile-release-permissions-report.json",
       "bytes": 219,
       "sha256": "7277f93068abc2461151ec9ed8a6b7654f97c31dea658da4d43fda7be34d765e"
+    },
+    {
+      "path": "docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md",
+      "bytes": 12594,
+      "sha256": "f6441a125b6e7465492d4aa2648f92f5ce93755af2f1c70bbbb2fa2f096dec63"
+    },
+    {
+      "path": "docs/phase2/PHASE2_API_AND_SURFACES.md",
+      "bytes": 18427,
+      "sha256": "8668ee25bfb0c062a0f61201ea57c376b3e1bacadec074791dcbd6eaf1411e9d"
+    },
+    {
+      "path": "docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md",
+      "bytes": 21374,
+      "sha256": "ea31cccb60f8a283f74b5a06fe1fc4f90f648ba6967cc641a928b2f42288ec68"
+    },
+    {
+      "path": "docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md",
+      "bytes": 41769,
+      "sha256": "7470f43ec869d1f87228e8961ca260edba9e4d3848ff949e88cc9e9fb4e28721"
+    },
+    {
+      "path": "docs/phase2/PHASE2_EXTERNAL_GATES.md",
+      "bytes": 12223,
+      "sha256": "345282da411ab634f78245b9587fca2ab12f0d7d8daa4022dd048007cbf7b943"
+    },
+    {
+      "path": "docs/phase2/PHASE2_IMPLEMENTATION_PROMPT_PROPOSED.md",
+      "bytes": 4890,
+      "sha256": "488fe8758ee8d6f5a6498fc96bf2d43ead0001407fc5dd888d0e302755231f89"
+    },
+    {
+      "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
+      "bytes": 14705,
+      "sha256": "13c0430245a78d903b87e3d6f68a532743091822abd2745abb97e43b5ec3fde1"
+    },
+    {
+      "path": "docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md",
+      "bytes": 20923,
+      "sha256": "db90150f48aa02d58043b9041295456718b837f2c0d59fde7dce7a9699e6c920"
+    },
+    {
+      "path": "docs/phase2/PHASE2_PLAN.md",
+      "bytes": 18516,
+      "sha256": "eb66bee52d64bb446a28b798bf9cfe063356636b74c4b1786f8a446e8479759a"
+    },
+    {
+      "path": "docs/phase2/PHASE2_REQUIREMENT_MATRIX.md",
+      "bytes": 24127,
+      "sha256": "510bd244b6726f6ee12cf0e5fe93a339c7a5103996c01a45022fdb3ae5eea1f2"
+    },
+    {
+      "path": "docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md",
+      "bytes": 12240,
+      "sha256": "607bba70deac522c91b52a59d6e52115a1ca9ee849190861c28a28ff2ddc6f8c"
+    },
+    {
+      "path": "docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md",
+      "bytes": 12724,
+      "sha256": "83015d80ff4d839c9e997056f7ec3dccd47cf4c4e93a44a0b3cd3b3288117c5f"
+    },
+    {
+      "path": "docs/phase2/PHASE2_TEST_STRATEGY.md",
+      "bytes": 19228,
+      "sha256": "9d32b9a8e69c947ecadd9d5ae4dbde6e8771e20b579bc009a9f6b49336109465"
     },
     {
       "path": "docs/requirements-register.json",

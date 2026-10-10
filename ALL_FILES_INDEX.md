@@ -75,6 +75,9 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `scripts/` — `infra.mjs`, `boot-smoke.mjs`, `android-build.mjs`; `.github/workflows/ci.yml` — CI.
 - `tests/spikes/` — disposable SP-AND / SP-03 / SP-05 / ADR-010 evidence harnesses with results (see `tests/spikes/README.md`).
 
+## Phase 2 planning (PROPOSED 2026-10-10 on branch `docs/phase-2-planning`; not approved, not implemented)
+- `docs/phase2/PHASE2_PLAN.md` — overview, repository findings, proposed gap/clarifications/contradictions, deferrals, founder questions, readiness; it indexes the other twelve Phase 2 planning documents in `docs/phase2/` (requirement matrix, domain/data model, auth/session, KYC/evidence vault, staff authorization matrix, API/surfaces, security/abuse model, external gates, test strategy, implementation sequence, ADR/dependency proposals, proposed P2.1 prompt).
+
 ## Current baseline
 - Product: **Wayvro (WAY-VRO)**.
 - Public mobile distribution: **one Wayvro app** with Rider mode and optional approved Driver/Partner profile/mode.
