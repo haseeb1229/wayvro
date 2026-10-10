@@ -1,0 +1,30 @@
+{
+  "name": "@wayvro/test-support",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DEVELOPMENT/TEST ONLY (ADR-045): throwaway databases, restricted-role logins, concurrency barrier and log capture for integration/security suites. Declared only as a devDependency; never part of a deployable artefact.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
