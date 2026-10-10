@@ -14,15 +14,15 @@
   },
   "requirements": {
     "schema_version": "5.1",
-    "total": 531,
+    "total": 532,
     "priority_counts": {
-      "P0": 216,
+      "P0": 217,
       "P1": 209,
       "P2": 89,
       "P3": 17
     },
     "unique_ids": true,
-    "inventory_rows": 531,
+    "inventory_rows": 532,
     "inventory_matches_json_ids_priorities_titles": true,
     "v5_baseline_count": 511,
     "phase0_added_ids": [
@@ -47,14 +47,18 @@
       "W08",
       "W09"
     ],
+    "phase0_total": 531,
+    "post_phase0_added_ids": [
+      "A15"
+    ],
     "phase0_disposition_counts": {
-      "NOW": 395,
+      "NOW": 396,
       "LATER": 107,
       "EXTERNAL_DECISION": 26,
       "OUT_OF_SCOPE": 3
     },
     "all_items_have_phase0_block": true,
-    "requirements_register_sha256": "345fe9e699ae338244861c1d33d9c8b0be704a414b149aac2b732ef8556fd499"
+    "requirements_register_sha256": "4fa1b5ad4682a4f6aebfbbe60f8bdcd4eef057352f7c58b22ef7af558bc89bec"
   },
   "phase_plan": {
     "phases": [
@@ -110,6 +114,7 @@
     "phase0_prompt_marked_executed": true,
     "one_public_app_v01_present": true,
     "research_files_carry_closure_annotations": true,
+    "post_phase0_additions_consistent": true,
     "banned_wording_hits": []
   },
   "problems": [],

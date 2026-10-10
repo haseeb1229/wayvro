@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 79,
+  "file_count_excluding_manifest": 93,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,28 +26,28 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 8186,
-      "sha256": "6694a115c364f013d03d2090e8407c6f18a03c9abd705041302f7f6d19f8a54f"
+      "bytes": 8982,
+      "sha256": "dc990a5f6237c8a54f23fde854568af353cca0997a6d858e5dcdd2dc7d10bb99"
     },
     {
       "path": "CLAUDE.md",
-      "bytes": 14930,
-      "sha256": "49567ae20654e643e621b3b9e44a3c6b7c2bd6c304be3ad07a63cdc2798c19df"
+      "bytes": 14990,
+      "sha256": "ace8bb4c2165c9257c6f46db323a828ec8dedce24ee4bcf5dcbb6e77d66c9ca5"
     },
     {
       "path": "README.md",
-      "bytes": 7849,
-      "sha256": "9451928065b4ea31a4c86374ddf065b9d1aa030814d89c82e9de6a4c4c72c0c8"
+      "bytes": 8208,
+      "sha256": "e0fd31a22d8242f5ac88e04538d52d056f03359fbec995d4a51a8fe150e47f7d"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
-      "bytes": 3254,
-      "sha256": "988bfd30d36bd9f5495a4ecca58b70e21b23a0a0090d6efd975fcf8d944f423e"
+      "bytes": 3375,
+      "sha256": "968279e18e914039e40796e02591015ff2b64855cd7dbf8cfa2dff656f5ec5ca"
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 7023,
-      "sha256": "1c4ff1ea0e0996a48ca6580405a8a041c82417d880d5f3ac1c2fc1f4e70d983d"
+      "bytes": 7124,
+      "sha256": "181b9116cf9e6c2e9e52be5769fcd38523313d8443aa359b2e3de410b3d889bf"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -61,8 +61,8 @@
     },
     {
       "path": "docs/03_FEATURE_INVENTORY.md",
-      "bytes": 83743,
-      "sha256": "0a68d0af773a3be7adf4556340aae184d0aadefbcabbf0b4ad076ffe787c0c46"
+      "bytes": 84639,
+      "sha256": "5104884e52171659e3e1b819f0b49ddf6605c868a6d3a81740abbbbc5a3d5ae1"
     },
     {
       "path": "docs/04_LIFECYCLES_DISPATCH_POOLING.md",
@@ -131,8 +131,8 @@
     },
     {
       "path": "docs/17_QUICK_START.md",
-      "bytes": 1573,
-      "sha256": "44dc888172186894ddf32a8642bbb4f038735a4a21e8adb3a06960270e25d786"
+      "bytes": 1644,
+      "sha256": "ee8cc396ba76fcfbe16701caddc93788847df5422283c7953b2d709597f5bba8"
     },
     {
       "path": "docs/18_IDENTITY_AUTH_AND_KYC.md",
@@ -161,8 +161,8 @@
     },
     {
       "path": "docs/23_FOUNDER_PROMPT_TRACEABILITY.md",
-      "bytes": 10185,
-      "sha256": "13d88a73cca9ded52025dd0eb6ba91b7b1ceb33f13983407e20e7992ac068ac4"
+      "bytes": 11330,
+      "sha256": "9fc3bf3430041a32a316546948b5875e2104fc7d9288924d8283773aab07727c"
     },
     {
       "path": "docs/24_V4_SECOND_PASS_GAP_AUDIT.md",
@@ -301,13 +301,13 @@
     },
     {
       "path": "docs/phase0/PHASE0_REQUIREMENT_COVERAGE.csv",
-      "bytes": 146329,
-      "sha256": "098129c1f4ce3b849d08edc0108996405910d8e1197eed003dfd1cc68eca3d7f"
+      "bytes": 148768,
+      "sha256": "7f4bb394131d7ac071ad21fa33563f0e50a20da0da6fc14f044eef0afc472e3d"
     },
     {
       "path": "docs/phase0/PHASE0_REQUIREMENT_COVERAGE.json",
-      "bytes": 335370,
-      "sha256": "344c76e6175967d34cc203dde595066ba79f8b2a28bd364b23ac5ef2bd6273d8"
+      "bytes": 354777,
+      "sha256": "5ecf2de5a1bbde77f618c3bcc3afe2c3267773b10b9a57407fcb6213f2101bea"
     },
     {
       "path": "docs/phase0/PHASE0_SECURITY_PRIVACY.md",
@@ -365,6 +365,11 @@
       "sha256": "07e6384d00bb0341c3738e54deec5d080db7499e9cd1b51c05b4e2116042196b"
     },
     {
+      "path": "docs/phase0/tools/coverage-map-additions.js",
+      "bytes": 1585,
+      "sha256": "2f8ea7185c54ce64a7b8446727b50f800030a4e03fd81b19ca0be97ec2a68832"
+    },
+    {
       "path": "docs/phase0/tools/coverage-map-new.js",
       "bytes": 11888,
       "sha256": "7554d0a2e9adb189c9b32d054d1c882a9807217f64ee79ba9c43f340a4424a93"
@@ -376,13 +381,13 @@
     },
     {
       "path": "docs/phase0/tools/phase0-coverage.js",
-      "bytes": 11188,
-      "sha256": "ec95c4934275387260d29d3512709249ab8f2b61b15c14f5c47446c5b84765b7"
+      "bytes": 15739,
+      "sha256": "1ddaee0f3821c3d3744ccbb5bfe4c20b03ab6bf2920d0cfe5b31bcdfb58c4390"
     },
     {
       "path": "docs/phase0/tools/regen-manifest.js",
-      "bytes": 12692,
-      "sha256": "76bd25639da7c0540742976852c3f17ad168ce76357d7987cd0037128b17376e"
+      "bytes": 13489,
+      "sha256": "791ddd34a31bf6484a06c9ebce979c2223ca2e622edfcc6515cd250c5a58dea5"
     },
     {
       "path": "docs/phase1/PHASE1_HANDOFF_REPORT.md",
@@ -400,14 +405,79 @@
       "sha256": "7277f93068abc2461151ec9ed8a6b7654f97c31dea658da4d43fda7be34d765e"
     },
     {
+      "path": "docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md",
+      "bytes": 11002,
+      "sha256": "4429ae81949eec2caf7fe4acdc96ab4644aef4ea4d98a3c1be8366632b247707"
+    },
+    {
+      "path": "docs/phase2/PHASE2_API_AND_SURFACES.md",
+      "bytes": 13773,
+      "sha256": "9597dd606e9e8a7ede00df713cd63168b8738d89a5e300fcdf4fe31719fc225d"
+    },
+    {
+      "path": "docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md",
+      "bytes": 19658,
+      "sha256": "346549d0c96959ff67e04655e48740cc0b8e64177d7bd25742990535a77bba06"
+    },
+    {
+      "path": "docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md",
+      "bytes": 42247,
+      "sha256": "507208ec2965321a537d975fe3a68d08cbd99e4162cf65c4018996800ed68610"
+    },
+    {
+      "path": "docs/phase2/PHASE2_EXTERNAL_GATES.md",
+      "bytes": 13121,
+      "sha256": "a0ac74de4ec416236c8fc66809d8ea48273c6ae233d485daa7c85cdefe0aae03"
+    },
+    {
+      "path": "docs/phase2/PHASE2_IMPLEMENTATION_PROMPT_PROPOSED.md",
+      "bytes": 5569,
+      "sha256": "243eda3b9e4f6effd75564b5c017ade936edac83b29db0c71e49489bc19bbc51"
+    },
+    {
+      "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
+      "bytes": 14050,
+      "sha256": "aa78ffb89bab0551468688a498d9e63d22bf72b52e790b180e2a37646fc1dd3b"
+    },
+    {
+      "path": "docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md",
+      "bytes": 19782,
+      "sha256": "79c769eff768d5e39584828c2a7f9f39a2830e3022b3356c279d92af3357ccad"
+    },
+    {
+      "path": "docs/phase2/PHASE2_PLAN.md",
+      "bytes": 18037,
+      "sha256": "a35a6349c3461fd07cfe8ac7a872852fde6260df3069b4887220c4fcae235aba"
+    },
+    {
+      "path": "docs/phase2/PHASE2_REQUIREMENT_MATRIX.md",
+      "bytes": 26438,
+      "sha256": "eb635dd6f63e746ee3fcb119867bfaef12e2eda0dc5929ae8cf98c27b3e9a20a"
+    },
+    {
+      "path": "docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md",
+      "bytes": 10365,
+      "sha256": "ef456a132f50295571f0b9c3c5f3fe2f1f83631dbe6f1707e77423906113be69"
+    },
+    {
+      "path": "docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md",
+      "bytes": 10513,
+      "sha256": "952c89ab7aa540d1d41541a00063c99278c08f879d39cb415931e5e0e9fc4861"
+    },
+    {
+      "path": "docs/phase2/PHASE2_TEST_STRATEGY.md",
+      "bytes": 17281,
+      "sha256": "85bd689ae6e13c15f80007ee63f598cbd97debb3c3793934025390847245af19"
+    },
+    {
       "path": "docs/requirements-register.json",
-      "bytes": 507604,
-      "sha256": "345fe9e699ae338244861c1d33d9c8b0be704a414b149aac2b732ef8556fd499"
+      "bytes": 510178,
+      "sha256": "4fa1b5ad4682a4f6aebfbbe60f8bdcd4eef057352f7c58b22ef7af558bc89bec"
     },
     {
       "path": "prompts/PHASE_0_DISCOVERY_CLAUDE.md",
-      "bytes": 9561,
-      "sha256": "a91a405a06bd165974fbf0773a44114efad56aa6b08593c826fcd2996a8d5e24"
+      "bytes": 9617,
+      "sha256": "ccb55810ec5174e77d73d5475cc83b01e08edb4c8df1892edb9a34957ad7700f"
     },
     {
       "path": "prompts/PHASE_REPORT_HANDOFF_TO_CHATGPT.md",

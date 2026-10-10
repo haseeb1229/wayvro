@@ -1,6 +1,6 @@
 # PHASE 0 — CLAUDE CODE OPUS — A-to-Z DISCOVERY / RE-AUDIT ONLY
 
-> **STATUS: EXECUTED on 2026-10-09 — historical record, do not re-run.** Phase 0 started from **511** requirements (the original v5 baseline); the current post-Phase-0 register (`docs/requirements-register.json`, schema 5.1) holds **531** requirements, and the founder-review closure pass was applied on 2026-10-09 (`docs/phase0/PHASE0_CLOSURE_HANDOFF.md`). Outputs live under `docs/phase0/`. A future agent must **not** rerun Phase 0 unless the founder explicitly asks; the next work is defined by the founder-approved Phase 1 prompt. The text below is preserved as issued.
+> **STATUS: EXECUTED on 2026-10-09 — historical record, do not re-run.** Phase 0 started from **511** requirements (the original v5 baseline); the post-Phase-0 register (`docs/requirements-register.json`, schema 5.1) held **531** requirements (532 after the Phase 2 planning closure added A15 on 2026-10-10), and the founder-review closure pass was applied on 2026-10-09 (`docs/phase0/PHASE0_CLOSURE_HANDOFF.md`). Outputs live under `docs/phase0/`. A future agent must **not** rerun Phase 0 unless the founder explicitly asks; the next work is defined by the founder-approved Phase 1 prompt. The text below is preserved as issued.
 
 You are the sole coding/planning agent for this repository. **Do not implement the product yet. Do not commit or push until the founder authorizes after ChatGPT review.**
 

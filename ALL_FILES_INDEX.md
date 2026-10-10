@@ -13,7 +13,7 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `docs/00_README_AND_STATUS.md` — authority, mission, hard stops and release definitions.
 - `docs/01_COMPETITION_AND_STRATEGY.md` — competitor synthesis, positioning and topology evidence.
 - `docs/02_PRODUCT_HIERARCHY.md` — one Wayvro app: shared account, Rider mode, Driver/Partner onboarding/mode; staff/web/platform hierarchy.
-- `docs/03_FEATURE_INVENTORY.md` — human-readable 531-item A–W requirement catalog (511 v5 + 20 Phase 0 additions appended).
+- `docs/03_FEATURE_INVENTORY.md` — human-readable 532-item A–W requirement catalog (511 v5 + 20 Phase 0 additions + A15 from the Phase 2 planning closure, appended).
 - `docs/04_LIFECYCLES_DISPATCH_POOLING.md` — account/driver capability, trip, dispatch, pricing, pooling and women-focused lifecycles.
 - `docs/05_TRUST_SAFETY_AND_COMPLIANCE.md` — safety, privacy, fraud, legal/compliance and human response.
 - `docs/06_TECH_ARCHITECTURE.md` — proposed stack, one-app modular architecture, monorepo, scaling and research spikes.
@@ -37,7 +37,7 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `docs/26_COMPLETENESS_CLOSURE_PROTOCOL.md` — how newly discovered gaps become canonical before coding.
 - `docs/27_ENGINEERING_GUARDRAILS_AND_CHANGE_SAFETY.md` — frontend/backend decoupling, migrations, dead code, CI, releases and rollback.
 - `docs/28_APP_SURFACES_AND_REPO_TOPOLOGY.md` — authoritative one-public-app role/profile/mode architecture and repo topology.
-- `docs/requirements-register.json` — machine-readable 531-item requirement authority (schema 5.1; every ID carries a Phase 0 `phase0` disposition block).
+- `docs/requirements-register.json` — machine-readable 532-item requirement authority (schema 5.1; every ID carries a `phase0` disposition block; post-Phase-0 additions are listed in `post_phase0_additions`).
 
 ## Historical audit context (do not override v5)
 - `docs/20_V3_A_TO_Z_GAP_AUDIT.md` — historical v3 omissions/corrections.
@@ -75,9 +75,12 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `scripts/` — `infra.mjs`, `boot-smoke.mjs`, `android-build.mjs`; `.github/workflows/ci.yml` — CI.
 - `tests/spikes/` — disposable SP-AND / SP-03 / SP-05 / ADR-010 evidence harnesses with results (see `tests/spikes/README.md`).
 
+## Phase 2 planning (PLAN PASSED founder/ChatGPT review 2026-10-10; reviewed technical closure `47b1683`; implementation NOT started — P2.1 needs separate founder authorisation)
+- `docs/phase2/PHASE2_PLAN.md` — overview, repository findings, proposed gap/clarifications/contradictions, deferrals, founder questions, readiness; it indexes the other twelve Phase 2 planning documents in `docs/phase2/` (requirement matrix, domain/data model, auth/session, KYC/evidence vault, staff authorization matrix, API/surfaces, security/abuse model, external gates, test strategy, implementation sequence, ADR/dependency proposals, proposed P2.1 prompt).
+
 ## Current baseline
 - Product: **Wayvro (WAY-VRO)**.
 - Public mobile distribution: **one Wayvro app** with Rider mode and optional approved Driver/Partner profile/mode.
-- Proposed requirements: **531** (P0 216 / P1 209 / P2 89 / P3 17) after Phase 0; dispositions NOW 395 / LATER 107 / EXTERNAL_DECISION 26 / OUT_OF_SCOPE 3.
+- Proposed requirements: **532** (P0 217 / P1 209 / P2 89 / P3 17): 531 after Phase 0 plus A15 (Phase 2 planning closure, 2026-10-10); dispositions NOW 396 / LATER 107 / EXTERNAL_DECISION 26 / OUT_OF_SCOPE 3.
 - Macro phases: **13** (Phase 0 through Phase 12).
 - Coding/planning AI: **Claude Code only**.
