@@ -5,7 +5,9 @@
  */
 const CLIENT_APPS = '^apps/(wayvro-mobile|web-public|web-ops)/';
 const SERVER_ONLY_WORKSPACE =
-  '^(packages/(db|server-runtime|observability|provider-interfaces|config)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|config)/)';
+  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config)/)';
+// Development/test-only workspace packages (ADR-045): never reachable from production source.
+const DEV_ONLY_WORKSPACE = '(^packages/(provider-test-doubles|test-support)/|node_modules/@wayvro/(provider-test-doubles|test-support)/)';
 const SERVER_ONLY_NPM = 'node_modules/(pg|pg-pool|ioredis|drizzle-orm|fastify|@nestjs/[^/]+|socket\\.io|pino|@opentelemetry/[^/]+)/';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
@@ -50,6 +52,13 @@ module.exports = {
       to: { path: '(\\.test\\.tsx?$|^(apps|packages)/[^/]+/test/)' },
     },
     {
+      name: 'no-production-to-test-doubles',
+      severity: 'error',
+      comment: 'ADR-045/F-01: production source never imports the dev-only test-double or test-support packages (deployable artefacts must not contain them).',
+      from: { path: '^(apps|packages)/[^/]+/src/', pathNot: ['\\.test\\.tsx?$', '^packages/(provider-test-doubles|test-support)/'] },
+      to: { path: DEV_ONLY_WORKSPACE },
+    },
+    {
       name: 'not-to-dev-dep',
       severity: 'error',
       comment: 'Production code must not depend on devDependencies.',
@@ -59,7 +68,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: ['node_modules', '(^|/)dist/'] },
-    exclude: { path: ['(^|/)\\.next/', '(^|/)coverage/', '(^|/)android/', '(^|/)ios/', 'next-env\\.d\\.ts$'] },
+    exclude: { path: ['(^|/)dist-dev/', '(^|/)\\.next/', '(^|/)coverage/', '(^|/)android/', '(^|/)ios/', 'next-env\\.d\\.ts$'] },
     tsPreCompilationDeps: true,
     combinedDependencies: false,
     enhancedResolveOptions: {

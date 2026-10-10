@@ -1,0 +1,31 @@
+{
+  "name": "@wayvro/provider-test-doubles",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DEVELOPMENT/TEST ONLY (ADR-045): recording and in-memory provider doubles for local runners and tests. Declared only as a devDependency; never part of a deployable artefact (CI artifact-isolation check).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@wayvro/provider-interfaces": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

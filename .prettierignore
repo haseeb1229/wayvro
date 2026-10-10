@@ -1,6 +1,7 @@
 # Generated / vendored / evidence artefacts
 pnpm-lock.yaml
 **/dist/
+**/dist-dev/
 **/.next/
 **/coverage/
 **/.turbo/

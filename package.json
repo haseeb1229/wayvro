@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "build:local": "turbo run build:local",
     "typecheck": "turbo run typecheck",
     "lint": "eslint . --max-warnings=0",
     "test": "turbo run test",
@@ -17,7 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "depcruise": "depcruise apps packages --config .dependency-cruiser.cjs",
-    "knip": "knip && knip --production",
+    "knip": "knip && knip --production && knip --production --strict --include unlisted",
     "syncpack": "syncpack lint",
     "flags:check": "pnpm --filter @wayvro/config flags:check",
     "openapi:check": "pnpm --filter @wayvro/contracts openapi:generate && git diff --exit-code -- packages/contracts/openapi",

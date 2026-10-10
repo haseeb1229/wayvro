@@ -4,6 +4,9 @@
   "private": true,
   "description": "Wayvro background worker. Phase 1: bootstrap, health endpoint, transactional-outbox relay and idempotent-consumer skeletons (not started until an outbox source exists).",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=../../.env dist/main.js",

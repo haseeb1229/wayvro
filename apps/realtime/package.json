@@ -4,6 +4,9 @@
   "private": true,
   "description": "Wayvro realtime gateway (NestJS 12 + Socket.IO + Redis adapter, ADR-005b). Phase 1: fail-closed authenticated-connection shape and snapshot-resync hello only.",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=../../.env dist/main.js",

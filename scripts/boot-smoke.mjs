@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /*
  * Boot smoke test for every deployable skeleton (CLAUDE.md §8: CI must exercise real deployables, not only packages).
- * Prerequisites: `pnpm infra:up`, `pnpm db:migrate`, `pnpm build`. Node built-ins only.
+ * Prerequisites: `pnpm infra:up`, `pnpm db:migrate`, `pnpm build`, `pnpm build:local`. Node built-ins only.
+ * The API is started through its local runner (apps/api/dist-dev, ADR-045), which binds the dev-only test doubles; the
+ * production composition roots are exercised by the refusal checks here and by scripts/artifact-isolation.mjs.
  *
  * Starts api, worker, realtime, web-public and web-ops from their build output, then verifies health contracts,
  * security headers, the realtime fail-closed handshake and the production-configuration refusal, and finally stops
@@ -25,7 +27,7 @@ const BASE_ENV = {
 // Resolve Next.js the way Node would from each app (works with the hoisted workspace layout).
 const NEXT_BIN = (app) => createRequire(join(ROOT, 'apps', app, 'package.json')).resolve('next/dist/bin/next');
 const SERVICES = [
-  { name: 'api', cmd: [join(ROOT, 'apps/api/dist/main.js')], env: { PORT: '4000' }, health: 'http://127.0.0.1:4000/v1/health/ready' },
+  { name: 'api', cmd: [join(ROOT, 'apps/api/dist-dev/dev/main.local.js')], env: { PORT: '4000' }, health: 'http://127.0.0.1:4000/v1/health/ready' },
   { name: 'realtime', cmd: [join(ROOT, 'apps/realtime/dist/main.js')], env: { PORT: '4001' }, health: 'http://127.0.0.1:4001/v1/health/ready' },
   { name: 'worker', cmd: [join(ROOT, 'apps/worker/dist/main.js')], env: { HEALTH_PORT: '4002' }, health: 'http://127.0.0.1:4002/v1/health/ready' },
   {

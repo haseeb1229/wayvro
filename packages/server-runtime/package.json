@@ -20,6 +20,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
   },
   "dependencies": {
+    "@wayvro/config": "workspace:*",
     "@wayvro/contracts": "workspace:*",
     "@wayvro/db": "workspace:*",
     "@wayvro/observability": "workspace:*",

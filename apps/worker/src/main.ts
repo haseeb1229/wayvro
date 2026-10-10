@@ -1,10 +1,11 @@
 // Worker composition root: config -> telemetry -> dependencies -> health server -> (relay when a source exists).
 import { createDatabase } from '@wayvro/db';
 import { createLogger, startTelemetry } from '@wayvro/observability';
-import { createHealthServer, databaseCheck, redisCheck } from '@wayvro/server-runtime';
+import { createHealthServer, databaseCheck, enforceArtifactPolicy, redisCheck } from '@wayvro/server-runtime';
 import { loadWorkerConfig } from './config.js';
 
 const config = loadWorkerConfig(process.env);
+enforceArtifactPolicy(new URL('./build-info.json', import.meta.url), config.WAYVRO_ENV);
 const telemetry = startTelemetry({
   service: 'worker',
   version: config.WAYVRO_BUILD_VERSION,

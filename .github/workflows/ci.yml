@@ -71,6 +71,9 @@ jobs:
           node docs/phase0/tools/phase0-coverage.js --check
           node docs/phase0/tools/regen-manifest.js --check
           git diff --exit-code
+      # Last step of the job: it deletes and rebuilds the server apps' dist/ output without cache (clean artefact build).
+      - name: Production artefact isolation (ADR-045 ART-ISO; builds real pnpm-deploy artefacts of api/worker/realtime)
+        run: node scripts/artifact-isolation.mjs --negative-controls
 
   integration:
     name: Integration (PostgreSQL+PostGIS, Valkey, SeaweedFS) + migrations + boot smoke
@@ -92,6 +95,8 @@ jobs:
           restore-keys: pnpm-store-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Build the API local runner (dist-dev, never deployed — ADR-045)
+        run: pnpm build:local
       - name: Start local infrastructure (compose project "wayvro")
         run: pnpm infra:up
       - name: Local environment file (non-secret local defaults)

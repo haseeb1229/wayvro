@@ -24,6 +24,10 @@
       "dependsOn": ["build"],
       "cache": false,
       "env": ["DATABASE_URL", "REDIS_URL"]
+    },
+    "build:local": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist-dev/**"]
     }
   }
 }

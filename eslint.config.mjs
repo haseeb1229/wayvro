@@ -9,7 +9,17 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const SERVER_ONLY_PACKAGES = ['@wayvro/db', '@wayvro/server-runtime', '@wayvro/observability', '@wayvro/provider-interfaces', '@wayvro/config'];
+const SERVER_ONLY_PACKAGES = [
+  '@wayvro/db',
+  '@wayvro/server-runtime',
+  '@wayvro/observability',
+  '@wayvro/provider-interfaces',
+  '@wayvro/provider-test-doubles',
+  '@wayvro/test-support',
+  '@wayvro/config',
+];
+// Development/test-only packages (ADR-045): production source of any app/package must never import them.
+const DEV_ONLY_PACKAGES = ['@wayvro/provider-test-doubles', '@wayvro/test-support'];
 const SERVER_ONLY_MODULES = ['pg', 'ioredis', 'drizzle-orm', 'drizzle-orm/*', 'fastify', '@nestjs/*', 'socket.io', 'pino', '@opentelemetry/*'];
 const CLIENT_APPS = ['app-mobile', 'app-web-public', 'app-web-ops'];
 const ALL_APPS = ['app-api', 'app-worker', 'app-realtime', ...CLIENT_APPS];
@@ -19,6 +29,7 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
+      '**/dist-dev/**',
       '**/.next/**',
       '**/coverage/**',
       '**/.turbo/**',
@@ -76,6 +87,22 @@ export default tseslint.config(
     },
   },
   {
+    // ADR-045/F-01: production source never imports test doubles or test support (tests, local runners and the dev-only
+    // packages themselves are outside these globs).
+    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx', 'packages/provider-test-doubles/**', 'packages/test-support/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: DEV_ONLY_PACKAGES, message: 'Test doubles/test support are development-only and never part of a deployable artefact (ADR-045).' },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/wayvro-mobile/**/*.{ts,tsx}', 'apps/web-*/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
@@ -108,6 +135,8 @@ export default tseslint.config(
         { type: 'pkg-config', pattern: 'packages/config/{src,test}/**', partialMatch: false },
         { type: 'pkg-observability', pattern: 'packages/observability/{src,test}/**', partialMatch: false },
         { type: 'pkg-provider-interfaces', pattern: 'packages/provider-interfaces/{src,test}/**', partialMatch: false },
+        { type: 'pkg-provider-test-doubles', pattern: 'packages/provider-test-doubles/{src,test}/**', partialMatch: false },
+        { type: 'pkg-test-support', pattern: 'packages/test-support/{src,test}/**', partialMatch: false },
         { type: 'pkg-db', pattern: 'packages/db/{src,test}/**', partialMatch: false },
         { type: 'pkg-server-runtime', pattern: 'packages/server-runtime/{src,test}/**', partialMatch: false },
         { type: 'pkg-web-security', pattern: 'packages/web-security/{src,test}/**', partialMatch: false },
@@ -124,7 +153,21 @@ export default tseslint.config(
             {
               from: { element: { types: { anyOf: [...CLIENT_APPS, 'mobile-feature-rider', 'mobile-feature-driver'] } } },
               disallow: {
-                to: { element: { types: { anyOf: ['pkg-db', 'pkg-server-runtime', 'pkg-observability', 'pkg-provider-interfaces', 'pkg-config'] } } },
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'pkg-db',
+                        'pkg-server-runtime',
+                        'pkg-observability',
+                        'pkg-provider-interfaces',
+                        'pkg-provider-test-doubles',
+                        'pkg-test-support',
+                        'pkg-config',
+                      ],
+                    },
+                  },
+                },
               },
             },
             ...SERVER_ONLY_PACKAGES.concat(SERVER_ONLY_MODULES).map((source) => ({

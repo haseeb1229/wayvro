@@ -2,11 +2,16 @@
   "name": "@wayvro/api",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayvro HTTP API (NestJS 12 on Fastify, ADR-005). Phase 1: health/readiness, request ids, security headers, error envelope and the Idempotency-Key shape only.",
+  "description": "Wayvro HTTP API (NestJS 12 on Fastify, ADR-005). Production root src/main.ts binds real adapters only; the local runner dev/main.local.ts (dist-dev/, never deployed) binds the dev-only test doubles (ADR-045).",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build:local": "tsc -p tsconfig.dev.json",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "start:local": "node --env-file-if-exists=../../.env dist-dev/dev/main.local.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
@@ -30,6 +35,7 @@
   "devDependencies": {
     "@types/node": "24.19.1",
     "@vitest/coverage-v8": "5.0.3",
+    "@wayvro/provider-test-doubles": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
   }

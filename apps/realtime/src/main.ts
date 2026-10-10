@@ -1,11 +1,12 @@
 // Realtime gateway composition root: config -> telemetry -> fail-closed authenticator -> Socket.IO with Redis fan-out.
 import { createLogger, startTelemetry } from '@wayvro/observability';
-import { redisCheck } from '@wayvro/server-runtime';
+import { enforceArtifactPolicy, redisCheck } from '@wayvro/server-runtime';
 import { createRealtimeApp } from './app.js';
 import { DenyAllAuthenticator } from './auth.js';
 import { loadRealtimeConfig } from './config.js';
 
 const config = loadRealtimeConfig(process.env);
+enforceArtifactPolicy(new URL('./build-info.json', import.meta.url), config.WAYVRO_ENV);
 const telemetry = startTelemetry({
   service: 'realtime',
   version: config.WAYVRO_BUILD_VERSION,

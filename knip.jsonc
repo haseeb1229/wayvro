@@ -10,7 +10,8 @@
       "entry": ["scripts/*.mjs!", "infra/ci/**/*.mjs!"],
       "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!"],
     },
-    "apps/api": { "entry": ["src/main.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    // The local runner (ADR-045) is a non-production entry: it may use the dev-only test doubles.
+    "apps/api": { "entry": ["src/main.ts!", "dev/main.local.ts"], "project": ["src/**/*.ts!", "dev/**/*.ts", "test/**/*.ts"] },
     "apps/worker": {
       "entry": ["src/main.ts!"],
       "project": ["src/**/*.ts!", "test/**/*.ts"],

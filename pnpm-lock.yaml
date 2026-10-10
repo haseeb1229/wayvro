@@ -266,6 +266,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 5.0.3
         version: 5.0.3(vitest@5.0.3)
+      '@wayvro/provider-test-doubles':
+        specifier: workspace:*
+        version: link:../../packages/provider-test-doubles
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -607,8 +610,30 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/provider-test-doubles:
+    dependencies:
+      '@wayvro/provider-interfaces':
+        specifier: workspace:*
+        version: link:../provider-interfaces
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/server-runtime:
     dependencies:
+      '@wayvro/config':
+        specifier: workspace:*
+        version: link:../config
       '@wayvro/contracts':
         specifier: workspace:*
         version: link:../contracts
