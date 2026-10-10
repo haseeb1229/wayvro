@@ -62,7 +62,15 @@ describe('audit seals', () => {
     expect(await sealNextBatch(worker, { lagSeconds: 0, maxRows: 4 })).toBeNull();
     expect(await verifySeals(worker)).toEqual({ sealsVerified: 2, failures: [], unsealedBelowWatermark: 0 });
     const verify = auditJobs(worker, log, { lagSeconds: 0, maxRows: 4 }).find((j) => j.type === AUDIT_VERIFY_JOB);
-    await verify?.handler({ id: randomUUID(), type: AUDIT_VERIFY_JOB, payload: {}, sealedPayload: null, attempts: 1, maxAttempts: 1 });
+    await verify?.handler({
+      id: randomUUID(),
+      type: AUDIT_VERIFY_JOB,
+      payload: {},
+      sealedPayload: null,
+      attempts: 1,
+      maxAttempts: 1,
+      leaseToken: randomUUID(),
+    });
     expect(logs.text()).toContain('audit seals verified');
   });
 
@@ -127,7 +135,15 @@ describe('audit seals', () => {
     const report = await verifySeals(worker);
     expect(report.failures.map((f) => f.reason)).toContain('LEAF_COUNT_MISMATCH');
     const verify = auditJobs(worker, log, { lagSeconds: 0, maxRows: 100 }).find((j) => j.type === AUDIT_VERIFY_JOB);
-    await verify?.handler({ id: randomUUID(), type: AUDIT_VERIFY_JOB, payload: {}, sealedPayload: null, attempts: 1, maxAttempts: 1 });
+    await verify?.handler({
+      id: randomUUID(),
+      type: AUDIT_VERIFY_JOB,
+      payload: {},
+      sealedPayload: null,
+      attempts: 1,
+      maxAttempts: 1,
+      leaseToken: randomUUID(),
+    });
     expect(logs.text()).toContain('AUDIT_SEAL_VERIFICATION_FAILED');
     // Forging the chain requires writing seals, which the sealer role can append but never alter.
     await expect(worker.query(`update audit.audit_seals set seal_hash = $1`, [randomBytes(32)])).rejects.toThrow(/permission denied|append-only/);
@@ -152,7 +168,7 @@ describe('audit seals', () => {
   it('the seal job drains in bounded batches', async () => {
     await audit(5);
     const seal = auditJobs(worker, log, { lagSeconds: 0, maxRows: 2 }).find((j) => j.type === AUDIT_SEAL_JOB);
-    await seal?.handler({ id: randomUUID(), type: AUDIT_SEAL_JOB, payload: {}, sealedPayload: null, attempts: 1, maxAttempts: 1 });
+    await seal?.handler({ id: randomUUID(), type: AUDIT_SEAL_JOB, payload: {}, sealedPayload: null, attempts: 1, maxAttempts: 1, leaseToken: randomUUID() });
     expect(
       (
         await worker.query(
@@ -185,6 +201,7 @@ describe('maintenance, scheduling and composition', () => {
       sealedPayload: null,
       attempts: 1,
       maxAttempts: 1,
+      leaseToken: randomUUID(),
     });
     expect(logs.text()).toContain('maintenance purge');
   });

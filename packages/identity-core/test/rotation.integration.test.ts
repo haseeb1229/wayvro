@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ENCRYPTED_FIELDS,
   KeyRotationError,
+  abandonRotation,
   completeRotation,
   contractLookupRotation,
   fieldContext,
@@ -19,7 +20,7 @@ import {
   startLookupRotation,
   type RotationDeps,
 } from '../src/index.js';
-import { crypto, harness, seedOwner, syntheticPhone, type Harness } from './helpers.js';
+import { crypto, harness, seedOwner, seedOwnerIn, syntheticPhone, type Harness } from './helpers.js';
 import { JobRunner } from '@wayvro/server-runtime';
 
 const logs = captureLogs();
@@ -171,25 +172,174 @@ describe('lookup-key rotation (phone_lookup v1 -> v2)', () => {
     expect((await rotation(id))?.phase).toBe('DONE');
   });
 
+  const versionsOf = async (phoneId: string) =>
+    (
+      await h.owner.query<{ v: number }>(`select lookup_key_version v from identity.phone_lookup_index where account_phone_id = $1 order by 1`, [phoneId])
+    ).rows.map((r) => r.v);
+  const countAt = async (v: number) =>
+    Number((await h.owner.query<{ n: string }>(`select count(*) n from identity.phone_lookup_index where lookup_key_version = $1`, [v])).rows[0]?.n);
+  const runToSwitch = async (d: RotationDeps, id: string) => {
+    let outcome = await runRotationStep(d, id);
+    while (outcome === 'continue') outcome = await runRotationStep(d, id);
+    return outcome;
+  };
+  const SPEC = 'contact.v2=ACTIVE,phone_lookup.v1=DECRYPT_ONLY,phone_lookup.v2=ACTIVE';
+
+  it('READ_SWITCHED and RETIRE_PENDING write the ACTIVE version only', async () => {
+    await seedOwner(h.api, crypto('contact.v2=ACTIVE,phone_lookup.v1=ACTIVE'), syntheticPhone());
+    const during = crypto(SPEC);
+    const d = deps(SPEC, 10);
+    const id = await startLookupRotation(d);
+    expect(await runToSwitch(d, id)).toBe('switched');
+    const inSwitched = await seedOwner(h.api, during, syntheticPhone());
+    expect(await versionsOf(inSwitched.phoneId)).toEqual([2]);
+    await contractLookupRotation(d, id);
+    expect((await rotation(id))?.phase).toBe('RETIRE_PENDING');
+    const inRetirePending = await seedOwner(h.api, during, syntheticPhone());
+    expect(await versionsOf(inRetirePending.phoneId)).toEqual([2]);
+    expect(await countAt(1)).toBe(0);
+  });
+
+  it('a writer that planned under BACKFILL cannot resurrect old-version rows after the contract (deterministic interleaving)', async () => {
+    const existing = syntheticPhone();
+    await seedOwner(h.api, crypto('contact.v2=ACTIVE,phone_lookup.v1=ACTIVE'), existing);
+    const during = crypto(SPEC);
+    const d = deps(SPEC, 10);
+    const id = await startLookupRotation(d);
+
+    // The writer's transaction is paused exactly between its ledger read (BACKFILL ⇒ write v2 + v1) and its insert.
+    // While it is paused: the backfill switches to READ_SWITCHED and the operator starts the contract.
+    const client = await h.api.connect();
+    let contract: Promise<number> | undefined;
+    let contractSettledEarly = false;
+    let waitingAdvisory = 0;
+    const paused = new Proxy(client, {
+      get(t, p, r) {
+        if (p !== 'query') return Reflect.get(t, p, r) as unknown;
+        return async (text: string, params?: unknown[]) => {
+          if (!contract && text.includes('insert into identity.phone_lookup_index')) {
+            expect(await runToSwitch(d, id)).toBe('switched');
+            contract = contractLookupRotation(d, id);
+            void contract.then(() => (contractSettledEarly = true));
+            await new Promise((res) => setTimeout(res, 400));
+            waitingAdvisory = Number(
+              (await h.owner.query<{ n: string }>(`select count(*) n from pg_locks where locktype = 'advisory' and not granted`)).rows[0]?.n,
+            );
+          }
+          return t.query(text, params);
+        };
+      },
+    });
+    let written: { phoneId: string } | undefined;
+    try {
+      await client.query('begin');
+      written = await seedOwnerIn(paused, during, syntheticPhone());
+      // The insert used the BACKFILL write set: both versions, inside the still-open transaction.
+      expect(
+        (
+          await client.query<{ v: number }>(`select lookup_key_version v from identity.phone_lookup_index where account_phone_id = $1 order by 1`, [
+            written.phoneId,
+          ])
+        ).rows.map((r) => r.v),
+      ).toEqual([1, 2]);
+      expect(contractSettledEarly).toBe(false); // the contract is blocked by the writer's shared lock
+      expect(waitingAdvisory).toBeGreaterThanOrEqual(1);
+      await client.query('commit');
+    } finally {
+      client.release();
+    }
+    expect(await contract).toBeGreaterThan(0);
+    // The contract ran after the writer committed, so it also removed the writer's old-version row.
+    expect(await countAt(1)).toBe(0);
+    expect(await versionsOf(written.phoneId)).toEqual([2]);
+    const retired = crypto('contact.v2=ACTIVE,phone_lookup.v1=RETIRED,phone_lookup.v2=ACTIVE');
+    expect(await retired.lookup.currentOwner(h.api, existing)).not.toBeNull();
+    await completeRotation({ ...d, ring: retired.ring }, id);
+    expect((await rotation(id))?.phase).toBe('DONE');
+  });
+
+  it('completion fails closed while any old-version row exists and succeeds only after zero rows + RETIRED key', async () => {
+    const before = crypto('contact.v2=ACTIVE,phone_lookup.v1=ACTIVE');
+    const victim = await seedOwner(h.api, before, syntheticPhone());
+    const d = deps(SPEC, 10);
+    const id = await startLookupRotation(d);
+    await runToSwitch(d, id);
+    await contractLookupRotation(d, id);
+    // Inject an old-version row after the contract (simulating any resurrection path).
+    await h.owner.query(
+      `insert into identity.phone_lookup_index (account_phone_id, lookup_key_version, lookup_hash, is_current_owner) values ($1, 1, $2, false)`,
+      [victim.phoneId, randomBytes(32)],
+    );
+    const retired = crypto('contact.v2=ACTIVE,phone_lookup.v1=RETIRED,phone_lookup.v2=ACTIVE');
+    await expect(completeRotation({ ...d, ring: retired.ring }, id)).rejects.toThrow(/lookup rows under v1 remain/);
+    expect((await rotation(id))?.phase).toBe('RETIRE_PENDING');
+    await h.owner.query(`delete from identity.phone_lookup_index where lookup_key_version = 1`);
+    // Zero rows but the old key still live in the ring ⇒ still refused.
+    await expect(completeRotation(d, id)).rejects.toThrow(/must be RETIRED/);
+    await completeRotation({ ...d, ring: retired.ring }, id);
+    expect((await rotation(id))?.phase).toBe('DONE');
+    // After DONE the ledger keeps v2 authoritative even when the ring is flipped again before the next rotation starts.
+    const flipped = crypto('contact.v2=ACTIVE,phone_lookup.v2=DECRYPT_ONLY,phone_lookup.v3=ACTIVE');
+    const next = await seedOwner(h.api, flipped, syntheticPhone());
+    expect(await versionsOf(next.phoneId)).toEqual([2]);
+  });
+
+  it('a ring flipped before the rotation starts never hides existing rows; abandon restores the old version only', async () => {
+    const before = crypto('contact.v2=ACTIVE,phone_lookup.v1=ACTIVE');
+    const phone = syntheticPhone();
+    const owner = await seedOwner(h.api, before, phone);
+    const flipped = crypto(SPEC);
+    // No rotation yet: the authoritative version is still v1 — the existing owner is found and duplicates collide in v1.
+    expect(await flipped.lookup.currentOwner(h.api, phone)).toMatchObject({ accountId: owner.accountId });
+    await expect(seedOwner(h.api, flipped, phone)).rejects.toMatchObject({ code: '23505' });
+    // A rotation must start from the authoritative version.
+    await expect(startLookupRotation(deps('contact.v2=ACTIVE,phone_lookup.v2=DECRYPT_ONLY,phone_lookup.v3=ACTIVE', 10))).rejects.toThrow(
+      /authoritative version v1/,
+    );
+    const d = deps(SPEC, 1);
+    const id = await startLookupRotation(d);
+    const dual = await seedOwner(h.api, flipped, syntheticPhone());
+    expect(await versionsOf(dual.phoneId)).toEqual([1, 2]);
+    expect(await runRotationStep(d, id)).toBe('continue');
+    expect(await abandonRotation(d, id)).toBeGreaterThan(0);
+    expect((await rotation(id))?.phase).toBe('ABANDONED');
+    expect(await countAt(2)).toBe(0);
+    // After abandon: v1 only for reads and writes.
+    expect(await flipped.lookup.currentOwner(h.api, phone)).toMatchObject({ accountId: owner.accountId });
+    const after = await seedOwner(h.api, flipped, syntheticPhone());
+    expect(await versionsOf(after.phoneId)).toEqual([1]);
+    await expect(abandonRotation(d, id)).rejects.toThrow(/open rotation/);
+    // A switched lookup rotation cannot be abandoned (reads already depend on the new version).
+    const id2 = await startLookupRotation(deps(SPEC, 50));
+    await runToSwitch(deps(SPEC, 50), id2);
+    await expect(abandonRotation(d, id2)).rejects.toThrow(/only be abandoned during BACKFILL/);
+    // A ledger version missing from the ring fails closed.
+    await expect(crypto('contact.v2=ACTIVE,phone_lookup.v1=ACTIVE').lookup.currentOwner(h.api, phone)).rejects.toThrow(/not live in the key ring/);
+  });
+
   it('a current-owner collision in the new version is a counted, logged data conflict that blocks the switch', async () => {
     const spec = 'contact.v2=ACTIVE,phone_lookup.v2=DECRYPT_ONLY,phone_lookup.v3=ACTIVE';
     const c = crypto(spec);
     const phone = syntheticPhone();
     const a = await seedOwner(h.api, crypto('contact.v2=ACTIVE,phone_lookup.v2=ACTIVE'), phone);
-    // Inject an inconsistent pre-existing v3 row that claims the same phone for another account's phone record.
     const other = await seedOwner(h.api, crypto('contact.v2=ACTIVE,phone_lookup.v2=ACTIVE'), syntheticPhone());
-    await h.owner.query(
-      `insert into identity.phone_lookup_index (account_phone_id, lookup_key_version, lookup_hash, is_current_owner) values ($1, 3, $2, true)`,
-      [other.phoneId, c.hasher.at('phone_lookup', 3, phone)],
-    );
     const d = deps(spec, 50);
+    // A pre-existing new-version row refuses the start (it could hide a wrong digest)...
+    const injected = [other.phoneId, c.hasher.at('phone_lookup', 3, phone)];
+    const inject = `insert into identity.phone_lookup_index (account_phone_id, lookup_key_version, lookup_hash, is_current_owner) values ($1, 3, $2, true)`;
+    await h.owner.query(inject, injected);
+    await expect(startLookupRotation(d)).rejects.toThrow(/authoritative version v3/);
+    await h.owner.query(`delete from identity.phone_lookup_index where lookup_key_version = 3`);
+    // ...and an inconsistent v3 row appearing during BACKFILL (claiming this phone for another phone record) is a
+    // counted data conflict for BOTH records: the duplicate owner and the wrong digest on `other`.
     const id = await startLookupRotation(d);
+    await h.owner.query(inject, injected);
     let outcome = await runRotationStep(d, id);
     while (outcome === 'continue') outcome = await runRotationStep(d, id);
     expect(outcome).toBe('blocked');
     const row = await rotation(id);
     expect(row?.phase).toBe('BACKFILL');
-    expect(Number(row?.conflict_count)).toBe(1);
+    expect(Number(row?.conflict_count)).toBe(2);
     expect(logs.text()).toContain('lookup rotation data conflict');
     expect(logs.text()).not.toContain(phone);
     expect(a.accountId).not.toBe(other.accountId);

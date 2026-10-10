@@ -1,5 +1,37 @@
-import { databaseEnvSchema, httpEnvSchema, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema } from '@wayvro/config';
+import { isIP } from 'node:net';
+import { databaseEnvSchema, httpEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema } from '@wayvro/config';
 import { z } from 'zod';
+
+/** An IPv4/IPv6 address or CIDR block (e.g. 10.0.0.0/8, fd00::/8). */
+function isAddressOrCidr(entry: string): boolean {
+  const [address, prefix, extra] = entry.split('/');
+  if (extra !== undefined || !address) return false;
+  const family = isIP(address);
+  if (family === 0) return false;
+  if (prefix === undefined) return true;
+  if (!/^\d{1,3}$/.test(prefix)) return false;
+  return Number(prefix) <= (family === 4 ? 32 : 128);
+}
+
+/**
+ * Reverse-proxy trust for client-IP derivation (OTP IP-prefix limits depend on it). `false` (default) uses the socket
+ * peer; a comma-separated allowlist trusts X-Forwarded-For only from those proxy addresses/CIDRs; `true` (trust every
+ * hop) is accepted in local/test only — staging/production refuse it, because a spoofable client IP must never become
+ * the basis of OTP throttling (PHASE2_P2_1 deployment hardening).
+ */
+const trustProxySchema = z
+  .string()
+  .default('false')
+  .transform((v, ctx): boolean | readonly string[] => {
+    if (v === 'false') return false;
+    if (v === 'true') return true;
+    const entries = v.split(',').map((e) => e.trim());
+    if (entries.length === 0 || entries.length > 32 || !entries.every(isAddressOrCidr)) {
+      ctx.addIssue({ code: 'custom', message: 'must be false, true or a comma-separated list of proxy IP addresses/CIDR blocks' });
+      return z.NEVER;
+    }
+    return Object.freeze(entries);
+  });
 
 const int = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
 
@@ -48,11 +80,8 @@ const apiEnvSchema = serviceEnvSchema
   .extend(identityPolicySchema.shape)
   .extend({
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
-    /** Set only when a trusted reverse proxy terminates TLS in front of the API. */
-    TRUST_PROXY: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((v) => v === 'true'),
+    /** Set only when a trusted reverse proxy terminates TLS in front of the API (see trustProxySchema). */
+    TRUST_PROXY: trustProxySchema,
     WAYVRO_BUILD_VERSION: z.string().min(1).default('dev'),
     /** Namespace for rate-limit keys when several environments or test runs share one Valkey. */
     RATE_LIMIT_KEY_PREFIX: z
@@ -64,7 +93,11 @@ const apiEnvSchema = serviceEnvSchema
     message: 'session lifetimes must satisfy access <= idle <= absolute',
     path: ['SESSION_IDLE_TTL_SECONDS'],
   })
-  .refine((c) => c.OTP_RESEND_COOLDOWNS_SECONDS.length > 0, { path: ['OTP_RESEND_COOLDOWNS_SECONDS'] });
+  .refine((c) => c.OTP_RESEND_COOLDOWNS_SECONDS.length > 0, { path: ['OTP_RESEND_COOLDOWNS_SECONDS'] })
+  .refine((c) => c.TRUST_PROXY !== true || isNonProductionLike(c.WAYVRO_ENV), {
+    message: 'staging/production must list the trusted reverse-proxy addresses/CIDRs; trust-all is refused',
+    path: ['TRUST_PROXY'],
+  });
 
 export type ApiConfig = Readonly<z.infer<typeof apiEnvSchema>>;
 

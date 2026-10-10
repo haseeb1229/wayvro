@@ -29,6 +29,22 @@ Implement the consumer auth/session **domain** on NestJS/PostgreSQL/Valkey witho
 5. **Revoke-all freshness without a step-up flow:** allowed when the calling session was created by OTP within 10 min or is older than 24 h; otherwise `403 WAYVRO_E_STEP_UP_REQUIRED` (the explicit step-up endpoint is P2.9).
 6. **S12 is signal-only in P2.1**: a dormant account signing in from an unknown installation records `DORMANT_ACCOUNT_NEW_INSTALLATION` + audit `RECYCLED_NUMBER_SIGNAL`; it does **not** yet restrict the session. The restricted `RECOVERY_REVIEW` flow is P2.9, so P2.1 alone must not face real users (none exist).
 
+## Lookup-key rotation synchronisation (corrected 2026-10-11 after the P2.1 review)
+The P2.1 writer inserted lookup rows for **every live (non-retired) key version**. After `READ_SWITCHED`/contract, a still-live `DECRYPT_ONLY` key let a writer that had planned under `BACKFILL` insert old-version rows after the contract deleted them (old rows reappear; completion did not re-check). Corrected semantics (`packages/identity-core/src/phone-lookup.ts`):
+
+| Latest rotation for the target | Write set | Read set |
+|---|---|---|
+| none | authoritative (= oldest live ring version) | same |
+| `BACKFILL` | new + old (dual-write) | new + old (dual-read) |
+| `READ_SWITCHED` / `RETIRE_PENDING` / `DONE` | new (ACTIVE) only | new only |
+| `ABANDONED` | old only (abandon deletes the partial new rows; BACKFILL only) | old only |
+
+The sets come from the rotation ledger, not the key ring alone, so a ring that already holds a newer ACTIVE key before its rotation starts never hides rows that exist only under the older version; a ledger version missing from the ring fails closed. **Synchronisation:** a PostgreSQL transaction-level advisory lock per rotation target (`pg_advisory_xact_lock[_shared]`, not a process-local lock) — lookup writers take it SHARED before reading the ledger and hold it to commit; start / contract / abandon / complete take it EXCLUSIVE before the ledger row lock (consistent lock order; backfill steps use only the row lock, so no deadlock cycle). Start additionally refuses unless every existing lookup row is under the starting version; the backfill treats an existing new-version row with a different digest as a counted data conflict (previously `ON CONFLICT DO NOTHING` could keep it); `completeRotation` verifies **zero old-version lookup rows** (and the old key `RETIRED`) before `DONE`. Evidence: `packages/identity-core/test/rotation.integration.test.ts` — BACKFILL dual-write, READ_SWITCHED/RETIRE_PENDING active-only writes, a deterministic writer-vs-contract interleaving (writer paused between its BACKFILL plan and its insert; the contract is observed blocked on the advisory lock, then deletes the writer's old row), injected old row ⇒ completion fails closed, completion only after zero rows + RETIRED key, flipped-ring-before-start, abandon, per-version uniqueness; same-phone concurrent first sign-in unchanged (`apps/api/test/session.integration.test.ts`).
+
+## Deployment hardening findings (P2.1 review, 2026-10-11)
+- **PostgreSQL group roles are cluster-global.** `wayvro_migrator`, `wayvro_api`, `wayvro_worker`, `wayvro_realtime`, `wayvro_audit_sealer` (and later `wayvro_vault`) exist once per cluster. Until environment-namespaced role names or an equivalently reviewed isolation design exists, **staging and production must run on separate PostgreSQL clusters** (never two databases of one cluster); a LOGIN role granted membership for one environment would otherwise reach the other. Recorded as a Phase 7 deployment precondition (hosting is EG-05/ADR-028).
+- **Trusted proxy and OTP IP limits.** `TRUST_PROXY` is now `false` (default), an explicit allowlist of reverse-proxy IP/CIDR entries, or `true` (trust every hop) — **refused in staging/production** at config load. Before real OTP activation (P2.A1) the trusted reverse proxy/network must be defined and direct untrusted access to the API origin blocked, so the client IP used for IP-prefix limits cannot be spoofed via `X-Forwarded-For`. No provider CIDRs are invented here.
+
 ## Consequences
 - All correctness burden is in Wayvro's code and tests; the suites above are mandatory for every change to these modules.
 - Realtime and API share one session verifier; revocation reaches open sockets within the re-validation interval (default 60 s) and at access-token expiry at the latest.

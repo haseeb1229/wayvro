@@ -29,7 +29,8 @@ export interface AppDependencies {
   readonly info: ServiceInfo;
   readonly readinessChecks: readonly ReadinessCheck[];
   readonly log: Logger;
-  readonly trustProxy: boolean;
+  /** false, true (local/test only) or the trusted proxy addresses/CIDRs (config TRUST_PROXY). */
+  readonly trustProxy: boolean | readonly string[];
   readonly identity: IdentityServices;
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
@@ -75,7 +76,7 @@ export async function createApp(deps: AppDependencies): Promise<NestFastifyAppli
   assertRoutePolicies(controllers);
   const adapter = new FastifyAdapter({
     bodyLimit: 64 * 1024,
-    trustProxy: deps.trustProxy,
+    trustProxy: typeof deps.trustProxy === 'boolean' ? deps.trustProxy : [...deps.trustProxy],
     genReqId: (req: IncomingMessage) => resolveRequestId(req.headers['x-request-id']),
     disableRequestLogging: true,
     return503OnClosing: true,

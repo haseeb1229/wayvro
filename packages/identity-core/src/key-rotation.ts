@@ -15,7 +15,11 @@
  *   BACKFILL (reads are dual-read): resumable batches insert the new-version row for each phone. A current-owner
  *     uniqueness violation in the new version is a DATA CONFLICT: counted, logged, never skipped silently — the
  *     rotation then stays in BACKFILL as "blocked" until resolved. Zero missing rows and zero conflicts -> READ_SWITCHED;
- *   contract (operator): delete old-version rows -> RETIRE_PENDING; complete when the old key is RETIRED -> DONE.
+ *   contract (operator): delete old-version rows -> RETIRE_PENDING; complete when the old key is RETIRED and zero
+ *     old-version rows remain -> DONE; abandon (operator, BACKFILL only): delete the partial new-version rows ->
+ *     ABANDONED, after which the old version stays authoritative (phone-lookup.ts).
+ *   start/contract/abandon/complete take the target's EXCLUSIVE advisory lock before the ledger row lock; lookup writers
+ *     hold it SHARED for their whole transaction, so no writer can resurrect rows a contract/abandon deleted.
  * Decryption failures are never tolerated: the batch rolls back and the job retries, then dead-letters (alert).
  */
 import type pg from 'pg';
@@ -23,6 +27,7 @@ import type { FieldCipher, KeyedHasher, KeyRing } from '@wayvro/field-crypto';
 import type { Logger } from '@wayvro/observability';
 import { enqueueJob, sqlState, uuidv7, withTransaction, type JobDefinition } from '@wayvro/server-runtime';
 import { ENCRYPTED_FIELDS, PHONE_LOOKUP_TARGET, fieldContext, type EncryptedField } from './fields.js';
+import { lockRotationTarget } from './phone-lookup.js';
 
 export const KEY_ROTATION_JOB = 'crypto.key-rotation';
 
@@ -79,6 +84,25 @@ async function startRotation(deps: RotationDeps, kind: RotationRow['kind'], targ
   const { from, to } = rotationVersions(deps.ring, keyClass);
   const id = uuidv7();
   await withTransaction(deps.db, async (tx) => {
+    if (kind === 'LOOKUP_BACKFILL') {
+      // Growing the write set: wait for every in-flight writer that planned under the previous ledger state.
+      await lockRotationTarget(tx, target, 'EXCLUSIVE');
+      const latest = await tx.query<{ phase: string; from_version: number; to_version: number }>(
+        `select phase, from_version, to_version from platform.key_rotations where target = $1 order by started_at desc, id desc limit 1`,
+        [target],
+      );
+      const prev = latest.rows[0];
+      if (prev && prev.phase !== 'DONE' && prev.phase !== 'ABANDONED') throw new KeyRotationError(`a rotation of ${target} is already open`);
+      const authoritative = prev ? (prev.phase === 'ABANDONED' ? prev.from_version : prev.to_version) : from;
+      // The data itself must agree: before a rotation starts, every lookup row is under the authoritative version.
+      const present = await tx.query<{ v: number }>(`select distinct lookup_key_version v from identity.phone_lookup_index`);
+      const foreign = present.rows.map((r) => r.v).filter((v) => v !== from);
+      if (authoritative !== from || foreign.length > 0) {
+        throw new KeyRotationError(
+          `the rotation must start from the authoritative version v${String(foreign[0] ?? authoritative)} (ring DECRYPT_ONLY is v${String(from)})`,
+        );
+      }
+    }
     try {
       await tx.query(
         `insert into platform.key_rotations (id, kind, target, key_class, from_version, to_version, phase) values ($1, $2, $3, $4, $5, $6, 'BACKFILL')`,
@@ -173,11 +197,24 @@ async function lookupStep(deps: RotationDeps, tx: pg.PoolClient, rotation: Rotat
     const e164 = deps.cipher.decryptString('contact', row.envelope, fieldContext(spec, row.id));
     const digest = deps.hasher.at('phone_lookup', rotation.to_version, e164);
     if (!digest) throw new KeyRotationError(`phone_lookup.v${String(rotation.to_version)} is not live`);
+    // A new-version row may already exist (dual-written during BACKFILL). It must carry exactly this digest: a different
+    // digest is a data conflict, never silently kept.
+    const existing = await tx.query<{ lookup_hash: Buffer }>(
+      `select lookup_hash from identity.phone_lookup_index where account_phone_id = $1 and lookup_key_version = $2`,
+      [row.id, rotation.to_version],
+    );
+    const present = existing.rows[0];
+    if (present) {
+      if (!present.lookup_hash.equals(digest)) {
+        conflicts++;
+        deps.log.error({ rotationId: rotation.id, accountPhoneId: row.id }, 'lookup rotation data conflict: existing new-version digest does not match');
+      }
+      continue;
+    }
     await tx.query('savepoint lookup_row');
     try {
       const ins = await tx.query(
-        `insert into identity.phone_lookup_index (account_phone_id, lookup_key_version, lookup_hash, is_current_owner) values ($1, $2, $3, $4)
-         on conflict (account_phone_id, lookup_key_version) do nothing`,
+        `insert into identity.phone_lookup_index (account_phone_id, lookup_key_version, lookup_hash, is_current_owner) values ($1, $2, $3, $4)`,
         [row.id, rotation.to_version, digest, old.rows[0]?.is_current_owner ?? false],
       );
       inserted += ins.rowCount ?? 0;
@@ -222,6 +259,7 @@ async function lookupStep(deps: RotationDeps, tx: pg.PoolClient, rotation: Rotat
 /** Operator step after observing READ_SWITCHED: delete old-version lookup rows (contract) -> RETIRE_PENDING. */
 export async function contractLookupRotation(deps: RotationDeps, rotationId: string): Promise<number> {
   return withTransaction(deps.db, async (tx) => {
+    await lockRotationTarget(tx, PHONE_LOOKUP_TARGET, 'EXCLUSIVE');
     const r = await tx.query<RotationRow>(`select * from platform.key_rotations where id = $1 for update`, [rotationId]);
     const rotation = r.rows[0];
     if (rotation?.kind !== 'LOOKUP_BACKFILL' || rotation.phase !== 'READ_SWITCHED')
@@ -235,6 +273,8 @@ export async function contractLookupRotation(deps: RotationDeps, rotationId: str
 /** Final step once the old key is RETIRED in the key provider. Re-verifies before marking DONE. */
 export async function completeRotation(deps: RotationDeps, rotationId: string): Promise<void> {
   await withTransaction(deps.db, async (tx) => {
+    const target = (await tx.query<{ target: string }>(`select target from platform.key_rotations where id = $1`, [rotationId])).rows[0]?.target;
+    if (target === PHONE_LOOKUP_TARGET) await lockRotationTarget(tx, target, 'EXCLUSIVE');
     const r = await tx.query<RotationRow>(`select * from platform.key_rotations where id = $1 for update`, [rotationId]);
     const rotation = r.rows[0];
     if (rotation?.phase !== 'RETIRE_PENDING') throw new KeyRotationError('complete requires a rotation in RETIRE_PENDING');
@@ -246,8 +286,36 @@ export async function completeRotation(deps: RotationDeps, rotationId: string): 
       if (!target || (await countStaleEnvelopes(tx, target, deps.ring.active(rotation.key_class).id)) !== 0) {
         throw new KeyRotationError('envelopes under a non-ACTIVE key remain; rotation cannot complete');
       }
+    } else {
+      // Fail closed if any old-version lookup row exists (e.g. resurrected or injected after the contract step).
+      const old = await tx.query<{ n: string }>(`select count(*) n from identity.phone_lookup_index where lookup_key_version = $1`, [rotation.from_version]);
+      if (Number(old.rows[0]?.n ?? 0) !== 0) {
+        throw new KeyRotationError(`${old.rows[0]?.n ?? '?'} lookup rows under v${String(rotation.from_version)} remain; rotation cannot complete`);
+      }
     }
     await tx.query(`update platform.key_rotations set phase = 'DONE', completed_at = now(), updated_at = now() where id = $1`, [rotationId]);
+  });
+}
+
+/**
+ * Operator abandon of an open rotation. Lookup rotations may only be abandoned in BACKFILL (afterwards reads already
+ * depend on the new version); the partial new-version rows are deleted so the old version is again the only one.
+ * Field rotations can be abandoned before DONE: envelopes name their key, so reads never depend on the phase.
+ */
+export async function abandonRotation(deps: RotationDeps, rotationId: string): Promise<number> {
+  return withTransaction(deps.db, async (tx) => {
+    const target = (await tx.query<{ target: string }>(`select target from platform.key_rotations where id = $1`, [rotationId])).rows[0]?.target;
+    if (target === PHONE_LOOKUP_TARGET) await lockRotationTarget(tx, target, 'EXCLUSIVE');
+    const r = await tx.query<RotationRow>(`select * from platform.key_rotations where id = $1 for update`, [rotationId]);
+    const rotation = r.rows[0];
+    if (!rotation || rotation.phase === 'DONE' || rotation.phase === 'ABANDONED') throw new KeyRotationError('abandon requires an open rotation');
+    let deleted = 0;
+    if (rotation.kind === 'LOOKUP_BACKFILL') {
+      if (rotation.phase !== 'BACKFILL') throw new KeyRotationError('a lookup rotation can only be abandoned during BACKFILL');
+      deleted = (await tx.query(`delete from identity.phone_lookup_index where lookup_key_version = $1`, [rotation.to_version])).rowCount ?? 0;
+    }
+    await tx.query(`update platform.key_rotations set phase = 'ABANDONED', completed_at = now(), updated_at = now() where id = $1`, [rotationId]);
+    return deleted;
   });
 }
 

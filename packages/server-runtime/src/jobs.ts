@@ -4,7 +4,10 @@
  * - Transactional enqueue: `enqueueJob` runs on the caller's transaction, so a job exists iff the state change commits.
  * - Claim: SKIP LOCKED batch claim that marks RUNNING with a lease and increments `attempts` (at-least-once).
  * - Crash recovery: RUNNING jobs whose lease expired are returned to QUEUED by the next pass of any worker.
- * - Completion is fenced by `locked_by`, so a slow worker whose lease was taken over cannot overwrite the new owner.
+ * - Fencing: every claim writes a fresh random `lease_token`; every success/retry/dead transition requires the exact
+ *   (id, RUNNING, lease_token). A worker whose lease expired and was re-claimed updates zero rows and reports the job as
+ *   `stale` — never as succeeded/retried/dead. `locked_by` (worker id) is diagnostic only: process-derived ids can
+ *   collide across containers, so it is never part of the fence.
  * - Bounded retries with full-jitter exponential backoff; after `max_attempts` the job is DEAD (kept for review, alert).
  * - Handlers must be idempotent; errors are stored as stable codes only (never raw messages, which may carry PII).
  * - Sealed payloads (transient secrets) are purged when a job finishes, succeeded or dead.
@@ -48,6 +51,8 @@ export interface ClaimedJob {
   readonly sealedPayload: Buffer | null;
   readonly attempts: number;
   readonly maxAttempts: number;
+  /** Fencing token of this claim (unique per claim). */
+  readonly leaseToken: string;
 }
 
 /** A handler failure with a stable, PII-free code (stored in `last_error_code`). */
@@ -69,6 +74,7 @@ export interface JobDefinition {
 }
 
 export interface JobRunnerOptions {
+  /** Diagnostic label stored in `locked_by`; not a fencing token and need not be unique. */
   readonly workerId: string;
   readonly leaseMs: number;
   readonly batchSize: number;
@@ -82,6 +88,8 @@ export interface RunResult {
   readonly succeeded: number;
   readonly retried: number;
   readonly dead: number;
+  /** Jobs whose lease was lost before completion: their outcome was discarded (zero rows updated). */
+  readonly stale: number;
 }
 
 /** Bounded exponential backoff with full jitter (no retry storms, CLAUDE.md §13). */
@@ -114,11 +122,12 @@ export class JobRunner {
 
   /** One pass: reclaim expired leases, claim a batch of runnable jobs of the registered types, run them. */
   async runOnce(): Promise<RunResult> {
+    // Reclaiming clears the old fencing token, so the previous holder can no longer complete the job.
     const reclaimed = await this.pool.query(
-      `update platform.jobs set status = 'QUEUED', lease_expires_at = null, locked_by = null, updated_at = now()
+      `update platform.jobs set status = 'QUEUED', lease_expires_at = null, locked_by = null, lease_token = null, updated_at = now()
         where status = 'RUNNING' and lease_expires_at < now()`,
     );
-    if (this.definitions.size === 0) return { reclaimed: reclaimed.rowCount ?? 0, claimed: 0, succeeded: 0, retried: 0, dead: 0 };
+    if (this.definitions.size === 0) return { reclaimed: reclaimed.rowCount ?? 0, claimed: 0, succeeded: 0, retried: 0, dead: 0, stale: 0 };
     const claimed = await this.pool.query<{
       id: string;
       type: string;
@@ -126,6 +135,7 @@ export class JobRunner {
       sealed_payload: Buffer | null;
       attempts: number;
       max_attempts: number;
+      lease_token: string;
     }>(
       `with next as (
          select id from platform.jobs
@@ -135,14 +145,12 @@ export class JobRunner {
           for update skip locked)
        update platform.jobs j
           set status = 'RUNNING', attempts = j.attempts + 1, lease_expires_at = now() + ($3::int * interval '1 millisecond'),
-              locked_by = $4, updated_at = now()
+              locked_by = $4, lease_token = gen_random_uuid(), updated_at = now()
          from next where j.id = next.id
-       returning j.id, j.type, j.payload, j.sealed_payload, j.attempts, j.max_attempts`,
+       returning j.id, j.type, j.payload, j.sealed_payload, j.attempts, j.max_attempts, j.lease_token`,
       [this.types, this.options.batchSize, this.options.leaseMs, this.options.workerId],
     );
-    let succeeded = 0;
-    let retried = 0;
-    let dead = 0;
+    const counts = { succeeded: 0, retried: 0, dead: 0, stale: 0 };
     for (const row of claimed.rows) {
       const job: ClaimedJob = {
         id: row.id,
@@ -151,50 +159,61 @@ export class JobRunner {
         sealedPayload: row.sealed_payload,
         attempts: row.attempts,
         maxAttempts: row.max_attempts,
+        leaseToken: row.lease_token,
       };
-      const outcome = await this.execute(job);
-      if (outcome === 'succeeded') succeeded++;
-      else if (outcome === 'retried') retried++;
-      else dead++;
+      counts[await this.execute(job)]++;
     }
-    return { reclaimed: reclaimed.rowCount ?? 0, claimed: claimed.rowCount ?? 0, succeeded, retried, dead };
+    return { reclaimed: reclaimed.rowCount ?? 0, claimed: claimed.rowCount ?? 0, ...counts };
   }
 
-  private async execute(job: ClaimedJob): Promise<'succeeded' | 'retried' | 'dead'> {
+  private async execute(job: ClaimedJob): Promise<'succeeded' | 'retried' | 'dead' | 'stale'> {
     const definition = this.definitions.get(job.type);
     if (!definition) throw new Error(`claimed job of unregistered type ${job.type}`);
+    let failure: { error: unknown } | undefined;
     try {
       await definition.handler(job);
-      await this.pool.query(
-        `update platform.jobs set status = 'SUCCEEDED', finished_at = now(), lease_expires_at = null, locked_by = null,
-                sealed_payload = null, last_error_code = null, updated_at = now()
-          where id = $1 and status = 'RUNNING' and locked_by = $2`,
-        [job.id, this.options.workerId],
-      );
-      return 'succeeded';
     } catch (e) {
-      const code = e instanceof JobError && CODE.test(e.code) ? e.code : 'UNEXPECTED_ERROR';
-      if (job.attempts >= job.maxAttempts) {
-        const moved = await this.pool.query(
-          `update platform.jobs set status = 'DEAD', finished_at = now(), lease_expires_at = null, locked_by = null,
-                  sealed_payload = null, last_error_code = $3, updated_at = now()
-            where id = $1 and status = 'RUNNING' and locked_by = $2`,
-          [job.id, this.options.workerId, code],
-        );
-        this.options.log.error({ jobId: job.id, jobType: job.type, attempts: job.attempts, errorCode: code, err: e }, 'job dead-lettered');
-        if (moved.rowCount === 1 && definition.onDead) await definition.onDead(job);
-        return 'dead';
-      }
-      const delay = backoffDelayMs(job.attempts, this.options.random);
-      await this.pool.query(
-        `update platform.jobs set status = 'QUEUED', run_after = now() + ($3::int * interval '1 millisecond'), lease_expires_at = null,
-                locked_by = null, last_error_code = $4, updated_at = now()
-          where id = $1 and status = 'RUNNING' and locked_by = $2`,
-        [job.id, this.options.workerId, delay, code],
-      );
-      this.options.log.warn({ jobId: job.id, jobType: job.type, attempts: job.attempts, errorCode: code, retryInMs: delay }, 'job failed; retry scheduled');
-      return 'retried';
+      failure = { error: e };
     }
+    if (!failure) {
+      const done = await this.pool.query(
+        `update platform.jobs set status = 'SUCCEEDED', finished_at = now(), lease_expires_at = null, locked_by = null, lease_token = null,
+                sealed_payload = null, last_error_code = null, updated_at = now()
+          where id = $1 and status = 'RUNNING' and lease_token = $2`,
+        [job.id, job.leaseToken],
+      );
+      return done.rowCount === 1 ? 'succeeded' : this.lostLease(job, 'succeeded');
+    }
+    const e = failure.error;
+    const code = e instanceof JobError && CODE.test(e.code) ? e.code : 'UNEXPECTED_ERROR';
+    if (job.attempts >= job.maxAttempts) {
+      const moved = await this.pool.query(
+        `update platform.jobs set status = 'DEAD', finished_at = now(), lease_expires_at = null, locked_by = null, lease_token = null,
+                sealed_payload = null, last_error_code = $3, updated_at = now()
+          where id = $1 and status = 'RUNNING' and lease_token = $2`,
+        [job.id, job.leaseToken, code],
+      );
+      if (moved.rowCount !== 1) return this.lostLease(job, 'dead');
+      this.options.log.error({ jobId: job.id, jobType: job.type, attempts: job.attempts, errorCode: code, err: e }, 'job dead-lettered');
+      if (definition.onDead) await definition.onDead(job);
+      return 'dead';
+    }
+    const delay = backoffDelayMs(job.attempts, this.options.random);
+    const retried = await this.pool.query(
+      `update platform.jobs set status = 'QUEUED', run_after = now() + ($3::int * interval '1 millisecond'), lease_expires_at = null,
+              locked_by = null, lease_token = null, last_error_code = $4, updated_at = now()
+        where id = $1 and status = 'RUNNING' and lease_token = $2`,
+      [job.id, job.leaseToken, delay, code],
+    );
+    if (retried.rowCount !== 1) return this.lostLease(job, 'retried');
+    this.options.log.warn({ jobId: job.id, jobType: job.type, attempts: job.attempts, errorCode: code, retryInMs: delay }, 'job failed; retry scheduled');
+    return 'retried';
+  }
+
+  /** The fenced transition matched zero rows: another claim owns the job now, so this outcome is discarded. */
+  private lostLease(job: ClaimedJob, attempted: 'succeeded' | 'retried' | 'dead'): 'stale' {
+    this.options.log.warn({ jobId: job.id, jobType: job.type, attempts: job.attempts, attempted }, 'job lease lost before completion; outcome discarded');
+    return 'stale';
   }
 
   /** Polls every `intervalMs`; one pass at a time. A pass failure (e.g. database down) is logged and retried. */

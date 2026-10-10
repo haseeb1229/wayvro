@@ -157,6 +157,7 @@ describe('job input validation (fail closed with stable codes)', () => {
     sealedPayload: null,
     attempts: 1,
     maxAttempts: 1,
+    leaseToken: uuidv7(),
     ...over,
   });
   it('rejects missing ids, missing/invalid sealed payloads and malformed secrets', async () => {

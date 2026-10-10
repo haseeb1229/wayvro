@@ -225,13 +225,16 @@ CREATE TABLE platform.jobs (
   max_attempts smallint NOT NULL CHECK (max_attempts BETWEEN 1 AND 50),
   run_after timestamptz NOT NULL DEFAULT now(),
   lease_expires_at timestamptz NULL,
+  -- diagnostic only (process-derived ids can collide across containers); never used for fencing
   locked_by text NULL CHECK (locked_by IS NULL OR char_length(locked_by) <= 100),
+  -- fencing token: a fresh random uuid per CLAIM; every RUNNING -> terminal/retry transition requires it (ADR-042)
+  lease_token uuid NULL,
   last_error_code text NULL CHECK (last_error_code IS NULL OR last_error_code ~ '^[A-Z][A-Z0-9_]{2,63}$'),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   finished_at timestamptz NULL,
   CHECK (attempts <= max_attempts),
-  CHECK ((status = 'RUNNING') = (lease_expires_at IS NOT NULL AND locked_by IS NOT NULL)),
+  CHECK ((status = 'RUNNING') = (lease_expires_at IS NOT NULL AND locked_by IS NOT NULL AND lease_token IS NOT NULL)),
   CHECK ((status IN ('SUCCEEDED', 'DEAD')) = (finished_at IS NOT NULL)),
   CHECK (status IN ('QUEUED', 'RUNNING') OR sealed_payload IS NULL)
 );
@@ -319,8 +322,8 @@ GRANT SELECT, INSERT ON identity.account_phones, identity.phone_lookup_index, id
 GRANT SELECT, INSERT ON profile.rider_profiles TO wayvro_api;
 GRANT SELECT, INSERT, UPDATE, DELETE ON platform.idempotency_records TO wayvro_api;
 GRANT INSERT ON platform.jobs TO wayvro_api;
--- the phone lookup read set depends on the open lookup-key rotation's phase (dual-read during BACKFILL only)
-GRANT SELECT (target, phase) ON platform.key_rotations TO wayvro_api;
+-- the phone lookup read/write version sets depend on the latest lookup-key rotation's phase and versions (ADR-038 §lookup)
+GRANT SELECT (id, target, phase, from_version, to_version, started_at) ON platform.key_rotations TO wayvro_api;
 GRANT INSERT ON audit.audit_events TO wayvro_api;
 
 GRANT USAGE ON SCHEMA identity, platform, audit TO wayvro_worker;

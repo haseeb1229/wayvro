@@ -236,13 +236,13 @@
     },
     {
       "path": "docs/adr/ADR-038-consumer-auth-session.md",
-      "bytes": 4970,
-      "sha256": "4a8eddd1e46c0e05e3b36c1a6f38fb549e587955591eebb5288effc14afdc0bd"
+      "bytes": 8460,
+      "sha256": "a3b0b8b21a206e9df8d2b703f1d423fce56717ba32f32d869b94547381b90c76"
     },
     {
       "path": "docs/adr/ADR-042-postgresql-jobs.md",
-      "bytes": 4184,
-      "sha256": "702f650da62cb6963feb96838f027cbc1f540b2731b3aafc657abcd26376fe6d"
+      "bytes": 5641,
+      "sha256": "d67a8b978a2766553bcdb852419877f05aee526f27ac1a1b2acf716a4e3fc44a"
     },
     {
       "path": "docs/adr/ADR-045-production-test-double-isolation.md",
@@ -461,8 +461,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md",
-      "bytes": 10927,
-      "sha256": "0c4b7ae386e8a322c761a3ae3bab0ac7f2f3c42b29b0fcaba83d63d9ceb8ba0f"
+      "bytes": 13021,
+      "sha256": "e82152d7a3d22e8dd21c4a645fb38f2a4800419cdf7eefd62966add06e793152"
     },
     {
       "path": "docs/phase2/PHASE2_PLAN.md",

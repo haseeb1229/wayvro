@@ -7,9 +7,10 @@
 //   key-rotation start-field <schema.table.column>
 //   key-rotation start-lookup
 //   key-rotation contract-lookup <rotationId>   (after observing READ_SWITCHED)
-//   key-rotation complete <rotationId>          (after the old key is RETIRED in the provider)
+//   key-rotation complete <rotationId>          (after the old key is RETIRED in the provider; verifies zero old rows)
+//   key-rotation abandon <rotationId>           (field: before DONE; lookup: BACKFILL only — partial new rows deleted)
 import { createDatabase } from '@wayvro/db';
-import { completeRotation, contractLookupRotation, startFieldRotation, startLookupRotation } from '@wayvro/identity-core';
+import { abandonRotation, completeRotation, contractLookupRotation, startFieldRotation, startLookupRotation } from '@wayvro/identity-core';
 import { createLogger } from '@wayvro/observability';
 import { bindProviders } from '@wayvro/provider-interfaces';
 import { composeWorker } from '../composition.js';
@@ -44,8 +45,11 @@ try {
       await completeRotation(rotation, arg ?? '');
       console.log('rotation complete');
       break;
+    case 'abandon':
+      console.log(`rotation abandoned; new-version lookup rows deleted: ${String(await abandonRotation(rotation, arg ?? ''))}`);
+      break;
     default:
-      console.error('usage: key-rotation <status | start-field <field> | start-lookup | contract-lookup <id> | complete <id>>');
+      console.error('usage: key-rotation <status | start-field <field> | start-lookup | contract-lookup <id> | complete <id> | abandon <id>>');
       process.exitCode = 2;
   }
 } finally {

@@ -11,6 +11,22 @@ describe('api configuration', () => {
   it('parses TRUST_PROXY strictly', () => {
     expect(loadApiConfig({ ...base, TRUST_PROXY: 'true' }).TRUST_PROXY).toBe(true);
     expect(() => loadApiConfig({ ...base, TRUST_PROXY: 'yes' })).toThrow(/TRUST_PROXY/);
+    expect(loadApiConfig({ ...base, TRUST_PROXY: '10.0.0.0/8, 192.168.1.10,fd00::/8' }).TRUST_PROXY).toEqual(['10.0.0.0/8', '192.168.1.10', 'fd00::/8']);
+    for (const bad of ['10.0.0.0/33', 'fd00::/129', 'proxy.internal', '10.0.0.1/8/1', '', '1']) {
+      expect(() => loadApiConfig({ ...base, TRUST_PROXY: bad })).toThrow(/TRUST_PROXY/);
+    }
+  });
+
+  it('staging/production refuse trust-all proxy configuration (OTP IP limits must not rest on a spoofable header)', () => {
+    const prod = {
+      WAYVRO_ENV: 'production',
+      DATABASE_URL: 'postgres://wayvro:x@db.internal:5432/wayvro?sslmode=verify-full',
+      REDIS_URL: 'rediss://cache.internal:6379',
+    };
+    expect(() => loadApiConfig({ ...prod, TRUST_PROXY: 'true' })).toThrow(/trust-all is refused/);
+    expect(() => loadApiConfig({ ...prod, WAYVRO_ENV: 'staging', TRUST_PROXY: 'true' })).toThrow(/trust-all is refused/);
+    expect(loadApiConfig({ ...prod, TRUST_PROXY: '10.20.0.0/16' }).TRUST_PROXY).toEqual(['10.20.0.0/16']);
+    expect(loadApiConfig({ ...prod }).TRUST_PROXY).toBe(false);
   });
 
   it('refuses to boot without its dependencies', () => {

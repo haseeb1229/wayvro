@@ -2,6 +2,7 @@
 import { runMigrations } from '@wayvro/db';
 import { FieldCipher, KeyedHasher, localKeyRing, type KeyRing } from '@wayvro/field-crypto';
 import { createRestrictedLogin, createTestDatabase, type RestrictedLogin, type TestDatabase } from '@wayvro/test-support';
+import { withTransaction } from '@wayvro/server-runtime';
 import pg from 'pg';
 import { ENCRYPTED_FIELDS, PhoneLookup, fieldContext } from '../src/index.js';
 
@@ -60,8 +61,13 @@ export function syntheticPhone(): `+92${string}` {
   return `+9230000${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}${String(phoneCounter % 10)}` as `+92${string}`;
 }
 
-/** Inserts an account owning `e164` with the given crypto (as the API role, like the sign-in path). */
+/** Inserts an account owning `e164` with the given crypto in one transaction (as the API role, like the sign-in path). */
 export async function seedOwner(api: pg.Pool, c: ReturnType<typeof crypto>, e164: string): Promise<{ accountId: string; phoneId: string }> {
+  return withTransaction(api, (tx) => seedOwnerIn(tx, c, e164));
+}
+
+/** Same as seedOwner on a caller-provided transaction client. */
+export async function seedOwnerIn(api: pg.PoolClient, c: ReturnType<typeof crypto>, e164: string): Promise<{ accountId: string; phoneId: string }> {
   const accountId = globalThis.crypto.randomUUID();
   const phoneId = globalThis.crypto.randomUUID();
   await api.query(`insert into identity.accounts (id, status, preferred_locale) values ($1, 'ACTIVE', 'en')`, [accountId]);

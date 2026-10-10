@@ -69,6 +69,16 @@ NOT_IN_SCOPE (untouched): A04, A15, R09, W05, K14 (P2.2); Q01, V01 (P2.3); H01, 
 | Limiter / job runner | `packages/server-runtime/test/*.integration.test.ts` |
 | OTP delivery job / session verifier | `packages/identity-core/test/delivery-session.integration.test.ts` |
 
+## 3a. Review corrections applied on `phase-2/identity-controlled-onboarding` (2026-10-11)
+The founder/ChatGPT review of this branch found two correctness defects; the original branch `phase-2/1-identity-session-core` is kept unchanged for audit and the corrections were made on the full Phase 2 branch (unreleased `0001_identity_core.sql` edited in place — no corrective migration, nothing was ever deployed).
+
+| # | Defect | Correction | Evidence |
+|---|---|---|---|
+| RB-01 | Job completion fenced by `locked_by = workerId`; process-derived ids collide across containers | per-claim `platform.jobs.lease_token uuid` (fresh `gen_random_uuid()` on every claim, cleared on reclaim); success/retry/dead require `(id, RUNNING, lease_token)`; a stale worker updates 0 rows and reports `stale`; `workerId` diagnostic only (ADR-042) | `packages/server-runtime/test/jobs-audit.integration.test.ts` — shared-workerId stale success (both orders), stale retry, stale dead (no `onDead`), fresh token per claim, CHECK; 60-job exactly-once unchanged |
+| RB-02 | Lookup writer used every live key version; after `READ_SWITCHED`/contract an old `DECRYPT_ONLY` key could resurrect old rows; completion did not re-check | ledger-derived read/write sets (BACKFILL dual; READ_SWITCHED/RETIRE_PENDING/DONE active-only; ABANDONED old-only), PostgreSQL advisory lock per target (writers SHARED to commit; start/contract/abandon/complete EXCLUSIVE), start data check, digest-mismatch conflicts, `completeRotation` requires zero old rows (ADR-038) | `packages/identity-core/test/rotation.integration.test.ts` — 9 tests incl. deterministic writer-vs-contract interleaving |
+| DH-01 | PostgreSQL group roles are cluster-global | staging and production on separate clusters until namespaced roles exist (Phase 7 precondition, ADR-038) | documentation |
+| DH-02 | `TRUST_PROXY=true` trusts every `X-Forwarded-For` hop | allowlist of proxy IP/CIDRs; trust-all refused in staging/production; real OTP activation requires a defined trusted proxy/network and a blocked direct origin | `apps/api/test/config.test.ts` |
+
 ## 4. Residual risks and debt
 - No independent security assessment (EG-17); OWASP ASVS/MASVS conformance not claimed.
 - S12 recycled-number inheritance is not prevented until P2.9 (signal only).

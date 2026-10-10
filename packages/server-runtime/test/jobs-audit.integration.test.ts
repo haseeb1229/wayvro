@@ -107,9 +107,11 @@ describe('job runner (FOR UPDATE SKIP LOCKED)', () => {
   it('recovers jobs whose worker crashed (expired lease) and fences the stale worker', async () => {
     const id = (await enqueueJob(api, { type: 'test.crash', maxAttempts: 3 })) ?? '';
     // Simulate a worker that claimed the job and died: RUNNING with an already-expired lease.
+    const deadToken = randomUUID();
     await worker.query(
-      `update platform.jobs set status = 'RUNNING', attempts = 1, lease_expires_at = now() - interval '1 second', locked_by = 'dead-worker' where id = $1`,
-      [id],
+      `update platform.jobs set status = 'RUNNING', attempts = 1, lease_expires_at = now() - interval '1 second', locked_by = 'dead-worker',
+              lease_token = $2 where id = $1`,
+      [id, deadToken],
     );
     let runs = 0;
     const runner = new JobRunner(
@@ -128,9 +130,180 @@ describe('job runner (FOR UPDATE SKIP LOCKED)', () => {
     expect(await runner.runOnce()).toMatchObject({ reclaimed: 1, claimed: 1, succeeded: 1 });
     expect(runs).toBe(1);
     expect(await status(id)).toMatchObject({ status: 'SUCCEEDED', attempts: 2 });
-    // The dead worker coming back cannot overwrite the outcome (completion is fenced by locked_by).
-    const stale = await worker.query(`update platform.jobs set status = 'QUEUED' where id = $1 and status = 'RUNNING' and locked_by = 'dead-worker'`, [id]);
+    // The dead worker coming back cannot overwrite the outcome (completion is fenced by its claim's lease token).
+    const stale = await worker.query(`update platform.jobs set status = 'QUEUED' where id = $1 and status = 'RUNNING' and lease_token = $2`, [id, deadToken]);
     expect(stale.rowCount).toBe(0);
+  });
+
+  /**
+   * Distributed fencing (P2.1 review blocker): two runners deliberately share one workerId, as two containers with the
+   * same PID would. Runner A claims with a short lease and stalls inside its handler; the lease expires; runner B
+   * reclaims and re-claims (fresh token). Whatever A does afterwards must update zero rows and must not be reported as
+   * success/retry/dead, while B's claim stays authoritative.
+   */
+  describe('lease-token fencing with a shared workerId', () => {
+    const SHARED = 'worker-1';
+    const leaseOf = async (id: string) =>
+      (
+        await owner.query<{ status: string; lease_token: string | null; attempts: number }>(
+          `select status, lease_token, attempts from platform.jobs where id = $1`,
+          [id],
+        )
+      ).rows[0];
+
+    async function staleScenario(type: string, staleBehaviour: 'succeed' | 'fail', maxAttempts: number, newOwnerFinishesFirst: boolean) {
+      const id = (await enqueueJob(api, { type, maxAttempts })) ?? '';
+      let releaseA: () => void = () => undefined;
+      const aGate = new Promise<void>((r) => (releaseA = r));
+      let releaseB: () => void = () => undefined;
+      const bGate = new Promise<void>((r) => (releaseB = r));
+      let aStarted: () => void = () => undefined;
+      const aRunning = new Promise<void>((r) => (aStarted = r));
+      let bStarted: () => void = () => undefined;
+      const bRunning = new Promise<void>((r) => (bStarted = r));
+      const tokens: string[] = [];
+      let deadCalls = 0;
+      const a = new JobRunner(
+        worker,
+        [
+          {
+            type,
+            handler: async (job) => {
+              tokens.push(job.leaseToken);
+              aStarted();
+              await aGate;
+              if (staleBehaviour === 'fail') throw new JobError('PROVIDER_REJECTED');
+            },
+            onDead: () => {
+              deadCalls++;
+              return Promise.resolve();
+            },
+          },
+        ],
+        { workerId: SHARED, leaseMs: 150, batchSize: 1, log, random: () => 0 },
+      );
+      const b = new JobRunner(
+        worker,
+        [
+          {
+            type,
+            handler: async (job) => {
+              tokens.push(job.leaseToken);
+              bStarted();
+              await bGate;
+            },
+          },
+        ],
+        { workerId: SHARED, leaseMs: 30000, batchSize: 1, log },
+      );
+      const aPass = a.runOnce();
+      await aRunning;
+      await new Promise((r) => setTimeout(r, 400)); // A's lease expires while A is stalled
+      const bPass = b.runOnce();
+      await bRunning;
+      const [tokenA, tokenB] = tokens;
+      expect(tokenA).toBeDefined();
+      expect(tokenB).toBeDefined();
+      expect(tokenA).not.toBe(tokenB);
+      expect(await leaseOf(id)).toMatchObject({ status: 'RUNNING', lease_token: tokenB, attempts: 2 });
+      if (newOwnerFinishesFirst) {
+        releaseB();
+        expect(await bPass).toMatchObject({ reclaimed: 1, claimed: 1, succeeded: 1, stale: 0 });
+        releaseA();
+        expect(await aPass).toMatchObject({ claimed: 1, succeeded: 0, retried: 0, dead: 0, stale: 1 });
+        expect(await leaseOf(id)).toMatchObject({ status: 'SUCCEEDED', lease_token: null });
+      } else {
+        // The stale worker finishes while the new owner is still running: the new owner's claim must survive intact.
+        releaseA();
+        expect(await aPass).toMatchObject({ claimed: 1, succeeded: 0, retried: 0, dead: 0, stale: 1 });
+        expect(await leaseOf(id)).toMatchObject({ status: 'RUNNING', lease_token: tokenB, attempts: 2 });
+        releaseB();
+        expect(await bPass).toMatchObject({ succeeded: 1, stale: 0 });
+        expect(await leaseOf(id)).toMatchObject({ status: 'SUCCEEDED' });
+      }
+      expect(deadCalls).toBe(0);
+    }
+
+    it('stale success is rejected after the new owner completed', async () => {
+      await staleScenario('test.fence-success-late', 'succeed', 3, true);
+    });
+    it('stale success is rejected while the new owner is still running', async () => {
+      await staleScenario('test.fence-success-early', 'succeed', 3, false);
+    });
+    it('stale retry is rejected (attempts left)', async () => {
+      await staleScenario('test.fence-retry', 'fail', 5, false);
+    });
+    it('stale dead-letter is rejected and onDead is not called (no attempts left for the stale claim)', async () => {
+      // A's claim is made the last allowed attempt (2/2), so A's failure takes the dead-letter path.
+      const type = 'test.fence-dead';
+      const id = (await enqueueJob(api, { type, maxAttempts: 2 })) ?? '';
+      await owner.query(`update platform.jobs set attempts = 1 where id = $1`, [id]); // A's claim becomes attempt 2/2
+      let releaseA: () => void = () => undefined;
+      const aGate = new Promise<void>((r) => (releaseA = r));
+      let aStarted: () => void = () => undefined;
+      const aRunning = new Promise<void>((r) => (aStarted = r));
+      let deadCalls = 0;
+      const a = new JobRunner(
+        worker,
+        [
+          {
+            type,
+            handler: async () => {
+              aStarted();
+              await aGate;
+              throw new JobError('PROVIDER_REJECTED');
+            },
+            onDead: () => {
+              deadCalls++;
+              return Promise.resolve();
+            },
+          },
+        ],
+        { workerId: SHARED, leaseMs: 150, batchSize: 1, log },
+      );
+      const aPass = a.runOnce();
+      await aRunning;
+      await new Promise((r) => setTimeout(r, 400));
+      // Another claim with the SAME workerId takes over (reclaim, then a fresh token) and is still RUNNING.
+      await worker.query(
+        `update platform.jobs set status = 'QUEUED', lease_expires_at = null, locked_by = null, lease_token = null where id = $1 and lease_expires_at < now()`,
+        [id],
+      );
+      const newToken = randomUUID();
+      await worker.query(
+        `update platform.jobs set status = 'RUNNING', lease_expires_at = now() + interval '1 minute', locked_by = $2, lease_token = $3 where id = $1`,
+        [id, SHARED, newToken],
+      );
+      releaseA();
+      expect(await aPass).toMatchObject({ claimed: 1, dead: 0, stale: 1 });
+      expect(deadCalls).toBe(0);
+      expect(await leaseOf(id)).toMatchObject({ status: 'RUNNING', lease_token: newToken });
+    });
+
+    it('every claim gets a fresh token and the schema rejects RUNNING without one', async () => {
+      const ids: string[] = [];
+      for (let i = 0; i < 5; i++) ids.push((await enqueueJob(api, { type: 'test.fence-tokens', maxAttempts: 1 })) ?? '');
+      const seen = new Set<string>();
+      const r = new JobRunner(
+        worker,
+        [
+          {
+            type: 'test.fence-tokens',
+            handler: (job) => {
+              seen.add(job.leaseToken);
+              return Promise.resolve();
+            },
+          },
+        ],
+        { workerId: SHARED, leaseMs: 30000, batchSize: 5, log },
+      );
+      expect(await r.runOnce()).toMatchObject({ claimed: 5, succeeded: 5 });
+      expect(seen.size).toBe(5);
+      const probe = (await enqueueJob(api, { type: 'test.fence-check', maxAttempts: 1 })) ?? '';
+      await expect(
+        owner.query(`update platform.jobs set status = 'RUNNING', lease_expires_at = now() + interval '1 minute', locked_by = 'x' where id = $1`, [probe]),
+      ).rejects.toThrow(/check constraint/);
+    });
   });
 
   it('dedupe keys allow one open job per (type, key) and only claim registered types', async () => {
