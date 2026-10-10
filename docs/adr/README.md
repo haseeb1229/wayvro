@@ -20,4 +20,14 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-036](ADR-036-android-build-toolchain.md) | Android build toolchain (SP-AND) | ACCEPTED on evidence — SP-AND PASS via the executed fallback (pnpm hoisted layout after an isolated-layout Windows FAIL) |
 | [ADR-037](ADR-037-local-development-infrastructure.md) | Local development infrastructure (Docker Compose) | ACCEPTED |
 
+## Phase 2 micro-phase P2.1 decisions (2026-10-10) — ACCEPTED on P2.1 evidence, pending founder/ChatGPT review (branch `phase-2/1-identity-session-core`, not merged)
+
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-038](ADR-038-consumer-auth-session.md) | Consumer authentication and session domain implemented directly | ACCEPTED on P2.1 evidence — independent assessment EG-17 still required before real users |
+| [ADR-042](ADR-042-postgresql-jobs.md) | Background jobs on PostgreSQL (`SKIP LOCKED`), not BullMQ | ACCEPTED on P2.1 evidence |
+| [ADR-045](ADR-045-production-test-double-isolation.md) | Production test-double isolation (F-01) | ACCEPTED on P2.1 evidence — ART-ISO 39/39 |
+
+ADR-039 (staff WebAuthn), ADR-040 (OIDC/`jose`), ADR-041 (evidence vault), ADR-043 (mobile additions) and ADR-044 (policy content) remain **proposals** in `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` until their micro-phases.
+
 Founder-locked decisions that are not repeated here: ADR-001 (name), ADR-026 (one public Wayvro app), ADR-035 (modular monolith baseline) — see the Phase 0 backlog.

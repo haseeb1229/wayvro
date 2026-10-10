@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 93,
+  "file_count_excluding_manifest": 97,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 8982,
-      "sha256": "dc990a5f6237c8a54f23fde854568af353cca0997a6d858e5dcdd2dc7d10bb99"
+      "bytes": 9413,
+      "sha256": "cfcbeba7e9fda9342fc1059585f40622277e0cd142c95e57f668ac30918150df"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8208,
-      "sha256": "e0fd31a22d8242f5ac88e04538d52d056f03359fbec995d4a51a8fe150e47f7d"
+      "bytes": 8381,
+      "sha256": "ec78d6c99a0de819d1f66d94222fe6abbd106b0f483ba8e4fcbc7ffae4735bf4"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 7124,
-      "sha256": "181b9116cf9e6c2e9e52be5769fcd38523313d8443aa359b2e3de410b3d889bf"
+      "bytes": 7393,
+      "sha256": "123fd7a70a5539611d26f29355ae666544d671ecbe916407ce4b0f8c282634d0"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -235,14 +235,29 @@
       "sha256": "5c20f83ed1a25ba56de042cd709fe6c9cef2038f890838c03f021d65e6172015"
     },
     {
+      "path": "docs/adr/ADR-038-consumer-auth-session.md",
+      "bytes": 4970,
+      "sha256": "4a8eddd1e46c0e05e3b36c1a6f38fb549e587955591eebb5288effc14afdc0bd"
+    },
+    {
+      "path": "docs/adr/ADR-042-postgresql-jobs.md",
+      "bytes": 4184,
+      "sha256": "702f650da62cb6963feb96838f027cbc1f540b2731b3aafc657abcd26376fe6d"
+    },
+    {
+      "path": "docs/adr/ADR-045-production-test-double-isolation.md",
+      "bytes": 6435,
+      "sha256": "9206ae5d9b5462cc7e4e60185a50207065d6952ee9b57aa8f39f047f6502ee0b"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 2643,
-      "sha256": "3d2ef945936c12069fb600c8d5c769c2272e85f4ba63b126da12e1cdc0ca5822"
+      "bytes": 3572,
+      "sha256": "9f91970d8886fcdbc71329a1543c40bd4add9fa4ae454476e5ba97cb2c8e856d"
     },
     {
       "path": "docs/operations/developer-setup.md",
-      "bytes": 4906,
-      "sha256": "03eb51b91de1d0c203189a7678b5653dc14c5667d0d65891f01e101c5254c91d"
+      "bytes": 7013,
+      "sha256": "6bafd5d7f5ea7b674e8197b2aabc28eb3b8fe875dda97576ed7c153d528ba200"
     },
     {
       "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
@@ -436,8 +451,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
-      "bytes": 14050,
-      "sha256": "aa78ffb89bab0551468688a498d9e63d22bf72b52e790b180e2a37646fc1dd3b"
+      "bytes": 14271,
+      "sha256": "133677738054cc75783c3682d800664acdd3f4fd725f9a2e0ef8946166fdc818"
     },
     {
       "path": "docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md",
@@ -445,14 +460,19 @@
       "sha256": "79c769eff768d5e39584828c2a7f9f39a2830e3022b3356c279d92af3357ccad"
     },
     {
+      "path": "docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md",
+      "bytes": 10927,
+      "sha256": "0c4b7ae386e8a322c761a3ae3bab0ac7f2f3c42b29b0fcaba83d63d9ceb8ba0f"
+    },
+    {
       "path": "docs/phase2/PHASE2_PLAN.md",
-      "bytes": 18037,
-      "sha256": "a35a6349c3461fd07cfe8ac7a872852fde6260df3069b4887220c4fcae235aba"
+      "bytes": 18508,
+      "sha256": "d00cdd6e7a413e6e95ecc6ca98e6295b30d18dd1e21a5f58f631317516049333"
     },
     {
       "path": "docs/phase2/PHASE2_REQUIREMENT_MATRIX.md",
-      "bytes": 26438,
-      "sha256": "eb635dd6f63e746ee3fcb119867bfaef12e2eda0dc5929ae8cf98c27b3e9a20a"
+      "bytes": 26998,
+      "sha256": "6c4c3d55bdbfa5fb1b6498633277a82ea8c00f27f2c507fc6763d57f360c0d01"
     },
     {
       "path": "docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md",

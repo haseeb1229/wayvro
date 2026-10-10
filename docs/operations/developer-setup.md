@@ -28,7 +28,7 @@ cp .env.example .env          # local, non-secret defaults; .env is git-ignored
 ## 3. Start local infrastructure (Docker project `wayvro`)
 ```bash
 pnpm infra:up        # PostGIS 127.0.0.1:25432, Valkey :26379, SeaweedFS S3 :28333 — waits until healthy
-pnpm db:migrate      # applies packages/db/migrations (PostGIS extension)
+pnpm db:migrate      # applies packages/db/migrations: 0000 PostGIS, 0001 identity core (schemas, NOLOGIN roles, grants)
 pnpm infra:status
 pnpm infra:down      # stops containers, keeps data
 pnpm infra:reset -- --confirm-wayvro-reset   # deletes ONLY wayvro_* volumes (synthetic data)
@@ -38,20 +38,28 @@ Never run `docker system prune` / `docker volume prune`; other projects' data ma
 ## 4. Build, test, check
 ```bash
 pnpm build                      # packages + api, worker, realtime, web-public, web-ops
+pnpm build:local                # the API local runner (apps/api/dev -> dist-dev; never deployed, ADR-045)
 pnpm check                      # format, lint, typecheck, boundaries, knip, syncpack, flags, unit tests, Phase 0 docs checks
-set -a; . ./.env; set +a        # (bash) export DATABASE_URL/REDIS_URL for the next two commands
-pnpm test:integration           # real PostGIS/Valkey; coverage thresholds
-node scripts/boot-smoke.mjs     # boots every deployable and checks health/security behaviour
+set -a; . ./.env; set +a        # (bash) export DATABASE_URL/REDIS_URL/WAYVRO_LOCAL_KEY_SEED for the next commands
+pnpm test:integration           # real PostGIS/Valkey as restricted DB roles; throwaway databases; coverage thresholds
+node scripts/boot-smoke.mjs     # boots every deployable, BOOT-NEG refusals, end-to-end local sign-in
+node scripts/artifact-isolation.mjs --negative-controls   # builds real release artefacts (clean, uncached) and proves
+                                                          # no test double/local route can be in or resolve from them
 ```
+Integration tests create and drop their own databases and LOGIN roles (members of `wayvro_api`, `wayvro_worker`, …); they never wipe the shared local `wayvro` database. The artefact check builds outside the repository (OS temp dir) and deletes/rebuilds the server packages' `dist/` without cache.
 
 ## 5. Run the services
 ```bash
-pnpm --filter @wayvro/api start         # http://127.0.0.1:4000/v1/health/live
-pnpm --filter @wayvro/realtime start    # :4001 — refuses all sockets until Phase 2 identity (fail closed)
-pnpm --filter @wayvro/worker start      # health on :4002
+pnpm --filter @wayvro/api start:local  # LOCAL RUNNER on :4000: binds the recording OTP sink, delivers in-process,
+                                       # serves GET /__local/otp-inbox?phone=+92399…  (synthetic numbers only)
+pnpm --filter @wayvro/api start        # production root (no test doubles): OTP requests answer 503 — no OTP vendor (EG-01)
+pnpm --filter @wayvro/realtime start   # :4001 — accepts only live consumer sessions (handshake auth.token = access token)
+pnpm --filter @wayvro/worker start     # health on :4002; runs audit sealing/verification, purge and key-rotation jobs
 pnpm --filter @wayvro/web-public start  # http://127.0.0.1:3210
 pnpm --filter @wayvro/web-ops start     # http://127.0.0.1:3310 — staff shell, NO auth: never deploy
 ```
+
+Local keys: `WAYVRO_LOCAL_KEY_SEED` (in `.env.example`) derives synthetic field/lookup/MAC keys per key id; staging/production refuse it and have no key provider until KMS custody exists (EG-05), so they cannot boot by design. Rotations: set the key states in `WAYVRO_LOCAL_KEY_SPEC` (e.g. `contact.v1=DECRYPT_ONLY,contact.v2=ACTIVE,…`), then `pnpm --filter @wayvro/worker key-rotation start-field identity.account_phones.phone_envelope` (or `start-lookup`, `contract-lookup <id>`, `complete <id>`, `status`); the worker runs the resumable job.
 
 ## 6. Android (the one Wayvro app)
 ```bash
@@ -68,4 +76,7 @@ The first Android build downloads Gradle, the NDK and Maven dependencies (≈2 h
 - **`ninja: error: manifest 'build.ninja' still dirty`** on Windows: native paths too long — the workspace must use `nodeLinker: hoisted` (ADR-034); do not switch it back to isolated.
 - **`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`**: a dependency was published < 24 h ago — pin the previous release.
 - **`ConfigError: invalid configuration`** at boot: a required variable is missing or a staging/production setting points at local/plaintext infrastructure — this is the intended fail-fast behaviour.
+- **`ArtifactPolicyError`**: a release artefact was started with `WAYVRO_ENV=local|test`, or a development build with `staging|production` (ADR-045) — intended.
+- **`KeyProviderError: … requires WAYVRO_LOCAL_KEY_SEED`**: copy the value from `.env.example` into `.env`.
+- **OTP requests answer 503 locally**: you started the production root (`start`) instead of the local runner (`start:local`), or Valkey is down (abuse controls fail closed).
 - Postgres "connection terminated" right after `infra:up`: use `pnpm infra:up` (it waits for the TCP healthcheck) rather than raw `docker compose up -d`.
