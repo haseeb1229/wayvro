@@ -1,139 +1,147 @@
 # PHASE2_AUTH_SESSION_DESIGN — Phone OTP, sessions, recovery, step-up and OIDC linking (PROPOSED)
 
-**Date:** 2026-10-10 · **Status:** Phase 2 PLAN ONLY. No auth code, dependency or provider account exists. · **Requirements:** A02, A03, A05, A11, K01, K08, K09, K13, K15, K16, K17, Q01, Q06, Q36, S12, S13, V02 (staff authentication: `docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md`). · **Entities/state machines:** `docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md`.
+**Date:** 2026-10-10 (planning closure correction applied the same day) · **Status:** Phase 2 PLAN ONLY. No auth code, dependency or provider account exists. · **Requirements:** A02, A03, A05, A11, A15 (signup declaration), K01, K08, K09, K13, K15, K16, K17, Q01, Q06, Q36, S12, S13, V02 (staff authentication: `docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md`). · **Entities/state machines and crypto formats:** `docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md`.
 
 ## 1. Decision summary
 
-| Topic | Decision (proposed) | Alternatives rejected (detail: `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md`) |
-|---|---|---|
-| Auth framework | **Implement the consumer auth domain directly** as NestJS modules over `node:crypto`, PostgreSQL and Valkey. No auth framework. | Better Auth, Lucia (deprecated), Passport, Ory Kratos, Keycloak, SuperTokens, Firebase/Supabase Auth |
-| Consumer credential | Phone OTP is the only credential (CL-01). Google/Apple are optional linked conveniences, never phone-ownership proof. | email/password; OIDC-only accounts |
-| Token model | **Opaque** random tokens (256-bit, base64url), stored only as SHA-256: short access token (15 min) + rotating refresh token (single-use, family = session, reuse detection). | JWT access tokens (revocation latency, key management for no benefit at pilot scale) |
-| Revocation | Immediate: every request validates the session row (Valkey read-through cache ≤ 30 s, invalidated on revoke via pub/sub; DB is truth). | stateless JWT + deny-list |
-| Realtime | `apps/realtime` binds a session-token authenticator in place of `DenyAllAuthenticator`; same verifier, fail-closed. | separate HMAC socket tokens |
-| Mobile storage | Tokens only in OS secure storage (`expo-secure-store`, Keychain/Keystore); nothing in AsyncStorage/logs (Q01). | AsyncStorage, MMKV |
-| OIDC verification | `jose` 6.2.x for ID-token/JWKS verification (P2.10). | hand-rolled JOSE; `google-auth-library`; `openid-client` (full RP not needed) |
-| OTP delivery | Existing `OtpDeliveryPort` (`send({to, message, channel})`); code generation/verification stays server domain logic (as the port comment already requires). Real SMS/WhatsApp adapters only in activation P2.A1. | vendor-side verify APIs (vendor would own the security property and the data) |
+| Topic | Decision (founder-approved direction, details re-checked at implementation) |
+|---|---|
+| Auth implementation (ADR-038) | Implement the consumer auth/session **domain** directly on the existing NestJS/PostgreSQL/Valkey architecture instead of adopting a general auth framework. This is a **fit/control** decision, **not** a claim that custom auth is inherently safer — it is not. It is **not** permission to invent cryptographic protocols: random tokens, MACs and AEAD use Node's standard primitives; protocol-heavy standards use focused mature libraries (`jose` for OIDC, SimpleWebAuthn for WebAuthn); every auth state transition whose correctness depends on concurrency uses database constraints/transactions; no auth code is accepted without the adversarial and concurrency suites (K13); an independent security assessment (EG-17/U01) remains a gate before any real user. |
+| Consumer credential | Phone OTP only (CL-01). Google/Apple are optional linked conveniences, never phone-ownership proof. |
+| Token model | Opaque random tokens (256-bit) stored only as SHA-256: short access token + rotating single-use refresh token, family = session, reuse detection. |
+| Revocation | Immediate: every request validates the session row (Valkey read-through cache ≤ 30 s, invalidated on revoke; DB is truth). |
+| Realtime | `apps/realtime` binds a session-token authenticator in place of `DenyAllAuthenticator`; fail-closed. |
+| Mobile storage | OS secure storage only (`expo-secure-store`), nothing in AsyncStorage/logs (Q01). |
+| OIDC | `jose` verification (P2.10); flags off; production externally gated. |
+| OTP delivery | Existing `OtpDeliveryPort`; generation/verification stay server domain logic. Real adapters only in activation P2.A1. The local recording sink is a development/test mechanism only (§8). |
 
-## 2. OTP design (A02, A03, K08, Q06)
+## 2. Account identity semantics (closure correction §1)
 
-### 2.1 Request
+- A **current verified phone** belongs to **at most one** active account (database-enforced, per lookup-key version); an account has **at most one** current verified phone in Phase 2 (database-enforced).
+- Wayvro intends one identity account per person, but **one-account-per-human is not a database invariant and is never claimed as one**: a person can create a second account with a different number before signals, review or recovery detect it.
+- Duplicate-person handling = duplicate signals (KYC doc §8), staff review, recovery cases and **safe credential movement** (phone/OIDC link moved only through an audited, maker-checker, cooldown recovery case). **Histories are never merged.**
+- Concurrent first sign-in for the same phone resolves to one account through the unique current-owner lookup index; the loser signs into the winner's account.
+
+## 3. OTP design (A02, A03, K08, Q06)
+
+### 3.1 Request
 `POST /v1/auth/otp-challenges` `{ phone, purpose: "SIGN_IN", installationId, locale }` + `Idempotency-Key`.
-1. Normalise with `normalisePakistanMobile()`; reject non-PK, landline, malformed with `WAYVRO_E_VALIDATION` (this reveals only syntax, never account existence). Only `+923XXXXXXXXX` is accepted at launch — this also removes international premium-rate pumping targets.
-2. Evaluate limits atomically (Valkey Lua scripts; §2.4). **If Valkey is unavailable, OTP issuance fails closed** (`503 WAYVRO_E_DEPENDENCY_UNAVAILABLE`), because sending SMS without limits is the cost-abuse failure.
+1. Normalise with `normalisePakistanMobile()`; non-PK/landline/malformed ⇒ `WAYVRO_E_VALIDATION` (syntax only, never existence). Only `+923XXXXXXXXX` at launch.
+2. Evaluate limits atomically (Valkey Lua, §3.4). **Limiter unavailable ⇒ fail closed** (`503`), no SMS.
 3. Supersede any `ISSUED` challenge for the same phone + purpose + installation.
-4. Generate a 6-digit code with `crypto.randomInt(0, 1_000_000)` (uniform), store `code_mac = HMAC-SHA-256(OTP_PEPPER, challengeId ‖ code)`; never store or log the code.
-5. Send through the configured channel order (SMS primary; WhatsApp authentication template fallback when activated — FD-05). The message template contains the code, a "never share" warning, no link, and (when P2.A1 adds it) the Android SMS Retriever app hash.
-6. Respond **always** `202 { challengeId, expiresAt, resendAvailableAt, channel, maskedDestination }` for any syntactically valid number — whether or not an account exists, whether limits silently suppressed delivery (see 2.4 "silent drop"), or delivery is pending. Timing is equalised by doing the same DB/Valkey work on every path and sending asynchronously via the job table.
+4. Code: `crypto.randomInt(0, 1_000_000)`, zero-padded; store only `code_mac = HMAC-SHA-256(otp_mac_key[v], challengeId ‖ code)` with `mac_key_version`; never log/store the code.
+5. Send asynchronously via the job table through the configured channel order (SMS, then the WhatsApp authentication template when activated — FD-05).
+6. Respond **always** `202 { challengeId, expiresAt, resendAvailableAt, channel, maskedDestination }` for any syntactically valid number, including silently dropped sends; DB/Valkey work is equalised across paths.
 
-### 2.2 Verify
-`POST /v1/auth/sessions` `{ challengeId, code, installationId, device: { platform, appVersion } }` + `Idempotency-Key`.
-- Constant-time MAC comparison (`crypto.timingSafeEqual`). Wrong code → `attempts += 1`; at `max_attempts` (5) the challenge becomes `LOCKED`. Error: `401 WAYVRO_E_OTP_INVALID_OR_EXPIRED` for wrong/expired/consumed/superseded/unknown challenge (identical body); `WAYVRO_E_OTP_LOCKED` only for a challenge the caller already holds (reveals nothing about accounts).
-- Success = CAS `ISSUED → CONSUMED` in the same transaction that: finds the account by `phone_lookup_hash` or creates `accounts` + `account_phones` + `rider_profiles` (the partial unique index resolves concurrent first-sign-in races: the loser re-reads and signs into the winner's account); runs the recycled-number check (§5); upserts the device; creates the session and refresh token; writes the audit and security events.
-- Response: `201 { accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, sessionId, isNewAccount, requiredActions[] }`. After ownership is proven, revealing `isNewAccount` to the phone owner is not enumeration.
-- Server time only (Q23); the device clock is never consulted.
+### 3.2 Verify
+`POST /v1/auth/sessions` `{ challengeId, code, installationId, device }` + `Idempotency-Key`. Constant-time MAC comparison; wrong code increments attempts; 5 ⇒ `LOCKED`. Wrong/expired/consumed/superseded/unknown ⇒ one generic `401 WAYVRO_E_OTP_INVALID_OR_EXPIRED`. Success = CAS `ISSUED → CONSUMED` in one transaction that resolves/creates the account (§2), runs the recycled-number check (§6), upserts the device, creates session + refresh token, writes audit and security events, and returns `201 { accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, sessionId, isNewAccount, requiredActions[] }` (`requiredActions` may include `ACCEPT_POLICIES` and `AGE_DECLARATION` per A15 policy). Server time only.
 
-### 2.3 Resend
-`POST /v1/auth/otp-challenges/{id}/resends` — allowed after `resendAvailableAt`; cooldown escalates 60 s → 120 s → 300 s; max 3 resends per challenge; resend re-generates the code (old code invalid) and counts against every limit.
+### 3.3 Resend
+After `resendAvailableAt`; cooldown 60 s → 120 s → 300 s; max 3 resends; each resend issues a new code and counts against every limit.
 
-### 2.4 Limits, quotas and pumping controls (initial values; all configuration, tuned with data)
+### 3.4 Limits and pumping controls (configuration defaults, tuned with data)
 
-| Dimension | Limit | On breach |
+| Dimension | Default | On breach |
 |---|---|---|
-| Challenge TTL | 5 min | `EXPIRED` |
-| Verify attempts per challenge | 5 | `LOCKED` |
-| Sends per phone | 5 / hour, 10 / 24 h | generic 202 + **silent drop** (no SMS); counter visible to ops |
-| Failed challenges per phone | 5 locked/expired-unverified / 24 h | phone cooldown 24 h; generic response; T&S review signal |
-| Sends per installation | 10 / 24 h | `429 WAYVRO_E_RATE_LIMITED` (installation already holds its own history; no account information leaks) |
-| Sends per client IP | soft 30 / h per IPv4 /24 or IPv6 /56 → risk score; hard 200 / h | `429` at hard limit only — Pakistani mobile carriers use CGNAT, so IP is a weak signal |
-| Per number prefix (first 5 digits) and per ASN | conversion-rate monitor: verified ÷ sent < 30 % over ≥ 200 sends / h | alert + automatic temporary friction (longer cooldown) for that prefix/ASN |
-| Global spend | daily and monthly budget per provider; alerts at 50/80/100 % (RSK-011/RSK-018) | at 100 %: new sends refused with `503 WAYVRO_E_DEPENDENCY_UNAVAILABLE`, existing sessions unaffected; never "verified without OTP" |
+| Challenge TTL / attempts | 5 min / 5 | `EXPIRED` / `LOCKED` |
+| Sends per phone | 5 / h, 10 / 24 h | generic 202 + silent drop |
+| Failed challenges per phone | 5 / 24 h | 24 h phone cooldown, generic response, T&S signal |
+| Sends per installation | 10 / 24 h | `429 WAYVRO_E_RATE_LIMITED` |
+| Sends per client IP | soft 30 / h per IPv4 /24 or IPv6 /56 (risk score), hard 200 / h | `429` at hard limit (CGNAT makes IP weak) |
+| Prefix (first 5 digits) / ASN | verified ÷ sent < 30 % over ≥ 200 sends/h | alert + temporary friction |
+| Global spend | daily/monthly budget per provider; alerts 50/80/100 % | new sends refused with `503` at 100 %; never "verified without OTP" |
 
-"Silent drop" is deliberate: telling an attacker "limit reached for this number" would confirm number-level state; the legitimate owner is told in-app "If you didn't receive a code, try again later" after the normal cooldown. Device attestation (Play Integrity/App Attest, Q02) is a Phase 4 signal that can later relax/tighten friction; CAPTCHA is not used in the mobile flow (AB-01).
+### 3.5 Outage and native conveniences
+All channels failing ⇒ `DELIVERY_FAILED`, honest `503` with retry-after; no verification without a delivered code; **no master OTP, no bypass list, no tester numbers** in any environment. iOS `textContentType="oneTimeCode"` / Android `autoComplete="sms-otp"` (built into React Native); Android SMS Retriever is DESIGN_NOW_ACTIVATE_LATER with P2.A1. Auto-read is never proof.
 
-### 2.5 Vendor outage
-Channel order SMS → WhatsApp (when both are activated). If every channel fails: challenge `DELIVERY_FAILED`, response to the next status poll / resend explains "We couldn't send a code right now" (`503`), with retry-after; no verification without a delivered code; no master OTP, no bypass list, no "trusted tester" numbers in any environment beyond the local/test sink (§8).
+## 4. Sessions and tokens (K09, A11, Q01)
 
-### 2.6 Native conveniences
-iOS `textContentType="oneTimeCode"` and Android `autoComplete="sms-otp"` are built into React Native — no dependency, single OTP input field (multi-field autofill bugs, R4 §6). Android SMS Retriever needs a native module and a vendor template with the app hash → DESIGN_NOW_ACTIVATE_LATER with P2.A1. Auto-read is a convenience, never proof (docs/18 §A.6).
+**Founder Q-06:** the following are **provisional configurable defaults**, not protocol constants:
 
-## 3. Sessions and tokens (K09, A11, Q01)
-
-| Parameter | Consumer (proposal — founder Q-06) | Staff (matrix doc) |
+| Parameter | Consumer default | Staff (matrix doc) |
 |---|---|---|
-| Access token | opaque, 15 min | opaque, 5 min, BFF-held |
-| Refresh token | opaque, single-use, rotated on every refresh | none (re-auth with WebAuthn; idle unlock) |
+| Access token | 15 min, opaque | 5 min, opaque, BFF-held |
+| Refresh token | single-use, rotated on every refresh | none (WebAuthn re-assertion; idle unlock) |
 | Idle expiry | 60 days without refresh | 15 min (lock) |
 | Absolute expiry | 180 days, then phone OTP again | 8 h |
 | Step-up freshness | 10 min | 5 min |
 
-- **Hashing:** tokens are random 32 bytes; the DB stores `SHA-256(token)` (high-entropy secrets need no slow hash). Lookup by hash; constant-time compare not needed for hash lookup, but token format is validated first.
-- **Rotation & reuse detection:** `POST /v1/auth/token-refreshes { refreshToken }` + `Idempotency-Key`. CAS `used_at IS NULL → now()` inside a transaction that also checks session `ACTIVE`, idle/absolute expiry and that no `ACCOUNT` `SECURITY_HOLD` restriction exists. Presenting a `USED` token: if within a **30 s leeway** *and* the request carries the same `Idempotency-Key` as the original refresh, the stored (encrypted, 60 s TTL) response is replayed — this absorbs mobile retry after a lost response; otherwise the session is revoked (`REFRESH_REUSE`) and a security event is raised (stolen-token signal).
-- **Mobile single-flight:** the client serialises refreshes (one in flight), persists the new pair to secure storage before releasing waiting requests, and retries a refresh only with the same `Idempotency-Key`.
-- **Logout current:** `DELETE /v1/auth/sessions/current`. **Logout all / all others:** `POST /v1/account/session-revocations { scope: "ALL" | "ALL_OTHERS" }`. **Single device:** `DELETE /v1/account/sessions/{sessionId}` (owner only; IDOR-tested).
-- **Session list:** `GET /v1/account/sessions` returns platform, app version, first/last seen (coarse), current flag — no IP, no location.
-- **Lost device:** the owner revokes from another session; a user with no other session signs in with OTP on the new device and uses "sign out other devices"; support can revoke all sessions after identity verification (staff action `support.account.sessions.revoke`, step-up + reason, audited).
-- **Account restriction / phone change / deletion / recovery** revoke sessions server-side; the cache invalidation message makes revocation effective within one request.
-- **Realtime:** handshake token = current access token; on expiry the client reconnects after refresh; room membership derives from the verified session (ADR-005b rule).
-- **Session fixation:** tokens are always freshly minted after OTP/OIDC success; nothing from a pre-auth state is promoted; challenge ids are not session identifiers.
+- Tokens = 32 random bytes; DB stores `SHA-256(token)`.
+- **Rotation & reuse detection:** `POST /v1/auth/token-refreshes` + `Idempotency-Key`; CAS `used_at IS NULL → now()` in a transaction that also checks session state/expiry and the absence of an `ACCOUNT` `SECURITY_HOLD`. A `USED` token presented within a 30 s leeway **with the same idempotency key** replays the stored (encrypted, 60 s) response; otherwise the session is revoked (`REFRESH_REUSE`) and a security event raised.
+- Mobile client: single-flight refresh, persist new pair to secure storage before releasing waiters, retry only with the same idempotency key.
+- Logout current (`DELETE /v1/auth/sessions/current`), logout all / all others (`POST /v1/account/session-revocations`), single session (`DELETE /v1/account/sessions/{id}`, owner only, 404 for foreign ids), session list (platform, app version, coarse first/last seen — no IP/location).
+- Lost device: revoke from another session; or OTP on the new device then "sign out other devices"; or support revocation after verification (step-up + reason, audited).
+- Restriction / phone change / deletion / recovery revoke sessions server-side with immediate cache invalidation.
+- Realtime handshake uses the access token; rooms derive from the verified session.
+- Session fixation: tokens minted only after OTP/OIDC success; challenge ids are never session identifiers.
 
-## 4. Step-up (high-risk reauthentication)
+## 5. Step-up and new-device risk policy
 
-`POST /v1/account/step-ups` → OTP to the **current** verified phone (purpose `STEP_UP`) → `POST /v1/account/step-ups/{id}/verifications` → session `assurance=OTP_STEP_UP`, `step_up_at=now`.
-Required (fresh ≤ 10 min) for: phone change, link/unlink OIDC, revoke-all from a session that is itself new (< 24 h), deletion request, recovery completion, and — from Phase 4 — first driver go-online on a new device (D27/K18 interplay; founder Q-14 for the driver re-check policy). An OIDC-established session on a device unknown to the account always carries `requiredActions: [PHONE_STEP_UP]` before driver-scoped or account-changing actions (founder Q-02).
+`POST /v1/account/step-ups` → OTP to the **current** phone (`STEP_UP`) → verification ⇒ `assurance=OTP_STEP_UP`. Required (fresh ≤ 10 min) for: phone change, OIDC link/unlink, revoke-all from a session < 24 h old, deletion request, recovery completion.
+**Founder Q-02 (approved):** an OIDC-established session on a device unknown to the account carries `requiredActions: [PHONE_STEP_UP]` before any account-changing or driver-sensitive action.
+**Founder Q-14 (risk-triggered re-verification, not universal):** a new driver device gets the normal phone/session risk controls and step-up. **Earning may be temporarily restricted only when the risk policy triggers** (e.g. recent number re-verification + new device + dormancy, device/installation velocity, account-sharing reports, SIM-swap pattern) — implemented as a system-created, reason-coded, appealable, auto-expiring `DRIVER_ROLE` restriction with `reason_class=RISK_HOLD`, plus a `REVERIFICATION` review case. Selfie/manual/in-person re-verification is one possible **risk-triggered** outcome, never a blanket device-change rule; any real selfie re-check remains subject to the DPIA gate (EG-10). Phase 4 (D27/K12) consumes the resulting restriction/re-verification state at go-online.
 
-## 5. Recycled numbers, SIM swap and recovery (S12, K17, K08)
+## 6. Recycled numbers, SIM swap and recovery (S12, K17, K08)
 
-Pakistani operators recycle inactive numbers; the exact dormancy period is **UNVERIFIED** (no PTA/MNO source found in Phase 0). No operator SIM-swap API is known to be available to Wayvro (**UNVERIFIED**, EG-22). Controls are therefore heuristic and conservative:
+The operator recycling period and any SIM-swap API are **UNVERIFIED** (EG-22). **Founder Q-07:** 90 days is a **provisional risk threshold for local/test design only**; it is not a PTA/MNO rule or a fact, and production tuning is gated by EG-22 and measured evidence.
 
-1. **Dormant account + new device** (account `last_active_at` older than the dormancy threshold — proposal 90 days, founder Q-07 — and the installation unknown to the account): OTP success yields a session with `requiredActions: [RECOVERY_REVIEW]` and a **restricted scope**: no rider/driver history, no saved data, no profile details beyond "an older Wayvro account was linked to this number". The user chooses:
-   - **"This is my account"** → must pass a continuity proof: re-authentication with a linked OIDC identity (if one exists, P2.10), or a staff-assisted recovery case (drivers: reviewer compares a fresh guided selfie + CNIC claim against vault evidence — manual, FD-06; riders without another factor: limited recovery, see founder Q-08).
-   - **"I'm new to Wayvro"** → the old account's phone is `RELEASED(RECYCLED_NUMBER_NEW_OWNER)`, the old account is restricted `SECURITY_HOLD` and kept for its retention period (its owner can still recover via staff), and a **new** account is created for the new owner. The new owner never sees the previous owner's data (S12 core property).
-2. **SIM-swap signals** (new device + recent number re-verification + high-value action): 24 h cooldown before phone-dependent sensitive changes (phone change, OIDC link, payout changes in Phase 9), notifications to all previously active sessions, and driver accounts require the manual re-check path before earning from the new device (Phase 4 enforcement).
-3. **Phone change (self-service):** fresh step-up on the current phone → OTP to the new phone → if the new number is verified on another account: generic refusal "This number can't be added. If it's yours, sign in with it or contact support" — no merge, no disclosure of the other account → `COMPLETED`, all other sessions revoked, security events + notices.
-4. **Lost phone (recovery):** user signs in with the new number (OTP) → "Recover my previous account" → proof (linked OIDC re-auth, or staff case with identity evidence) → **72 h cooldown** with notices to every old session ("Cancel if this wasn't you") → old phone `RELEASED`, new phone attached, sessions revoked. The empty account created for the new number during the attempt is deleted if unused.
-5. **Notifications (A11/K17):** Phase 2 channels are (a) the in-app security activity list (`identity.security_events`) and (b) SMS for the highest-risk events (phone change started/completed, recovery started, all sessions revoked) through `OtpDeliveryPort`-family transactional SMS once a vendor is activated (P2.A1). Push (S11) arrives in Phase 4; email is DESIGN_NOW_ACTIVATE_LATER (founder Q-03).
+1. **Dormant account + unknown installation** (account inactive longer than the threshold): OTP success yields a restricted session with `requiredActions: [RECOVERY_REVIEW]` exposing no history. Choices:
+   - **"This is my account"** ⇒ requires **strong continuity proof** (§6.4); without it the choice is unavailable.
+   - **"I'm new to Wayvro"** ⇒ old account's phone `RELEASED(RECYCLED_NUMBER_NEW_OWNER)`, old account `SECURITY_HOLD` and retained under policy, and a new clean account is created. The new owner never sees prior data.
+2. **SIM-swap signals** (new device + recent re-verification + high-value action): 24 h cooldown before phone-dependent sensitive changes, notices to previously active sessions, and — for drivers — the risk policy of §5 may place a `RISK_HOLD`.
+3. **Self-service phone change:** fresh step-up on the current phone → OTP to the new phone → if the new number is current on another account: generic refusal, no merge, no disclosure → complete, other sessions revoked, notices.
+4. **Lost-phone recovery — strong proof only (founder Q-08, closure correction §4):**
+   - **Previously linked OIDC identity** (P2.10 onward): fresh OIDC re-authentication of the same `(provider, sub)` + OTP on the new number + **72 h cooldown** with notices to every old session ("cancel if this wasn't you") ⇒ phone moved.
+   - **Driver with enrolled KYC evidence:** strict `ACCOUNT_RECOVERY` review case: new-number OTP + fresh guided capture compared by a reviewer against vault evidence (manual, FD-06; real data only after EG-10) + **maker-checker** + 72 h cooldown + audit.
+   - **Rider-only account without a pre-existing strong factor:** **no restoration of the old history through support judgement.** The old account stays on `SECURITY_HOLD`, retained under policy; the person continues with a new clean account (the account created by the new-number sign-in). Support may explain the policy and help with data/deletion requests per law, not move credentials.
+   - Any credential movement between existing accounts keeps maker-checker and cooldowns.
+5. **Notifications:** in-app security activity (`identity.security_events`) and SMS for the highest-risk events once a vendor exists (P2.A1); push arrives with S11 (Phase 4); e-mail deferred (Q-03).
 
-## 6. Google and Apple OIDC linking (K15, K16, S13) — micro-phase P2.10, flags default OFF
-
-Principles: optional convenience; never creates an account on its own (CL-01); never phone-ownership proof; never grants driver/staff status; immutable `(provider, sub)` is the key; **email is never used to find or merge accounts**.
+## 7. Google and Apple OIDC linking (K15, K16, S13) — P2.10, flags default OFF
 
 | Flow | Rule |
 |---|---|
-| Token verification | Mobile obtains an ID token natively (Google Sign-In / Sign in with Apple) with a server-issued **nonce** (`POST /v1/auth/oidc-nonces`, single use, 5 min, bound to installation). Server verifies with `jose`: signature against cached provider JWKS (refresh on unknown `kid`, bounded), `iss`, `aud` = configured client ids, `exp`/`iat` with ≤ 60 s skew, `nonce` match, Apple `nonce_supported`, Google `email_verified` recorded but not trusted for linking. |
-| Sign-in with linked identity | `POST /v1/auth/oidc-sessions { provider, idToken, nonce, installationId }` → if `(provider, sub)` is `LINKED`: session `assurance=OIDC`; if the device is unknown to the account → `requiredActions: [PHONE_STEP_UP]`. If not linked → generic `401 WAYVRO_E_OIDC_NOT_LINKED` ("Sign in with your phone number first, then link Google/Apple in Settings") — no hint whether an account with that email exists. |
-| Link | Authenticated, fresh phone step-up, `POST /v1/account/oidc-links { provider, idToken, nonce }`. Conflicts: `(provider, sub)` linked to another account → `409 WAYVRO_E_OIDC_LINK_CONFLICT` (generic, audited, T&S signal); account already has a link for that provider → must unlink first. |
-| Email collision | Irrelevant to linking by design. An OIDC email equal to another account's contact email changes nothing. |
-| Unlink | Fresh step-up; allowed at any time because phone remains the credential; security event + notice. |
-| Apple specifics | private-relay email stored only as contact (encrypted) and flagged; name is available only at first authorisation — offered to prefill display name, never required; server-to-server notifications (consent revoked, account deleted) set `REVOKED` (endpoint needs the Apple developer account — P2.A3); token revocation on account deletion (P2.A3). |
-| Provider outage | Phone OTP path unaffected; linked identities preserved; OIDC sign-in returns `503` with "use your phone number". |
-| Duplicate accounts / merge requests | **No account merging in Phase 2.** A user with two accounts proves both (OTP on each phone or OIDC + OTP) to a staff recovery case; staff may move a phone or an OIDC link after cooldown and delete the surplus account at the user's request; histories are never merged (S13, K07). |
-| Manual conflict recovery | `ACCOUNT_RECOVERY` review case; maker-checker when the outcome moves a credential between accounts. |
-| iOS store rule | If Google sign-in ships on iOS, Sign in with Apple must ship too (R4 §2, guideline 4.8) — P2.A2 and P2.A3 activate together for iOS. |
+| Verification | Native ID token with a server-issued single-use nonce (5 min, installation-bound); `jose` verifies signature via cached JWKS (bounded refresh on unknown `kid`), `iss`, `aud`, `exp`/`iat` (≤ 60 s skew), `nonce`, algorithm allowlist. |
+| Sign-in | Only for a `LINKED` `(provider, sub)`; unknown device ⇒ `PHONE_STEP_UP` required (Q-02). Not linked ⇒ generic `401 WAYVRO_E_OIDC_NOT_LINKED`. **No account creation via OIDC.** |
+| Link | Authenticated, fresh phone step-up; `(provider, sub)` on another account ⇒ `409 WAYVRO_E_OIDC_LINK_CONFLICT` (generic, audited, T&S signal). |
+| E-mail | Never a lookup or merge key; **no e-mail-based identity merge**; e-mail channel deferred (Q-03). |
+| Unlink | Fresh step-up; always allowed (phone remains the credential). |
+| Apple | relay e-mail stored as encrypted contact only; first-authorisation name optional; S2S notifications and token revocation on deletion in P2.A3. |
+| Outage | Phone path unaffected; `503` for OIDC with "use your phone number". |
+| Duplicates | No merge feature; recovery case with proof of both principals, maker-checker, cooldown; histories never merged. |
+| iOS rule | If Google sign-in ships on iOS, Sign in with Apple ships too (P2.A2 + P2.A3 together for iOS). |
 
-Engineering (verification, linking rules, collision handling, tests with locally generated synthetic keys and a local JWKS fixture server) is implementable now; **production use is EXTERNAL_GATED** by the Google Cloud OAuth project (EG-06) and the Apple Developer Program account (EG-07), and K15/K16 are not reported satisfied until a real-provider integration test passes.
+Production use is EXTERNAL_GATED (EG-06/EG-07); K15/K16 are not reported satisfied until real-provider integration tests pass.
 
-## 7. Authorization model for consumer endpoints (V02, V07)
+## 8. Production test-double isolation — F-01 fixed in P2.1 (closure correction §2, §17)
 
-- A global NestJS guard requires every route to declare a policy (`@Policy('account.sessions.revoke')`); a boot-time/unit test enumerates registered routes and fails if any route lacks one (default deny). Health routes are explicitly `@Public()`.
-- The principal is `{ accountId, sessionId, assurance, stepUpAt, riderProfileId, driverProfileId? }` resolved server-side from the token; client-supplied ids, roles, modes, KYC status or `email_verified` are never trusted.
-- Resource queries are scoped by **profile id** (rider vs driver) — a rider endpoint cannot return driver rows for the same account; owner checks are part of the repository query (`WHERE account_id = $principal`), not a post-filter.
-- Request DTOs are strict Zod objects (`.strict()`); unknown fields are rejected (mass assignment); server-owned fields (state, verified values, ids) do not exist in request schemas.
-- Restricted sessions (`ACCOUNT` restriction, `RECOVERY_REVIEW`) carry a reduced policy set evaluated by the same guard.
+**Problem (verified in Phase 1 code):** `@wayvro/provider-interfaces` ships `RecordingOtpDelivery`, `InMemoryObjectStorage`, `RecordingPushNotification` and `defaultProviderBindings(env)` in the same production package as the ports; `apps/api` binds them when `WAYVRO_ENV` is `local`/`test`. The environment name alone is therefore the boundary.
 
-## 8. Test/local OTP and mock fail-closed hardening
+**Design (P2.1):**
+1. **Physical separation.** Move every test double into a new private workspace package `@wayvro/provider-test-doubles` (recording OTP sink, in-memory storage, recording push, local JWKS fixture later). It is declared **only as a `devDependency`** of the apps/tests that use it. Remove the mocks and `defaultProviderBindings()` from `@wayvro/provider-interfaces`, which keeps ports and the binding guard only.
+2. **Production composition roots cannot reference doubles.** `apps/api/src/main.ts`, `apps/worker/src/main.ts`, `apps/realtime/src/main.ts` bind only real adapters from `packages/provider-adapters/*` (none exist until activation tracks) — an unbound port makes its feature return `503 WAYVRO_E_DEPENDENCY_UNAVAILABLE`, and staging/production configuration refuses to boot without the required adapter configuration.
+3. **Local development entry points live outside the deployable build.** A local runner (e.g. `apps/api/dev/main.local.ts`, outside `src/`, excluded from the production `tsc` build and from the deploy artefact) composes the same `createApp()` with test doubles for `pnpm dev`, boot smoke and E2E. The test-OTP inbox route is registered only by this local runner.
+4. **Deployable artefact = production dependencies only.** Each server app gets a reproducible artefact build (`pnpm deploy --prod` into an isolated directory, or `turbo prune` + `pnpm install --prod --frozen-lockfile` if pnpm 12's deploy mode conflicts with the hoisted linker — verified in P2.1). Container images in Phase 7 are built from exactly this directory.
+5. **Release build marker.** The production build writes an immutable `build-info.json` (`artifact: "release"`, commit SHA) into `dist/`; when present, boot **refuses `WAYVRO_ENV=local|test`**. So a production artefact accidentally configured as `local` neither has test doubles nor accepts the local environment.
+6. **Static guards.** dependency-cruiser rule `no-production-to-test-doubles` (any `src/**` of an app/package → `@wayvro/provider-test-doubles` is an error; the existing `not-to-dev-dep` rule is a second layer); ESLint boundaries element for the package; Knip production mode must not see it as a production dependency.
+7. **Runtime defence in depth (kept):** `bindProviders()` still refuses mock-branded implementations outside `local`/`test`; staging/production config rules still reject local hosts/plaintext transports.
 
-Phase 1 refuses mock-branded providers outside `local`/`test` (`bindProviders`), but the refusal depends only on `WAYVRO_ENV` (finding F-01, `PHASE2_PLAN.md` §7). Phase 2 adds:
-1. The local/test OTP sink (`RecordingOtpDelivery`, already present) exposes captured codes only through a test-only route module registered when `WAYVRO_ENV ∈ {local,test}`; boot smoke asserts the route is **absent (404)** under staging/production configuration and that production config with a mock OTP binding refuses to boot.
-2. Staging/production configuration schemas **require** real adapter configuration for `otpDelivery` (vendor URL/credentials references) — missing ⇒ `ConfigError` at boot.
-3. The sink never generates deterministic codes; tests read the random code from the sink (no "123456").
-4. Phase 7 (first deployable images) adds an immutable build marker so a release image refuses `WAYVRO_ENV=local|test` — recorded as a Phase 7 hardening item, not implemented in Phase 2.
+**CI evidence (new `artifact-isolation` step, P2.1 exit gate) — for api, worker and realtime:**
+- build the production artefact directory;
+- assert `node_modules/@wayvro/provider-test-doubles` is absent and that no file in the artefact contains the double package specifier, the mock brand `wayvro.provider.mock` or the double class names;
+- run `node --input-type=module -e "await import('@wayvro/provider-test-doubles')"` inside the artefact ⇒ must fail with `ERR_MODULE_NOT_FOUND`;
+- boot the artefact with `WAYVRO_ENV=local` against local infrastructure ⇒ must **refuse** (release marker); boot with production-like config and no adapter config ⇒ must refuse; the test-OTP route must not exist in the artefact's route table (generated route manifest check).
 
-## 9. Error codes (additive to `ERROR_CODES`, never renamed)
+**Recording OTP sink semantics:** random codes only (no deterministic, universal or master code); no bypass or tester numbers; only reachable through the local runner; **never evidence that EG-01 is complete** — real OTP stays externally gated (P2.A1).
 
-`WAYVRO_E_FORBIDDEN` (403), `WAYVRO_E_RATE_LIMITED` (429, `retryAfterSeconds`), `WAYVRO_E_CONFLICT` (409 version/state), `WAYVRO_E_INVALID_STATE_TRANSITION` (409), `WAYVRO_E_IDEMPOTENCY_CONFLICT` (422), `WAYVRO_E_OTP_INVALID_OR_EXPIRED` (401), `WAYVRO_E_OTP_LOCKED` (401), `WAYVRO_E_STEP_UP_REQUIRED` (403), `WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED` (403), `WAYVRO_E_ACCOUNT_RESTRICTED` (403, user-safe reason codes), `WAYVRO_E_RECOVERY_REQUIRED` (403), `WAYVRO_E_OIDC_NOT_LINKED` (401), `WAYVRO_E_OIDC_LINK_CONFLICT` (409), `WAYVRO_E_FEATURE_DISABLED` (404-equivalent semantics for flagged-off routes, 403 body), `WAYVRO_E_UPLOAD_REJECTED` (422), `WAYVRO_E_DELETION_BLOCKED` (409).
-The error envelope gains an **optional** `details` object (`retryAfterSeconds`, `reasonCodes[]`, `requiredActions[]`) — an additive contract change called out for review. The API error filter's current mapping (any `HttpException` < 500 → `WAYVRO_E_VALIDATION`) is replaced by explicit `WayvroError` mapping.
+## 9. Authorization model for consumer endpoints (V02, V07)
 
-## 10. Telemetry and logging (Q36)
+Global NestJS guard requiring every route to declare a policy; a route-inventory test fails if any route lacks one (default deny); `@Public()` only on health and public auth routes. Principal `{ accountId, sessionId, assurance, stepUpAt, riderProfileId, driverProfileId? }` comes from the server; client-supplied ids/roles/modes/KYC status/`email_verified` are ignored. Queries are scoped by profile id inside the repository query. Request schemas are `.strict()`; server-owned fields are absent. Restricted sessions (`ACCOUNT` restriction, `RECOVERY_REVIEW`) get a reduced policy set.
 
-Existing `packages/observability` redaction already covers keys such as `otp`, `token`, `authorization`, `cookie`, `session`, `phone`, `cnic`, `selfie`, `email` and value patterns for CNIC, PK phone numbers, JWTs and bearer tokens. Phase 2 adds keys/patterns for `refreshToken`, `idToken`, `nonce`, `code`, `challengeId` (low risk but no value in logs), presigned URL query parameters (`X-Amz-Signature`, `X-Amz-Credential`), `installationId`, storage keys; and **canary tests**: every Phase 2 integration flow is run with synthetic canary values (a fixed fake CNIC, phone, OTP, token prefix) and the captured log/trace/error output is scanned for them. Metrics carry low-cardinality dimensions only (`purpose`, `channel`, `outcome`, `mode`, `onboarding_state`).
+## 10. Error codes (additive to `ERROR_CODES`)
+
+`WAYVRO_E_FORBIDDEN`, `WAYVRO_E_RATE_LIMITED`, `WAYVRO_E_CONFLICT`, `WAYVRO_E_INVALID_STATE_TRANSITION`, `WAYVRO_E_IDEMPOTENCY_CONFLICT`, `WAYVRO_E_OTP_INVALID_OR_EXPIRED`, `WAYVRO_E_OTP_LOCKED`, `WAYVRO_E_STEP_UP_REQUIRED`, `WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED`, `WAYVRO_E_AGE_DECLARATION_REQUIRED`, `WAYVRO_E_ACCOUNT_RESTRICTED`, `WAYVRO_E_RECOVERY_REQUIRED`, `WAYVRO_E_OIDC_NOT_LINKED`, `WAYVRO_E_OIDC_LINK_CONFLICT`, `WAYVRO_E_FEATURE_DISABLED`, `WAYVRO_E_UPLOAD_REJECTED`, `WAYVRO_E_DELETION_BLOCKED`. Optional envelope `details` (`retryAfterSeconds`, `reasonCodes[]`, `requiredActions[]`) — additive contract change. The API error filter's blanket `HttpException < 500 → WAYVRO_E_VALIDATION` mapping is replaced by explicit mapping (F-04).
+
+## 11. Telemetry and logging (Q36)
+
+Existing redaction covers `otp`, `token`, `authorization`, `cookie`, `session`, `phone`, `cnic`, `selfie`, `email` and CNIC/phone/JWT/bearer patterns. Phase 2 adds `refreshToken`, `idToken`, `nonce`, `code`, `challengeId`, `installationId`, storage keys, presigned query parameters (`X-Amz-Signature`, `X-Amz-Credential`), envelope bytes; plus canary scans of every flow's logs/traces/errors/audit rows/metric labels.

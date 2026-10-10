@@ -59,14 +59,14 @@ v5 also preserves the earlier A-to-Z baseline: identity/KYC, OTP/OAuth, rides, d
 32. `prompts/PHASE_REPORT_HANDOFF_TO_CHATGPT.md`
 33. `docs/phase0/PHASE0_CLOSURE_HANDOFF.md` — founder-review closure (authoritative where it differs), then `docs/phase0/PHASE0_HANDOFF_REPORT.md` — original Phase 0 output index; then `PHASE0_GAP_REPORT.md`, `PHASE0_REQUIREMENT_COVERAGE.json/csv`, `PHASE0_UNIFIED_APP_ROLE_MODEL.md`, `PHASE0_JOURNEYS_AND_STATE_MACHINES.md`, `PHASE0_ARCHITECTURE_PROPOSAL.md`, `PHASE0_ADR_BACKLOG.md`, `PHASE0_SECURITY_PRIVACY.md`, `PHASE0_COMPETITOR_MATRIX.md`, `PHASE0_COST_PROVIDER_MATRIX.md`, `PHASE0_LAUNCH_BLOCKERS.md`, `PHASE0_ENGINEERING_GUARDRAILS.md`, `PHASE0_PHASE1_PROMPT_PROPOSED.md`, `research/R1–R6`
 
-## Current baseline totals (after Phase 0, 2026-10-09)
+## Current baseline totals (after Phase 0, 2026-10-09; A15 added in the Phase 2 planning closure, 2026-10-10)
 - **Main phases:** 13, numbered Phase 0 through Phase 12.
-- **Proposed atomic requirements:** **531** (511 v5 baseline + 20 Phase 0 additions: B26, D26, D27, E20, G17, M26, N31, Q49, R46, R47, S26, W01–W09).
-- **P0:** 216
+- **Proposed atomic requirements:** **532** (511 v5 baseline + 20 Phase 0 additions: B26, D26, D27, E20, G17, M26, N31, Q49, R46, R47, S26, W01–W09 + 1 Phase 2 planning-closure addition: A15).
+- **P0:** 217
 - **P1:** 209
 - **P2:** 89
 - **P3:** 17
-- Phase 0 dispositions: NOW 395 · LATER 107 · EXTERNAL_DECISION 26 · OUT_OF_SCOPE 3 (`docs/phase0/PHASE0_REQUIREMENT_COVERAGE.json`; register schema 5.1 carries a `phase0` block per ID).
+- Dispositions: NOW 396 · LATER 107 · EXTERNAL_DECISION 26 · OUT_OF_SCOPE 3 (Phase 0: NOW 395 before A15; `docs/phase0/PHASE0_REQUIREMENT_COVERAGE.json`; register schema 5.1 carries a `phase0` block per ID).
 - New v5 IDs `V01–V14` make the unified-app/account-role model explicit rather than leaving it as prose; Phase 0 adds D26/D27/M26 to harden it.
 
 All requirements remain **proposed** until Phase 0 assigns disposition, owner/domain, target phase, dependencies, acceptance tests and external blockers.

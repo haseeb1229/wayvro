@@ -69,6 +69,12 @@
 - **CLAUDE.md:** §7 tools, §9 offer-alerting/JDK 17/release rule, §16 Phase 0 authority + validation commands (no duplicate attribution wording).
 - **Git/GitHub baseline:** private `haseeb1229/wayvro`, `main`, single documentation commit — see `docs/phase0/PHASE0_CLOSURE_HANDOFF.md`.
 
+## Prompt 7 — Phase 2 planning and founder/ChatGPT planning-closure correction (2026-10-10)
+- **Phase 2 plan (plan only):** `docs/phase2/` (13 documents) traces every target-phase-2 ID; no implementation, migration, dependency or provider account.
+- **New requirement:** A15 (P0, Phase 2) age and guardian eligibility policy, counsel-gated, no hard-coded threshold — added through `docs/phase0/tools/coverage-map-additions.js` (separate from Phase 0 additions); register 531 → 532; Phase 2 scope 54 → 55.
+- **Founder decisions Q-01..Q-15** recorded in `docs/phase2/PHASE2_PLAN.md` §10 (including strong-proof-only historical recovery, camera + controlled import for documents with camera-only selfies, no Phase 2 bulk export, risk-triggered driver re-verification).
+- **Corrections:** account/person uniqueness is not a database invariant; test doubles physically absent from production artefacts from P2.1; versioned AEAD envelope and rotation rules; mature isolated image decode/re-encode instead of a hand-written parser; relational integrity for evidence/category/case-subject links; accessible optional selfie capture challenges.
+
 ## Workflow requirements imported from Minhaj where applicable
 - Actual repo/worktree/data > verified exact-SHA checkpoint/CI > canonical docs > reports/prompts.
 - Inspect branch, HEAD, worktree, remotes, CI and Git identity before changes.

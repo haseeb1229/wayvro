@@ -612,3 +612,10 @@ Each item below was added in Phase 0 with a recorded source and disposition (see
 - W07 P0 Staff operations web application baseline: responsive and keyboard-accessible shell, MFA-backed sessions with idle lock and short lifetimes, reason-for-access prompts on PII views, approval-gated bulk exports, environment/audit banners and no client-side authorisation decisions.
 - W08 P1 Web infrastructure security and operations: commercial hosting plan (never non-commercial/hobby tiers), CSP/HSTS/secure headers, registrar/DNS custody, uptime monitoring, CMS access control, backups and a deploy pipeline isolated from the API.
 - W09 P1 Web booking and trip-status hardening (extends L09): phone-verified web sessions, bot/abuse controls, scoped short-lived trip-status tokens, no map-provider key leakage, and parity of safety/support entry points with the app.
+
+# Phase 2 planning closure (2026-10-10) — approved gaps closed via docs/26 completeness closure
+
+Each item below was added after Phase 0 with a recorded source and approval (see `post_phase0_additions` in `docs/requirements-register.json` and `docs/phase0/PHASE0_REQUIREMENT_COVERAGE.json`). They remain PROPOSED until implemented and verified.
+
+## A — Rider acquisition/account/accessibility (Phase 2 planning closure (2026-10-10))
+- A15 P0 Wayvro must maintain a counsel-approved age and guardian eligibility policy. Consumer signup collects only the minimum age declaration/evidence necessary for that policy; driver/partner eligibility uses verified date-of-birth/licence and applicable regulatory requirements. Under-age/guardian/teen handling must be explicit, reason-coded and privacy-minimised, and future guardian/teen programmes must not require replacing the core identity model.

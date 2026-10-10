@@ -126,6 +126,16 @@ const closureChecks = {
   phase0_prompt_marked_executed: /STATUS: EXECUTED on 2026-10-09/.test(fs.readFileSync(path.join(ROOT, 'prompts/PHASE_0_DISCOVERY_CLAUDE.md'), 'utf8')),
   one_public_app_v01_present: /one public mobile application/i.test(reg.V01.title),
   research_files_carry_closure_annotations: researchFiles.every((f) => /Closure note/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))),
+  // Post-Phase-0 additions (Phase 2 planning closure onward): counts reconcile and each addition keeps its own provenance.
+  post_phase0_additions_consistent: (() => {
+    const add = register.post_phase0_additions;
+    if (!add) return true;
+    const ids = add.added_ids || [];
+    return add.total_after_additions === items.length
+      && register.phase0.total + ids.length === items.length
+      && ids.every((id) => reg[id] && add.records[id] && reg[id].phase0.dispositioned_on === add.records[id].added_on
+        && !register.phase0.added_ids.includes(id) && reg[id].notes.includes(add.records[id].batch));
+  })(),
   banned_wording_hits: closureHits,
 };
 for (const [k, v] of Object.entries(closureChecks)) {
@@ -144,6 +154,8 @@ const summary = {
     schema_version: register.schema_version, total: items.length, priority_counts: prio, unique_ids: new Set(ids).size === ids.length,
     inventory_rows: invRows.length, inventory_matches_json_ids_priorities_titles: invMismatch === 0 && invRows.length === items.length,
     v5_baseline_count: 511, phase0_added_ids: register.phase0 ? register.phase0.added_ids : [],
+    phase0_total: register.phase0 ? register.phase0.total : null,
+    post_phase0_added_ids: register.post_phase0_additions ? register.post_phase0_additions.added_ids : [],
     phase0_disposition_counts: coverage.summary.by_disposition, all_items_have_phase0_block: notStamped === 0,
     requirements_register_sha256: sha(fs.readFileSync(path.join(ROOT, 'docs/requirements-register.json'))),
   },

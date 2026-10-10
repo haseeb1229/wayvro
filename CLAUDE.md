@@ -140,7 +140,7 @@ Run the layers relevant to the change: format/lint, strict typecheck, unit/prope
 - Keep one current roadmap/authority model; mark older material historical instead of allowing conflicting instructions.
 - Architecture/provider decisions record alternatives, evidence, consequences and reversal path.
 - Update docs/tests/contracts in the same bounded change when behavior changes.
-- Until superseded by founder-approved ADRs, the Phase 0 artefacts in `docs/phase0/` and the 531-ID register (`docs/requirements-register.json`, schema 5.1, with per-ID `phase0` dispositions generated from `docs/phase0/tools/`) are the requirement/phase authority. Edit generator sources, never generated files, and run `node docs/phase0/tools/phase0-coverage.js --check` and `node docs/phase0/tools/regen-manifest.js --check` before claiming documentation consistency.
+- Until superseded by founder-approved ADRs, the Phase 0 artefacts in `docs/phase0/` and the requirements register (`docs/requirements-register.json`, schema 5.1, 532 IDs after the Phase 2 planning closure added A15, with per-ID `phase0` dispositions generated from `docs/phase0/tools/`) are the requirement/phase authority. Edit generator sources, never generated files, and run `node docs/phase0/tools/phase0-coverage.js --check` and `node docs/phase0/tools/regen-manifest.js --check` before claiming documentation consistency.
 
 ## 17. Completion/report rule
 A task is not “done” because code was written. Report:

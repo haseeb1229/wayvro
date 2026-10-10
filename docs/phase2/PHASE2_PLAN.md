@@ -1,138 +1,141 @@
 # PHASE2_PLAN — Identity, Authentication, Account Security and Controlled Driver/Partner Onboarding (PROPOSED)
 
-**Date:** 2026-10-10 · **Branch:** `docs/phase-2-planning` (from `main` @ `3a1402f9d530ff1a384082c6a912a91152bfffc8`) · **Status:** **PLAN ONLY — awaiting founder/ChatGPT review. No Phase 2 product code, migration, dependency, provider account, OTP, or real identity data exists or was used.** · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-10 · **Branch:** `docs/phase-2-planning` (from `main` @ `3a1402f9d530ff1a384082c6a912a91152bfffc8`; first planning commit `e319aef`; founder/ChatGPT planning-closure correction applied the same day) · **Status:** **PLAN ONLY. No Phase 2 product code, migration, dependency, provider account, OTP or real identity data exists or was used. P2.1 is not started.** · **Agent:** Claude Code (self-audit, not independent verification).
 
 ## 1. Authority and inputs
-
-Authority order applied: current law/safety obligations and founder decisions → audited repository truth (`main` @ `3a1402f`) → Phase 1 ADRs (`docs/adr/README.md`) → Phase 0 artefacts and the 531-ID register (`docs/requirements-register.json`, schema 5.1) → canonical docs. Read for this plan: `CLAUDE.md`, `README.md`, `ALL_FILES_INDEX.md`, the full register, docs 05, 07, 10, 12, 14, 15, 18, 22, 27, 28, `docs/phase0/*` (role model, journeys/state machines, security/privacy, ADR backlog, launch blockers, gap report, closure handoff, architecture, guardrails, cost/provider matrix, research R2/R4/R5 identity/KYC/storage sections), `docs/phase1/PHASE1_HANDOFF_REPORT.md`, all nine Phase 1 ADRs, and an inventory of every Phase 1 app/package/config/migration/CI file.
+Authority order: law/safety obligations and founder decisions → audited repository truth → Phase 1 ADRs (`docs/adr/README.md`) → Phase 0 artefacts and the requirements register (`docs/requirements-register.json`, schema 5.1) → canonical docs. Inputs read: `CLAUDE.md`, `README.md`, `ALL_FILES_INDEX.md`, the full register, docs 05, 07, 10, 12, 14, 15, 18, 22, 27, 28, `docs/phase0/*` (role model, journeys, security/privacy, ADR backlog, launch blockers, gap report, closure handoff, architecture, guardrails, cost/provider matrix, research R2/R4/R5), `docs/phase1/PHASE1_HANDOFF_REPORT.md`, all Phase 1 ADRs, an inventory of every Phase 1 app/package/config/migration/CI file, and the founder/ChatGPT planning-closure correction.
 
 ## 2. Repository truth verified before planning (2026-10-10)
 
 | Check | Result |
 |---|---|
-| Local branch / HEAD before branching | `main` / `3a1402f9d530ff1a384082c6a912a91152bfffc8` |
-| `origin/main` after fetch | `3a1402f9d530ff1a384082c6a912a91152bfffc8` (matches expected) |
-| Worktree | clean (no tracked changes; `.env` and `build-logs/` are gitignored) |
-| Origin | `https://github.com/haseeb1229/wayvro.git` |
-| Git identity | `Muhammad Haseeb <abdulhaseeb1229@gmail.com>` |
-| `gh` auth | `haseeb1229`, scopes `repo, workflow, read:org, gist` |
-| Ruleset on `main` | id 24837051 "main — PR + required CI", enforcement `active` |
-| Phase 1 product surface | none: no product tables (only `0000_postgis.sql`), no auth/guards, no rate limiting, no idempotency store, no audit, no outbox table, no job runner wiring, no mobile navigation/secure storage/HTTP client, web-ops unauthenticated |
+| `main` (local and `origin`) | `3a1402f9d530ff1a384082c6a912a91152bfffc8` (as expected) |
+| Worktree / origin / identity / `gh` | clean; `haseeb1229/wayvro`; `Muhammad Haseeb <abdulhaseeb1229@gmail.com>`; `haseeb1229` |
+| Ruleset on `main` | "main — PR + required CI", active |
+| Phase 1 product surface | none: only `0000_postgis.sql`; no auth, rate limiting, idempotency store, audit, outbox table, job wiring, mobile navigation/secure storage/HTTP client; web-ops unauthenticated |
 
-## 3. Scope — verified from the register
+## 3. Scope
 
-`phase0.target_phase = 2`: **54 IDs, P0 = 49, P1 = 5** (A11, K15, K16, K17, K22) — identical to the founder prompt's list (0 missing, 0 extra):
-A02, A03, A04, A05, A11, D01, D02, D03, D04, H01, H02, H08, K01–K11, K13–K17, K22, Q01, Q06, Q08, Q36, Q39, Q42, Q44, Q45, R02–R06, R09, R46, S12, S13, U06, V01, V02, V03, V07, V13, W05, W07.
-Classification (`docs/phase2/PHASE2_EXTERNAL_GATES.md` §3): **21 IMPLEMENTABLE_NOW · 30 NOW + GATED_ACTIVATION · 3 EXTERNAL_GATED (K22, Q44, Q45)**; automated liveness/face-match, staff SSO federation, e-mail contact, external audit anchoring, SMS Retriever and Apple server-to-server handling are DESIGN_NOW_ACTIVATE_LATER components. Full traceability: `docs/phase2/PHASE2_REQUIREMENT_MATRIX.md`.
+- Original verification: `phase0.target_phase = 2` = **54 IDs** (P0 49, P1 5: A11, K15, K16, K17, K22), exactly matching the founder list.
+- Planning closure: founder/ChatGPT approved the gap **A15** (P0, target phase 2), added through the canonical generator workflow (separate post-Phase-0 additions source `docs/phase0/tools/coverage-map-additions.js`). Register **531 → 532** (P0 217 / P1 209 / P2 89 / P3 17; dispositions NOW 396 / LATER 107 / EXTERNAL_DECISION 26 / OUT_OF_SCOPE 3). **Phase 2 scope = 55 IDs (P0 50, P1 5).** The original 54 entries are byte-identical; no ID deleted or re-prioritised.
+- **A15 canonical wording:** "Wayvro must maintain a counsel-approved age and guardian eligibility policy. Consumer signup collects only the minimum age declaration/evidence necessary for that policy; driver/partner eligibility uses verified date-of-birth/licence and applicable regulatory requirements. Under-age/guardian/teen handling must be explicit, reason-coded and privacy-minimised, and future guardian/teen programmes must not require replacing the core identity model." External blocker: counsel/product decision on age thresholds and guardian rules (EG-23).
+- Classification (`docs/phase2/PHASE2_EXTERNAL_GATES.md` §3): **21 IMPLEMENTABLE_NOW · 31 NOW + GATED_ACTIVATION · 3 EXTERNAL_GATED (K22, Q44, Q45)**. Traceability: `docs/phase2/PHASE2_REQUIREMENT_MATRIX.md`.
 
-## 4. Document map (no duplication: each topic has one home)
+## 4. Document map
 
 | Document | Owns |
 |---|---|
-| `docs/phase2/PHASE2_PLAN.md` | this overview, findings, gaps/clarifications/contradictions, deferrals, founder questions, readiness |
-| `docs/phase2/PHASE2_REQUIREMENT_MATRIX.md` | per-ID class, micro-phase, surfaces, gates, domain/API/DB/UI/authz/controls/tests |
-| `docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md` | entities, schemas/roles, state machines, capability derivation, restriction semantics, consent, deletion/retention, PII classes, migration sequence |
-| `docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md` | OTP, sessions/tokens, step-up, recycled SIM/SIM swap/recovery, OIDC linking, consumer authorization, mock hardening, error codes, telemetry |
-| `docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md` | V1 KYC boundary, onboarding flow, configurable document matrix, upload pipeline, encryption/keys, reviewer access, manual review, dedupe, future provider design, DPIA/data-location inputs |
-| `docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md` | staff realm, WebAuthn, roles/attributes, authorization matrix, reason-for-access, exports, break-glass, audit |
-| `docs/phase2/PHASE2_API_AND_SURFACES.md` | endpoint/contract inventory with auth/idempotency/rate-limit/audit/PII/enumeration per operation; mobile, web-ops, web-public plans |
-| `docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md` | Phase 2 threat register T-01..T-39 with prevention/detection/recovery/tests; fail-closed checklist; residual risks; playbooks |
-| `docs/phase2/PHASE2_EXTERNAL_GATES.md` | status vocabulary, gate register EG-01..EG-23, classification of all 54 IDs, vendor evaluation template, activation tracks |
-| `docs/phase2/PHASE2_TEST_STRATEGY.md` | layers, adversarial families, acceptance evidence for all 54 IDs, reporting rules |
-| `docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md` | micro-phases P2.1–P2.10, activation tracks, Phase 2 exit gate mapping |
-| `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` | ADR-038..044 proposals, dependency evaluations, rejected/deferred packages |
-| `docs/phase2/PHASE2_IMPLEMENTATION_PROMPT_PROPOSED.md` | proposed prompt for P2.1 (not an authorisation) |
+| `docs/phase2/PHASE2_PLAN.md` | overview, findings, gaps/clarifications/contradictions, deferrals, founder decisions, closure record, readiness |
+| `docs/phase2/PHASE2_REQUIREMENT_MATRIX.md` | per-ID class, micro-phase, surfaces, gates, domain/API/DB/UI/authz/controls/tests (55) |
+| `docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md` | identity uniqueness semantics, schemas/roles, entities, state machines, capability derivation, restrictions, consent/age, crypto envelope and rotation, PII classes, deviations, migrations |
+| `docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md` | OTP, sessions, step-up, new-device risk policy, recycled SIM/SIM swap/strong-proof recovery, OIDC, test-double isolation, consumer authorization, error codes, telemetry |
+| `docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md` | KYC boundary, onboarding, capture sources, accessible challenge, document matrix, upload pipeline, image sanitisation evaluation, encryption, reviewer access, manual review, dedupe, future provider, DPIA/data-location inputs |
+| `docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md` | staff realm, WebAuthn, roles/attributes, matrix, reason-for-access, no exports, break-glass, audit |
+| `docs/phase2/PHASE2_API_AND_SURFACES.md` | endpoint inventory with security attributes; mobile, web-ops, web-public plans |
+| `docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md` | threats T-01..T-41, fail-closed checklist, residual risks, playbooks |
+| `docs/phase2/PHASE2_EXTERNAL_GATES.md` | status vocabulary, EG-01..EG-23, classification, vendor template, activation tracks P2.A1..A9 |
+| `docs/phase2/PHASE2_TEST_STRATEGY.md` | layers, families, acceptance evidence for all 55 IDs |
+| `docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md` | micro-phases P2.1–P2.10, activation tracks, exit-gate mapping |
+| `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` | ADR-038..045, dependency rules, rejected/deferred packages |
+| `docs/phase2/PHASE2_IMPLEMENTATION_PROMPT_PROPOSED.md` | proposed P2.1 prompt (not an authorisation) |
 
-## 5. Decisions proposed (summary)
+## 5. Decisions (summary)
+- **Identity semantics:** one current verified phone ↔ at most one active account, one account ↔ at most one current verified phone (both DB invariants); one-account-per-person is an intent enforced by signals, review and recovery — **never** a database claim; histories never merged.
+- **Auth/session:** domain implemented directly (ADR-038 with binding conditions — not "safer", not novel crypto); opaque SHA-256-hashed tokens; 15 min access / 60-day idle / 180-day absolute as configurable defaults; rotating refresh with reuse detection; immediate revocation; realtime on the same session.
+- **OTP:** +92 mobile only; CSPRNG code stored as keyed MAC; 5 min / 5 attempts; escalating resend; multi-dimensional limits and spend stop; limiter fail-closed; honest outages; no master/bypass codes; recording sink only in local runners and never EG-01 evidence.
+- **F-01:** test doubles physically absent from production artefacts from P2.1 (ADR-045) with CI proof; runtime checks remain defence in depth.
+- **Crypto:** versioned AES-256-GCM envelope (version, algorithm, key id, random 96-bit nonce, tag, ciphertext; AAD binds field/row/schema version); key states and non-destructive rotation; HMAC lookups with key versions in side index tables (dual-write → backfill → dual-read → switch → contract).
+- **OAuth:** link only from step-up-fresh sessions; `(provider, sub)`; no account creation via OIDC; unknown-device OIDC sessions need phone step-up; no e-mail merges; flags off; externally gated.
+- **Recovery:** historical recovery only with strong pre-existing proof (linked OIDC; driver KYC case with maker-checker); rider-only without it ⇒ new clean account, old account `SECURITY_HOLD`.
+- **KYC:** guided capture; documents by camera **or** controlled import through one pipeline (source = metadata, never proof); selfie camera-only; optional accessible challenge; human review and in-person path; no OCR/ML/score; automated vendors only as advisory signals after gates.
+- **Vault:** quarantine → scan → **mature isolated decode/re-encode** (evaluated first in P2.6) → verify → hash → encrypt → vault; separate DB role; one-time reason-gated staff views.
+- **Staff:** WebAuthn-native (two authenticators before real privileged KYC operation), BFF, code-defined roles + ABAC, maker-checker, break-glass, sealed audit; no emergency credentials.
+- **Restrictions:** scoped table with FK + CHECK per scope; driver restrictions never block rider use; `RISK_HOLD` for risk-triggered earning holds; expired documents block through live evaluation.
+- **Exports:** none in Phase 2; paginated scoped rosters only.
+- **Deletion/retention:** app (step-up) and web (OTP) requests, 14-day configurable grace pending counsel, blocker rows, pseudonymisation, evidence deletion unless legal hold, retention placeholders until EG-16.
 
-- **Identity model:** one `identity.accounts` row per human (unique verified phone), `rider_profiles` created at first sign-in, optional `driver_applications` → `driver_profiles`, vehicles with affiliations, service-capability grants, one scoped `restrictions` table (ACCOUNT / DRIVER_ROLE / VEHICLE / SERVICE_CAPABILITY / CITY_CATEGORY), separate `staff` realm. Mode is presentation only; a pure server-side evaluator returns exhaustive blockers.
-- **Auth/session:** no auth framework (ADR-038); phone OTP only consumer credential; opaque SHA-256-hashed tokens, 15-min access, rotating single-use refresh with family reuse detection and a 30-s idempotent leeway; immediate revocation; realtime authenticated with the same session.
-- **OTP:** +92 mobile only; 6-digit CSPRNG code stored as HMAC; 5-min TTL; 5 attempts; escalating resend cooldown; per-phone/installation/IP/prefix/ASN limits; global spend stop; silent drop; fail closed if the limiter store is down; honest outage errors; no master OTP; local recording sink only in local/test.
-- **OAuth:** Google/Apple linking only from a phone-verified, step-up-fresh session; `(provider, sub)` key; nonce; `jose` verification; email never a lookup/merge key; no account creation via OIDC; no merges; production gated (EG-06/07).
-- **KYC:** guided capture, manual/human review and in-person path as the V1 baseline; no OCR, no face/liveness ML, no score; selfie capture challenge as an anti-replay aid; automated vendors only as advisory signals after DPIA/DPA (P2.A5).
-- **Evidence vault:** metadata in `vault` schema reachable only by a separate DB role; presigned PUT to quarantine only; container validation + metadata stripping + ClamAV; per-object envelope encryption; reviewers view via one-time, session-bound, reason-gated stream; access log; retention/legal hold/orphan cleanup.
-- **Staff:** WebAuthn-native MFA (two authenticators), BFF with `__Host-` cookies, code-defined roles + ABAC attributes (city, claimed case, conflict, not-original-decider, maker-checker, fresh step-up), break-glass ≤ 60 min with alert and review, INSERT-only audit with sealed batches.
-- **Restrictions:** discretionary actions are restriction rows; expired documents block through live evaluation; driver suspension never blocks rider use; everything reason-coded, audited, appeal-aware, idempotent.
-- **Deletion/retention:** in-app (step-up) and web (OTP) requests; grace period; reason-coded blockers; pseudonymisation; evidence deletion unless legal hold; retention durations as `NOT_COUNSEL_APPROVED` configuration until EG-16.
+## 6. Micro-phases
+P2.1 identity/session core + test-double isolation → P2.2 policies, consent, age policy, legal pages → P2.3 mobile account slice → P2.4 staff realm + web-ops shell → P2.5 compliance domain, requirement sets, age checks, restrictions → P2.6 vault (image-processing evaluation first) → P2.7 review/appeals/expiry → P2.8 mobile onboarding → P2.9 recovery/SIM safeguards/risk holds/deletion/hardening → P2.10 OIDC (flags off). Activation tracks P2.A1–P2.A9 only when gates clear.
 
-## 6. Micro-phase sequence (detail: implementation sequence doc)
+## 7. Repository findings (Phase 1 code)
 
-P2.1 identity & session core → P2.2 policy/consent + legal pages → P2.3 mobile account slice → P2.4 staff realm + web-ops shell → P2.5 compliance domain + requirement sets + restrictions → P2.6 evidence vault → P2.7 manual review/appeals/expiry → P2.8 mobile Driver/Partner onboarding → P2.9 recovery/SIM safeguards/deletion/hardening → P2.10 OIDC linking (flags off). External activation tracks P2.A1–P2.A8 run only when their gates clear.
+| # | Finding | Planned handling |
+|---|---|---|
+| F-01 | Test doubles ship inside the production package `@wayvro/provider-interfaces`; refusal relies on `WAYVRO_ENV` only | **P2.1** (ADR-045): dev-only double package, production-only artefacts, release marker, static rules, CI ART-ISO; runtime refusal kept |
+| F-02 | web-ops has no authentication | undeployable until P2.4 |
+| F-03 | idempotency `preHandler` validates shape only | P2.1 persistent store |
+| F-04 | error filter maps every `HttpException` < 500 to `WAYVRO_E_VALIDATION` | P2.1 explicit mapping |
+| F-05 | worker relay/consumer unwired (Knip exception) | job runner P2.1; relay P2.7 with first consumer |
+| F-06 | realtime binds `DenyAllAuthenticator` (fail-closed) | P2.1 session authenticator |
+| F-07 | CAMERA forbidden in the Android allowlist | P2.8 with founder review; import must add no storage permission |
+| F-08 | local DB user owns everything | tests run as restricted roles |
+| F-09 | OTel without instrumentations/propagation | acceptable for Phase 2; I07 Phase 4 |
 
-## 7. Repository findings (Phase 1 code, relevant to Phase 2)
+## 8. Gaps, clarifications and contradictions
 
-| # | Finding (verified in code) | Impact | Planned handling |
-|---|---|---|---|
-| F-01 | Mock-provider refusal (`bindProviders`) depends solely on `WAYVRO_ENV`; a deployment mis-set to `local`/`test` would bind recording mocks and skip staging/production config rules | production mock activation risk (T-29) | P2.1: staging/production schemas require real adapter config; test-OTP route absent outside local/test; BOOT-NEG tests. Phase 7: immutable release build marker |
-| F-02 | `apps/web-ops` has no authentication (its own page warns it must not be deployed) | any deployment would expose an ops surface | remains undeployable until P2.4; P2.4 exit includes the authenticated shell |
-| F-03 | API idempotency `preHandler` validates header shape only; no store or replay | duplicate side effects on retry | P2.1 persistent idempotency store |
-| F-04 | API error filter maps every `HttpException` < 500 to `WAYVRO_E_VALIDATION` | 401/403/409/429 semantics lost | P2.1 explicit `WayvroError` mapping + new codes |
-| F-05 | Worker outbox relay and idempotent consumer are unwired (explained Knip production exception) | — | P2.1 wires the PostgreSQL job runner; outbox relay wired in P2.7 when its first consumer exists, removing the exception |
-| F-06 | Realtime binds `DenyAllAuthenticator` | fail-closed today (correct) | P2.1 session-token authenticator |
-| F-07 | Android permission allowlist forbids CAMERA | KYC capture needs it | P2.8 change with founder review (allowlist rule) |
-| F-08 | Local compose PostgreSQL user is the database owner | grant tests would pass vacuously | Phase 2 integration tests run as the restricted roles |
-| F-09 | OpenTelemetry SDK starts with no instrumentations and no trace propagation | audit correlation relies on request ids only | acceptable for Phase 2; I07 (Phase 4) |
+### 8.1 New requirement — APPROVED and applied
+**GAP-P2-01 → A15** (P0, Phase 2), revised wording in §3, added via the generator (`coverage-map-additions.js`, register block `post_phase0_additions`, docs/03 dated block). No hard-coded threshold; no rider DOB unless the approved policy requires it.
 
-## 8. Proposed gaps, clarifications and contradictions (no register change made)
-
-### 8.1 Proposed new requirement (needs founder/ChatGPT approval before the register changes)
-
-| Proposal | Why existing IDs do not cover it | Proposed ID / priority / phase | Dependencies | Tests |
-|---|---|---|---|---|
-| **GAP-P2-01 — Minimum-age eligibility for Wayvro accounts.** Account creation requires an age attestation against a counsel-set minimum age; reports or evidence of an under-age account holder lead to a reason-coded ACCOUNT restriction with appeal; driver applicants must meet the licence-derived and counsel-set minimum age (checked by the reviewer against the CNIC date of birth); no age is inferred from images | Only L21 (P3, Phase 12) mentions minors, and only to disable a teen programme; the role model lists "under-age" as an AccountRestriction example but no requirement defines the rule, the attestation, the threshold or the handling; store age-rating and terms depend on it | next free A-family id (A01–A14 are taken; proposal **A15**, assigned only through the generator sources after approval) · **P0** · target phase **2** · external blocker "Counsel-approved minimum-age policy" (EG-23) | A04, R09, V13, K14 | unit (attestation required), api-e2e (restriction path), legal-review |
-
-### 8.2 Clarifications (interpretation only; IDs/priorities unchanged — approval requested)
+### 8.2 Clarifications (interpretation only; IDs/priorities unchanged) — reconciled in the closure pass (Q-10)
 
 | CL | IDs | Clarification |
 |---|---|---|
-| CL-P2-01 | A02, A05 | E-mail is not collected in Phase 2; as a future contact/receipt channel it is DESIGN_NOW_ACTIVATE_LATER (needs transactional e-mail, Q41). "Contact edits" in Phase 2 = phone change with re-verification. |
-| CL-P2-02 | K02 | "Redacted extraction" in Phase 2 = applicant-typed claims, reviewer confirmation and masked display; no OCR/extraction service (FD-06). |
-| CL-P2-03 | H02, T18 | Reviewer conflict-of-interest baseline (no review of own/declared-related accounts) is implemented in Phase 2 because reviewers exist from Phase 2; T18's broader programme stays Phase 6. |
-| CL-P2-04 | D04, K05 (role model §3) | Housekeeping terminals `WITHDRAWN` and `EXPIRED_DRAFT` are added to the application machine; `SUSPENDED` is derived from an active DRIVER_ROLE restriction rather than stored. Canonical semantics unchanged. |
-| CL-P2-05 | W07 | "Approval-gated bulk exports" = deny-by-default plus a maker-checker export workflow with one ops export type (expiry roster) in Phase 2. |
-| CL-P2-06 | Q06 | Phase 2 satisfies Q06 for authentication/identity surfaces; fare/driver-abuse limits are re-verified when those surfaces ship (Phase 3/4, with E09). |
-| CL-P2-07 | R04 | Insurance evidence/coverage modelling is Phase 2; "claims contact linked to incidents" completes with incidents (Phase 6; N15 Phase 9). |
-| CL-P2-08 | R46 | Artefact modelling and revalidation logic are Phase 2; the dispatch district-coverage check uses them in Phase 4 (K12/E08). |
-| CL-P2-09 | A04, W05, R09 | Production boot refuses placeholder legal texts for required policies; placeholders are allowed only in local/test/staging and are visibly marked. |
-| CL-P2-10 | K11, Q36 | KYC uploads have embedded metadata (EXIF/GPS etc.) removed before vault storage. |
-| CL-P2-11 | H01 | The "SSO/MFA" clause is met in Phase 2 by WebAuthn-native staff MFA; SSO federation with a company IdP is an activation (EG-19). |
-| CL-P2-12 | V13, D03 | Document expiry blocks earning through live evaluation at every check, not through system-created restriction rows. |
+| CL-P2-01 | A02, A05 | E-mail not collected in Phase 2 (deferred, Q-03); "contact edits" = phone change with re-verification |
+| CL-P2-02 | K02 | "Redacted extraction" = applicant claims + reviewer confirmation + masked display; no OCR |
+| CL-P2-03 | H02, T18 | reviewer conflict-of-interest baseline implemented in Phase 2 |
+| CL-P2-04 | D04, K05 | housekeeping terminals `WITHDRAWN`/`EXPIRED_DRAFT`; `SUSPENDED` derived from an active DRIVER_ROLE restriction |
+| CL-P2-05 | W07 | **(changed)** "approval-gated bulk exports" = deny-by-default rule; **no export capability in Phase 2**; paginated, authorization-scoped rosters in web-ops; any future export needs permission, reason, maker-checker, expiry, audit, minimisation and a demonstrated need |
+| CL-P2-06 | Q06 | Phase 2 covers auth/identity surfaces; fare/driver abuse re-verified in Phase 3/4 |
+| CL-P2-07 | R04 | incident linkage completes in Phase 6 |
+| CL-P2-08 | R46 | dispatch district check in Phase 4 |
+| CL-P2-09 | A04, W05, R09, A15 | production refuses placeholder legal texts and placeholder age policy |
+| CL-P2-10 | K11, Q36 | evidence metadata removed **by construction** through decode/re-encode (not a hand-written stripper) |
+| CL-P2-11 | H01 | "SSO/MFA" met by WebAuthn-native MFA now; federation later (EG-19) |
+| CL-P2-12 | V13, D03 | expiry blocks via live evaluation, not restriction rows |
+| CL-P2-13 | K01, D01 | **(new)** phone↔account uniqueness is a DB invariant; person-level uniqueness is not — handled by signals, review, recovery and safe credential movement; no history merges |
+| CL-P2-14 | K02, D02 | **(new)** documents: camera or controlled import through one pipeline, source is metadata only; selfie: camera only |
+| CL-P2-15 | K03 | **(new)** capture challenge optional, accessible, alternatives available, never sole rejection reason, never "liveness" |
+| CL-P2-16 | K17, K18, D27 | **(new)** driver re-verification is risk-triggered (`RISK_HOLD` + `REVERIFICATION` case), not universal on new devices; real selfie re-checks stay DPIA-gated |
 
-### 8.3 Contradictions / deviations found
+### 8.3 Contradictions / deviations
 
-| # | Where | Issue | Proposed resolution |
-|---|---|---|---|
-| CON-P2-01 | Phase 0 architecture §1 (BullMQ worker) vs ADR-004 (`SKIP LOCKED` reserved for job claiming) | two queue designs | ADR-042: PostgreSQL job table; BullMQ not added |
-| CON-P2-02 | docs/07 entity list (separate role/account restriction tables; separate document tables; `mode_preferences`) vs the configurable/V13 needs | conceptual list vs physical design | deviations D-01..D-07 (data model §9); docs/18 §D says conceptual entities are chosen by ADR |
-| CON-P2-03 | ADR-027 "Playwright/Maestro start in Phase 3" vs Phase 2 shipping the first real web screens | timing | Playwright moves to P2.2/P2.4 (founder Q-11); Maestro stays Phase 3 |
-| CON-P2-04 | ADR-037 "mail catcher when staff notifications (Phase 2) need it" vs this plan's out-of-band staff invitations | no e-mail in Phase 2 | Mailpit not added (no consumer); revisit with CL-P2-01 |
-| CON-P2-05 | Phase 0 docs place `ServiceCapability` grant at `VERIFIED → ACTIVE_ELIGIBLE` "training/inspection complete", but training (D20) is Phase 8 | dependency inversion | requirement sets may declare staff-recorded prerequisite markers; for the placeholder set none are mandatory; D20 adds content later |
-| CON-P2-06 | `docs/12` Phase 2 gate "seed approved synthetic drivers" vs CLAUDE.md §7 "no hardcoded test users" | apparent conflict | seeds created only by a local-only CLI through the real review path, refusing non-local environments; nothing seeded by migrations |
-
-## 9. Intentionally deferred (with owner phase)
-
-Driver go-online/presence/D26/D27 enforcement (Phase 4); background location and any location permission (Phase 3/4); push tokens and push security notices (Phase 4, S11); e-mail channel (CL-P2-01); OCR and automated liveness/face-match (P2.A5, optional); NADRA (never without access); dues/money (Phase 5); generalised maker-checker framework T24 and suspensions H09 (Phase 6); full localised onboarding UX polish K19 and mode-switch navigation V08 (Phase 3); periodic selfie rechecks K18 (Phase 9); privacy centre/export/correction workflows Q46/Q47/A10 beyond the U06 baseline (Phase 9); fleet-managed onboarding K23 (Phase 12); Semgrep/oasdiff/SBOM gates (oasdiff at Phase 2 exit; others per ADR-027); real-device testing (Phase 3 matrix).
-
-## 10. Founder decisions required
-
-| Q | Decision | Recommendation |
+| # | Issue | Resolution |
 |---|---|---|
-| Q-01 | Staff authentication: WebAuthn-native now, SSO federation later? | Yes |
-| Q-02 | OIDC sign-in on a device unknown to the account requires a phone OTP step-up before account-changing or driver-scoped actions? | Yes |
-| Q-03 | E-mail contact channel: defer (CL-P2-01) or build now with a local mail catcher? | Defer |
-| Q-04 | Document capture source: camera-only (recommended for replay resistance) or also gallery import for documents (accessibility/older phones)? Selfie always camera-only. | Camera-only in V1, revisit with field evidence |
-| Q-05 | Application-layer field encryption for phone, CNIC, licence/registration numbers, legal name, DOB, OIDC e-mail (HMAC lookup + AES-GCM)? | Yes |
-| Q-06 | Consumer session lifetimes (access 15 min; idle 60 days; absolute 180 days)? | Accept as defaults, tune with data |
-| Q-07 | Dormancy threshold for the recycled-number recovery review (90 days)? | 90 days until operator data (EG-22) |
-| Q-08 | Rider recovery without OIDC or KYC evidence: staff-assisted limited recovery, or "new account only"? | Staff-assisted with strict proof; otherwise new account |
-| Q-09 | Approve GAP-P2-01 (minimum age) into the register as P0, Phase 2? | Approve |
-| Q-10 | Approve clarifications CL-P2-01..12 and deviations D-01..D-07 / CON-P2 resolutions? | Approve |
-| Q-11 | Approve ADR-038..044 and the dependency set (incl. Playwright 1.63.x for web E2E in Phase 2)? | Approve |
-| Q-12 | Account-deletion grace period (14 days)? | 14 days pending counsel |
-| Q-13 | Mobile navigation/data layer now: `expo-router` + `@tanstack/react-query` in P2.3? | Yes (avoids rewriting in Phase 3) |
-| Q-14 | Driver accounts signing in on a new device: require manual selfie re-check before earning (enforced from Phase 4)? | Yes |
-| Q-15 | W07 exports: ship the expiry-roster export with maker-checker, or no export type in Phase 2? | Ship the single export |
+| CON-P2-01 | BullMQ (architecture §1) vs `SKIP LOCKED` (ADR-004) | ADR-042 PostgreSQL jobs |
+| CON-P2-02 | docs/07 conceptual entity list vs configurable/V13 physical design | deviations D-01..D-07 (data model §10) |
+| CON-P2-03 | ADR-027 Playwright "Phase 3" vs Phase 2 first real web screens | Playwright from P2.2/P2.4 (seasoned stable line chosen then) |
+| CON-P2-04 | ADR-037 mail catcher "Phase 2" vs no e-mail in Phase 2 | not added (Q-03 defer) |
+| CON-P2-05 | training/inspection marker at `VERIFIED → ACTIVE_ELIGIBLE` vs D20 in Phase 8 | requirement sets may declare staff-recorded markers; placeholder set has none mandatory |
+| CON-P2-06 | docs/12 "seed approved synthetic drivers" vs CLAUDE.md §7 "no hardcoded test users" | local-only seed CLI in development tooling through the real review path |
+| CON-P2-07 | first plan's wording "exactly one account per human/verified phone" | corrected to the canonical semantics (CL-P2-13) |
+| CON-P2-08 | first plan's hand-written image parser as boundary | replaced by mature isolated decode/re-encode evaluation (ADR-041) |
+| CON-P2-09 | `CLAUDE.md` §16 "531-ID register" after A15 | count wording updated to 532 with provenance |
 
-## 11. Readiness
+## 9. Intentionally deferred
+Driver presence/D26/D27 enforcement (Phase 4); any location permission (Phase 3/4); push and push notices (Phase 4); e-mail channel (Q-03); OCR and automated liveness/face-match (P2.A5, optional); NADRA (never without access); money/dues (Phase 5); generalised maker-checker T24 and suspensions H09 (Phase 6); localised onboarding polish K19 and mode navigation V08 (Phase 3); periodic selfie rechecks K18 (Phase 9); privacy centre/export/correction Q46/Q47/A10 beyond U06 (Phase 9); fleet onboarding K23 (Phase 12); guardian/teen programmes (L21, Phase 12, disabled); bulk exports (until a demonstrated need); real-device testing (Phase 3 matrix).
 
-The plan is internally consistent across the 13 documents (54 IDs mapped to micro-phases, gates, tests and acceptance evidence) and is **ready for implementation-plan external review**. It is **not** ready for implementation until the founder answers §10 — Q-05, Q-06, Q-10 and Q-11 block P2.1; Q-13 blocks P2.3; Q-01 blocks P2.4; the rest block their own micro-phases — and authorises P2.1 explicitly. External gates EG-01..EG-23 remain open; none is claimed resolved.
+## 10. Founder decisions (final, recorded 2026-10-10)
+
+| Q | Decision |
+|---|---|
+| Q-01 | **YES** — WebAuthn-native staff authentication now; company SSO federation later |
+| Q-02 | **YES** — unknown-device OIDC sessions require phone step-up before account-changing or driver-sensitive actions |
+| Q-03 | **DEFER** — e-mail contact channel |
+| Q-04 | **Documents:** guided camera capture **plus** controlled gallery/file import, all through the identical pipeline, source recorded as metadata only; **selfie:** camera only |
+| Q-05 | **YES** — application-layer field encryption with the versioned envelope, AAD, key states and non-destructive rotation rules (data model §8) |
+| Q-06 | **ACCEPT** as configurable defaults: access 15 min, idle 60 days, absolute 180 days |
+| Q-07 | **90 days** only as a provisional local/test risk threshold; not a PTA/MNO fact; production tuning gated by EG-22 |
+| Q-08 | **Strong-proof-only** historical recovery (linked OIDC; driver KYC case); otherwise a new clean account; old account `SECURITY_HOLD` |
+| Q-09 | **APPROVE** revised A15 (applied: register 532) |
+| Q-10 | **APPROVE** only after this closure pass reconciles clarifications/deviations — reconciled in §8 (CL-P2-01..16, D-01..D-07, CON-P2-01..09); final acceptance rests with the reviewer |
+| Q-11 | **CONDITIONAL** approval of ADR-038..044 direction under the installation-time maturity/security re-check; ADR-045 added |
+| Q-12 | **14-day** configurable deletion grace pending counsel |
+| Q-13 | **YES** — Expo Router + TanStack Query in P2.3, versions re-checked at install |
+| Q-14 | **Risk-triggered** driver re-verification, not universal on new devices |
+| Q-15 | **NO** Phase 2 bulk export |
+
+## 11. Closure record (2026-10-10)
+Applied: account-identity semantics; F-01 artefact isolation moved into P2.1; versioned crypto envelope and rotation; strong-proof-only rider recovery; A15 via generator (532/55); document capture sources and camera-only selfie; accessible optional challenge; mature isolated image decode/re-encode replacing the hand-written parser; relational-integrity changes (appeal evidence, application categories, review-case and duplicate-signal subjects, decision evidence, role-assignment cities and deletion blockers as FK/junction structures; districts seeded for permit FKs); no Phase 2 export; risk-triggered re-verification; configurable session/dormancy defaults; staff two-authenticator rule without emergency credentials; ADR-038 caveats; conditional dependency approval with installation-time re-checks; recording-sink semantics. Count references updated in `README.md`, `ALL_FILES_INDEX.md`, `CLAUDE.md` §16, `docs/00_README_AND_STATUS.md`, `docs/17_QUICK_START.md`, `prompts/PHASE_0_DISCOVERY_CLAUDE.md` status note and `docs/23_FOUNDER_PROMPT_TRACEABILITY.md` (Prompt 7); historical Phase 0/1 records keep their dated counts.
+
+## 12. Readiness
+The plan is internally consistent across the 13 documents (55 IDs mapped to micro-phases, gates, tests and acceptance evidence) and **recommended for planning PASS**, subject to the reviewer's acceptance of this closure pass. Implementation still requires the founder's explicit authorisation of P2.1. External gates EG-01..EG-23 remain open; none is claimed resolved.
