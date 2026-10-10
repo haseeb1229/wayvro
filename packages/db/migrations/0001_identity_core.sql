@@ -192,6 +192,8 @@ CREATE TABLE profile.rider_profiles (
 -- Persistent idempotency (F-03). The row is inserted PENDING and completed in the same transaction as the mutation,
 -- so a concurrent duplicate blocks on the primary key and then replays the committed response.
 CREATE TABLE platform.idempotency_records (
+  -- row id bound into the response envelope's AAD (the natural key is composite)
+  id uuid NOT NULL UNIQUE,
   actor_scope text NOT NULL CHECK (char_length(actor_scope) BETWEEN 3 AND 100),
   idempotency_key text NOT NULL CHECK (idempotency_key ~ '^[A-Za-z0-9_-]{16,128}$'),
   operation text NOT NULL CHECK (operation ~ '^[a-z][a-z0-9.-]{2,63}$'),
@@ -315,6 +317,8 @@ GRANT SELECT, INSERT ON identity.account_phones, identity.phone_lookup_index, id
 GRANT SELECT, INSERT ON profile.rider_profiles TO wayvro_api;
 GRANT SELECT, INSERT, UPDATE, DELETE ON platform.idempotency_records TO wayvro_api;
 GRANT INSERT ON platform.jobs TO wayvro_api;
+-- the phone lookup read set depends on the open lookup-key rotation's phase (dual-read during BACKFILL only)
+GRANT SELECT (target, phase) ON platform.key_rotations TO wayvro_api;
 GRANT INSERT ON audit.audit_events TO wayvro_api;
 
 GRANT USAGE ON SCHEMA identity, platform, audit TO wayvro_worker;

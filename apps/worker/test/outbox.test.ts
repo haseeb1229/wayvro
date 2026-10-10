@@ -1,7 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { createIdempotentConsumer, type ProcessedEventStore } from '../src/consumer/idempotent-consumer.js';
-import { OutboxRelay, backoffDelayMs, type EventPublisher, type OutboxEvent, type OutboxSource } from '../src/outbox/relay.js';
+import { backoffDelayMs } from '@wayvro/server-runtime';
+import { OutboxRelay, type EventPublisher, type OutboxEvent, type OutboxSource } from '../src/outbox/relay.js';
 import { loadWorkerConfig } from '../src/config.js';
 
 /** Test double of the outbox table: claim/dispatch/fail semantics only. */

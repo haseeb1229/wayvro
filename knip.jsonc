@@ -25,6 +25,7 @@
     "apps/web-ops": { "project": ["src/**/*.{ts,tsx}!"] },
     "packages/*": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!"] },
     "packages/server-runtime": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    "packages/identity-core": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     "packages/config": { "entry": ["src/index.ts!", "src/check-flags.ts!"], "project": ["src/**/*.ts!"] },
     "packages/contracts": { "entry": ["src/index.ts!", "src/generate-openapi.ts!"], "project": ["src/**/*.ts!"] },
     "packages/db": { "entry": ["src/index.ts!", "src/bin/migrate.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },

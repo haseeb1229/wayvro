@@ -68,8 +68,4 @@ export class OutboxRelay {
   }
 }
 
-/** Bounded exponential backoff with full jitter for the relay loop (no retry storms, CLAUDE.md §13). */
-export function backoffDelayMs(consecutiveFailures: number, random: () => number = Math.random, baseMs = 250, capMs = 30000): number {
-  const ceiling = Math.min(capMs, baseMs * 2 ** Math.min(consecutiveFailures, 16));
-  return Math.floor(random() * ceiling);
-}
+// The relay loop's backoff is `backoffDelayMs` from @wayvro/server-runtime (shared with the job runner, ADR-042).

@@ -266,6 +266,7 @@ describe('grants executed as LOGIN members of each restricted role', () => {
       [randomUUID(), seeded.accountId],
     );
     await api.query(`insert into platform.jobs (id, type, status, max_attempts) values ($1, 'otp.deliver', 'QUEUED', 3)`, [randomUUID()]);
+    await api.query(`select target, phase from platform.key_rotations`);
     const denied = [
       `select * from audit.audit_events`,
       `update audit.audit_events set outcome = 'FAILURE'`,
