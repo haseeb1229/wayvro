@@ -15,7 +15,7 @@ Not delivered by design (out of Phase 1 scope): any rider/driver/business featur
 | SP-AND Android | **PASS via executed fallback** — pnpm isolated layout FAILED (Windows CMake path limit); hoisted layout: dev-client APK and release AAB built with JDK 17; 16 KB PASS (14/14 64-bit libs, zipalign -P 16 PASS); ABIs arm64-v8a + armeabi-v7a; permission gate fails the unconfigured template as intended | `tests/spikes/sp-and-android-build/results/` | ADR-036, ADR-034 |
 
 ## 3. Decisions (ADR index: `docs/adr/README.md`)
-NestJS 12 (ESM) on Fastify with explicit `@Inject` tokens · Socket.IO 4.8 in a separate realtime process + Redis adapter + mandatory snapshot recovery · drizzle-orm + SQL-first reviewed migrations; CAS + partial unique indexes for assignment · Expo SDK 57 / RN 0.86 / JDK 17 / AGP 8.12 / Gradle 9.3.1 / NDK 27.1 · pnpm 12.10.1 hoisted + Turborepo 2.11.7 + TypeScript 6.0.3 + Node 24.20.0 · Valkey 9.1.2 and SeaweedFS 4.48 locally · ESLint+boundaries, dependency-cruiser, Knip, syncpack, gitleaks, osv-scanner in CI.
+NestJS 12 (ESM) on Fastify with explicit `@Inject` tokens · Socket.IO 4.8 in a separate realtime process + Redis adapter + mandatory snapshot recovery · Next.js 16.3.8 for both web shells — mature-line pin after founder review, with a no-automatic-framework-upgrade policy (ADR-030) · drizzle-orm + SQL-first reviewed migrations; CAS + partial unique indexes for assignment · Expo SDK 57 / RN 0.86 / JDK 17 / AGP 8.12 / Gradle 9.3.1 / NDK 27.1 · pnpm 12.10.1 hoisted + Turborepo 2.11.7 + TypeScript 6.0.3 + Node 24.20.0 · Valkey 9.1.2 and SeaweedFS 4.48 locally · ESLint+boundaries, dependency-cruiser, Knip, syncpack, gitleaks, osv-scanner in CI.
 
 ## 4. Requirement traceability (Phase 1 target IDs)
 | ID | Status | Where |

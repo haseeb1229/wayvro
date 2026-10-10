@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@next/eslint-plugin-next": "16.4.0",
+    "@next/eslint-plugin-next": "16.3.8",
     "@types/node": "24.19.1",
     "dependency-cruiser": "18.5.0",
     "eslint": "10.12.0",

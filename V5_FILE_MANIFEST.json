@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 78,
+  "file_count_excluding_manifest": 79,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 8155,
-      "sha256": "b139360400f2ddcea54f65e1d7895f66a775a2c5506dc6c7e73d5a48efd445be"
+      "bytes": 8164,
+      "sha256": "b2a8a5b983b7437fd5cbf8a2e760b909a474dbb1ec6f35b1963f181a374540ef"
     },
     {
       "path": "CLAUDE.md",
@@ -215,6 +215,11 @@
       "sha256": "78d1c90a39d258a604fb217524e893d157cc399737c20951f976a9a023e729a0"
     },
     {
+      "path": "docs/adr/ADR-030-web-framework-and-version-maturity.md",
+      "bytes": 3634,
+      "sha256": "148a638accf0b7908ae0fb6d007eac81195b466cfa28c7f9a7b291fa0dd36e61"
+    },
+    {
       "path": "docs/adr/ADR-034-monorepo-tooling-and-runtime.md",
       "bytes": 4923,
       "sha256": "70bb590188072365bda8034f74a9e920913462c6fe72230baa014e829bb30666"
@@ -231,8 +236,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 2153,
-      "sha256": "da03fc638102de5f0a1e8e825d026c3bd9904d2f59b423ff4c3e7cd14597d5ad"
+      "bytes": 2342,
+      "sha256": "0981542e4dbb2b731335c86bfb46bef0636dabedb2a41d3035e8637a476c2571"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -241,8 +246,8 @@
     },
     {
       "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
-      "bytes": 17942,
-      "sha256": "38ad6f983cd5a2b3cb984ac58c9bfa97a0e6dd3e71d274f95d38477c4c78ea9a"
+      "bytes": 18037,
+      "sha256": "d338a6030a67edb82c28e2e505f838626a4fa5f78fff7f507cb0fe12ba5a52f2"
     },
     {
       "path": "docs/phase0/PHASE0_ARCHITECTURE_PROPOSAL.md",
@@ -381,8 +386,8 @@
     },
     {
       "path": "docs/phase1/PHASE1_HANDOFF_REPORT.md",
-      "bytes": 10387,
-      "sha256": "638d7d344722e8d294b3452793113bd9d3643c1cc31935a54b393ae26148d4dc"
+      "bytes": 10522,
+      "sha256": "ae93d2d18ae0c8b515749189063a50e80b6aa1bf2c9f8934b0a01249ebf806f6"
     },
     {
       "path": "docs/phase1/evidence/wayvro-mobile-release-16kb-report.json",
