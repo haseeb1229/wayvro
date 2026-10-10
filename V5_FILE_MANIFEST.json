@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 8164,
-      "sha256": "b2a8a5b983b7437fd5cbf8a2e760b909a474dbb1ec6f35b1963f181a374540ef"
+      "bytes": 8186,
+      "sha256": "6694a115c364f013d03d2090e8407c6f18a03c9abd705041302f7f6d19f8a54f"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7827,
-      "sha256": "adbb8fe3626199485af625c9d6c61eadbb38d8984c1f83eb83363b78d8ac7fa0"
+      "bytes": 7849,
+      "sha256": "9451928065b4ea31a4c86374ddf065b9d1aa030814d89c82e9de6a4c4c72c0c8"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 6859,
-      "sha256": "a283e1157927e1c2c533ce68af1f4330c108b864389aa96fc5edd90f57dc3029"
+      "bytes": 7023,
+      "sha256": "1c4ff1ea0e0996a48ca6580405a8a041c82417d880d5f3ac1c2fc1f4e70d983d"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -106,8 +106,8 @@
     },
     {
       "path": "docs/12_PHASE_PLAN_AND_GATES.md",
-      "bytes": 11319,
-      "sha256": "5dd38553bde8cd8b42e691a40f3d5288fa5afa555b25406d1dd60799aaacb4c4"
+      "bytes": 11398,
+      "sha256": "ab02174985263d61c61ccb66a04a05d800c8a5298529b20b730255bc6a1acdd6"
     },
     {
       "path": "docs/13_CLAUDE_ONLY_ENGINEERING_WORKFLOW.md",
@@ -236,8 +236,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 2342,
-      "sha256": "0981542e4dbb2b731335c86bfb46bef0636dabedb2a41d3035e8637a476c2571"
+      "bytes": 2643,
+      "sha256": "3d2ef945936c12069fb600c8d5c769c2272e85f4ba63b126da12e1cdc0ca5822"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -246,8 +246,8 @@
     },
     {
       "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
-      "bytes": 18037,
-      "sha256": "d338a6030a67edb82c28e2e505f838626a4fa5f78fff7f507cb0fe12ba5a52f2"
+      "bytes": 18073,
+      "sha256": "946eb15b24034f66549ff3651cf0f91826b9fc374dd1acfd0eb55fa6480dd3dc"
     },
     {
       "path": "docs/phase0/PHASE0_ARCHITECTURE_PROPOSAL.md",

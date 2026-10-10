@@ -2,6 +2,8 @@
 
 ADRs record decisions with evidence. Numbering follows `docs/phase0/PHASE0_ADR_BACKLOG.md`; that backlog remains the list of **open** decisions, and the files here record decisions taken since Phase 0. An ADR here supersedes the matching backlog row once the founder approves the phase that created it. Until then an ADR is **ACCEPTED on evidence — pending founder/ChatGPT review**.
 
+**Phase 1 status (2026-10-10):** Phase 1 passed founder/ChatGPT review and was merged into `main` (PR #1, merge commit `eaa1fcb`), so the Phase 1 ADRs below are in force and supersede their Phase 0 backlog rows. The open items they record (for example the ADR-005b Phase 4 re-test gate) remain open.
+
 Every ADR states: status, context, alternatives, evidence (commands, versions, measurements, environment), decision, consequences and reversal path. A failed spike is recorded as FAIL together with the fallback that was executed — history is never rewritten to make a first choice look successful.
 
 ## Phase 1 decisions (2026-10-09)

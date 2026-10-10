@@ -65,7 +65,7 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `docs/phase0/research/R1–R6` — sourced research evidence (competitors, regulation, payments, mobile/store, providers/cost, safety/market).
 - `docs/phase0/tools/` — coverage maps + generator (`phase0-coverage.js`), manifest/validation regenerator.
 
-## Phase 1 foundation (branch `phase-1/foundation`, 2026-10-09, pending founder/ChatGPT review)
+## Phase 1 foundation (2026-10-09; reviewed and integrated into `main` via PR #1, merge commit `eaa1fcb`, 2026-10-10)
 - `docs/adr/README.md` — index of Phase 1 ADRs (ADR-004, ADR-005, ADR-005b, ADR-010, ADR-027, ADR-030, ADR-034, ADR-036, ADR-037) with evidence.
 - `docs/operations/developer-setup.md` — clean-machine setup, infrastructure, build/test and Android commands.
 - `docs/phase1/PHASE1_HANDOFF_REPORT.md` — Phase 1 handoff (scope, spike verdicts, traceability, verification, NOT RUN items, risks); `docs/phase1/evidence/` — mobile release gate reports.
