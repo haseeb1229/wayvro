@@ -10,6 +10,7 @@
       "get": {
         "operationId": "getLiveness",
         "summary": "Process is running (no dependency checks).",
+        "security": [],
         "parameters": [
           {
             "name": "x-request-id",
@@ -106,7 +107,15 @@
                                 "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
                                 "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
                                 "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
-                                "WAYVRO_E_UNAUTHENTICATED"
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
                               ]
                             },
                             "message": {
@@ -117,6 +126,17 @@
                             "requestId": {
                               "type": "string",
                               "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -145,6 +165,7 @@
       "get": {
         "operationId": "getReadiness",
         "summary": "Process can serve traffic: required dependencies respond.",
+        "security": [],
         "parameters": [
           {
             "name": "x-request-id",
@@ -264,6 +285,4215 @@
           }
         }
       }
+    },
+    "/v1/auth/otp-challenges": {
+      "post": {
+        "operationId": "createOtpChallenge",
+        "summary": "Request a sign-in code for a +92 mobile number (identical 202 for every syntactically valid number).",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/OtpChallengeRequest",
+                "$defs": {
+                  "OtpChallengeRequest": {
+                    "type": "object",
+                    "properties": {
+                      "phone": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "purpose": {
+                        "type": "string",
+                        "const": "SIGN_IN"
+                      },
+                      "installationId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{16,128}$"
+                      },
+                      "locale": {
+                        "type": "string",
+                        "enum": [
+                          "en",
+                          "ur",
+                          "ur-Latn"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "phone",
+                      "purpose",
+                      "installationId",
+                      "locale"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/OtpChallenge",
+                  "$defs": {
+                    "OtpChallenge": {
+                      "type": "object",
+                      "properties": {
+                        "challengeId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "resendAvailableAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "const": "SMS"
+                        },
+                        "maskedDestination": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32
+                        }
+                      },
+                      "required": [
+                        "challengeId",
+                        "expiresAt",
+                        "resendAvailableAt",
+                        "channel",
+                        "maskedDestination"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/otp-challenges/{challengeId}/resends": {
+      "post": {
+        "operationId": "resendOtpChallenge",
+        "summary": "Issue a new code for a challenge after its cooldown (supersedes the previous code).",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          },
+          {
+            "name": "challengeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/OtpResendRequest",
+                "$defs": {
+                  "OtpResendRequest": {
+                    "type": "object",
+                    "properties": {
+                      "installationId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{16,128}$"
+                      }
+                    },
+                    "required": [
+                      "installationId"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/OtpChallenge",
+                  "$defs": {
+                    "OtpChallenge": {
+                      "type": "object",
+                      "properties": {
+                        "challengeId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "resendAvailableAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "const": "SMS"
+                        },
+                        "maskedDestination": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32
+                        }
+                      },
+                      "required": [
+                        "challengeId",
+                        "expiresAt",
+                        "resendAvailableAt",
+                        "channel",
+                        "maskedDestination"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/sessions": {
+      "post": {
+        "operationId": "createSession",
+        "summary": "Verify a code and create a session (creates the account on first verified sign-in).",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/SessionCreateRequest",
+                "$defs": {
+                  "SessionCreateRequest": {
+                    "type": "object",
+                    "properties": {
+                      "challengeId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$"
+                      },
+                      "installationId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{16,128}$"
+                      },
+                      "device": {
+                        "type": "object",
+                        "properties": {
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "ANDROID",
+                              "IOS"
+                            ]
+                          },
+                          "appVersion": {
+                            "type": "string",
+                            "pattern": "^[0-9A-Za-z.+-]{1,32}$"
+                          }
+                        },
+                        "required": [
+                          "platform",
+                          "appVersion"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "challengeId",
+                      "code",
+                      "installationId",
+                      "device"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/SessionCreated",
+                  "$defs": {
+                    "SessionCreated": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "isNewAccount": {
+                          "type": "boolean"
+                        },
+                        "requiredActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ACCEPT_POLICIES",
+                              "AGE_DECLARATION",
+                              "PHONE_STEP_UP",
+                              "RECOVERY_REVIEW"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "sessionId",
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt",
+                        "isNewAccount",
+                        "requiredActions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/token-refreshes": {
+      "post": {
+        "operationId": "refreshSession",
+        "summary": "Rotate a single-use refresh token; reuse outside the idempotent replay window revokes the session.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/TokenRefreshRequest",
+                "$defs": {
+                  "TokenRefreshRequest": {
+                    "type": "object",
+                    "properties": {
+                      "refreshToken": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": [
+                      "refreshToken"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/SessionTokens",
+                  "$defs": {
+                    "SessionTokens": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "sessionId",
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/sessions/current": {
+      "delete": {
+        "operationId": "deleteCurrentSession",
+        "summary": "Sign out the calling session.",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/state": {
+      "get": {
+        "operationId": "getAccountState",
+        "summary": "Authoritative account/session/profile state for the calling session.",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/AccountState",
+                  "$defs": {
+                    "AccountState": {
+                      "type": "object",
+                      "properties": {
+                        "account": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "const": "ACTIVE"
+                            },
+                            "displayName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "preferredLocale": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "ur",
+                                "ur-Latn"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "status",
+                            "displayName",
+                            "preferredLocale",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "assurance": {
+                              "type": "string",
+                              "const": "OTP"
+                            },
+                            "accessTokenExpiresAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "assurance",
+                            "accessTokenExpiresAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "riderProfile": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "const": "ACTIVE"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "requiredActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ACCEPT_POLICIES",
+                              "AGE_DECLARATION",
+                              "PHONE_STEP_UP",
+                              "RECOVERY_REVIEW"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "account",
+                        "session",
+                        "riderProfile",
+                        "requiredActions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/profile": {
+      "patch": {
+        "operationId": "updateProfile",
+        "summary": "Update the allowlisted profile fields (display name, preferred locale).",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/ProfileUpdateRequest",
+                "$defs": {
+                  "ProfileUpdateRequest": {
+                    "type": "object",
+                    "properties": {
+                      "displayName": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 60,
+                            "pattern": "^[^\\p{Cc}‪-‮⁦-⁩]+$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "preferredLocale": {
+                        "type": "string",
+                        "enum": [
+                          "en",
+                          "ur",
+                          "ur-Latn"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/Profile",
+                  "$defs": {
+                    "Profile": {
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preferredLocale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "ur",
+                            "ur-Latn"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "displayName",
+                        "preferredLocale"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "summary": "Active sessions of the calling account (no IP address or location).",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/SessionList",
+                  "$defs": {
+                    "SessionList": {
+                      "type": "object",
+                      "properties": {
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "current": {
+                                "type": "boolean"
+                              },
+                              "platform": {
+                                "type": "string",
+                                "enum": [
+                                  "ANDROID",
+                                  "IOS"
+                                ]
+                              },
+                              "appVersion": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                              },
+                              "lastUsedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "current",
+                              "platform",
+                              "appVersion",
+                              "createdAt",
+                              "lastUsedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "sessions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "revokeSession",
+        "summary": "Revoke one session of the calling account (foreign or unknown ids answer 404).",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          },
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/session-revocations": {
+      "post": {
+        "operationId": "createSessionRevocation",
+        "summary": "Revoke all sessions or all other sessions (needs a fresh OTP proof unless the session is older than 24 h).",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$ref": "#/$defs/SessionRevocationRequest",
+                "$defs": {
+                  "SessionRevocationRequest": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "ALL",
+                          "ALL_OTHERS"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "scope"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/SessionRevocationResult",
+                  "$defs": {
+                    "SessionRevocationResult": {
+                      "type": "object",
+                      "properties": {
+                        "revokedCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "revokedCount"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/security-events": {
+      "get": {
+        "operationId": "listSecurityEvents",
+        "summary": "Recent security activity of the calling account.",
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/SecurityEventList",
+                  "$defs": {
+                    "SecurityEventList": {
+                      "type": "object",
+                      "properties": {
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "SIGN_IN",
+                                  "SIGN_IN_NEW_DEVICE",
+                                  "DORMANT_ACCOUNT_NEW_INSTALLATION",
+                                  "SIGNED_OUT",
+                                  "SESSION_REVOKED",
+                                  "SESSIONS_REVOKED_ALL",
+                                  "SESSIONS_REVOKED_OTHERS",
+                                  "REFRESH_TOKEN_REUSE_DETECTED",
+                                  "PROFILE_UPDATED"
+                                ]
+                              },
+                              "occurredAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$ref": "#/$defs/ErrorEnvelope",
+                  "$defs": {
+                    "ErrorEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "WAYVRO_E_INTERNAL",
+                                "WAYVRO_E_VALIDATION",
+                                "WAYVRO_E_NOT_FOUND",
+                                "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
+                                "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
+                                "WAYVRO_E_UNAUTHENTICATED",
+                                "WAYVRO_E_FORBIDDEN",
+                                "WAYVRO_E_RATE_LIMITED",
+                                "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                                "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                                "WAYVRO_E_OTP_LOCKED",
+                                "WAYVRO_E_STEP_UP_REQUIRED",
+                                "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                                "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "details": {
+                              "type": "object",
+                              "properties": {
+                                "retryAfterSeconds": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "requestId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Standard error body for every non-2xx API response."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -287,7 +4517,15 @@
                       "WAYVRO_E_DEPENDENCY_UNAVAILABLE",
                       "WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED",
                       "WAYVRO_E_IDEMPOTENCY_KEY_INVALID",
-                      "WAYVRO_E_UNAUTHENTICATED"
+                      "WAYVRO_E_UNAUTHENTICATED",
+                      "WAYVRO_E_FORBIDDEN",
+                      "WAYVRO_E_RATE_LIMITED",
+                      "WAYVRO_E_IDEMPOTENCY_CONFLICT",
+                      "WAYVRO_E_OTP_INVALID_OR_EXPIRED",
+                      "WAYVRO_E_OTP_LOCKED",
+                      "WAYVRO_E_STEP_UP_REQUIRED",
+                      "WAYVRO_E_PAYLOAD_TOO_LARGE",
+                      "WAYVRO_E_UNSUPPORTED_MEDIA_TYPE"
                     ]
                   },
                   "message": {
@@ -298,6 +4536,17 @@
                   "requestId": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "details": {
+                    "type": "object",
+                    "properties": {
+                      "retryAfterSeconds": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -315,6 +4564,13 @@
             "description": "Standard error body for every non-2xx API response."
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "sessionBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque consumer access token (15-minute default lifetime; not a JWT)."
       }
     }
   }

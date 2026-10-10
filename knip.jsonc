@@ -13,7 +13,7 @@
     // The local runner (ADR-045) is a non-production entry: it may use the dev-only test doubles.
     "apps/api": { "entry": ["src/main.ts!", "dev/main.local.ts"], "project": ["src/**/*.ts!", "dev/**/*.ts", "test/**/*.ts"] },
     "apps/worker": {
-      "entry": ["src/main.ts!"],
+      "entry": ["src/main.ts!", "src/bin/key-rotation.ts!"],
       "project": ["src/**/*.ts!", "test/**/*.ts"],
       // EXPLAINED EXCEPTION (production mode only): the transactional-outbox relay and idempotent-consumer skeletons are
       // required by the Phase 1 scope but have no production caller until the outbox table ships with the first

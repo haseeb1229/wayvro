@@ -12,13 +12,15 @@ export function registerHttpHooks(fastify: FastifyInstance, log: Logger): void {
   // Correlation: the id is resolved in `genReqId` (see app.ts) and echoed on every response.
   fastify.addHook('onRequest', (request, reply, done) => {
     void reply.header(REQUEST_ID_HEADER, request.id);
+    // API responses (tokens, account state) must never be stored by intermediaries or clients' HTTP caches.
+    void reply.header('cache-control', 'no-store');
     runWithContext({ requestId: request.id }, done);
   });
 
   /**
-   * Idempotency-Key shape (Phase 1): every mutating /v1 route requires a well-formed key. `preHandler` runs only for
-   * matched routes, so unknown paths still return 404. Replay storage/deduplication arrives with the first mutating
-   * endpoint (Phase 2+); until then no mutating route exists.
+   * Idempotency-Key shape: every mutating /v1 route requires a well-formed key. `preHandler` runs only for matched
+   * routes, so unknown paths still return 404. Persistent replay/deduplication is done per operation by the
+   * IdempotencyStore inside the mutation's transaction (F-03).
    */
   fastify.addHook('preHandler', async (request, reply) => {
     if (!MUTATING.has(request.method) || !request.routeOptions.url?.startsWith('/v1/')) return;

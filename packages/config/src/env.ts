@@ -25,6 +25,14 @@ export const httpEnvSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535),
 });
+/**
+ * Field/lookup/MAC key material (data model §8.2). Only the LOCAL provider exists: a synthetic seed for local/test.
+ * Staging/production refuse it here and in @wayvro/field-crypto (no production key provider until EG-05).
+ */
+export const keyEnvSchema = z.object({
+  WAYVRO_LOCAL_KEY_SEED: z.string().min(32).optional(),
+  WAYVRO_LOCAL_KEY_SPEC: z.string().min(1).optional(),
+});
 
 export class ConfigError extends Error {
   override readonly name = 'ConfigError';
@@ -57,6 +65,9 @@ function environmentRules(config: Record<string, unknown>): string[] {
     if (u.protocol !== 'rediss:') issues.push(`REDIS_URL: ${env} requires TLS (rediss://)`);
   }
   if (config['LOG_LEVEL'] === 'trace' || config['LOG_LEVEL'] === 'debug') issues.push(`LOG_LEVEL: ${env} must not run at debug/trace`);
+  if (config['WAYVRO_LOCAL_KEY_SEED'] !== undefined || config['WAYVRO_LOCAL_KEY_SPEC'] !== undefined) {
+    issues.push(`WAYVRO_LOCAL_KEY_SEED/WAYVRO_LOCAL_KEY_SPEC: ${env} must not use local key material`);
+  }
   return issues;
 }
 

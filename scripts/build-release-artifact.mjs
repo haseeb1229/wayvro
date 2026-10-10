@@ -11,7 +11,8 @@
  * no devDependencies — so the dev-only `@wayvro/provider-test-doubles` and `@wayvro/test-support` are never installed.
  * The app's own `files` field ships `dist/` only (no `src/`, `test/`, `dev/` or `dist-dev/`). Finally an immutable
  * `dist/build-info.json` release marker is written; boot refuses WAYVRO_ENV=local|test when it is present. The artefact
- * `package.json` keeps runtime metadata only (no scripts or devDependencies that reference development tooling).
+ * `package.json` and every injected `@wayvro/*` manifest keep runtime fields only (no scripts or devDependencies naming
+ * development tooling or dev-only packages).
  * Phase 7 container images must be built from exactly this directory.
  */
 import { spawnSync } from 'node:child_process';
@@ -22,10 +23,26 @@ import { fileURLToPath } from 'node:url';
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const SERVER_APPS = ['api', 'worker', 'realtime'];
 
-function run(cmd, args, options = {}) {
-  const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32', ...options });
+/** Runs a command; on Windows `pnpm` is a .cmd shim, so it goes through the shell as ONE quoted string (DEP0190). */
+function run(cmd, args) {
+  const windowsShim = process.platform === 'win32' && cmd === 'pnpm';
+  const r = windowsShim
+    ? spawnSync([cmd, ...args.map((a) => `"${a}"`)].join(' '), { cwd: ROOT, encoding: 'utf8', shell: true })
+    : spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed (exit ${r.status}):\n${(r.stdout ?? '') + (r.stderr ?? '')}`);
   return r.stdout.trim();
+}
+
+/** Writes a NEW file (unlink first), so a hard-linked artefact file can never write through to its source. */
+function replaceFile(file, content) {
+  rmSync(file, { force: true });
+  writeFileSync(file, content);
+}
+
+/** Keeps runtime fields only: no scripts or devDependencies that name development tooling or dev-only packages. */
+function runtimeManifest(pkg) {
+  const keep = ['name', 'version', 'private', 'type', 'main', 'types', 'exports', 'files', 'dependencies'];
+  return JSON.stringify(Object.fromEntries(keep.filter((k) => pkg[k] !== undefined).map((k) => [k, pkg[k]])), null, 2) + '\n';
 }
 
 /** True when `dir` is inside the repository: Node would then resolve hoisted root node_modules from the artefact. */
@@ -48,13 +65,12 @@ export function buildReleaseArtifact(app, outDir) {
   if (existsSync(outDir) && readdirSync(outDir).length > 0) throw new Error(`output directory must be empty: ${outDir}`);
   if (!existsSync(join(ROOT, 'apps', app, 'dist', 'main.js'))) throw new Error(`apps/${app}/dist/main.js is missing — run \`pnpm build\` first`);
   mkdirSync(dirname(outDir), { recursive: true });
-  const quote = (s) => (process.platform === 'win32' ? `"${s}"` : s);
-  run('pnpm', ['--filter', `@wayvro/${app}`, 'deploy', '--prod', '--frozen-lockfile', quote(outDir)]);
-  const commit = run('git', ['rev-parse', 'HEAD'], { shell: false });
-  const pkgFile = join(outDir, 'package.json');
-  const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
-  const runtimePkg = { name: pkg.name, version: pkg.version, private: true, type: pkg.type, dependencies: pkg.dependencies };
-  writeFileSync(pkgFile, JSON.stringify(runtimePkg, null, 2) + '\n');
+  run('pnpm', ['--filter', `@wayvro/${app}`, 'deploy', '--prod', '--frozen-lockfile', outDir]);
+  const commit = run('git', ['rev-parse', 'HEAD']);
+  const manifests = [join(outDir, 'package.json')];
+  const scope = join(outDir, 'node_modules', '@wayvro');
+  if (existsSync(scope)) for (const name of readdirSync(scope)) manifests.push(join(scope, name, 'package.json'));
+  for (const file of manifests) replaceFile(file, runtimeManifest(JSON.parse(readFileSync(file, 'utf8'))));
   const marker = join(outDir, 'dist', 'build-info.json');
   writeFileSync(marker, JSON.stringify({ artifact: 'release', app, commit, builtAt: new Date().toISOString() }, null, 2) + '\n');
   chmodSync(marker, 0o444);

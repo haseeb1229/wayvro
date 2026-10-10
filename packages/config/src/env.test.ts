@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, databaseEnvSchema, httpEnvSchema, isNonProductionLike, loadConfig, redisEnvSchema, serviceEnvSchema } from './env.js';
+import { ConfigError, databaseEnvSchema, httpEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema } from './env.js';
 
 const schema = serviceEnvSchema.extend(databaseEnvSchema.shape).extend(redisEnvSchema.shape).extend(httpEnvSchema.shape);
 const local = {
@@ -55,6 +55,18 @@ describe('loadConfig', () => {
       REDIS_URL: 'rediss://cache.internal.example:6380',
     });
     expect(ok.WAYVRO_ENV).toBe('production');
+  });
+
+  it('refuses local key material in staging/production (EG-05: no production key provider yet)', () => {
+    const remote = {
+      DATABASE_URL: 'postgres://u:p@db.internal.example/wayvro?sslmode=verify-full',
+      REDIS_URL: 'rediss://cache.internal.example:6380',
+      WAYVRO_LOCAL_KEY_SEED: 'synthetic-seed-that-is-long-enough-000000',
+    };
+    const keyed = serviceEnvSchema.extend(databaseEnvSchema.shape).extend(redisEnvSchema.shape).extend(keyEnvSchema.shape);
+    for (const env of ['staging', 'production']) expect(() => loadConfig(keyed, { ...remote, WAYVRO_ENV: env })).toThrow(/must not use local key material/);
+    expect(loadConfig(keyed, { ...local, WAYVRO_LOCAL_KEY_SEED: remote.WAYVRO_LOCAL_KEY_SEED }).WAYVRO_LOCAL_KEY_SEED).toBe(remote.WAYVRO_LOCAL_KEY_SEED);
+    expect(() => loadConfig(keyed, { ...local, WAYVRO_LOCAL_KEY_SEED: 'short' })).toThrow(/WAYVRO_LOCAL_KEY_SEED/);
   });
 
   it('refuses debug logging outside local/test', () => {

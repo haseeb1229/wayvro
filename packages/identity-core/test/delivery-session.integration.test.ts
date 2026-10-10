@@ -37,8 +37,8 @@ async function challenge(status = 'ISSUED', expiresIn = '5 minutes'): Promise<{ 
   const phone = syntheticPhone();
   const d = c.lookup.activeDigest(phone);
   await h.api.query(
-    `insert into identity.otp_challenges (id, purpose, phone_lookup_key_version, phone_lookup_hash, phone_envelope, code_mac, mac_key_version, channel, installation_hash, status, max_attempts, next_resend_at, expires_at)
-     values ($1, 'SIGN_IN', $2, $3, $4, $5, 1, 'SMS', $6, $7, 5, now(), now() + $8::interval)`,
+    `insert into identity.otp_challenges (id, purpose, phone_lookup_key_version, phone_lookup_hash, phone_envelope, code_mac, mac_key_version, channel, locale, installation_hash, status, max_attempts, next_resend_at, expires_at)
+     values ($1, 'SIGN_IN', $2, $3, $4, $5, 1, 'SMS', 'en', $6, $7, 5, now(), now() + $8::interval)`,
     [
       challengeId,
       d.version,

@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   API_ROUTES,
   ErrorEnvelopeSchema,
+  OtpChallengeRequestSchema,
+  ProfileUpdateRequestSchema,
+  SessionCreateRequestSchema,
+  SessionRevocationRequestSchema,
   IdempotencyKeySchema,
   LivenessSchema,
   RealtimeEventEnvelopeSchema,
@@ -24,6 +28,49 @@ describe('error envelope', () => {
   it('only allows registered codes', () => {
     expect(ErrorEnvelopeSchema.safeParse({ error: { code: 'WAYVRO_E_NOT_FOUND', message: 'Not found', requestId: 'req-12345678' } }).success).toBe(true);
     expect(ErrorEnvelopeSchema.safeParse({ error: { code: 'E_RANDOM', message: 'x', requestId: 'r' } }).success).toBe(false);
+  });
+});
+
+describe('error envelope details (additive)', () => {
+  it('accepts an optional retryAfterSeconds and nothing else', () => {
+    const base = { code: 'WAYVRO_E_RATE_LIMITED', message: 'Slow down', requestId: 'req-12345678' };
+    expect(ErrorEnvelopeSchema.safeParse({ error: { ...base, details: { retryAfterSeconds: 30 } } }).success).toBe(true);
+    expect(ErrorEnvelopeSchema.safeParse({ error: { ...base, details: { retryAfterSeconds: 0 } } }).success).toBe(false);
+  });
+});
+
+describe('identity request contracts are strict (no mass assignment)', () => {
+  const otp = { phone: '03000000001', purpose: 'SIGN_IN', installationId: 'synthetic-installation-0001', locale: 'ur' };
+  it('accepts the documented shape and rejects server-owned or unknown fields', () => {
+    expect(OtpChallengeRequestSchema.safeParse(otp).success).toBe(true);
+    for (const extra of [{ accountId: 'x' }, { role: 'DRIVER' }, { mode: 'driver' }, { isAdmin: true }]) {
+      expect(OtpChallengeRequestSchema.safeParse({ ...otp, ...extra }).success).toBe(false);
+    }
+    expect(OtpChallengeRequestSchema.safeParse({ ...otp, purpose: 'ACCOUNT_RECOVERY' }).success).toBe(false);
+    const session = {
+      challengeId: '0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b',
+      code: '048213',
+      installationId: otp.installationId,
+      device: { platform: 'ANDROID', appVersion: '1.0.0' },
+    };
+    expect(SessionCreateRequestSchema.safeParse(session).success).toBe(true);
+    expect(SessionCreateRequestSchema.safeParse({ ...session, code: '48213' }).success).toBe(false);
+    expect(SessionCreateRequestSchema.safeParse({ ...session, device: { ...session.device, trusted: true } }).success).toBe(false);
+    expect(SessionRevocationRequestSchema.safeParse({ scope: 'ALL_OTHERS' }).success).toBe(true);
+    expect(SessionRevocationRequestSchema.safeParse({ scope: 'EVERYONE' }).success).toBe(false);
+  });
+
+  it('profile updates are allowlisted, non-empty and reject control/bidi-override characters', () => {
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: '  Ayesha  ' }).data).toEqual({ displayName: 'Ayesha' });
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: 'علی' }).success).toBe(true);
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: null }).success).toBe(true);
+    expect(ProfileUpdateRequestSchema.safeParse({ preferredLocale: 'ur-Latn' }).success).toBe(true);
+    expect(ProfileUpdateRequestSchema.safeParse({}).success).toBe(false);
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: '' }).success).toBe(false);
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: 'x'.repeat(61) }).success).toBe(false);
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: 'a\u0007b' }).success).toBe(false);
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: 'abc\u202Edef' }).success).toBe(false);
+    expect(ProfileUpdateRequestSchema.safeParse({ displayName: 'x', status: 'ACTIVE' }).success).toBe(false);
   });
 });
 
@@ -68,6 +115,27 @@ describe('OpenAPI generation', () => {
     }
   });
 
+  it('documents request bodies, path parameters, bearer security and body-less 204s', () => {
+    const doc = buildOpenApiDocument('1.0.0') as {
+      paths: Record<
+        string,
+        Record<
+          string,
+          { security: unknown[]; parameters: Array<{ name: string; in: string }>; requestBody?: unknown; responses: Record<string, { content?: unknown }> }
+        >
+      >;
+      components: { securitySchemes: Record<string, unknown> };
+    };
+    const resend = doc.paths['/v1/auth/otp-challenges/{challengeId}/resends']?.['post'];
+    expect(resend?.parameters).toContainEqual(expect.objectContaining({ name: 'challengeId', in: 'path' }));
+    expect(resend?.requestBody).toBeDefined();
+    expect(resend?.security).toEqual([]);
+    const revoke = doc.paths['/v1/account/sessions/{sessionId}']?.['delete'];
+    expect(revoke?.security).toEqual([{ sessionBearer: [] }]);
+    expect(revoke?.responses['204']?.content).toBeUndefined();
+    expect(doc.components.securitySchemes['sessionBearer']).toMatchObject({ type: 'http', scheme: 'bearer' });
+  });
+
   it('requires an Idempotency-Key on mutating routes and merges methods on one path', () => {
     const doc = buildOpenApiDocument('1.0.0', [
       ...API_ROUTES,
@@ -76,6 +144,7 @@ describe('OpenAPI generation', () => {
         method: 'POST',
         path: '/v1/health/live',
         summary: 'test-only route',
+        auth: 'public',
         responses: { 201: LivenessSchema, 400: ErrorEnvelopeSchema },
       },
     ]) as {

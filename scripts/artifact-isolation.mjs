@@ -17,8 +17,10 @@
  *      (positive control, so the probe is meaningful);
  *   05 the release marker is present and well-formed;
  *   06 booting the artefact with WAYVRO_ENV=local and WAYVRO_ENV=test is refused by the release marker;
- *   07 (api) the artefact's route table, read from the artefact's own compiled app, contains exactly the published
- *      contract routes and no local/test route.
+ *   07 (api, worker) booting with a production-like configuration is refused (no production key provider while
+ *      EG-05 is open; realtime holds no keys and is not part of this check);
+ *   08 (api) the artefact's route table, recorded by the artefact's own compiled app while it registers routes,
+ *      contains exactly the published contract routes and no local/test route.
  * --negative-controls additionally proves that dependency-cruiser, ESLint and Knip (production, strict) reject a
  * production import of the test doubles (a temporary probe file is created and always removed; CI only needs a clean
  * checkout, locally the working tree is restored in `finally`).
@@ -51,6 +53,11 @@ const LOCAL_ENV = {
   DATABASE_URL: 'postgres://wayvro:wayvro-local-only@127.0.0.1:25432/wayvro',
   REDIS_URL: 'redis://127.0.0.1:26379',
   WAYVRO_LOCAL_KEY_SEED: 'wayvro-local-synthetic-key-seed-not-for-production',
+};
+const PRODUCTION_LIKE_ENV = {
+  WAYVRO_ENV: 'production',
+  DATABASE_URL: 'postgres://wayvro:unused@db.invalid.example/wayvro?sslmode=verify-full',
+  REDIS_URL: 'rediss://cache.invalid.example:6380',
 };
 
 const results = [];
@@ -154,7 +161,19 @@ function inspectArtifact(app, dir) {
     record('06', app, r.status !== 0 && /release artefact .* refuses WAYVRO_ENV=/.test(out), `WAYVRO_ENV=${env}: exit ${r.status ?? r.signal}`);
   }
 
-  // 07 route table of the artefact's own compiled app (api).
+  // 07 production-like configuration refused (no production key provider while EG-05 is open).
+  if (app !== 'realtime') {
+    const r = node(dir, ['dist/main.js'], { ...PRODUCTION_LIKE_ENV, PORT: '4199', HEALTH_PORT: '4199' });
+    const out = `${r.stdout}${r.stderr}`;
+    record(
+      '07',
+      app,
+      r.status !== 0 && /no production key provider/.test(out),
+      `exit ${r.status ?? r.signal}: ${(/KeyProviderError[^\n]*/.exec(out) ?? ['no refusal message'])[0].slice(0, 140)}`,
+    );
+  }
+
+  // 08 route table of the artefact's own compiled app (api).
   if (app === 'api') {
     const probe = join(OUT, 'route-probe.mjs');
     writeFileSync(probe, ROUTE_PROBE);
@@ -163,7 +182,7 @@ function inspectArtifact(app, dir) {
     const parsed = lastLine.startsWith('{') ? JSON.parse(lastLine) : null;
     const pass = parsed !== null && parsed.extra.length === 0 && parsed.missing.length === 0 && parsed.local.length === 0;
     record(
-      '07',
+      '08',
       app,
       pass,
       parsed
@@ -173,19 +192,26 @@ function inspectArtifact(app, dir) {
   }
 }
 
-/** Runs inside the artefact's module graph: builds the compiled app with inert dependencies and prints its routes. */
+/**
+ * Runs inside the artefact's module graph: builds the artefact's compiled app (its production createApp, with inert
+ * service objects — no connection is opened) and prints the route manifest the app recorded while registering routes.
+ */
 const ROUTE_PROBE = `
 const base = process.argv[2].endsWith('/') ? process.argv[2] : process.argv[2] + '/';
-const { createApp } = await import(new URL('dist/app.js', base));
+const { createApp, routeManifest } = await import(new URL('dist/app.js', base));
 const { API_ROUTES } = await import(new URL('node_modules/@wayvro/contracts/dist/index.js', base));
-const inert = () => new Proxy(function () {}, { get: (_t, p) => (p === 'then' ? undefined : inert()), apply: () => inert() });
-const app = await createApp(new Proxy({}, { get: (_t, p) => (p === 'then' ? undefined : p === 'trustProxy' ? false : p === 'extraControllers' ? undefined : inert()) }));
-const printed = app.getHttpAdapter().getInstance().printRoutes({ commonPrefix: false });
-const served = new Set();
-for (const m of printed.matchAll(/(\\/[^\\s(]+)\\s*\\(([^)]+)\\)/g)) for (const method of m[2].split(',').map((x) => x.trim()).filter((x) => x !== 'HEAD')) served.add(method + ' ' + m[1]);
+const silent = { info() {}, warn() {}, error() {}, debug() {}, trace() {}, fatal() {}, child() { return silent; } };
+const app = await createApp({
+  info: { service: 'api', version: 'artifact-probe' },
+  readinessChecks: [],
+  log: silent,
+  trustProxy: false,
+  identity: { otp: {}, sessions: {}, accounts: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
+});
+const served = [...routeManifest(app)];
 const expected = new Set(API_ROUTES.map((r) => r.method + ' ' + r.path.replace(/\\{(\\w+)\\}/g, ':$1')));
 await app.close();
-console.log(JSON.stringify({ served: [...served], extra: [...served].filter((r) => !expected.has(r)), missing: [...expected].filter((r) => !served.has(r)), local: [...served].filter((r) => /__local|test-only/.test(r)) }));
+console.log(JSON.stringify({ served, extra: served.filter((r) => !expected.has(r)), missing: [...expected].filter((r) => !served.includes(r)), local: served.filter((r) => /__local|test-only/.test(r)) }));
 process.exit(0);
 `;
 

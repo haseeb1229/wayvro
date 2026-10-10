@@ -22,6 +22,7 @@ const BASE_ENV = {
   LOG_LEVEL: 'warn',
   DATABASE_URL: process.env.DATABASE_URL ?? 'postgres://wayvro:wayvro-local-only@127.0.0.1:25432/wayvro',
   REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:26379',
+  WAYVRO_LOCAL_KEY_SEED: process.env.WAYVRO_LOCAL_KEY_SEED ?? 'wayvro-local-synthetic-key-seed-not-for-production',
   NODE_ENV: 'production',
 };
 // Resolve Next.js the way Node would from each app (works with the hoisted workspace layout).
@@ -53,6 +54,8 @@ const record = (name, pass, detail = '') => {
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
+// Short-lived processes started by the refusal checks (killed in `finally`, never awaited as services).
+const probes = [];
 
 function start(svc) {
   const child = spawn(process.execPath, svc.cmd, { cwd: join(ROOT, svc.cwd ?? '.'), env: { ...BASE_ENV, ...svc.env }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -115,7 +118,30 @@ function portInUse(port) {
 }
 
 // Refuse to run if any port is taken: a smoke test must never pass by talking to someone else's server.
-const PORTS = [4000, 4001, 4002, 3210, 3310, 4099];
+const PORTS = [4000, 4001, 4002, 3210, 3310, 4098, 4099];
+
+/** Runs a deployable once and collects its exit code and output (refusal checks). */
+function runOnce(script, env) {
+  return new Promise((resolve) => {
+    // `undefined` removes a variable entirely (an empty string would fail schema validation before the check under test).
+    const merged = Object.fromEntries(Object.entries({ ...BASE_ENV, ...env }).filter(([, v]) => v !== undefined));
+    const child = spawn(process.execPath, [join(ROOT, script)], { env: merged, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    child.stdout.on('data', (b) => (out += b));
+    child.stderr.on('data', (b) => (out += b));
+    const timer = setTimeout(() => child.kill('SIGKILL'), 30000);
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      resolve({ code, out });
+    });
+  });
+}
+const REMOTE_TLS = { DATABASE_URL: 'postgres://u:unused@db.invalid.example/w?sslmode=verify-full', REDIS_URL: 'rediss://cache.invalid.example:6380' };
+const json = (body) => ({
+  method: 'POST',
+  headers: { 'content-type': 'application/json', 'idempotency-key': `boot-smoke-${Math.random().toString(36).slice(2)}-${Date.now()}` },
+  body: JSON.stringify(body),
+});
 const busy = [];
 for (const port of PORTS) if (await portInUse(port)) busy.push(port);
 if (busy.length) {
@@ -135,6 +161,55 @@ try {
     child.on('exit', (code) => resolve({ code, out }));
   });
   record('production boot refuses local/plaintext infrastructure', refusal.code !== 0 && /must not use a local host/.test(refusal.out), `exit ${refusal.code}`);
+
+  // 1b. BOOT-NEG (fail-closed checklist, docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md §3).
+  for (const app of ['api', 'worker', 'realtime']) {
+    const r = await runOnce(`apps/${app}/dist/main.js`, {
+      ...REMOTE_TLS,
+      WAYVRO_ENV: 'production',
+      WAYVRO_LOCAL_KEY_SEED: undefined,
+      PORT: '4099',
+      HEALTH_PORT: '4099',
+    });
+    record(
+      `${app}: a development build refuses WAYVRO_ENV=production (release artefact required)`,
+      r.code !== 0 && /requires a release artefact/.test(r.out),
+      `exit ${r.code}`,
+    );
+  }
+  const seeded = await runOnce('apps/api/dist/main.js', { ...REMOTE_TLS, WAYVRO_ENV: 'staging', PORT: '4099' });
+  record(
+    'staging/production configuration refuses local key material',
+    seeded.code !== 0 && /must not use local key material/.test(seeded.out),
+    `exit ${seeded.code}`,
+  );
+  const runnerProd = await runOnce('apps/api/dist-dev/dev/main.local.js', {
+    ...REMOTE_TLS,
+    WAYVRO_ENV: 'production',
+    WAYVRO_LOCAL_KEY_SEED: undefined,
+    PORT: '4099',
+  });
+  record('the local runner refuses non-local environments', runnerProd.code !== 0 && /local runner only runs/.test(runnerProd.out), `exit ${runnerProd.code}`);
+
+  // 1c. The PRODUCTION root (dist/main.js) in local mode binds no test double: OTP answers 503 and no local route exists.
+  {
+    const child = spawn(process.execPath, [join(ROOT, 'apps/api/dist/main.js')], { env: { ...BASE_ENV, PORT: '4098' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    probes.push(child);
+    const up = await waitFor('http://127.0.0.1:4098/v1/health/ready', 30000);
+    const otp = up
+      ? await fetch(
+          'http://127.0.0.1:4098/v1/auth/otp-challenges',
+          json({ phone: '+923990000001', purpose: 'SIGN_IN', installationId: 'boot-smoke-installation-01', locale: 'en' }),
+        )
+      : null;
+    const inbox = up ? await fetch('http://127.0.0.1:4098/__local/otp-inbox?phone=%2B923990000001') : null;
+    record(
+      'api production root: no OTP adapter bound -> 503, no local inbox route',
+      otp?.status === 503 && (await otp.json()).error.code === 'WAYVRO_E_DEPENDENCY_UNAVAILABLE' && inbox?.status === 404,
+      `otp ${otp?.status} inbox ${inbox?.status}`,
+    );
+    child.kill('SIGTERM');
+  }
 
   // 2. Boot every deployable.
   for (const svc of SERVICES) start(svc);
@@ -165,6 +240,48 @@ try {
     reply.slice(0, 80),
   );
 
+  // 4. End-to-end local sign-in (synthetic +92 399 number; the recording sink of the local runner — never EG-01 evidence).
+  {
+    const phone = `+92399${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`;
+    const installationId = `boot-smoke-${Date.now()}`;
+    const otp = await fetch('http://127.0.0.1:4000/v1/auth/otp-challenges', json({ phone, purpose: 'SIGN_IN', installationId, locale: 'en' }));
+    const challenge = await otp.json();
+    let code;
+    for (let i = 0; i < 40 && !code; i++) {
+      const inbox = await (await fetch(`http://127.0.0.1:4000/__local/otp-inbox?phone=${encodeURIComponent(phone)}`)).json();
+      code = /\b(\d{6})\b/.exec(inbox.messages?.[0]?.message ?? '')?.[1];
+      if (!code) await sleep(250);
+    }
+    record('local runner: OTP issued and delivered to the recording sink', otp.status === 202 && !!code, `otp ${otp.status}`);
+    const created = await fetch(
+      'http://127.0.0.1:4000/v1/auth/sessions',
+      json({ challengeId: challenge.challengeId, code, installationId, device: { platform: 'ANDROID', appVersion: '1.0.0' } }),
+    );
+    const tokens = await created.json();
+    const state = await fetch('http://127.0.0.1:4000/v1/account/state', { headers: { authorization: `Bearer ${tokens.accessToken}` } });
+    record(
+      'sign-in creates an account session and serves account state',
+      created.status === 201 && state.status === 200,
+      `session ${created.status} state ${state.status}`,
+    );
+    const rt = await socketIoConnect('ws://127.0.0.1:4001/socket.io/?EIO=4&transport=websocket', { token: tokens.accessToken });
+    record('realtime accepts the live session (P2.1 session authenticator)', rt.startsWith('40'), rt.slice(0, 40));
+    const refreshed = await fetch('http://127.0.0.1:4000/v1/auth/token-refreshes', json({ refreshToken: tokens.refreshToken }));
+    const next = await refreshed.json();
+    const logout = await fetch('http://127.0.0.1:4000/v1/auth/sessions/current', {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${next.accessToken}`, 'idempotency-key': `boot-smoke-logout-${Date.now()}` },
+    });
+    record('refresh rotates and logout revokes', refreshed.status === 200 && logout.status === 204, `refresh ${refreshed.status} logout ${logout.status}`);
+    const after = await socketIoConnect('ws://127.0.0.1:4001/socket.io/?EIO=4&transport=websocket', { token: next.accessToken });
+    const stateAfter = await fetch('http://127.0.0.1:4000/v1/account/state', { headers: { authorization: `Bearer ${next.accessToken}` } });
+    record(
+      'a revoked session is refused by realtime and the API',
+      after.startsWith('44') && stateAfter.status === 401,
+      `${after.slice(0, 30)} / ${stateAfter.status}`,
+    );
+  }
+
   const page = await fetch('http://127.0.0.1:3210/');
   const pageHealth = await (await fetch('http://127.0.0.1:3210/health')).json();
   record('web-public answers as service web-public (not another process)', pageHealth.service === 'web-public');
@@ -191,6 +308,7 @@ try {
   const robots = await (await fetch('http://127.0.0.1:3310/robots.txt')).text();
   record('web-ops robots.txt disallows everything', /Disallow: \/\s*$/m.test(robots));
 } finally {
+  for (const child of probes) if (child.exitCode === null) child.kill('SIGKILL');
   for (const { child } of procs) child.kill('SIGTERM');
   await sleep(1500);
   for (const { child } of procs) if (child.exitCode === null) child.kill('SIGKILL');

@@ -23,7 +23,11 @@ const log = createLogger({
     },
   }),
 });
-const auth: ConnectionAuthenticator = { authenticate: (h) => Promise.resolve({ subject: String((h.auth as { subject?: string }).subject) }) };
+const auth: ConnectionAuthenticator = {
+  authenticate: (h) =>
+    Promise.resolve({ subject: String((h.auth as { subject?: string }).subject), sessionId: 'synthetic-session', expiresAt: new Date(Date.now() + 60_000) }),
+  isStillValid: () => Promise.resolve(true),
+};
 const probe = redisCheck(REDIS_URL);
 const apps: NestFastifyApplication[] = [];
 const sockets: Socket[] = [];
@@ -40,6 +44,7 @@ async function gateway(): Promise<{ app: NestFastifyApplication; url: string }> 
     readinessChecks: [probe],
     log,
     redisUrl: REDIS_URL,
+    revalidateIntervalMs: 60_000,
   });
   apps.push(app);
   await app.listen(0, '127.0.0.1');

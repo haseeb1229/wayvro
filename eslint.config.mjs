@@ -68,7 +68,14 @@ export default tseslint.config(
   },
   {
     // Process entry points and CLI tools may write to stdout/stderr.
-    files: ['packages/config/src/check-flags.ts', 'packages/contracts/src/generate-openapi.ts', 'packages/db/src/bin/**', 'scripts/**', 'infra/**'],
+    files: [
+      'packages/config/src/check-flags.ts',
+      'packages/contracts/src/generate-openapi.ts',
+      'packages/db/src/bin/**',
+      'apps/worker/src/bin/**',
+      'scripts/**',
+      'infra/**',
+    ],
     rules: { 'no-console': 'off' },
   },
   {

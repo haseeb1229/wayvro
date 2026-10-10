@@ -5,15 +5,24 @@
  */
 import type { Type } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { createDatabase } from '@wayvro/db';
+import { createDatabase, type Database } from '@wayvro/db';
+import { FieldCipher, KeyedHasher, loadKeyRing } from '@wayvro/field-crypto';
+import { PhoneLookup } from '@wayvro/identity-core';
 import type { Logger } from '@wayvro/observability';
 import type { ProviderRegistry } from '@wayvro/provider-interfaces';
-import { databaseCheck, redisCheck } from '@wayvro/server-runtime';
+import { RateLimiter, awaitRedisReady, createRequestPathRedis, databaseCheck, redisCheck } from '@wayvro/server-runtime';
 import { createApp } from './app.js';
 import type { ApiConfig } from './config.js';
+import { AccountService } from './identity/account.service.js';
+import { OtpAbuseControls } from './identity/otp-abuse.js';
+import { OtpService } from './identity/otp.service.js';
+import { SessionService } from './identity/session.service.js';
+import { IdempotencyStore } from './platform/idempotency.js';
 
 export interface ApiRuntime {
   readonly app: NestFastifyApplication;
+  readonly db: Database;
+  readonly cipher: FieldCipher;
   close(): Promise<void>;
 }
 
@@ -24,20 +33,46 @@ export interface ComposeOptions {
 }
 
 export async function composeApi(config: ApiConfig, log: Logger, options: ComposeOptions): Promise<ApiRuntime> {
+  // Staging/production refuse here until a KMS-backed key provider exists (EG-05); local/test use synthetic keys.
+  const ring = loadKeyRing(config.WAYVRO_ENV, config);
+  const cipher = new FieldCipher(ring);
+  const hasher = new KeyedHasher(ring);
+  const lookup = new PhoneLookup(hasher);
   const db = createDatabase(config.DATABASE_URL, { maxConnections: 10, applicationName: 'wayvro-api' });
-  const redis = redisCheck(config.REDIS_URL);
+  const redisProbe = redisCheck(config.REDIS_URL);
+  const limiterRedis = createRequestPathRedis(config.REDIS_URL);
+  if (!(await awaitRedisReady(limiterRedis, 3000))) log.warn('rate limiter not reachable at boot; OTP and session routes fail closed until it is');
+  const limiter = new RateLimiter(limiterRedis, config.RATE_LIMIT_KEY_PREFIX);
+  const idempotency = new IdempotencyStore(db.pool, cipher);
+  const abuse = new OtpAbuseControls(limiter, hasher, config, log);
+  const otp = new OtpService({
+    db: db.pool,
+    cipher,
+    hasher,
+    lookup,
+    idempotency,
+    abuse,
+    policy: config,
+    deliveryAvailable: options.providers.has('otpDelivery'),
+  });
+  const sessions = new SessionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, policy: config });
+  const accounts = new AccountService(db.pool, idempotency, config);
   const app = await createApp({
     info: { service: 'api', version: config.WAYVRO_BUILD_VERSION },
-    readinessChecks: [databaseCheck(db), redis],
+    readinessChecks: [databaseCheck(db), redisProbe],
     log,
     trustProxy: config.TRUST_PROXY,
+    identity: { otp, sessions, accounts, sessionStore: db.pool },
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {
     app,
+    db,
+    cipher,
     async close() {
       await app.close();
-      redis.close();
+      redisProbe.close();
+      limiterRedis.disconnect();
       await db.close();
     },
   };

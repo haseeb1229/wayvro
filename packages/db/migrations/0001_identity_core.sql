@@ -85,6 +85,8 @@ CREATE TABLE identity.otp_challenges (
   code_mac bytea NULL CHECK (code_mac IS NULL OR octet_length(code_mac) = 32),
   mac_key_version smallint NULL CHECK (mac_key_version IS NULL OR mac_key_version > 0),
   channel text NOT NULL CHECK (channel IN ('SMS')),
+  -- message/account locale requested with the challenge (used for the SMS text and a new account's preferred locale)
+  locale text NOT NULL CHECK (locale IN ('en', 'ur', 'ur-Latn')),
   installation_hash bytea NOT NULL CHECK (octet_length(installation_hash) = 32),
   client_ip_prefix_hash bytea NULL CHECK (client_ip_prefix_hash IS NULL OR octet_length(client_ip_prefix_hash) = 32),
   status text NOT NULL CHECK (status IN ('ISSUED', 'SUPPRESSED', 'DELIVERY_FAILED', 'CONSUMED', 'EXPIRED', 'LOCKED', 'SUPERSEDED')),
@@ -95,7 +97,7 @@ CREATE TABLE identity.otp_challenges (
   expires_at timestamptz NOT NULL,
   consumed_at timestamptz NULL,
   provider_message_ref text NULL CHECK (provider_message_ref IS NULL OR char_length(provider_message_ref) <= 200),
-  supersedes_id uuid NULL REFERENCES identity.otp_challenges (id),
+  supersedes_id uuid NULL REFERENCES identity.otp_challenges (id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   CHECK (attempts <= max_attempts),
   CHECK (expires_at > created_at),

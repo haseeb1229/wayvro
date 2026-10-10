@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { normalisePakistanMobile } from './phone.js';
+import { maskPakistanMobile, normalisePakistanMobile } from './phone.js';
 
 const E164 = /^\+923\d{9}$/;
 const nsn = fc.stringMatching(/^3\d{9}$/);
@@ -53,6 +53,17 @@ describe('normalisePakistanMobile', () => {
         const r = normalisePakistanMobile(s);
         if (!r.ok) return true;
         return E164.test(r.e164) && normalisePakistanMobile(r.e164).ok && (normalisePakistanMobile(r.e164) as { e164: string }).e164 === r.e164;
+      }),
+    );
+  });
+
+  it('masks every normalised number to the same shape, revealing only the last two digits (property)', () => {
+    fc.assert(
+      fc.property(nsn, (n) => {
+        const r = normalisePakistanMobile(n);
+        if (!r.ok) return false;
+        const masked = maskPakistanMobile(r.e164);
+        return masked === `+92 3** *** **${n.slice(-2)}` && !masked.includes(n.slice(1, 8));
       }),
     );
   });

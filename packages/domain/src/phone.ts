@@ -52,3 +52,11 @@ export function normalisePakistanMobile(input: string): PhoneNormalisation {
   if (s.length !== 10) return { ok: false, reason: 'WRONG_LENGTH' };
   return { ok: true, e164: `+92${s}` };
 }
+
+/**
+ * Display mask for a normalised number, e.g. `+923001234567` -> `+92 3** *** **67`. Reveals only the last two digits
+ * (the caller typed the number; the mask confirms the destination without echoing it in logs or screenshots).
+ */
+export function maskPakistanMobile(e164: PakistanMobileE164): string {
+  return `+92 3** *** **${e164.slice(-2)}`;
+}

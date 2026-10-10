@@ -48,14 +48,15 @@ export interface RestrictedLogin {
 }
 
 /**
- * Creates a throwaway LOGIN role that is a member of `groupRole` (e.g. `wayvro_api`) and returns a connection URL for
+ * Creates a throwaway LOGIN role that is a member of `groupRole` (e.g. `wayvro_api`, or several group roles) and returns a connection URL for
  * `databaseUrl` that authenticates as it. Roles are cluster-wide, so callers must `drop()` it after closing their pools.
  */
-export async function createRestrictedLogin(adminUrl: string, databaseUrl: string, groupRole: string): Promise<RestrictedLogin> {
-  if (!/^wayvro_[a-z_]+$/.test(groupRole)) throw new Error(`unexpected group role ${groupRole}`);
-  const role = `it_${groupRole.replace(/^wayvro_/, '')}_${randomBytes(5).toString('hex')}`;
+export async function createRestrictedLogin(adminUrl: string, databaseUrl: string, groupRole: string | readonly string[]): Promise<RestrictedLogin> {
+  const groups = typeof groupRole === 'string' ? [groupRole] : groupRole;
+  if (groups.length === 0 || !groups.every((g) => /^wayvro_[a-z_]+$/.test(g))) throw new Error(`unexpected group roles ${groups.join(',')}`);
+  const role = `it_${(groups[0] ?? '').replace(/^wayvro_/, '')}_${randomBytes(5).toString('hex')}`;
   const password = randomBytes(18).toString('hex');
-  await adminQuery(adminUrl, `create role ${role} login inherit nosuperuser nocreatedb nocreaterole password '${password}' in role ${groupRole}`);
+  await adminQuery(adminUrl, `create role ${role} login inherit nosuperuser nocreatedb nocreaterole password '${password}' in role ${groups.join(', ')}`);
   const u = new URL(databaseUrl);
   u.username = role;
   u.password = password;

@@ -2,7 +2,7 @@
  * Standard error shape (CLAUDE.md §13). `WayvroError` carries a stable contract code, an HTTP status and a
  * user-safe message; internal causes are logged (redacted) but never serialised to clients.
  */
-import type { ErrorCode, ErrorEnvelope } from '@wayvro/contracts';
+import type { ErrorCode, ErrorDetails, ErrorEnvelope } from '@wayvro/contracts';
 
 const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>> = {
   WAYVRO_E_INTERNAL: { status: 500, message: 'Something went wrong. Please try again.' },
@@ -12,22 +12,32 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_IDEMPOTENCY_KEY_REQUIRED: { status: 400, message: 'An Idempotency-Key header is required for this request.' },
   WAYVRO_E_IDEMPOTENCY_KEY_INVALID: { status: 400, message: 'The Idempotency-Key header is malformed.' },
   WAYVRO_E_UNAUTHENTICATED: { status: 401, message: 'Authentication is required.' },
+  WAYVRO_E_FORBIDDEN: { status: 403, message: 'This action is not allowed.' },
+  WAYVRO_E_RATE_LIMITED: { status: 429, message: 'Too many requests. Please wait and try again.' },
+  WAYVRO_E_IDEMPOTENCY_CONFLICT: { status: 409, message: 'This Idempotency-Key was already used for a different request.' },
+  WAYVRO_E_OTP_INVALID_OR_EXPIRED: { status: 401, message: 'The code is invalid or has expired.' },
+  WAYVRO_E_OTP_LOCKED: { status: 401, message: 'Too many incorrect attempts. Please request a new code.' },
+  WAYVRO_E_STEP_UP_REQUIRED: { status: 403, message: 'Please verify your phone number again to continue.' },
+  WAYVRO_E_PAYLOAD_TOO_LARGE: { status: 413, message: 'The request body is too large.' },
+  WAYVRO_E_UNSUPPORTED_MEDIA_TYPE: { status: 415, message: 'The request content type is not supported.' },
 };
 
 export class WayvroError extends Error {
   override readonly name = 'WayvroError';
   readonly status: number;
+  readonly details: ErrorDetails | undefined;
   constructor(
     readonly code: ErrorCode,
-    options: { message?: string; cause?: unknown } = {},
+    options: { message?: string; cause?: unknown; details?: ErrorDetails } = {},
   ) {
     super(options.message ?? DEFAULTS[code].message, { cause: options.cause });
     this.status = DEFAULTS[code].status;
+    this.details = options.details;
   }
 }
 
 /** Maps any thrown value to the wire envelope. Unknown errors become WAYVRO_E_INTERNAL with a generic message. */
 export function toErrorEnvelope(error: unknown, requestId: string): { status: number; body: ErrorEnvelope } {
   const e = error instanceof WayvroError ? error : new WayvroError('WAYVRO_E_INTERNAL', { cause: error });
-  return { status: e.status, body: { error: { code: e.code, message: e.message, requestId } } };
+  return { status: e.status, body: { error: { code: e.code, message: e.message, requestId, ...(e.details ? { details: e.details } : {}) } } };
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ErrorEnvelopeSchema } from './errors.js';
 
-/** The single Phase 1 HTTP contract: service health (liveness + readiness). */
+/** Service health (liveness + readiness). */
 export const LivenessSchema = z
   .object({
     status: z.literal('ok'),
@@ -24,9 +24,15 @@ export type Readiness = z.infer<typeof ReadinessSchema>;
 export interface RouteContract {
   readonly operationId: string;
   readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  /** OpenAPI-style path; parameters as `{name}`. */
   readonly path: `/v1/${string}`;
   readonly summary: string;
-  readonly responses: Readonly<Record<number, z.ZodType>>;
+  /** `public`: no credential; `session`: `Authorization: Bearer <access token>` of an active consumer session. */
+  readonly auth: 'public' | 'session';
+  readonly request?: z.ZodType;
+  readonly params?: z.ZodObject;
+  /** Response schema per status; `null` means the status has no body (204). */
+  readonly responses: Readonly<Record<number, z.ZodType | null>>;
 }
 
 export const HEALTH_ROUTES = [
@@ -35,6 +41,7 @@ export const HEALTH_ROUTES = [
     method: 'GET',
     path: '/v1/health/live',
     summary: 'Process is running (no dependency checks).',
+    auth: 'public',
     responses: { 200: LivenessSchema, 500: ErrorEnvelopeSchema },
   },
   {
@@ -42,6 +49,7 @@ export const HEALTH_ROUTES = [
     method: 'GET',
     path: '/v1/health/ready',
     summary: 'Process can serve traffic: required dependencies respond.',
+    auth: 'public',
     responses: { 200: ReadinessSchema, 503: ReadinessSchema },
   },
 ] as const satisfies readonly RouteContract[];

@@ -17,6 +17,8 @@ export const KEY_CLASSES = {
   idempotencyResponses: 'idempotency_responses',
   /** transient sealed job payloads (an OTP message in flight) */
   jobSecrets: 'job_secrets',
+  /** keyed digests of abuse-control dimensions (client IP prefixes, installations) in rate-limit keys and challenges */
+  riskSignals: 'risk_signals',
 } as const;
 export type KeyClass = (typeof KEY_CLASSES)[keyof typeof KEY_CLASSES];
 

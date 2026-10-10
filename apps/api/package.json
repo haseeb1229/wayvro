@@ -24,6 +24,9 @@
     "@wayvro/config": "workspace:*",
     "@wayvro/contracts": "workspace:*",
     "@wayvro/db": "workspace:*",
+    "@wayvro/domain": "workspace:*",
+    "@wayvro/field-crypto": "workspace:*",
+    "@wayvro/identity-core": "workspace:*",
     "@wayvro/observability": "workspace:*",
     "@wayvro/provider-interfaces": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",
@@ -34,8 +37,12 @@
   },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "5.0.3",
     "@wayvro/provider-test-doubles": "workspace:*",
+    "@wayvro/test-support": "workspace:*",
+    "fast-check": "4.10.2",
+    "pg": "8.23.1",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
   }

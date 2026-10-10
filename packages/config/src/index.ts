@@ -4,6 +4,7 @@ export {
   databaseEnvSchema,
   httpEnvSchema,
   isNonProductionLike,
+  keyEnvSchema,
   loadConfig,
   redisEnvSchema,
   serviceEnvSchema,

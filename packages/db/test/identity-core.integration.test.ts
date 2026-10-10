@@ -217,8 +217,8 @@ describe('database-enforced identity invariants', () => {
     // A suppressed challenge never has a code MAC; an issued one always has one.
     const challenge = (status: string, mac: Buffer | null) =>
       owner.query(
-        `insert into identity.otp_challenges (id, purpose, phone_lookup_key_version, phone_lookup_hash, phone_envelope, code_mac, mac_key_version, channel, installation_hash, status, max_attempts, next_resend_at, expires_at)
-         values ($1, 'SIGN_IN', 1, $2, $3, $4, $5, 'SMS', $6, $7, 5, now(), now() + interval '5 minutes')`,
+        `insert into identity.otp_challenges (id, purpose, phone_lookup_key_version, phone_lookup_hash, phone_envelope, code_mac, mac_key_version, channel, locale, installation_hash, status, max_attempts, next_resend_at, expires_at)
+         values ($1, 'SIGN_IN', 1, $2, $3, $4, $5, 'SMS', 'en', $6, $7, 5, now(), now() + interval '5 minutes')`,
         [randomUUID(), bytes(32), bytes(48), mac, mac ? 1 : null, bytes(32), status],
       );
     expect(await pgCode(challenge('ISSUED', null))).toBe('23514');

@@ -2,7 +2,7 @@
   "name": "@wayvro/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayvro background worker. Phase 1: bootstrap, health endpoint, transactional-outbox relay and idempotent-consumer skeletons (not started until an outbox source exists).",
+  "description": "Wayvro background worker: PostgreSQL job runner (ADR-042) with audit sealing/verification, maintenance purge and resumable key rotation; OTP delivery only when a real adapter is bound (none before EG-01). Outbox relay/consumer skeletons wait for their first consumer (P2.7).",
   "type": "module",
   "files": [
     "dist"
@@ -10,21 +10,29 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "key-rotation": "node --env-file-if-exists=../../.env dist/bin/key-rotation.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
   },
   "dependencies": {
     "@wayvro/config": "workspace:*",
     "@wayvro/db": "workspace:*",
+    "@wayvro/field-crypto": "workspace:*",
+    "@wayvro/identity-core": "workspace:*",
     "@wayvro/observability": "workspace:*",
+    "@wayvro/provider-interfaces": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "5.0.3",
+    "@wayvro/test-support": "workspace:*",
     "fast-check": "4.10.2",
+    "pg": "8.23.1",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
   }

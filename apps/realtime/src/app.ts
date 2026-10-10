@@ -12,7 +12,7 @@ import type { Server, ServerOptions } from 'socket.io';
 import type { ConnectionAuthenticator } from './auth.js';
 import { RealtimeGateway } from './gateway.js';
 import { RealtimeHealthController } from './health.controller.js';
-import { CONNECTION_AUTHENTICATOR, LOGGER, READINESS_CHECKS, SERVICE_INFO } from './tokens.js';
+import { CONNECTION_AUTHENTICATOR, LOGGER, READINESS_CHECKS, REVALIDATE_INTERVAL_MS, SERVICE_INFO } from './tokens.js';
 
 /** Socket.IO tuning from SP-05 (ADR-005b): websocket only, faster dead-peer detection, small frames, no CORS. */
 const SOCKET_OPTIONS: Partial<ServerOptions> = {
@@ -62,6 +62,8 @@ export interface RealtimeDependencies {
   readonly log: Logger;
   /** Required in every deployed environment; omitted only by single-process unit tests. */
   readonly redisUrl: string | undefined;
+  /** Interval at which established connections re-validate their session. */
+  readonly revalidateIntervalMs: number;
 }
 
 @Module({})
@@ -75,6 +77,7 @@ class RealtimeModule {
         { provide: CONNECTION_AUTHENTICATOR, useValue: deps.authenticator },
         { provide: LOGGER, useValue: deps.log },
         { provide: READINESS_CHECKS, useValue: deps.readinessChecks },
+        { provide: REVALIDATE_INTERVAL_MS, useValue: deps.revalidateIntervalMs },
         { provide: SERVICE_INFO, useValue: deps.info },
       ],
     };
