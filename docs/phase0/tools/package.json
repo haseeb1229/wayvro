@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Phase 0 documentation generators are CommonJS; this scopes them out of the workspace root \"type\": \"module\" so `node docs/phase0/tools/*.js` keeps working unchanged.",
+  "type": "commonjs"
+}

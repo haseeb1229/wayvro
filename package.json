@@ -1,0 +1,50 @@
+{
+  "name": "wayvro",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Wayvro monorepo — one public mobile app (Rider + Driver/Partner modes), API, worker, realtime gateway and web surfaces.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.20.0 <25"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint . --max-warnings=0",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:integration": "turbo run test:integration --concurrency=1",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "depcruise": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "knip": "knip && knip --production",
+    "syncpack": "syncpack lint",
+    "flags:check": "pnpm --filter @wayvro/config flags:check",
+    "openapi:check": "pnpm --filter @wayvro/contracts openapi:generate && git diff --exit-code -- packages/contracts/openapi",
+    "docs:check": "node docs/phase0/tools/phase0-coverage.js --check && node docs/phase0/tools/regen-manifest.js --check",
+    "db:migrate": "pnpm --filter @wayvro/db db:migrate",
+    "infra:up": "node scripts/infra.mjs up",
+    "infra:down": "node scripts/infra.mjs down",
+    "infra:status": "node scripts/infra.mjs status",
+    "infra:reset": "node scripts/infra.mjs reset",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm depcruise && pnpm knip && pnpm syncpack && pnpm flags:check && pnpm test && pnpm docs:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.3.8",
+    "@types/node": "24.19.1",
+    "dependency-cruiser": "18.5.0",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-boundaries": "7.2.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "knip": "6.39.0",
+    "prettier": "3.9.9",
+    "syncpack": "15.3.3",
+    "turbo": "2.11.7",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1"
+  },
+  "packageManager": "pnpm@12.10.1+sha512.ba40a37eb1a370d60fea8c4cf1d364c13bcccef518e98ad2bcee954f539d38da37458e58261a3fa55e06523450ea0ffff9f497b135be41f2c15c1642bacace6c"
+}

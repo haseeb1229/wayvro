@@ -1,0 +1,37 @@
+{
+  "name": "@wayvro/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SERVER-ONLY PostgreSQL/PostGIS foundation: connection pool and SQL-first migrations (ADR-004).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:migrate": "node --env-file-if-exists=../../.env dist/bin/migrate.js",
+    "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
+  },
+  "dependencies": {
+    "@wayvro/config": "workspace:*",
+    "drizzle-orm": "0.45.3",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "drizzle-kit": "0.31.11",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

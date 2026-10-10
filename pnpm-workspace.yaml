@@ -1,0 +1,23 @@
+# pnpm workspace (ADR-034). tests/spikes/* are deliberately NOT members: they are disposable evidence harnesses with
+# their own lockfiles (see tests/spikes/README.md).
+packages:
+  - apps/*
+  - packages/*
+
+# Flat (hoisted) node_modules: React Native native builds on Windows exceed CMake's 250-character object-path limit
+# under pnpm's isolated .pnpm/<name>@<version>_<hash>/ layout (SP-AND evidence, ADR-034/ADR-036). Phantom-dependency
+# risk of hoisting is closed by `knip` (unlisted dependencies) and dependency-cruiser in CI.
+nodeLinker: hoisted
+
+# Supply-chain policy: pnpm's default minimumReleaseAge (24 h) stays in force with NO exclusions; pick an older release
+# instead of bypassing it. Install scripts run only for packages explicitly listed here after review.
+allowBuilds:
+  # esbuild: postinstall verifies/installs the platform binary used by tsx and drizzle-kit.
+  esbuild: true
+  # protobufjs (via OpenTelemetry): postinstall only checks its optional CLI; not needed.
+  protobufjs: false
+
+# Security overrides (reviewed). handlebars 4.7.9 is pinned exactly by eslint-plugin-boundaries/@boundaries/elements and
+# has critical advisories GHSA-8r5x-fm3f-whwj / GHSA-p8wg-vrv2-v86f fixed in 4.7.10 (patch release, same API).
+overrides:
+  handlebars: 4.7.10

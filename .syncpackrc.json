@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/syncpack/schema.json",
+  "versionGroups": [
+    {
+      "label": "Internal packages always resolve from the workspace",
+      "dependencies": ["@wayvro/**"],
+      "pinVersion": "workspace:*",
+      "dependencyTypes": ["prod", "dev"]
+    }
+  ],
+  "semverGroups": [
+    {
+      "label": "Exact versions everywhere (reproducible builds; pnpm minimumReleaseAge reviews every bump)",
+      "dependencies": ["**"],
+      "dependencyTypes": ["prod", "dev"],
+      "range": ""
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-09T10:29:43.636Z",
+  "checks": [
+    {
+      "name": "drizzle: clean -> latest",
+      "pass": true,
+      "detail": "369 ms; postgis 3.5.2; geog geography(Point,4326); tables assignments,driver_presence,offers,ride_requests,spatial_ref_sys"
+    },
+    {
+      "name": "drizzle: re-run is a no-op",
+      "pass": true,
+      "detail": "4 -> 4 recorded migrations"
+    },
+    {
+      "name": "drizzle: previous schema (3 migrations) -> latest",
+      "pass": true,
+      "detail": "responded_at before=false after=true; pre-existing offer rows preserved=1"
+    },
+    {
+      "name": "kysely: clean -> latest (same SQL) + re-run no-op",
+      "pass": true,
+      "detail": "4 applied, re-run applied 0; geog geography(Point,4326)"
+    }
+  ]
+}

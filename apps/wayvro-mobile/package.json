@@ -1,0 +1,27 @@
+{
+  "name": "@wayvro/wayvro-mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The ONE public Wayvro app (Expo SDK 57 development builds, React Native 0.86). Phase 1: app shell and Rider/Driver feature boundaries only.",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "android:prebuild": "expo prebuild --platform android --clean --no-install",
+    "android:debug": "node ../../scripts/android-build.mjs debug",
+    "android:release": "node ../../scripts/android-build.mjs release"
+  },
+  "dependencies": {
+    "expo": "57.0.27",
+    "expo-dev-client": "57.0.19",
+    "expo-status-bar": "57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

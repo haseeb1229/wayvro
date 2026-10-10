@@ -1,0 +1,66 @@
+# Wayvro local development infrastructure (ADR-037). Synthetic data only (I02); never a production dependency.
+#
+# Safety (CLAUDE.md §15, R42): fixed project name `wayvro`, explicitly named volumes `wayvro_*`, every port bound to
+# 127.0.0.1. Use `pnpm infra:up|down|status|reset` — the scripts never prune and `reset` only removes the volumes
+# declared below after an explicit confirmation flag.
+name: wayvro
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+    environment:
+      POSTGRES_USER: wayvro
+      POSTGRES_PASSWORD: wayvro-local-only
+      POSTGRES_DB: wayvro
+    command: ['postgres', '-c', 'max_connections=200', '-c', 'log_min_duration_statement=500']
+    ports:
+      - '127.0.0.1:${WAYVRO_PG_PORT:-25432}:5432'
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      # TCP check: the image's init phase listens on the unix socket only, so this turns healthy only once the final
+      # server (with PostGIS installed by the image's init scripts) accepts network connections.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U wayvro -d wayvro']
+      interval: 2s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
+
+  valkey:
+    # Redis-protocol server, BSD-3-Clause (ADR-037). Apps use ioredis / the Socket.IO Redis adapter against it.
+    image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    command: ['valkey-server', '--save', '60', '1', '--appendonly', 'no']
+    ports:
+      - '127.0.0.1:${WAYVRO_REDIS_PORT:-26379}:6379'
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  s3:
+    # S3-compatible object storage for development only (ADR-010). Telemetry to seaweedfs.com is disabled explicitly.
+    image: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    command: ['mini', '-dir=/data', '-master.telemetry=false', '-s3.config=/etc/seaweedfs/s3.json', '-bucket=wayvro-local']
+    ports:
+      - '127.0.0.1:${WAYVRO_S3_PORT:-28333}:8333'
+    volumes:
+      - s3_data:/data
+      - ./seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8333/healthz']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+    name: wayvro_pg_data
+  valkey_data:
+    name: wayvro_valkey_data
+  s3_data:
+    name: wayvro_s3_data

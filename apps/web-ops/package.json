@@ -1,0 +1,26 @@
+{
+  "name": "@wayvro/web-ops",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Wayvro private operations web (Next.js, staff-only). Phase 1: shell page, health route, CSP, noindex. NOT deployable until staff identity + RBAC (Phase 2).",
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3310",
+    "start": "next start --port 3310 --hostname 127.0.0.1",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@wayvro/contracts": "workspace:*",
+    "@wayvro/web-security": "workspace:*",
+    "next": "16.3.8",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "applicationId": "dev.wayvro.spike.spand",
+  "declared": [
+    "android.permission.INTERNET",
+    "android.permission.READ_EXTERNAL_STORAGE",
+    "android.permission.SYSTEM_ALERT_WINDOW",
+    "android.permission.VIBRATE",
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "dev.wayvro.spike.spand.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+  "debuggable": false,
+  "result": "FAIL",
+  "problems": [
+    "FORBIDDEN android.permission.READ_EXTERNAL_STORAGE: Not needed; scoped storage/photo picker only when a feature requires it.",
+    "FORBIDDEN android.permission.SYSTEM_ALERT_WINDOW: Development-only overlay; must never reach a release build.",
+    "UNLISTED android.permission.VIBRATE: add to permission-allowlist.json with justification or remove it",
+    "FORBIDDEN android.permission.WRITE_EXTERNAL_STORAGE: Not needed."
+  ]
+}

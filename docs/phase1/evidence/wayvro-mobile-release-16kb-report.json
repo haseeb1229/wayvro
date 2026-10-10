@@ -1,0 +1,350 @@
+{
+  "aab": "C:\\Dev\\Wayvro\\apps\\wayvro-mobile\\android\\app\\build\\outputs\\bundle\\release\\app-release.aab",
+  "expectedAbis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "libraries": [
+    {
+      "abi": "arm64-v8a",
+      "lib": "libappmodules.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libc++_shared.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libexpo-modules-core.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libfbjni.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libgifimage.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libhermestooling.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libhermesvm.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libimagepipeline.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libjsi.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libnative-filters.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libnative-imagetranscoder.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libreactnative.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libstatic-webp.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "arm64-v8a",
+      "lib": "libzstd-kmp.so",
+      "elf64": true,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libappmodules.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libc++_shared.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libexpo-modules-core.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libfbjni.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libgifimage.so",
+      "elf64": false,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libhermestooling.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libhermesvm.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libimagepipeline.so",
+      "elf64": false,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libjsi.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libnative-filters.so",
+      "elf64": false,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libnative-imagetranscoder.so",
+      "elf64": false,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libreactnative.so",
+      "elf64": false,
+      "loadAlignments": [
+        4096,
+        4096,
+        4096
+      ],
+      "ok16k": false
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libstatic-webp.so",
+      "elf64": false,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "lib": "libzstd-kmp.so",
+      "elf64": false,
+      "loadAlignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "ok16k": true
+    }
+  ],
+  "apks": [
+    {
+      "apk": "splits/base-arm64_v8a.apk",
+      "nativeLibs": 14,
+      "storedUncompressed": 14,
+      "misaligned": [],
+      "compressed": []
+    },
+    {
+      "apk": "splits/base-armeabi_v7a.apk",
+      "nativeLibs": 14,
+      "storedUncompressed": 14,
+      "misaligned": [],
+      "compressed": []
+    }
+  ],
+  "zipalign": [
+    {
+      "apk": "splits/base-arm64_v8a.apk",
+      "result": "PASS"
+    },
+    {
+      "apk": "splits/base-armeabi_v7a.apk",
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS",
+  "problems": []
+}

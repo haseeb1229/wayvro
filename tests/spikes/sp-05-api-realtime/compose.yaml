@@ -1,0 +1,26 @@
+# DISPOSABLE spike infrastructure (project wayvro-spike-sp05); tmpfs only, nothing persists. Localhost-bound.
+services:
+  postgres:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+    environment:
+      POSTGRES_USER: spike
+      POSTGRES_PASSWORD: spike-local-only
+      POSTGRES_DB: sp05
+    ports:
+      - "127.0.0.1:55433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spike -d sp05"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
+    ports:
+      - "127.0.0.1:56379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

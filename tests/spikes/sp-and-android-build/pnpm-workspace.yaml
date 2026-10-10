@@ -1,0 +1,5 @@
+# SP-AND fallback: a flat (hoisted) node_modules keeps React Native native-build paths under Windows/CMake limits
+# (the isolated .pnpm layout exceeded CMAKE_OBJECT_PATH_MAX=250 and ninja failed; see ADR-036).
+nodeLinker: hoisted
+allowBuilds:
+  esbuild: true

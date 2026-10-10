@@ -1,0 +1,192 @@
+# Wayvro CI (ADR-027). Builds and tests the real deployables, not only shared packages (CLAUDE.md §8).
+# No secrets are used or required. Third-party actions are pinned to commit SHAs; downloaded tools are checksum-verified.
+# iOS is NOT built in Phase 1 (no approved macOS/EAS/App Store environment) — see docs/adr/ADR-036-android-build-toolchain.md.
+name: CI
+
+on:
+  push:
+    branches: [main, 'phase-*/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
+  EXPO_NO_TELEMETRY: '1'
+  DO_NOT_TRACK: '1'
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+
+jobs:
+  quality:
+    name: Quality (format, lint, types, boundaries, dead code, unit tests, docs)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Enable pinned pnpm (packageManager field)
+        run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Format
+        run: pnpm format:check
+      - name: Build all packages and deployables (api, worker, realtime, web-public, web-ops)
+        run: pnpm build
+      - name: Lint (strict typescript-eslint + boundaries)
+        run: pnpm lint
+      - name: Strict typecheck
+        run: pnpm typecheck
+      - name: Dependency boundaries and cycles (dependency-cruiser)
+        run: pnpm depcruise
+      - name: Dead code / unused or unlisted dependencies (knip, default + production)
+        run: pnpm knip
+      - name: Version policy (syncpack)
+        run: pnpm syncpack
+      - name: Feature-flag registry (owners, expiry)
+        run: pnpm flags:check
+      - name: Unit and property tests
+        run: pnpm test
+      - name: Coverage thresholds (unit-testable packages)
+        run: pnpm test:coverage
+      - name: OpenAPI generated-drift check
+        run: pnpm openapi:check
+      - name: Phase 0 consistency checks
+        run: |
+          node docs/phase0/tools/phase0-coverage.js --check
+          node docs/phase0/tools/regen-manifest.js --check
+          git diff --exit-code
+
+  integration:
+    name: Integration (PostgreSQL+PostGIS, Valkey, SeaweedFS) + migrations + boot smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Start local infrastructure (compose project "wayvro")
+        run: pnpm infra:up
+      - name: Local environment file (non-secret local defaults)
+        run: cp .env.example .env
+      - name: Migrations from a clean database, then re-run (must be a no-op)
+        run: |
+          pnpm db:migrate
+          pnpm db:migrate | tee /tmp/second-run.txt
+          grep -q 'migrations: 0 applied' /tmp/second-run.txt
+      - name: Integration tests with coverage thresholds (db, server-runtime, api, realtime)
+        run: |
+          set -a; . ./.env; set +a
+          pnpm test:integration
+      - name: Boot smoke of every deployable skeleton
+        run: node scripts/boot-smoke.mjs
+      - name: Local S3 semantics (ADR-010 evidence harness)
+        working-directory: tests/spikes/adr-010-s3-local-eval
+        run: |
+          pnpm install --frozen-lockfile --ignore-workspace
+          S3_ENDPOINT=http://127.0.0.1:28333 node eval.mjs
+      - name: Stop local infrastructure
+        if: always()
+        run: pnpm infra:down
+
+  security:
+    name: Security (secrets, vulnerable dependencies)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.30.1 (checksum-verified)
+        run: |
+          curl -sSL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+      - name: Secret scan (full git history)
+        run: /tmp/gitleaks git --redact --no-banner -v .
+      - name: Install osv-scanner 2.6.0 (checksum-verified)
+        run: |
+          curl -sSL -o /tmp/osv-scanner https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64
+          echo "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108  /tmp/osv-scanner" | sha256sum -c -
+          chmod +x /tmp/osv-scanner
+      - name: Known-vulnerability scan of every lockfile (workspace + spike harnesses)
+        run: /tmp/osv-scanner scan source --recursive --config=osv-scanner.toml .
+
+  android:
+    name: Android (JDK 17) — dev-client debug APK + release AAB, 16 KB, ABI and permission gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'apps/wayvro-mobile/app.config.ts') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Install bundletool 1.18.3 (checksum-verified)
+        run: |
+          curl -sSL -o /tmp/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  /tmp/bundletool.jar" | sha256sum -c -
+      - name: Release AAB (arm64-v8a + armeabi-v7a) with 16 KB, ABI and permission gates
+        env:
+          WAYVRO_JDK17_HOME: ${{ env.JAVA_HOME }}
+          BUNDLETOOL_JAR: /tmp/bundletool.jar
+        run: node scripts/android-build.mjs release
+      - name: Development-client debug APK (arm64-v8a + x86_64)
+        env:
+          WAYVRO_JDK17_HOME: ${{ env.JAVA_HOME }}
+        run: node scripts/android-build.mjs debug
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: android-build-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          # build-reports/ holds the gate reports and a copy of the gated release AAB (debug-key signed; not an upload artefact).
+          path: apps/wayvro-mobile/build-reports/

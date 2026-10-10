@@ -1,0 +1,10 @@
+{
+  "applicationId": "dev.wayvro.app",
+  "declared": [
+    "android.permission.INTERNET",
+    "dev.wayvro.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+  "debuggable": false,
+  "result": "PASS",
+  "problems": []
+}
