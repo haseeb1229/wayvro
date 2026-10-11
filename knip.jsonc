@@ -11,7 +11,7 @@
       "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!", "tests/e2e-web/**/*.ts"],
     },
     // The local runner (ADR-045) is a non-production entry: it may use the dev-only test doubles.
-    "apps/api": { "entry": ["src/main.ts!", "dev/main.local.ts"], "project": ["src/**/*.ts!", "dev/**/*.ts", "test/**/*.ts"] },
+    "apps/api": { "entry": ["src/main.ts!", "src/bin/staff-bootstrap.ts!", "dev/main.local.ts"], "project": ["src/**/*.ts!", "dev/**/*.ts", "test/**/*.ts"] },
     "apps/worker": {
       "entry": ["src/main.ts!", "src/bin/key-rotation.ts!"],
       "project": ["src/**/*.ts!", "test/**/*.ts"],

@@ -45,3 +45,15 @@ describe('validateFlagRegistry', () => {
     expect(validateFlagRegistry(FLAG_REGISTRY, new Date().toISOString().slice(0, 10))).toEqual([]);
   });
 });
+
+describe('registered flags (P2.5+)', () => {
+  it('the registry is valid today and driver onboarding is OFF outside local/test', async () => {
+    const { FLAG_REGISTRY: registry, isFlagEnabled: enabled, validateFlagRegistry: validate } = await import('./flags.js');
+    expect(validate(registry, '2026-10-11')).toEqual([]);
+    expect(enabled('driver.onboarding', 'local')).toBe(true);
+    expect(enabled('driver.onboarding', 'test')).toBe(true);
+    expect(enabled('driver.onboarding', 'staging')).toBe(false);
+    expect(enabled('driver.onboarding', 'production')).toBe(false);
+    expect(enabled('nope.unknown', 'local')).toBe(false);
+  });
+});

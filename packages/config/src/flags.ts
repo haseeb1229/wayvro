@@ -3,8 +3,9 @@
  * per-environment default, enforcement side, requirement IDs and an expiry date. Security or entitlement decisions
  * never rely on a client-side flag alone.
  *
- * Phase 1 registers no flags — no product capability exists yet. The first flag is added together with the feature
- * it guards; `pnpm --filter @wayvro/config flags:check` (run in CI) rejects invalid or expired entries.
+ * Flags are added together with the feature they guard; `pnpm --filter @wayvro/config flags:check` (run in CI)
+ * rejects invalid or expired entries. Evaluation is server-side from the registered per-environment defaults only
+ * (no runtime override channel exists yet; a change is a reviewed code change).
  */
 import type { WayvroEnv } from './env.js';
 
@@ -22,7 +23,23 @@ export interface FlagDefinition {
   readonly productionApprovedBy?: string;
 }
 
-export const FLAG_REGISTRY: readonly FlagDefinition[] = [];
+export const FLAG_REGISTRY: readonly FlagDefinition[] = [
+  {
+    key: 'driver.onboarding',
+    owner: 'founder',
+    purpose:
+      'Driver/Partner onboarding inside the one Wayvro app (applications, vehicles, documents, evidence, review). OFF in staging/production until the KYC gates (EG-02/03/04/05/10/11/12/20) clear.',
+    requirementIds: ['V03', 'D01', 'D02', 'D04', 'K02'],
+    enforcement: 'server',
+    defaults: { local: true, test: true, staging: false, production: false },
+    expiresOn: '2027-06-30',
+  },
+];
+
+/** Server-side flag evaluation (registered default for the environment). Unknown keys are OFF. */
+export function isFlagEnabled(key: string, env: WayvroEnv, registry: readonly FlagDefinition[] = FLAG_REGISTRY): boolean {
+  return registry.find((f) => f.key === key)?.defaults[env] ?? false;
+}
 
 const KEY_PATTERN = /^(rider|driver|ops|platform)\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REQUIREMENT_ID = /^[A-Z]\d{2}$/;

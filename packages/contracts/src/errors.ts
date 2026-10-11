@@ -24,6 +24,13 @@ export const ERROR_CODES = [
   'WAYVRO_E_UNSUPPORTED_MEDIA_TYPE',
   // P2.2 (additive)
   'WAYVRO_E_CONFLICT',
+  // P2.4 (additive)
+  'WAYVRO_E_STAFF_SESSION_LOCKED',
+  // P2.5 (additive)
+  'WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED',
+  'WAYVRO_E_AGE_DECLARATION_REQUIRED',
+  'WAYVRO_E_ACCOUNT_RESTRICTED',
+  'WAYVRO_E_FEATURE_DISABLED',
 ] as const;
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);
@@ -32,6 +39,10 @@ export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
 /** Optional machine-readable hints (additive in P2.1). */
 export const ErrorDetailsSchema = z.object({
   retryAfterSeconds: z.number().int().positive().optional(),
+  /** P2.5: actions the client must complete first (ACCEPT_POLICIES, AGE_DECLARATION, ...). */
+  requiredActions: z.array(z.string()).optional(),
+  /** P2.5: reason codes of the restriction(s) that caused the refusal (localised by the client). */
+  reasonCodes: z.array(z.string()).optional(),
 });
 export type ErrorDetails = z.infer<typeof ErrorDetailsSchema>;
 

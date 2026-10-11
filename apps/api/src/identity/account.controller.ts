@@ -30,7 +30,7 @@ export class AccountController {
   ) {}
 
   @Get('/v1/account/state')
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async state(@Req() request: AuthenticatedRequest): Promise<AccountState> {
     return AccountStateSchema.parse(await this.accounts.state(principalOf(request)));
   }
@@ -47,14 +47,14 @@ export class AccountController {
   }
 
   @Get('/v1/account/sessions')
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async listSessions(@Req() request: AuthenticatedRequest): Promise<SessionList> {
     return SessionListSchema.parse(await this.sessions.list(principalOf(request)));
   }
 
   @Delete('/v1/account/sessions/:sessionId')
   @HttpCode(204)
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async revokeSession(@Param() params: unknown, @Req() request: AuthenticatedRequest, @Res({ passthrough: true }) reply: FastifyReply): Promise<undefined> {
     const parsed = SessionIdParamSchema.safeParse(params);
     // A malformed id cannot belong to the caller: same answer as a foreign id.
@@ -64,7 +64,7 @@ export class AccountController {
 
   @Post('/v1/account/session-revocations')
   @HttpCode(200)
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async revokeSessions(
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
@@ -75,7 +75,7 @@ export class AccountController {
   }
 
   @Get('/v1/account/security-events')
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async securityEvents(@Req() request: AuthenticatedRequest): Promise<SecurityEventList> {
     return SecurityEventListSchema.parse(await this.accounts.securityEvents(principalOf(request)));
   }

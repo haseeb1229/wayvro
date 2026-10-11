@@ -2,10 +2,22 @@ import { z } from 'zod';
 import { ErrorEnvelopeSchema } from './errors.js';
 import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
+import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
+import { ONBOARDING_ROUTES } from './compliance.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { IDENTITY_ROUTES } from './routes.js';
+import { STAFF_ROUTES } from './staff.js';
 
-export const API_ROUTES: readonly RouteContract[] = [...HEALTH_ROUTES, ...IDENTITY_ROUTES, ...LEGAL_ROUTES];
+export const API_ROUTES: readonly RouteContract[] = [
+  ...HEALTH_ROUTES,
+  ...IDENTITY_ROUTES,
+  ...LEGAL_ROUTES,
+  ...STAFF_ROUTES,
+  ...ONBOARDING_ROUTES,
+  ...COMPLIANCE_ADMIN_ROUTES,
+];
+
+const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> = { public: [], session: [{ sessionBearer: [] }], staff: [{ staffBearer: [] }] };
 
 type JsonObject = Record<string, unknown>;
 
@@ -43,7 +55,7 @@ export function buildOpenApiDocument(version: string, routes: readonly RouteCont
       [route.method.toLowerCase()]: {
         operationId: route.operationId,
         summary: route.summary,
-        ...(route.auth === 'session' ? { security: [{ sessionBearer: [] }] } : { security: [] }),
+        security: SECURITY[route.auth],
         parameters,
         ...(route.request ? { requestBody: { required: true, content: { 'application/json': { schema: jsonSchema(route.request, 'input') } } } } : {}),
         responses,
@@ -58,6 +70,11 @@ export function buildOpenApiDocument(version: string, routes: readonly RouteCont
       schemas: { ErrorEnvelope: z.toJSONSchema(ErrorEnvelopeSchema) },
       securitySchemes: {
         sessionBearer: { type: 'http', scheme: 'bearer', description: 'Opaque consumer access token (15-minute default lifetime; not a JWT).' },
+        staffBearer: {
+          type: 'http',
+          scheme: 'bearer',
+          description: 'Opaque staff session token held by the web-ops BFF (never by browser JavaScript); separate realm.',
+        },
       },
     },
   };

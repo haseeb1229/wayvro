@@ -7,7 +7,11 @@ import { currentContext } from '@wayvro/observability';
 import type { Queryable } from './sql.js';
 import { uuidv7 } from './uuidv7.js';
 
-export type AuditActor = { readonly type: 'ACCOUNT'; readonly id: string } | { readonly type: 'SYSTEM' } | { readonly type: 'ANONYMOUS' };
+export type AuditActor =
+  | { readonly type: 'ACCOUNT'; readonly id: string }
+  | { readonly type: 'STAFF'; readonly id: string }
+  | { readonly type: 'SYSTEM' }
+  | { readonly type: 'ANONYMOUS' };
 
 export interface AuditEvent {
   readonly actor: AuditActor;
@@ -40,7 +44,7 @@ export async function appendAudit(q: Queryable, event: AuditEvent): Promise<stri
     [
       id,
       event.actor.type,
-      event.actor.type === 'ACCOUNT' ? event.actor.id : null,
+      event.actor.type === 'ACCOUNT' || event.actor.type === 'STAFF' ? event.actor.id : null,
       event.action,
       event.objectType,
       event.objectId ?? null,

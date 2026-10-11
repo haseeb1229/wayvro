@@ -33,6 +33,7 @@ export function composeWorker(config: WorkerConfig, pool: pg.Pool, log: Logger, 
     maintenanceJob(pool, log, {
       otpChallengeDays: config.OTP_CHALLENGE_RETENTION_DAYS,
       succeededJobDays: config.SUCCEEDED_JOB_RETENTION_DAYS,
+      applicationDraftExpiryDays: config.APPLICATION_DRAFT_EXPIRY_DAYS,
       batchSize: 5000,
     }),
     keyRotationJob(rotation),

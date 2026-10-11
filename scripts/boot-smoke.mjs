@@ -16,6 +16,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// web-ops port; overridable only for a developer machine where 3310 is taken by an unrelated process (CI uses 3310).
+const OPS_PORT = process.env.WAYVRO_OPS_PORT ?? '3310';
 const BASE_ENV = {
   ...process.env,
   WAYVRO_ENV: 'local',
@@ -40,10 +42,10 @@ const SERVICES = [
   },
   {
     name: 'web-ops',
-    cmd: [NEXT_BIN('web-ops'), 'start', '--port', '3310', '--hostname', '127.0.0.1'],
+    cmd: [NEXT_BIN('web-ops'), 'start', '--port', OPS_PORT, '--hostname', '127.0.0.1'],
     cwd: 'apps/web-ops',
     env: {},
-    health: 'http://127.0.0.1:3310/health',
+    health: `http://127.0.0.1:${OPS_PORT}/health`,
   },
 ];
 
@@ -118,7 +120,7 @@ function portInUse(port) {
 }
 
 // Refuse to run if any port is taken: a smoke test must never pass by talking to someone else's server.
-const PORTS = [4000, 4001, 4002, 3210, 3310, 4098, 4099];
+const PORTS = [4000, 4001, 4002, 3210, Number(OPS_PORT), 4098, 4099];
 
 /** Runs a deployable once and collects its exit code and output (refusal checks). */
 function runOnce(script, env) {
@@ -136,7 +138,14 @@ function runOnce(script, env) {
     });
   });
 }
-const REMOTE_TLS = { DATABASE_URL: 'postgres://u:unused@db.invalid.example/w?sslmode=verify-full', REDIS_URL: 'rediss://cache.invalid.example:6380' };
+// Synthetic remote endpoints (`.invalid` never resolves) and a production-shaped staff WebAuthn relying party, so each
+// refusal below is reached for the reason under test rather than an earlier configuration error.
+const REMOTE_TLS = {
+  DATABASE_URL: 'postgres://u:unused@db.invalid.example/w?sslmode=verify-full',
+  REDIS_URL: 'rediss://cache.invalid.example:6380',
+  STAFF_WEBAUTHN_RP_ID: 'ops.wayvro.invalid',
+  STAFF_WEBAUTHN_ORIGINS: 'https://ops.wayvro.invalid',
+};
 const json = (body) => ({
   method: 'POST',
   headers: { 'content-type': 'application/json', 'idempotency-key': `boot-smoke-${Math.random().toString(36).slice(2)}-${Date.now()}` },
@@ -285,7 +294,7 @@ try {
   const page = await fetch('http://127.0.0.1:3210/');
   const pageHealth = await (await fetch('http://127.0.0.1:3210/health')).json();
   record('web-public answers as service web-public (not another process)', pageHealth.service === 'web-public');
-  const opsHealth = await (await fetch('http://127.0.0.1:3310/health')).json();
+  const opsHealth = await (await fetch(`http://127.0.0.1:${OPS_PORT}/health`)).json();
   record('web-ops answers as service web-ops', opsHealth.service === 'web-ops');
   const csp = page.headers.get('content-security-policy') ?? '';
   const nonce = /'nonce-([^']+)'/.exec(csp)?.[1];
@@ -300,12 +309,12 @@ try {
     page.headers.get('x-frame-options') === 'DENY' && page.headers.get('x-content-type-options') === 'nosniff' && !page.headers.get('x-powered-by'),
   );
 
-  const ops = await fetch('http://127.0.0.1:3310/');
+  const ops = await fetch(`http://127.0.0.1:${OPS_PORT}/`);
   record(
     'web-ops is noindex/no-store',
     (ops.headers.get('x-robots-tag') ?? '').includes('noindex') && (ops.headers.get('cache-control') ?? '').includes('no-store'),
   );
-  const robots = await (await fetch('http://127.0.0.1:3310/robots.txt')).text();
+  const robots = await (await fetch(`http://127.0.0.1:${OPS_PORT}/robots.txt`)).text();
   record('web-ops robots.txt disallows everything', /Disallow: \/\s*$/m.test(robots));
 } finally {
   for (const child of probes) if (child.exitCode === null) child.kill('SIGKILL');

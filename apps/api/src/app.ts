@@ -7,6 +7,9 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { resolveRequestId, type Logger } from '@wayvro/observability';
 import type { Queryable, ReadinessCheck } from '@wayvro/server-runtime';
 import { PolicyGuard, assertRoutePolicies } from './auth/policy.js';
+import type { ComplianceAdminService } from './compliance/compliance-admin.service.js';
+import { ComplianceAdminController, OnboardingController } from './compliance/compliance.controller.js';
+import type { OnboardingService } from './compliance/onboarding.service.js';
 import { HealthController } from './health/health.controller.js';
 import { ErrorEnvelopeFilter } from './http/error-filter.js';
 import { registerHttpHooks } from './http/hooks.js';
@@ -17,7 +20,40 @@ import type { OtpService } from './identity/otp.service.js';
 import type { SessionService } from './identity/session.service.js';
 import type { ConsentService } from './legal/consent.service.js';
 import { LegalController } from './legal/legal.controller.js';
-import { ACCOUNT_SERVICE, CONSENT_SERVICE, LEGAL_DB, OTP_SERVICE, READINESS_CHECKS, SERVICE_INFO, SESSION_SERVICE, type ServiceInfo } from './tokens.js';
+import type { OversightService } from './staff/oversight.service.js';
+import type { StaffAdminService } from './staff/staff-admin.service.js';
+import type { StaffAuthService } from './staff/staff-auth.service.js';
+import type { StaffSessionPolicy } from './staff/staff-session.js';
+import { OversightController, StaffAdminController, StaffAuthController } from './staff/staff.controller.js';
+import {
+  ACCOUNT_SERVICE,
+  COMPLIANCE_ADMIN_SERVICE,
+  CONSENT_SERVICE,
+  LEGAL_DB,
+  ONBOARDING_SERVICE,
+  OTP_SERVICE,
+  READINESS_CHECKS,
+  SERVICE_INFO,
+  SESSION_SERVICE,
+  STAFF_ADMIN_SERVICE,
+  STAFF_AUTH_SERVICE,
+  STAFF_OVERSIGHT_SERVICE,
+  type ServiceInfo,
+} from './tokens.js';
+
+/** Driver/Partner compliance services (P2.5). */
+interface ComplianceServices {
+  readonly onboarding: OnboardingService;
+  readonly admin: ComplianceAdminService;
+}
+
+/** Staff realm services (P2.4); separate from the consumer identity services. */
+interface StaffServices {
+  readonly auth: StaffAuthService;
+  readonly admin: StaffAdminService;
+  readonly oversight: OversightService;
+  readonly policy: StaffSessionPolicy;
+}
 
 interface IdentityServices {
   readonly otp: OtpService;
@@ -37,6 +73,8 @@ export interface AppDependencies {
   /** false, true (local/test only) or the trusted proxy addresses/CIDRs (config TRUST_PROXY). */
   readonly trustProxy: boolean | readonly string[];
   readonly identity: IdentityServices;
+  readonly staff: StaffServices;
+  readonly compliance: ComplianceServices;
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
 }
@@ -55,7 +93,17 @@ export function routeManifest(app: NestFastifyApplication): readonly string[] {
  * The controllers of the deployable API. Every handler must declare a route policy (default deny).
  * @internal exported for the route-policy completeness test.
  */
-export const API_CONTROLLERS: readonly Type[] = [HealthController, AuthController, AccountController, LegalController];
+export const API_CONTROLLERS: readonly Type[] = [
+  HealthController,
+  AuthController,
+  AccountController,
+  LegalController,
+  StaffAuthController,
+  StaffAdminController,
+  OversightController,
+  OnboardingController,
+  ComplianceAdminController,
+];
 
 @Module({})
 class ApiModule {
@@ -71,7 +119,12 @@ class ApiModule {
         { provide: ACCOUNT_SERVICE, useValue: deps.identity.accounts },
         { provide: CONSENT_SERVICE, useValue: deps.identity.consents },
         { provide: LEGAL_DB, useValue: deps.identity.legalStore },
-        { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore) },
+        { provide: STAFF_AUTH_SERVICE, useValue: deps.staff.auth },
+        { provide: STAFF_ADMIN_SERVICE, useValue: deps.staff.admin },
+        { provide: STAFF_OVERSIGHT_SERVICE, useValue: deps.staff.oversight },
+        { provide: ONBOARDING_SERVICE, useValue: deps.compliance.onboarding },
+        { provide: COMPLIANCE_ADMIN_SERVICE, useValue: deps.compliance.admin },
+        { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore, deps.staff.policy) },
       ],
     };
   }

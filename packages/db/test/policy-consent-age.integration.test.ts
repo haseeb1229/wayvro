@@ -190,17 +190,10 @@ describe('identity.consent_records and identity.age_declarations (append-only ev
 });
 
 describe('grants executed as restricted roles', () => {
-  it('wayvro_api: reads age policies but cannot write them; reads/inserts consent evidence only', async () => {
+  it('wayvro_api: age-policy values stay immutable (maker-checker data entry since 0004); consent evidence insert-only', async () => {
     expect((await api.query(`select version from legal.age_eligibility_policies`)).rowCount).toBeGreaterThan(0);
-    expect(
-      (
-        await pgError(
-          api.query(
-            `insert into legal.age_eligibility_policies (version, status, rider_declaration_mode, effective_at) values (50, 'PLACEHOLDER_NOT_FOR_PRODUCTION', 'NONE', now())`,
-          ),
-        )
-      )?.code,
-    ).toBe('42501');
+    expect((await pgError(api.query(`update legal.age_eligibility_policies set rider_minimum_age = 18 where version = 1`)))?.code).toBe('42501');
+    expect((await pgError(api.query(`delete from legal.age_eligibility_policies where version = 1`)))?.code).toBe('42501');
     expect((await pgError(api.query(`truncate identity.consent_records`)))?.code).toBe('42501');
     expect((await pgError(api.query(`create table legal.x (id int)`)))?.code).toBe('42501');
   });

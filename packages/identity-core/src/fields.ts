@@ -11,6 +11,15 @@ export const ENCRYPTED_FIELDS = {
   idempotencyResponse: { field: 'platform.idempotency_records.response_envelope', fieldSchemaVersion: 1, keyClass: 'idempotency_responses' },
   /** ISO-8601 calendar date (YYYY-MM-DD). */
   ageDeclarationDob: { field: 'identity.age_declarations.dob_envelope', fieldSchemaVersion: 1, keyClass: 'identity_dates' },
+  /** Driver/Partner applicant CLAIMS (P2.5) and reviewer-confirmed profile values (P2.7). */
+  applicationLegalName: { field: 'compliance.driver_applications.legal_name_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
+  /** canonical #####-#######-# */
+  applicationCnic: { field: 'compliance.driver_applications.cnic_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
+  applicationDob: { field: 'compliance.driver_applications.date_of_birth_envelope', fieldSchemaVersion: 1, keyClass: 'identity_dates' },
+  profileLegalName: { field: 'compliance.driver_profiles.verified_legal_name_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
+  profileDob: { field: 'compliance.driver_profiles.verified_date_of_birth_envelope', fieldSchemaVersion: 1, keyClass: 'identity_dates' },
+  vehicleRegistrationNo: { field: 'compliance.vehicles.registration_no_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
+  documentNumber: { field: 'compliance.compliance_documents.number_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
 } as const;
 
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[keyof typeof ENCRYPTED_FIELDS];

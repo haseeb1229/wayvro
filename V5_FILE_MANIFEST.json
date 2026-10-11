@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 99,
+  "file_count_excluding_manifest": 101,
   "files": [
     {
       "path": ".gitattributes",
@@ -240,9 +240,19 @@
       "sha256": "a3b0b8b21a206e9df8d2b703f1d423fce56717ba32f32d869b94547381b90c76"
     },
     {
+      "path": "docs/adr/ADR-039-staff-webauthn-bff.md",
+      "bytes": 5824,
+      "sha256": "4feb202974270d601fbff643fba2cdd57d8701b19dfec8ed9c3434adea855714"
+    },
+    {
       "path": "docs/adr/ADR-042-postgresql-jobs.md",
       "bytes": 5641,
       "sha256": "d67a8b978a2766553bcdb852419877f05aee526f27ac1a1b2acf716a4e3fc44a"
+    },
+    {
+      "path": "docs/adr/ADR-043-mobile-platform-additions.md",
+      "bytes": 4412,
+      "sha256": "d879f13a3d383be7c99d13193a98c7df56d5ae0fbbad76ee105010caae8b3116"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
@@ -256,8 +266,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4041,
-      "sha256": "1c30acde51c8f36d4449df0313f86dc0b79cd6e65b7010050c6872e89de09e3d"
+      "bytes": 4320,
+      "sha256": "07e6b9c532df8150e9f14379aae01d8efc40bfb6649b6fe48f37776265903ebb"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -456,8 +466,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
-      "bytes": 4856,
-      "sha256": "8444e78134d3a3b16a507f306267d31535d52a96a3602117ec242792c65f2200"
+      "bytes": 18258,
+      "sha256": "1da766b4fadc2944049cfce1e34090b8ddc791d061745207788516ae4d39e774"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",

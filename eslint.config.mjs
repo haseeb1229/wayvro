@@ -75,6 +75,7 @@ export default tseslint.config(
       'packages/contracts/src/generate-openapi.ts',
       'packages/db/src/bin/**',
       'apps/worker/src/bin/**',
+      'apps/api/src/bin/**',
       'scripts/**',
       'infra/**',
     ],

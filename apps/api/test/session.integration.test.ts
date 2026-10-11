@@ -306,7 +306,8 @@ describe('SEC-IDOR / SEC-MA / V02 / V07', () => {
     );
     expect(state.account).toMatchObject({ displayName: 'Synthetic Rider', preferredLocale: 'ur-Latn' });
     expect(state.riderProfile.id).not.toBe(state.account.id);
-    expect(Object.keys(state).sort()).toEqual(['account', 'requiredActions', 'riderProfile', 'session']);
+    // P2.5 added the server-truth driver section and in-force restrictions additively (never capabilities, V02)
+    expect(Object.keys(state).sort()).toEqual(['account', 'driver', 'requiredActions', 'restrictions', 'riderProfile', 'session']);
     expect((await h.inject({ method: 'GET', url: '/v1/account/state', headers: { 'x-wayvro-mode': 'driver' } })).statusCode).toBe(401);
   });
 });

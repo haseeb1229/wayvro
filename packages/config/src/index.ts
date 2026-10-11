@@ -10,4 +10,4 @@ export {
   serviceEnvSchema,
   type WayvroEnv,
 } from './env.js';
-export { FLAG_REGISTRY, validateFlagRegistry, type FlagDefinition } from './flags.js';
+export { FLAG_REGISTRY, isFlagEnabled, validateFlagRegistry, type FlagDefinition } from './flags.js';

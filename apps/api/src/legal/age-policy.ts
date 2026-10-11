@@ -16,7 +16,7 @@ export interface AgePolicy {
   readonly effectiveAt: Date;
 }
 
-/** The current (non-retired, effective) version. None ⇒ fail closed with 503 — never "no age policy applies". */
+/** The current version: the latest effective PLACEHOLDER/APPROVED one (drafts and pending approvals never apply). None ⇒ fail closed with 503 — never "no age policy applies". */
 export async function currentAgePolicy(q: Queryable): Promise<AgePolicy> {
   const r = await q.query<{
     version: number;
@@ -28,7 +28,7 @@ export async function currentAgePolicy(q: Queryable): Promise<AgePolicy> {
   }>(
     `select version, status, rider_declaration_mode, rider_minimum_age, driver_minimum_age, effective_at
        from legal.age_eligibility_policies
-      where status <> 'RETIRED' and effective_at <= now()
+      where status in ('PLACEHOLDER_NOT_FOR_PRODUCTION', 'APPROVED') and effective_at <= now()
       order by effective_at desc, version desc
       limit 1`,
   );

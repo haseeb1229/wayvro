@@ -2,8 +2,8 @@
   "name": "@wayvro/wayvro-mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "The ONE public Wayvro app (Expo SDK 57 development builds, React Native 0.86). Phase 1: app shell and Rider/Driver feature boundaries only.",
-  "main": "index.ts",
+  "description": "The ONE public Wayvro app (Expo SDK 57 development builds, React Native 0.86). Rider and Driver/Partner modes in one binary; Phase 2 adds the account slice (sign-in, consent, age declaration, profile, sessions).",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start --dev-client",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -13,15 +13,35 @@
     "android:release": "node ../../scripts/android-build.mjs release"
   },
   "dependencies": {
+    "@expo/metro-runtime": "57.0.16",
+    "@tanstack/react-query": "5.103.3",
+    "@wayvro/contracts": "workspace:*",
     "expo": "57.0.27",
+    "expo-constants": "57.0.21",
+    "expo-crypto": "57.0.3",
     "expo-dev-client": "57.0.19",
+    "expo-linking": "57.0.12",
+    "expo-router": "57.0.25",
+    "expo-secure-store": "57.0.4",
     "expo-status-bar": "57.0.1",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.2",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
+  },
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "react-native-worklets",
+        "react-native-reanimated",
+        "react-native-gesture-handler"
+      ]
+    }
   }
 }

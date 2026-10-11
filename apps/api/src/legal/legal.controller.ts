@@ -86,13 +86,13 @@ export class LegalController {
   }
 
   @Get('/v1/account/consents')
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async listConsents(@Req() request: AuthenticatedRequest): Promise<ConsentStatusList> {
     return ConsentStatusListSchema.parse(await this.consents.status(principalOf(request)));
   }
 
   @Post('/v1/account/consents')
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async recordConsent(
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
@@ -103,7 +103,7 @@ export class LegalController {
   }
 
   @Post('/v1/account/age-declarations')
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async declareAge(
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,

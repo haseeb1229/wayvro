@@ -72,6 +72,11 @@ describe('audit seals', () => {
       leaseToken: randomUUID(),
     });
     expect(logs.text()).toContain('audit seals verified');
+    // the result is recorded append-only for the AUDITOR viewer (audit.seal_status())
+    const recorded = await owner.query<{ ok: boolean; seals_checked: number }>(
+      `select ok, seals_checked from audit.seal_verifications order by id desc limit 1`,
+    );
+    expect(recorded.rows[0]).toEqual({ ok: true, seals_checked: 2 });
   });
 
   it('PROP-AUDIT-04 a rewritten seal (privileged actor bypassing the trigger) breaks the hash chain', async () => {
@@ -191,10 +196,10 @@ describe('maintenance, scheduling and composition', () => {
       `insert into platform.jobs (id, type, status, max_attempts, finished_at) values ($1, 'probe.old', 'SUCCEEDED', 1, now() - interval '30 days'), ($2, 'probe.new', 'SUCCEEDED', 1, now()), ($3, 'probe.dead', 'DEAD', 1, now() - interval '30 days')`,
       [randomUUID(), randomUUID(), randomUUID()],
     );
-    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, batchSize: 100 });
-    expect(result).toMatchObject({ idempotency: 1, jobs: 1 });
+    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, batchSize: 100 });
+    expect(result).toMatchObject({ idempotency: 1, jobs: 1, staffChallenges: 0, invitationsExpired: 0, breakGlassExpired: [] });
     expect((await owner.query(`select 1 from platform.jobs where type in ('probe.new', 'probe.dead')`)).rowCount).toBe(2);
-    await maintenanceJob(worker, log, { otpChallengeDays: 7, succeededJobDays: 7, batchSize: 100 }).handler({
+    await maintenanceJob(worker, log, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, batchSize: 100 }).handler({
       id: randomUUID(),
       type: 'maintenance.purge',
       payload: {},

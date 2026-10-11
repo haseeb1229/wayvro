@@ -8,6 +8,9 @@ import { appendAudit } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import type { Principal } from '../auth/policy.js';
 import type { ApiConfig } from '../config.js';
+import { inForce } from '../compliance/eligibility.js';
+import { driverSection } from '../compliance/onboarding.service.js';
+import { accountView, restrictionsForAccount } from '../compliance/restrictions.js';
 import { requiredActionsFor } from '../legal/consent.service.js';
 import { success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
 import { securityEvent } from './session.service.js';
@@ -17,6 +20,8 @@ export class AccountService {
     private readonly db: pg.Pool,
     private readonly idempotency: IdempotencyStore,
     private readonly policy: ApiConfig,
+    /** `driver.onboarding` flag value (server-evaluated). */
+    private readonly onboardingAvailable: boolean,
   ) {}
 
   async state(principal: Principal): Promise<AccountState> {
@@ -39,6 +44,8 @@ export class AccountService {
       session: { id: principal.sessionId, assurance: 'OTP', accessTokenExpiresAt: principal.accessExpiresAt.toISOString() },
       riderProfile: { id: row.rider_profile_id, status: 'ACTIVE' },
       requiredActions: await requiredActionsFor(this.db, principal.accountId),
+      driver: await driverSection(this.db, principal.accountId, this.onboardingAvailable),
+      restrictions: (await restrictionsForAccount(this.db, principal.accountId)).filter((r) => inForce(r, new Date())).map(accountView),
     };
   }
 

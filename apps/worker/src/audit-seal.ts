@@ -196,6 +196,14 @@ export function auditJobs(pool: pg.Pool, log: Logger, options: { lagSeconds: num
       type: AUDIT_VERIFY_JOB,
       async handler() {
         const report = await verifySeals(pool);
+        // Visible to the AUDITOR viewer (Q39) through audit.seal_status(); append-only like the seals themselves.
+        const firstBad = report.failures.reduce<string | null>((min, f) => (min === null || BigInt(f.sealNo) < BigInt(min) ? f.sealNo : min), null);
+        await pool.query(`insert into audit.seal_verifications (seals_checked, ok, first_bad_seal_no, unsealed_below_watermark) values ($1, $2, $3, $4)`, [
+          report.sealsVerified,
+          report.failures.length === 0 && report.unsealedBelowWatermark === 0,
+          firstBad,
+          report.unsealedBelowWatermark,
+        ]);
         if (report.failures.length > 0 || report.unsealedBelowWatermark > 0) {
           log.error(
             { signal: 'AUDIT_SEAL_VERIFICATION_FAILED', failures: report.failures, unsealedBelowWatermark: report.unsealedBelowWatermark },

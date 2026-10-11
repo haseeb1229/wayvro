@@ -42,7 +42,7 @@ function trackedPolicies(): ReadonlyArray<{
 }
 
 /** Acceptance status of every tracked policy for an account at `now`. */
-async function consentStatuses(q: Queryable, accountId: string, now: Date): Promise<ConsentStatusList['policies']> {
+export async function consentStatuses(q: Queryable, accountId: string, now: Date): Promise<ConsentStatusList['policies']> {
   const latest = await q.query<{ policy_key: PolicyKey; policy_version: number; action: ConsentAction }>(
     `select distinct on (policy_key) policy_key, policy_version, action
        from identity.consent_records where account_id = $1

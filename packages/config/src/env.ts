@@ -71,13 +71,20 @@ function environmentRules(config: Record<string, unknown>): string[] {
   return issues;
 }
 
-/** Validates `source` against `schema`, applies environment rules and returns a frozen, typed config. */
-export function loadConfig<S extends z.ZodObject>(schema: S, source: Readonly<Record<string, string | undefined>>): Readonly<z.infer<S>> {
+/**
+ * Validates `source` against `schema`, applies the shared environment rules plus the service's own `rules` (checks
+ * that depend on WAYVRO_ENV) and returns a frozen, typed config. Every environment problem is reported together.
+ */
+export function loadConfig<S extends z.ZodObject>(
+  schema: S,
+  source: Readonly<Record<string, string | undefined>>,
+  rules: (config: z.infer<S>) => string[] = () => [],
+): Readonly<z.infer<S>> {
   const parsed = schema.safeParse(source);
   if (!parsed.success) {
     throw new ConfigError(parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`));
   }
-  const issues = environmentRules(parsed.data);
+  const issues = [...environmentRules(parsed.data), ...rules(parsed.data)];
   if (issues.length > 0) throw new ConfigError(issues);
   return Object.freeze(parsed.data);
 }

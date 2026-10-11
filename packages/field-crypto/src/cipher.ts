@@ -19,8 +19,14 @@ export const KEY_CLASSES = {
   jobSecrets: 'job_secrets',
   /** keyed digests of abuse-control dimensions (client IP prefixes, installations) in rate-limit keys and challenges */
   riskSignals: 'risk_signals',
-  /** dates of birth (P-IDENTITY-NUMBERS; only when an approved policy requires one) */
+  /** dates of birth (P-IDENTITY-NUMBERS; only when an approved policy requires one, or a driver applicant's claim) */
   identityDates: 'identity_dates',
+  /** CNIC, licence, registration and document numbers, legal names (P-IDENTITY-NUMBERS) */
+  identityNumbers: 'identity_numbers',
+  /** deterministic CNIC lookups (HMAC; matches are duplicate signals, never rejections) */
+  cnicLookup: 'cnic_lookup',
+  /** deterministic document-number lookups (HMAC; duplicate signals) */
+  documentLookup: 'document_lookup',
 } as const;
 export type KeyClass = (typeof KEY_CLASSES)[keyof typeof KEY_CLASSES];
 

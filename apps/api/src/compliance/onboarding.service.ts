@@ -1,0 +1,806 @@
+/**
+ * Driver/Partner onboarding in the ONE Wayvro app (V03/V01; D01, D04, K06, K07, R02–R06, R46). Rider use is never
+ * affected by an application or its outcome. Applicant identity fields are encrypted CLAIMS until a human reviewer
+ * confirms them (P2.7); there is no OCR and no automated decision.
+ *
+ * Gates (server-side, in order): `driver.onboarding` flag, required account actions (policies, age declaration), no
+ * in-force ACCOUNT restriction. One non-terminal application per account (database index). Duplicate-identity checks
+ * create SIGNALS (CNIC hash, document number, plate) for human review — never rejections or merges (K07, §1).
+ * Evidence upload and submission arrive with the vault (P2.6).
+ */
+import { isFlagEnabled, type WayvroEnv } from '@wayvro/config';
+import type { DriverApplication, DriverCompliance } from '@wayvro/contracts';
+import type { FieldCipher, KeyedHasher } from '@wayvro/field-crypto';
+import { ENCRYPTED_FIELDS, fieldContext } from '@wayvro/identity-core';
+import { WayvroError } from '@wayvro/observability';
+import { appendAudit, sqlState, uuidv7, type Queryable } from '@wayvro/server-runtime';
+import type pg from 'pg';
+import { currentAgePolicy } from '../legal/age-policy.js';
+import { consentStatuses, requiredActionsFor } from '../legal/consent.service.js';
+import { failure, success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
+import { EDITABLE_APPLICATION_STATES, canTransition, type ApplicationState } from './application-state.js';
+import { evaluateEarningEligibility, inForce, type DocumentFact, type RequirementItemFact } from './eligibility.js';
+import { canonicalCnic, canonicalDocumentNumber, normalisePlate, plausibleBirthDate } from './normalise.js';
+import { accountRestrictionsInForce, accountView, restrictionsForAccount } from './restrictions.js';
+
+export interface OnboardingPolicy {
+  readonly WAYVRO_ENV: WayvroEnv;
+  readonly IDEMPOTENCY_TTL_SECONDS: number;
+}
+
+interface Principal {
+  readonly accountId: string;
+  readonly sessionId: string;
+}
+
+type AppRow = {
+  id: string;
+  state: ApplicationState;
+  version: number;
+  city_code: string;
+  cnic_last4: string | null;
+  legal_name_envelope: Buffer | null;
+  date_of_birth_envelope: Buffer | null;
+  created_at: Date;
+  submitted_at: Date | null;
+};
+
+const DRIVER_POLICY_KEYS = ['DRIVER_PARTNER_AGREEMENT', 'BIOMETRIC_KYC_NOTICE'];
+
+type ProfileState = 'VERIFIED' | 'ACTIVE_ELIGIBLE' | 'EXPIRED' | 'REVERIFY_DUE';
+
+/** Account-state driver section (server truth for client routing; never a capability). */
+export async function driverSection(
+  q: Queryable,
+  accountId: string,
+  onboardingAvailable: boolean,
+): Promise<{ application: { id: string; state: ApplicationState } | null; profile: { id: string; state: ProfileState } | null; onboardingAvailable: boolean }> {
+  const app = await q.query<{ id: string; state: ApplicationState }>(
+    `select id, state from compliance.driver_applications where account_id = $1 order by created_at desc, id desc limit 1`,
+    [accountId],
+  );
+  const profile = await q.query<{ id: string; state: ProfileState }>(`select id, state from compliance.driver_profiles where account_id = $1`, [accountId]);
+  return { application: app.rows[0] ?? null, profile: profile.rows[0] ?? null, onboardingAvailable };
+}
+
+export class OnboardingService {
+  constructor(
+    private readonly db: pg.Pool,
+    private readonly cipher: FieldCipher,
+    private readonly hasher: KeyedHasher,
+    private readonly idempotency: IdempotencyStore,
+    private readonly policy: OnboardingPolicy,
+  ) {}
+
+  get available(): boolean {
+    return isFlagEnabled('driver.onboarding', this.policy.WAYVRO_ENV);
+  }
+
+  /** Flag + required actions + account restriction (each a distinct, actionable error). */
+  private async admit(q: Queryable, accountId: string): Promise<void> {
+    if (!this.available) throw new WayvroError('WAYVRO_E_FEATURE_DISABLED');
+    const actions = await requiredActionsFor(q, accountId);
+    if (actions.includes('ACCEPT_POLICIES')) throw new WayvroError('WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED', { details: { requiredActions: actions } });
+    if (actions.includes('AGE_DECLARATION')) throw new WayvroError('WAYVRO_E_AGE_DECLARATION_REQUIRED', { details: { requiredActions: actions } });
+    const restricted = await accountRestrictionsInForce(q, accountId, new Date());
+    if (restricted.length > 0) throw new WayvroError('WAYVRO_E_ACCOUNT_RESTRICTED', { details: { reasonCodes: restricted.map((r) => r.reasonCode) } });
+  }
+
+  private run(
+    principal: Principal,
+    operation: string,
+    key: string,
+    payload: unknown,
+    work: (tx: pg.PoolClient) => Promise<ReturnType<typeof success>>,
+  ): Promise<IdempotentResult> {
+    return this.idempotency.execute(
+      { scope: `acct:${principal.accountId}`, operation, key, payload, ttlSeconds: this.policy.IDEMPOTENCY_TTL_SECONDS },
+      async (tx) => {
+        await this.admit(tx, principal.accountId);
+        return work(tx);
+      },
+    );
+  }
+
+  private async loadApplication(q: Queryable, accountId: string, id: string, lock = false): Promise<AppRow | null> {
+    const r = await q.query<AppRow>(
+      `select id, state, version, city_code, cnic_last4, legal_name_envelope, date_of_birth_envelope, created_at, submitted_at
+         from compliance.driver_applications where id = $1 and account_id = $2 ${lock ? 'for update' : ''}`,
+      [id, accountId],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  /** Owner-scoped application view; foreign ids are indistinguishable from unknown ones (404). */
+  async view(q: Queryable, accountId: string, app: AppRow): Promise<DriverApplication> {
+    const categories = await q.query<{ service_category: 'CAR' | 'BIKE' | 'RICKSHAW' }>(
+      `select service_category from compliance.application_service_categories where application_id = $1 order by service_category`,
+      [app.id],
+    );
+    const vehicles = await q.query<{
+      id: string;
+      plate_display: string;
+      make: string;
+      model: string;
+      model_year: number;
+      colour: string;
+      service_category: 'CAR' | 'BIKE' | 'RICKSHAW';
+      ownership_type: DriverApplication['vehicles'][number]['ownershipType'];
+      relation: 'OWNER' | 'AUTHORISED_USER';
+      version: number;
+    }>(
+      `select v.id, v.plate_display, v.make, v.model, v.model_year, v.colour, v.service_category, v.ownership_type, va.relation, v.version
+         from compliance.vehicle_affiliations va join compliance.vehicles v on v.id = va.vehicle_id
+        where va.driver_application_id = $1 and va.status <> 'ENDED' order by va.created_at`,
+      [app.id],
+    );
+    const documents = await q.query<{
+      id: string;
+      document_type_code: string;
+      vehicle_id: string | null;
+      district_code: string | null;
+      number_last4: string | null;
+      licence_class: string | null;
+      claimed_expires_on: string | null;
+      status: DriverApplication['documents'][number]['status'];
+    }>(
+      `select id, document_type_code, vehicle_id, district_code, number_last4, licence_class, to_char(claimed_expires_on, 'YYYY-MM-DD') claimed_expires_on, status
+         from compliance.compliance_documents where driver_application_id = $1 and status <> 'SUPERSEDED' order by created_at`,
+      [app.id],
+    );
+    const pending = (await consentStatuses(q, accountId, new Date()))
+      .filter((s) => DRIVER_POLICY_KEYS.includes(s.policyKey) && s.acceptanceRequired)
+      .map((s) => s.policyKey)
+      .sort();
+    return {
+      id: app.id,
+      state: app.state,
+      version: app.version,
+      cityCode: app.city_code,
+      serviceCategories: categories.rows.map((c) => c.service_category),
+      claims: { legalNameProvided: app.legal_name_envelope !== null, cnicLast4: app.cnic_last4, dateOfBirthProvided: app.date_of_birth_envelope !== null },
+      vehicles: vehicles.rows.map((v) => ({
+        id: v.id,
+        plateDisplay: v.plate_display,
+        make: v.make,
+        model: v.model,
+        modelYear: v.model_year,
+        colour: v.colour,
+        serviceCategory: v.service_category,
+        ownershipType: v.ownership_type,
+        relation: v.relation,
+        version: v.version,
+      })),
+      documents: documents.rows.map((d) => ({
+        id: d.id,
+        documentType: d.document_type_code,
+        vehicleId: d.vehicle_id,
+        districtCode: d.district_code,
+        numberLast4: d.number_last4,
+        licenceClass: d.licence_class,
+        claimedExpiresOn: d.claimed_expires_on,
+        status: d.status,
+      })),
+      pendingPolicies: pending,
+      createdAt: app.created_at.toISOString(),
+      submittedAt: app.submitted_at?.toISOString() ?? null,
+    };
+  }
+
+  private async enabledCategories(q: Queryable, categories: readonly string[]): Promise<boolean> {
+    const r = await q.query<{ n: string }>(`select count(*) n from catalog.service_categories where code = any($1::text[]) and status = 'ENABLED'`, [
+      [...new Set(categories)],
+    ]);
+    return Number(r.rows[0]?.n ?? 0) === new Set(categories).size;
+  }
+
+  async create(principal: Principal, input: { cityCode: string; serviceCategories: readonly string[] }, key: string): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.create', key, input, async (tx) => {
+      const city = await tx.query(`select 1 from catalog.cities where code = $1 and status = 'ENABLED'`, [input.cityCode]);
+      if (city.rowCount === 0 || !(await this.enabledCategories(tx, input.serviceCategories))) return failure('WAYVRO_E_VALIDATION');
+      const profile = await tx.query(`select 1 from compliance.driver_profiles where account_id = $1`, [principal.accountId]);
+      if (profile.rowCount !== 0) return failure('WAYVRO_E_CONFLICT');
+      const id = uuidv7();
+      await tx.query('savepoint new_application');
+      try {
+        await tx.query(`insert into compliance.driver_applications (id, account_id, state, city_code) values ($1, $2, 'DRAFT', $3)`, [
+          id,
+          principal.accountId,
+          input.cityCode,
+        ]);
+      } catch (e) {
+        if (sqlState(e) !== '23505') throw e;
+        await tx.query('rollback to savepoint new_application');
+        return failure('WAYVRO_E_CONFLICT');
+      }
+      for (const c of new Set(input.serviceCategories))
+        await tx.query(`insert into compliance.application_service_categories (application_id, service_category) values ($1, $2)`, [id, c]);
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_APPLICATION_CREATED',
+        objectType: 'compliance.driver_application',
+        objectId: id,
+        outcome: 'SUCCESS',
+      });
+      const app = await this.loadApplication(tx, principal.accountId, id);
+      if (!app) throw new Error('application vanished');
+      return success(201, await this.view(tx, principal.accountId, app));
+    });
+  }
+
+  async current(principal: Principal): Promise<DriverApplication> {
+    if (!this.available) throw new WayvroError('WAYVRO_E_FEATURE_DISABLED');
+    const r = await this.db.query<{ id: string }>(
+      `select id from compliance.driver_applications where account_id = $1 order by created_at desc, id desc limit 1`,
+      [principal.accountId],
+    );
+    const app = r.rows[0] ? await this.loadApplication(this.db, principal.accountId, r.rows[0].id) : null;
+    if (!app) throw new WayvroError('WAYVRO_E_NOT_FOUND');
+    return this.view(this.db, principal.accountId, app);
+  }
+
+  /** CNIC lookup (ACTIVE key), one row per application; matches on other accounts become CNIC_HASH_MATCH signals. */
+  private async indexCnic(tx: pg.PoolClient, accountId: string, applicationId: string, cnic: string): Promise<number> {
+    const active = this.hasher.active('cnic_lookup', cnic);
+    await tx.query(
+      `insert into compliance.cnic_lookup_index (id, subject_application_id, lookup_key_version, lookup_hash) values ($1, $2, $3, $4)
+       on conflict (subject_application_id, lookup_key_version) where subject_application_id is not null do update set lookup_hash = excluded.lookup_hash`,
+      [uuidv7(), applicationId, active.version, active.digest],
+    );
+    const live = this.hasher.live('cnic_lookup', cnic);
+    const matches = await tx.query<{ subject_application_id: string | null; subject_profile_id: string | null }>(
+      `select l.subject_application_id, l.subject_profile_id
+         from compliance.cnic_lookup_index l
+         left join compliance.driver_applications a on a.id = l.subject_application_id
+         left join compliance.driver_profiles p on p.id = l.subject_profile_id
+        where (l.lookup_key_version, l.lookup_hash) in (select * from unnest($1::smallint[], $2::bytea[]))
+          and coalesce(a.account_id, p.account_id) <> $3`,
+      [live.map((d) => d.version), live.map((d) => d.digest), accountId],
+    );
+    let created = 0;
+    for (const m of matches.rows) {
+      const r = await tx.query(
+        `insert into compliance.duplicate_signals (id, signal, subject_application_id, matched_application_id, matched_profile_id, status)
+         values ($1, 'CNIC_HASH_MATCH', $2, $3, $4, 'OPEN') on conflict do nothing`,
+        [uuidv7(), applicationId, m.subject_application_id, m.subject_profile_id],
+      );
+      created += r.rowCount ?? 0;
+    }
+    return created;
+  }
+
+  async updateClaims(
+    principal: Principal,
+    id: string,
+    input: {
+      expectedVersion: number;
+      legalName?: string | undefined;
+      cnic?: string | undefined;
+      dateOfBirth?: string | undefined;
+      serviceCategories?: readonly string[] | undefined;
+    },
+    key: string,
+  ): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.update-claims', key, { id, ...input }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      if (app.version !== input.expectedVersion || !EDITABLE_APPLICATION_STATES.has(app.state)) return failure('WAYVRO_E_CONFLICT');
+      const cnic = input.cnic === undefined ? undefined : canonicalCnic(input.cnic);
+      if (cnic === null) return failure('WAYVRO_E_VALIDATION');
+      if (input.dateOfBirth !== undefined && !plausibleBirthDate(input.dateOfBirth, new Date())) return failure('WAYVRO_E_VALIDATION');
+      if (input.serviceCategories && !(await this.enabledCategories(tx, input.serviceCategories))) return failure('WAYVRO_E_VALIDATION');
+      const enc = (spec: (typeof ENCRYPTED_FIELDS)[keyof typeof ENCRYPTED_FIELDS], v: string) => this.cipher.encrypt(spec.keyClass, v, fieldContext(spec, id));
+      await tx.query(
+        `update compliance.driver_applications
+            set legal_name_envelope = coalesce($3, legal_name_envelope),
+                cnic_envelope = coalesce($4, cnic_envelope), cnic_last4 = coalesce($5, cnic_last4),
+                date_of_birth_envelope = coalesce($6, date_of_birth_envelope),
+                version = version + 1, updated_at = now()
+          where id = $1 and version = $2`,
+        [
+          id,
+          input.expectedVersion,
+          input.legalName === undefined ? null : enc(ENCRYPTED_FIELDS.applicationLegalName, input.legalName.normalize('NFC')),
+          cnic === undefined ? null : enc(ENCRYPTED_FIELDS.applicationCnic, cnic),
+          cnic === undefined ? null : cnic.replaceAll('-', '').slice(-4),
+          input.dateOfBirth === undefined ? null : enc(ENCRYPTED_FIELDS.applicationDob, input.dateOfBirth),
+        ],
+      );
+      if (input.serviceCategories) {
+        await tx.query(`delete from compliance.application_service_categories where application_id = $1`, [id]);
+        for (const c of new Set(input.serviceCategories))
+          await tx.query(`insert into compliance.application_service_categories (application_id, service_category) values ($1, $2)`, [id, c]);
+      }
+      const signals = cnic === undefined ? 0 : await this.indexCnic(tx, principal.accountId, id, cnic);
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_APPLICATION_CLAIMS_UPDATED',
+        objectType: 'compliance.driver_application',
+        objectId: id,
+        outcome: 'SUCCESS',
+        ...(signals > 0 ? { reasonCode: 'DUPLICATE_SIGNAL_RAISED' } : {}),
+      });
+      const fresh = await this.loadApplication(tx, principal.accountId, id);
+      if (!fresh) throw new Error('application vanished');
+      return success(200, await this.view(tx, principal.accountId, fresh));
+    });
+  }
+
+  /** DRAFT → CONSENTED once both Driver/Partner policies are accepted (K14 consent before any identity capture). */
+  async confirmConsent(principal: Principal, id: string, key: string): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.consent', key, { id }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      if (!canTransition(app.state, 'CONSENTED', 'APPLICANT')) return failure('WAYVRO_E_CONFLICT');
+      const pending = (await consentStatuses(tx, principal.accountId, new Date())).filter(
+        (s) => DRIVER_POLICY_KEYS.includes(s.policyKey) && s.acceptanceRequired,
+      );
+      if (pending.length > 0) return failure('WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED', { requiredActions: pending.map((p) => `ACCEPT_${p.policyKey}`) });
+      await tx.query(`update compliance.driver_applications set state = 'CONSENTED', version = version + 1, updated_at = now() where id = $1`, [id]);
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_APPLICATION_CONSENTED',
+        objectType: 'compliance.driver_application',
+        objectId: id,
+        outcome: 'SUCCESS',
+      });
+      const fresh = await this.loadApplication(tx, principal.accountId, id);
+      if (!fresh) throw new Error('application vanished');
+      return success(200, await this.view(tx, principal.accountId, fresh));
+    });
+  }
+
+  async withdraw(principal: Principal, id: string, key: string): Promise<IdempotentResult> {
+    return this.idempotency.execute(
+      { scope: `acct:${principal.accountId}`, operation: 'driver-onboarding.withdraw', key, payload: { id }, ttlSeconds: this.policy.IDEMPOTENCY_TTL_SECONDS },
+      async (tx) => {
+        // Withdrawal stays possible under an account restriction or after a policy change (only the flag gates it).
+        if (!this.available) return failure('WAYVRO_E_FEATURE_DISABLED');
+        const app = await this.loadApplication(tx, principal.accountId, id, true);
+        if (!app) return failure('WAYVRO_E_NOT_FOUND');
+        if (!canTransition(app.state, 'WITHDRAWN', 'APPLICANT')) return failure('WAYVRO_E_CONFLICT');
+        await tx.query(`update compliance.driver_applications set state = 'WITHDRAWN', version = version + 1, updated_at = now() where id = $1`, [id]);
+        await tx.query(`update compliance.vehicle_affiliations set status = 'ENDED' where driver_application_id = $1 and status <> 'ENDED'`, [id]);
+        await appendAudit(tx, {
+          actor: { type: 'ACCOUNT', id: principal.accountId },
+          action: 'DRIVER_APPLICATION_WITHDRAWN',
+          objectType: 'compliance.driver_application',
+          objectId: id,
+          outcome: 'SUCCESS',
+        });
+        const fresh = await this.loadApplication(tx, principal.accountId, id);
+        if (!fresh) throw new Error('application vanished');
+        return success(200, await this.view(tx, principal.accountId, fresh));
+      },
+    );
+  }
+
+  async addVehicle(
+    principal: Principal,
+    id: string,
+    input: {
+      plate: string;
+      make: string;
+      model: string;
+      modelYear: number;
+      colour: string;
+      serviceCategory: string;
+      ownershipType: string;
+      registrationNumber?: string | undefined;
+    },
+    key: string,
+  ): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.add-vehicle', key, { id, ...input }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      if (!EDITABLE_APPLICATION_STATES.has(app.state)) return failure('WAYVRO_E_CONFLICT');
+      const plate = normalisePlate(input.plate);
+      if (plate === null || !(await this.enabledCategories(tx, [input.serviceCategory]))) return failure('WAYVRO_E_VALIDATION');
+      // The vehicle row is serialised per plate: a concurrent creator of the same plate converges on one record.
+      await tx.query(`select pg_advisory_xact_lock(hashtext('wayvro.vehicle.plate:' || $1))`, [plate]);
+      const existing = await tx.query<{ id: string }>(`select id from compliance.vehicles where plate_normalised = $1 and status <> 'RETIRED'`, [plate]);
+      let vehicleId = existing.rows[0]?.id;
+      let relation: 'OWNER' | 'AUTHORISED_USER' = 'OWNER';
+      if (!vehicleId) {
+        vehicleId = uuidv7();
+        const reg =
+          input.registrationNumber === undefined
+            ? null
+            : this.cipher.encrypt(
+                'identity_numbers',
+                canonicalDocumentNumber(input.registrationNumber),
+                fieldContext(ENCRYPTED_FIELDS.vehicleRegistrationNo, vehicleId),
+              );
+        await tx.query(
+          `insert into compliance.vehicles (id, plate_normalised, plate_display, registration_no_envelope, make, model, model_year, colour, service_category, ownership_type, status)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ACTIVE')`,
+          [
+            vehicleId,
+            plate,
+            input.plate.trim().toUpperCase(),
+            reg,
+            input.make,
+            input.model,
+            input.modelYear,
+            input.colour,
+            input.serviceCategory,
+            input.ownershipType,
+          ],
+        );
+      } else {
+        relation = 'AUTHORISED_USER';
+        const others = await tx.query<{ account_id: string }>(
+          `select distinct coalesce(a.account_id, p.account_id) account_id
+             from compliance.vehicle_affiliations va
+             left join compliance.driver_applications a on a.id = va.driver_application_id
+             left join compliance.driver_profiles p on p.id = va.driver_profile_id
+            where va.vehicle_id = $1 and va.status <> 'ENDED'`,
+          [vehicleId],
+        );
+        for (const o of others.rows) {
+          if (o.account_id === principal.accountId) continue;
+          await tx.query(
+            `insert into compliance.duplicate_signals (id, signal, subject_application_id, subject_vehicle_id, matched_account_id, status) values ($1, 'PLATE_ALREADY_AFFILIATED', $2, $3, $4, 'OPEN') on conflict do nothing`,
+            [uuidv7(), id, vehicleId, o.account_id],
+          );
+        }
+      }
+      await tx.query('savepoint affiliation');
+      try {
+        await tx.query(
+          `insert into compliance.vehicle_affiliations (id, vehicle_id, driver_application_id, relation, status) values ($1, $2, $3, $4, 'PENDING')`,
+          [uuidv7(), vehicleId, id, relation],
+        );
+      } catch (e) {
+        if (sqlState(e) !== '23505') throw e;
+        await tx.query('rollback to savepoint affiliation');
+        return failure('WAYVRO_E_CONFLICT');
+      }
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_VEHICLE_ADDED',
+        objectType: 'compliance.vehicle',
+        objectId: vehicleId,
+        outcome: 'SUCCESS',
+        reasonCode: relation === 'OWNER' ? 'NEW_VEHICLE' : 'EXISTING_PLATE',
+      });
+      return success(201, { vehicleId, relation });
+    });
+  }
+
+  async updateVehicle(
+    principal: Principal,
+    id: string,
+    vehicleId: string,
+    input: {
+      expectedVersion: number;
+      make?: string | undefined;
+      model?: string | undefined;
+      modelYear?: number | undefined;
+      colour?: string | undefined;
+      ownershipType?: string | undefined;
+    },
+    key: string,
+  ): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.update-vehicle', key, { id, vehicleId, ...input }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      const owned = await tx.query(
+        `select 1 from compliance.vehicle_affiliations where vehicle_id = $1 and driver_application_id = $2 and relation = 'OWNER' and status <> 'ENDED'`,
+        [vehicleId, id],
+      );
+      if (owned.rowCount === 0) return failure('WAYVRO_E_NOT_FOUND');
+      if (!EDITABLE_APPLICATION_STATES.has(app.state)) return failure('WAYVRO_E_CONFLICT');
+      const r = await tx.query(
+        `update compliance.vehicles set make = coalesce($3, make), model = coalesce($4, model), model_year = coalesce($5, model_year), colour = coalesce($6, colour),
+                ownership_type = coalesce($7, ownership_type), version = version + 1
+          where id = $1 and version = $2`,
+        [vehicleId, input.expectedVersion, input.make ?? null, input.model ?? null, input.modelYear ?? null, input.colour ?? null, input.ownershipType ?? null],
+      );
+      if (r.rowCount !== 1) return failure('WAYVRO_E_CONFLICT');
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_VEHICLE_UPDATED',
+        objectType: 'compliance.vehicle',
+        objectId: vehicleId,
+        outcome: 'SUCCESS',
+      });
+      const fresh = await this.loadApplication(tx, principal.accountId, id);
+      if (!fresh) throw new Error('application vanished');
+      return success(200, await this.view(tx, principal.accountId, fresh));
+    });
+  }
+
+  async claimDocument(
+    principal: Principal,
+    id: string,
+    input: {
+      documentType: string;
+      vehicleId?: string | undefined;
+      districtCode?: string | undefined;
+      number?: string | undefined;
+      licenceClass?: string | undefined;
+      issuedOn?: string | undefined;
+      expiresOn?: string | undefined;
+    },
+    key: string,
+  ): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.claim-document', key, { id, ...input }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      if (!EDITABLE_APPLICATION_STATES.has(app.state)) return failure('WAYVRO_E_CONFLICT');
+      const type = (
+        await tx.query<{ subject: 'DRIVER' | 'VEHICLE' | 'DRIVER_VEHICLE'; has_number: boolean; has_expiry: boolean; per_district: boolean }>(
+          `select subject, has_number, has_expiry, per_district from compliance.document_types where code = $1`,
+          [input.documentType],
+        )
+      ).rows[0];
+      if (!type) return failure('WAYVRO_E_VALIDATION');
+      const needsVehicle = type.subject !== 'DRIVER';
+      if (needsVehicle !== (input.vehicleId !== undefined) || type.per_district !== (input.districtCode !== undefined)) return failure('WAYVRO_E_VALIDATION');
+      if ((input.number !== undefined && !type.has_number) || (input.expiresOn !== undefined && !type.has_expiry)) return failure('WAYVRO_E_VALIDATION');
+      if (input.vehicleId !== undefined) {
+        const aff = await tx.query(`select 1 from compliance.vehicle_affiliations where vehicle_id = $1 and driver_application_id = $2 and status <> 'ENDED'`, [
+          input.vehicleId,
+          id,
+        ]);
+        if (aff.rowCount === 0) return failure('WAYVRO_E_NOT_FOUND');
+      }
+      if (input.districtCode !== undefined) {
+        const d = await tx.query(`select 1 from catalog.districts where code = $1 and city_code = $2 and status = 'ENABLED'`, [
+          input.districtCode,
+          app.city_code,
+        ]);
+        if (d.rowCount === 0) return failure('WAYVRO_E_VALIDATION');
+      }
+      const docId = uuidv7();
+      const number = input.number === undefined ? null : canonicalDocumentNumber(input.number);
+      if (number !== null && number.length < 2) return failure('WAYVRO_E_VALIDATION');
+      // A re-claim supersedes the previous claim for the same item (history kept).
+      const previous = await tx.query<{ id: string }>(
+        `update compliance.compliance_documents set status = 'SUPERSEDED', version = version + 1
+          where driver_application_id = $1 and document_type_code = $2 and vehicle_id is not distinct from $3 and district_code is not distinct from $4 and status = 'SUBMITTED'
+          returning id`,
+        [id, input.documentType, input.vehicleId ?? null, input.districtCode ?? null],
+      );
+      await tx.query(
+        `insert into compliance.compliance_documents (id, document_type_code, subject, driver_application_id, vehicle_id, district_code, number_envelope, number_last4,
+                                                     licence_class, claimed_issued_on, claimed_expires_on, status, supersedes_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'SUBMITTED', $12)`,
+        [
+          docId,
+          input.documentType,
+          type.subject,
+          id,
+          input.vehicleId ?? null,
+          input.districtCode ?? null,
+          number === null ? null : this.cipher.encrypt('identity_numbers', number, fieldContext(ENCRYPTED_FIELDS.documentNumber, docId)),
+          number === null ? null : number.slice(-4),
+          input.licenceClass ?? null,
+          input.issuedOn ?? null,
+          input.expiresOn ?? null,
+          previous.rows[0]?.id ?? null,
+        ],
+      );
+      let signals = 0;
+      if (number !== null) {
+        const lookupValue = `${input.documentType}:${number}`;
+        const active = this.hasher.active('document_lookup', lookupValue);
+        await tx.query(`insert into compliance.document_number_lookup_index (compliance_document_id, lookup_key_version, lookup_hash) values ($1, $2, $3)`, [
+          docId,
+          active.version,
+          active.digest,
+        ]);
+        const live = this.hasher.live('document_lookup', lookupValue);
+        const matches = await tx.query<{ id: string }>(
+          `select d.id from compliance.document_number_lookup_index l
+             join compliance.compliance_documents d on d.id = l.compliance_document_id
+             left join compliance.driver_applications a on a.id = d.driver_application_id
+             left join compliance.driver_profiles p on p.id = d.driver_profile_id
+            where (l.lookup_key_version, l.lookup_hash) in (select * from unnest($1::smallint[], $2::bytea[]))
+              and d.id <> $3 and coalesce(a.account_id, p.account_id) is distinct from $4 and d.status <> 'SUPERSEDED'`,
+          [live.map((d) => d.version), live.map((d) => d.digest), docId, principal.accountId],
+        );
+        for (const m of matches.rows) {
+          const r = await tx.query(
+            `insert into compliance.duplicate_signals (id, signal, subject_document_id, matched_document_id, status) values ($1, 'DOCUMENT_NUMBER_MATCH', $2, $3, 'OPEN') on conflict do nothing`,
+            [uuidv7(), docId, m.id],
+          );
+          signals += r.rowCount ?? 0;
+        }
+      }
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_DOCUMENT_CLAIMED',
+        objectType: 'compliance.compliance_document',
+        objectId: docId,
+        outcome: 'SUCCESS',
+        reasonCode: signals > 0 ? 'DUPLICATE_SIGNAL_RAISED' : input.documentType,
+      });
+      return success(201, { documentId: docId });
+    });
+  }
+
+  /** Requirement checklist of the active set for the application's city and first category. */
+  async requirements(principal: Principal, id: string): Promise<unknown> {
+    if (!this.available) throw new WayvroError('WAYVRO_E_FEATURE_DISABLED');
+    const app = await this.loadApplication(this.db, principal.accountId, id);
+    if (!app) throw new WayvroError('WAYVRO_E_NOT_FOUND');
+    const view = await this.view(this.db, principal.accountId, app);
+    const category = view.serviceCategories[0];
+    const set = (
+      await this.db.query<{ id: string; version: number; is_placeholder: boolean }>(
+        `select id, version, is_placeholder from compliance.requirement_sets where city_code = $1 and service_category = $2 and status = 'ACTIVE'`,
+        [app.city_code, category ?? ''],
+      )
+    ).rows[0];
+    if (!set) throw new WayvroError('WAYVRO_E_NOT_FOUND');
+    const items = await this.db.query<{
+      document_type_code: string;
+      mandatory: boolean;
+      subject: 'DRIVER' | 'VEHICLE' | 'DRIVER_VEHICLE';
+      per_district: boolean;
+      evidence_kinds: string[];
+      applies_to_ownership_types: string[];
+      licence_classes_allowed: string[];
+    }>(
+      `select i.document_type_code, i.mandatory, t.subject, t.per_district, t.evidence_kinds, i.applies_to_ownership_types, i.licence_classes_allowed
+         from compliance.requirement_set_items i join compliance.document_types t on t.code = i.document_type_code
+        where i.requirement_set_id = $1 order by i.mandatory desc, i.document_type_code`,
+      [set.id],
+    );
+    const ownership = new Set(view.vehicles.map((v) => v.ownershipType));
+    return {
+      requirementSetId: set.id,
+      version: set.version,
+      isPlaceholder: set.is_placeholder,
+      items: items.rows.map((i) => ({
+        documentType: i.document_type_code,
+        mandatory: i.mandatory,
+        subject: i.subject,
+        perDistrict: i.per_district,
+        applicable: i.applies_to_ownership_types.length === 0 || i.applies_to_ownership_types.some((o) => ownership.has(o as never)),
+        claimed: view.documents.some((d) => d.documentType === i.document_type_code),
+        evidenceKinds: i.evidence_kinds,
+        licenceClassesAllowed: i.licence_classes_allowed,
+      })),
+    };
+  }
+
+  /** Live eligibility for every (affiliated vehicle × granted or requested category) of the caller's driver profile. */
+  async driverCompliance(principal: Principal): Promise<DriverCompliance> {
+    const profile = (
+      await this.db.query<{
+        id: string;
+        state: 'VERIFIED' | 'ACTIVE_ELIGIBLE' | 'EXPIRED' | 'REVERIFY_DUE';
+        application_id: string;
+        city_code: string;
+        dob: Buffer;
+      }>(
+        `select p.id, p.state, p.application_id, a.city_code, p.verified_date_of_birth_envelope dob
+           from compliance.driver_profiles p join compliance.driver_applications a on a.id = p.application_id where p.account_id = $1`,
+        [principal.accountId],
+      )
+    ).rows[0];
+    if (!profile) throw new WayvroError('WAYVRO_E_NOT_FOUND');
+    const now = new Date();
+    const restrictions = await restrictionsForAccount(this.db, principal.accountId);
+    const vehicles = await this.db.query<{ id: string; ownership_type: string; service_category: string }>(
+      `select v.id, v.ownership_type, v.service_category from compliance.vehicle_affiliations va join compliance.vehicles v on v.id = va.vehicle_id
+        where (va.driver_profile_id = $1 or va.driver_application_id = $2) and va.status <> 'ENDED'`,
+      [profile.id, profile.application_id],
+    );
+    const docs = await this.db.query<{
+      id: string;
+      document_type_code: string;
+      vehicle_id: string | null;
+      district_code: string | null;
+      number_last4: string | null;
+      licence_class: string | null;
+      claimed_expires_on: string | null;
+      expires_on: string | null;
+      status: DocumentFact['status'];
+    }>(
+      `select id, document_type_code, vehicle_id, district_code, number_last4, licence_class, to_char(claimed_expires_on, 'YYYY-MM-DD') claimed_expires_on,
+              to_char(expires_on, 'YYYY-MM-DD') expires_on, status
+         from compliance.compliance_documents
+        where (driver_profile_id = $1 or driver_application_id = $2 or vehicle_id = any($3::uuid[])) and status <> 'SUPERSEDED'`,
+      [profile.id, profile.application_id, vehicles.rows.map((v) => v.id)],
+    );
+    const capabilities = await this.db.query<{ id: string; vehicle_id: string; service_category: string; city_code: string; status: 'GRANTED' | 'REVOKED' }>(
+      `select id, vehicle_id, service_category, city_code, status from compliance.service_capabilities where driver_profile_id = $1`,
+      [profile.id],
+    );
+    const age = await currentAgePolicy(this.db);
+    const dob = this.cipher.decryptString('identity_dates', profile.dob, fieldContext(ENCRYPTED_FIELDS.profileDob, profile.id));
+    const productionLike = this.policy.WAYVRO_ENV === 'production';
+    const eligibility: DriverCompliance['eligibility'] = [];
+    for (const v of vehicles.rows) {
+      const category = v.service_category;
+      const catRow = (await this.db.query<{ status: string }>(`select status from catalog.service_categories where code = $1`, [category])).rows[0];
+      const set = (
+        await this.db.query<{ id: string; is_placeholder: boolean }>(
+          `select id, is_placeholder from compliance.requirement_sets where city_code = $1 and service_category = $2 and status = 'ACTIVE'`,
+          [profile.city_code, category],
+        )
+      ).rows[0];
+      const items = set
+        ? (
+            await this.db.query<{
+              document_type_code: string;
+              mandatory: boolean;
+              applies_to_ownership_types: string[];
+              licence_classes_allowed: string[];
+              subject: RequirementItemFact['subject'];
+            }>(
+              `select i.document_type_code, i.mandatory, i.applies_to_ownership_types, i.licence_classes_allowed, t.subject
+                 from compliance.requirement_set_items i join compliance.document_types t on t.code = i.document_type_code where i.requirement_set_id = $1`,
+              [set.id],
+            )
+          ).rows
+        : [];
+      const cap =
+        capabilities.rows.find(
+          (c) => c.vehicle_id === v.id && c.service_category === category && c.city_code === profile.city_code && c.status === 'GRANTED',
+        ) ?? null;
+      const result = evaluateEarningEligibility({
+        now,
+        productionLike,
+        accountActive: true,
+        restrictions,
+        profile: { id: profile.id, state: profile.state },
+        vehicle: { id: v.id, ownershipType: v.ownership_type },
+        cityCode: profile.city_code,
+        serviceCategory: category,
+        serviceCategoryEnabled: catRow?.status === 'ENABLED',
+        capability: cap ? { id: cap.id, status: cap.status } : null,
+        requirementSet: set
+          ? {
+              isPlaceholder: set.is_placeholder,
+              items: items.map((i) => ({
+                type: i.document_type_code,
+                mandatory: i.mandatory,
+                appliesToOwnershipTypes: i.applies_to_ownership_types,
+                licenceClassesAllowed: i.licence_classes_allowed,
+                subject: i.subject,
+              })),
+            }
+          : null,
+        documents: docs.rows.map((d) => ({
+          type: d.document_type_code,
+          status: d.status,
+          expiresOn: d.expires_on,
+          licenceClass: d.licence_class,
+          vehicleId: d.vehicle_id,
+        })),
+        agePolicy: { status: age.status, driverMinimumAge: age.driverMinimumAge },
+        driverDateOfBirth: dob,
+      });
+      eligibility.push({
+        vehicleId: v.id,
+        cityCode: profile.city_code,
+        serviceCategory: category as 'CAR',
+        eligible: result.eligible,
+        blockers: [...result.blockers],
+      });
+    }
+    const soon = new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10);
+    return {
+      profile: { id: profile.id, state: profile.state },
+      eligibility,
+      documents: docs.rows.map((d) => ({
+        id: d.id,
+        documentType: d.document_type_code,
+        vehicleId: d.vehicle_id,
+        districtCode: d.district_code,
+        numberLast4: d.number_last4,
+        licenceClass: d.licence_class,
+        claimedExpiresOn: d.claimed_expires_on,
+        status: d.status,
+        expiresOn: d.expires_on,
+        renewalDue: d.status === 'VALID' && d.expires_on !== null && d.expires_on <= soon,
+      })),
+      restrictions: restrictions.filter((r) => inForce(r, now)).map(accountView),
+    };
+  }
+}

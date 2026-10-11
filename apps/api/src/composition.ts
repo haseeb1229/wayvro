@@ -17,8 +17,14 @@ import { AccountService } from './identity/account.service.js';
 import { OtpAbuseControls } from './identity/otp-abuse.js';
 import { OtpService } from './identity/otp.service.js';
 import { SessionService } from './identity/session.service.js';
+import { ComplianceAdminService } from './compliance/compliance-admin.service.js';
+import { OnboardingService } from './compliance/onboarding.service.js';
 import { ConsentService } from './legal/consent.service.js';
 import { preparePolicyRegistry } from './legal/policy-registry.js';
+import { OversightService } from './staff/oversight.service.js';
+import { StaffAdminService } from './staff/staff-admin.service.js';
+import { StaffAuthService } from './staff/staff-auth.service.js';
+import { StaffWebAuthn } from './staff/webauthn.js';
 import { IdempotencyStore } from './platform/idempotency.js';
 
 export interface ApiRuntime {
@@ -58,7 +64,8 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     deliveryAvailable: options.providers.has('otpDelivery'),
   });
   const sessions = new SessionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, policy: config });
-  const accounts = new AccountService(db.pool, idempotency, config);
+  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config);
+  const accounts = new AccountService(db.pool, idempotency, config, onboarding.available);
   const consents = new ConsentService(db.pool, cipher, idempotency, config);
   // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
   await preparePolicyRegistry(db.pool, config.WAYVRO_ENV, log);
@@ -68,6 +75,13 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     log,
     trustProxy: config.TRUST_PROXY,
     identity: { otp, sessions, accounts, consents, legalStore: db.pool, sessionStore: db.pool },
+    staff: {
+      auth: new StaffAuthService(db.pool, new StaffWebAuthn(config), idempotency, limiter, hasher, config),
+      admin: new StaffAdminService(db.pool, idempotency, config),
+      oversight: new OversightService(db.pool, idempotency, log, config.IDEMPOTENCY_TTL_SECONDS),
+      policy: config,
+    },
+    compliance: { onboarding, admin: new ComplianceAdminService(db.pool, idempotency, config) },
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {

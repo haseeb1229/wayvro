@@ -83,6 +83,26 @@ const apiEnvSchema = serviceEnvSchema
     /** Set only when a trusted reverse proxy terminates TLS in front of the API (see trustProxySchema). */
     TRUST_PROXY: trustProxySchema,
     WAYVRO_BUILD_VERSION: z.string().min(1).default('dev'),
+    // Staff realm (K10/Q42; configurable defaults per the staff matrix §2): idle lock 15 min, absolute 8 h, step-up 5 min.
+    STAFF_SESSION_IDLE_SECONDS: int(900, 60, 3600),
+    STAFF_SESSION_ABSOLUTE_SECONDS: int(28_800, 900, 43_200),
+    STAFF_STEP_UP_SECONDS: int(300, 30, 900),
+    STAFF_INVITATION_TTL_SECONDS: int(86_400, 600, 259_200),
+    STAFF_ASSERTIONS_PER_IP_PER_10_MIN: int(60, 1, 100_000),
+    STAFF_ASSERTIONS_PER_STAFF_PER_10_MIN: int(20, 1, 100_000),
+    /** WebAuthn relying party: the web-ops host name (no scheme/port) and the exact allowed origins. */
+    STAFF_WEBAUTHN_RP_ID: z
+      .string()
+      .regex(/^[a-z0-9.-]{1,253}$/)
+      .default('localhost'),
+    STAFF_WEBAUTHN_RP_NAME: z.string().min(1).max(64).default('Wayvro Operations'),
+    STAFF_WEBAUTHN_ORIGINS: z
+      .string()
+      .default('http://localhost:3310')
+      .transform((v) => Object.freeze(v.split(',').map((o) => o.trim())))
+      .refine((list) => list.length > 0 && list.every((o) => /^https?:\/\/[a-z0-9.-]+(:\d{1,5})?$/.test(o)), {
+        message: 'comma-separated origins (scheme://host[:port])',
+      }),
     /** Namespace for rate-limit keys when several environments or test runs share one Valkey. */
     RATE_LIMIT_KEY_PREFIX: z
       .string()
@@ -93,14 +113,21 @@ const apiEnvSchema = serviceEnvSchema
     message: 'session lifetimes must satisfy access <= idle <= absolute',
     path: ['SESSION_IDLE_TTL_SECONDS'],
   })
-  .refine((c) => c.OTP_RESEND_COOLDOWNS_SECONDS.length > 0, { path: ['OTP_RESEND_COOLDOWNS_SECONDS'] })
-  .refine((c) => c.TRUST_PROXY !== true || isNonProductionLike(c.WAYVRO_ENV), {
-    message: 'staging/production must list the trusted reverse-proxy addresses/CIDRs; trust-all is refused',
-    path: ['TRUST_PROXY'],
-  });
+  .refine((c) => c.OTP_RESEND_COOLDOWNS_SECONDS.length > 0, { path: ['OTP_RESEND_COOLDOWNS_SECONDS'] });
 
 export type ApiConfig = Readonly<z.infer<typeof apiEnvSchema>>;
 
+/** WAYVRO_ENV-dependent rules (reported together with the shared environment rules). */
+function apiEnvironmentRules(c: z.infer<typeof apiEnvSchema>): string[] {
+  if (isNonProductionLike(c.WAYVRO_ENV)) return [];
+  const issues: string[] = [];
+  if (c.STAFF_WEBAUTHN_RP_ID === 'localhost' || !c.STAFF_WEBAUTHN_ORIGINS.every((o) => o.startsWith('https://'))) {
+    issues.push('STAFF_WEBAUTHN_ORIGINS: staging/production require a real relying-party id and https origins for staff WebAuthn');
+  }
+  if (c.TRUST_PROXY === true) issues.push('TRUST_PROXY: staging/production must list the trusted reverse-proxy addresses/CIDRs; trust-all is refused');
+  return issues;
+}
+
 export function loadApiConfig(env: Readonly<Record<string, string | undefined>>): ApiConfig {
-  return loadConfig(apiEnvSchema, env);
+  return loadConfig(apiEnvSchema, env, apiEnvironmentRules);
 }

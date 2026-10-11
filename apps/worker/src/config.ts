@@ -19,6 +19,8 @@ const workerEnvSchema = serviceEnvSchema
     /** Retention placeholders — NOT_COUNSEL_APPROVED until the retention matrix exists (EG-16). */
     OTP_CHALLENGE_RETENTION_DAYS: int(7, 1, 365),
     SUCCEEDED_JOB_RETENTION_DAYS: int(7, 1, 365),
+    /** Inactive DRAFT/CONSENTED/DOCUMENTS_PENDING applications become EXPIRED_DRAFT (data model §4.5; proposal 30). */
+    APPLICATION_DRAFT_EXPIRY_DAYS: int(30, 1, 365),
     KEY_ROTATION_BATCH_SIZE: int(500, 1, 10_000),
   });
 

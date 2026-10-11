@@ -20,6 +20,11 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_STEP_UP_REQUIRED: { status: 403, message: 'Please verify your phone number again to continue.' },
   WAYVRO_E_PAYLOAD_TOO_LARGE: { status: 413, message: 'The request body is too large.' },
   WAYVRO_E_UNSUPPORTED_MEDIA_TYPE: { status: 415, message: 'The request content type is not supported.' },
+  WAYVRO_E_STAFF_SESSION_LOCKED: { status: 401, message: 'Your session is locked after inactivity. Confirm with your security key to continue.' },
+  WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED: { status: 403, message: 'Please review and accept the current policies to continue.' },
+  WAYVRO_E_AGE_DECLARATION_REQUIRED: { status: 403, message: 'Please complete the age declaration to continue.' },
+  WAYVRO_E_ACCOUNT_RESTRICTED: { status: 403, message: 'Your account is restricted. See the account notice for details and how to appeal.' },
+  WAYVRO_E_FEATURE_DISABLED: { status: 404, message: 'This feature is not available.' },
   WAYVRO_E_CONFLICT: { status: 409, message: 'This request conflicts with the current state. Please refresh and try again.' },
 };
 

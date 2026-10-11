@@ -13,7 +13,8 @@ import { captureLogs } from '@wayvro/test-support';
 import { afterEach, describe, expect, it } from 'vitest';
 import { API_CONTROLLERS, createApp, routeManifest } from '../src/app.js';
 
-type IdentityServices = Parameters<typeof createApp>[0]['identity'];
+type AppDependencies = Parameters<typeof createApp>[0];
+type IdentityServices = AppDependencies['identity'];
 import { ConsumerSession, Public, routePolicyProblems } from '../src/auth/policy.js';
 
 @Controller()
@@ -66,13 +67,34 @@ const identity: IdentityServices = {
   sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as IdentityServices['sessionStore'],
 };
 
+const staff: AppDependencies['staff'] = {
+  auth: {} as AppDependencies['staff']['auth'],
+  admin: {} as AppDependencies['staff']['admin'],
+  oversight: {} as AppDependencies['staff']['oversight'],
+  policy: { STAFF_SESSION_IDLE_SECONDS: 900, STAFF_SESSION_ABSOLUTE_SECONDS: 28800, STAFF_STEP_UP_SECONDS: 300 },
+};
+
+const compliance: AppDependencies['compliance'] = {
+  onboarding: {} as AppDependencies['compliance']['onboarding'],
+  admin: {} as AppDependencies['compliance']['admin'],
+};
+
 let app: NestFastifyApplication | undefined;
 afterEach(async () => {
   await app?.close();
   app = undefined;
 });
 async function boot(checks: ReadinessCheck[] = [check('database', true), check('redis', true)], extra: Type[] = []): Promise<NestFastifyApplication> {
-  app = await createApp({ info: { service: 'api', version: 'test' }, readinessChecks: checks, log, trustProxy: false, identity, extraControllers: extra });
+  app = await createApp({
+    info: { service: 'api', version: 'test' },
+    readinessChecks: checks,
+    log,
+    trustProxy: false,
+    identity,
+    staff,
+    compliance,
+    extraControllers: extra,
+  });
   await app.getHttpAdapter().getInstance().ready();
   return app;
 }

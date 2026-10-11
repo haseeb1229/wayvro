@@ -16,7 +16,7 @@ const adminUrl: string = ADMIN_URL;
 
 const bytes = (n: number): Buffer => randomBytes(n);
 /** Every application schema created by the migrations (grows additively with later micro-phases). */
-const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal'] as const;
+const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal', 'staff', 'catalog', 'compliance'] as const;
 const APP_SCHEMAS_SQL = APP_SCHEMAS.map((s) => `'${s}'`).join(',');
 const pgCode = async (p: Promise<unknown>): Promise<string | undefined> => {
   try {
@@ -123,6 +123,23 @@ describe('migration lifecycle (every migration)', () => {
     expect(tables.rows.map((r) => r.t)).toEqual([
       'audit.audit_events',
       'audit.audit_seals',
+      'audit.seal_verifications',
+      'catalog.cities',
+      'catalog.districts',
+      'catalog.service_categories',
+      'compliance.application_service_categories',
+      'compliance.cnic_lookup_index',
+      'compliance.compliance_documents',
+      'compliance.document_number_lookup_index',
+      'compliance.document_types',
+      'compliance.driver_applications',
+      'compliance.driver_profiles',
+      'compliance.duplicate_signals',
+      'compliance.requirement_set_items',
+      'compliance.requirement_sets',
+      'compliance.service_capabilities',
+      'compliance.vehicle_affiliations',
+      'compliance.vehicles',
       'identity.account_devices',
       'identity.account_phones',
       'identity.accounts',
@@ -138,7 +155,18 @@ describe('migration lifecycle (every migration)', () => {
       'platform.idempotency_records',
       'platform.jobs',
       'platform.key_rotations',
+      'profile.restriction_events',
+      'profile.restrictions',
       'profile.rider_profiles',
+      'staff.access_reasons',
+      'staff.break_glass_grants',
+      'staff.invitations',
+      'staff.role_assignment_cities',
+      'staff.role_assignments',
+      'staff.sessions',
+      'staff.staff_accounts',
+      'staff.webauthn_challenges',
+      'staff.webauthn_credentials',
     ]);
   });
 });

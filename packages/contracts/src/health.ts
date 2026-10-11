@@ -27,8 +27,11 @@ export interface RouteContract {
   /** OpenAPI-style path; parameters as `{name}`. */
   readonly path: `/v1/${string}`;
   readonly summary: string;
-  /** `public`: no credential; `session`: `Authorization: Bearer <access token>` of an active consumer session. */
-  readonly auth: 'public' | 'session';
+  /**
+   * `public`: no credential; `session`: `Authorization: Bearer <access token>` of an active consumer session;
+   * `staff`: `Authorization: Bearer <staff session token>` forwarded by the web-ops BFF (separate realm).
+   */
+  readonly auth: 'public' | 'session' | 'staff';
   readonly request?: z.ZodType;
   readonly params?: z.ZodObject;
   /** Query-string parameters (all optional unless the schema says otherwise). */

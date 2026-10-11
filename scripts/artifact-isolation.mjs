@@ -58,6 +58,9 @@ const PRODUCTION_LIKE_ENV = {
   WAYVRO_ENV: 'production',
   DATABASE_URL: 'postgres://wayvro:unused@db.invalid.example/wayvro?sslmode=verify-full',
   REDIS_URL: 'rediss://cache.invalid.example:6380',
+  // a production-shaped staff WebAuthn relying party, so the refusal under test (no key provider) is the one reached
+  STAFF_WEBAUTHN_RP_ID: 'ops.wayvro.invalid',
+  STAFF_WEBAUTHN_ORIGINS: 'https://ops.wayvro.invalid',
 };
 
 const results = [];
@@ -206,7 +209,9 @@ const app = await createApp({
   readinessChecks: [],
   log: silent,
   trustProxy: false,
-  identity: { otp: {}, sessions: {}, accounts: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
+  identity: { otp: {}, sessions: {}, accounts: {}, consents: {}, legalStore: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
+  staff: { auth: {}, admin: {}, oversight: {}, policy: {} },
+  compliance: { onboarding: {}, admin: {} },
 });
 const served = [...routeManifest(app)];
 const expected = new Set(API_ROUTES.map((r) => r.method + ' ' + r.path.replace(/\\{(\\w+)\\}/g, ':$1')));

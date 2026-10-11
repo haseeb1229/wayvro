@@ -79,7 +79,7 @@ export class AuthController {
 
   @Delete('/v1/auth/sessions/current')
   @HttpCode(204)
-  @ConsumerSession()
+  @ConsumerSession({ restrictedOk: true })
   async deleteCurrentSession(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) reply: FastifyReply): Promise<undefined> {
     return render(reply, await this.sessions.logout(principalOf(request), idempotencyKey(request)));
   }

@@ -10,13 +10,14 @@ describe('opaque tokens', () => {
     expect(refresh).toMatch(/^wvr_[A-Za-z0-9_-]{43}$/);
     expect(tokenKind(access)).toBe('access');
     expect(tokenKind(refresh)).toBe('refresh');
+    expect(tokenKind(newOpaqueToken('staff'))).toBe('staff');
     expect(hashToken(access)).toHaveLength(32);
     expect(hashToken(access).equals(hashToken(access))).toBe(true);
     expect(new Set(Array.from({ length: 5000 }, () => newOpaqueToken('access'))).size).toBe(5000);
   });
 
   it('rejects anything that is not a well-formed Wayvro token (property)', () => {
-    fc.assert(fc.property(fc.string({ maxLength: 80 }), (s) => tokenKind(s) === null || /^wv[ar]_[A-Za-z0-9_-]{43}$/.test(s)));
+    fc.assert(fc.property(fc.string({ maxLength: 80 }), (s) => tokenKind(s) === null || /^wv[ars]_[A-Za-z0-9_-]{43}$/.test(s)));
     expect(tokenKind('wvx_' + 'a'.repeat(43))).toBeNull();
     expect(tokenKind(newOpaqueToken('access') + 'x')).toBeNull();
   });

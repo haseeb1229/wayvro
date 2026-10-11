@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   API_ROUTES,
   AgeDeclarationRequestSchema,
+  AgePolicyDraftRequestSchema,
+  StaffInvitationRequestSchema,
   ConsentRequestSchema,
   LEGAL_ROUTES,
   ErrorEnvelopeSchema,
@@ -190,5 +192,19 @@ describe('P2.2 legal contracts', () => {
     const list = doc.paths['/v1/legal/policies']?.['get'];
     expect(list?.parameters).toContainEqual(expect.objectContaining({ name: 'locale', in: 'query', required: false }));
     for (const r of LEGAL_ROUTES) expect(doc.paths[r.path]?.[r.method.toLowerCase()]).toBeDefined();
+  });
+});
+
+describe('staff and compliance-admin request schemas', () => {
+  it('requires a rider minimum age unless the declaration mode is NONE (arbitrary synthetic numbers — not a policy, EG-23)', () => {
+    const base = { driverMinimumAge: 77, guardianRulesRef: null, approvalRef: 'COUNSEL-MEMO-SYNTHETIC', effectiveAt: '2026-11-01T00:00:00Z' };
+    expect(AgePolicyDraftRequestSchema.safeParse({ ...base, riderDeclarationMode: 'AFFIRM_MINIMUM_AGE', riderMinimumAge: null }).success).toBe(false);
+    expect(AgePolicyDraftRequestSchema.safeParse({ ...base, riderDeclarationMode: 'NONE', riderMinimumAge: null }).success).toBe(true);
+    expect(AgePolicyDraftRequestSchema.safeParse({ ...base, riderDeclarationMode: 'AFFIRM_MINIMUM_AGE', riderMinimumAge: 66 }).success).toBe(true);
+  });
+
+  it('normalises staff invitation e-mail addresses to lower case', () => {
+    const parsed = StaffInvitationRequestSchema.parse({ displayName: 'Synthetic Reviewer', workEmail: 'Reviewer@Example.TEST' });
+    expect(parsed.workEmail).toBe('reviewer@example.test');
   });
 });

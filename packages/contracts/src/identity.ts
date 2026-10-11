@@ -3,6 +3,7 @@
  * server-owned fields (account ids, roles, modes, KYC state, assurance) cannot be supplied by clients.
  */
 import { z } from 'zod';
+import { AccountDriverSectionSchema, AccountRestrictionSchema } from './compliance.js';
 
 export const LOCALES = ['en', 'ur', 'ur-Latn'] as const;
 export const LocaleSchema = z.enum(LOCALES);
@@ -96,6 +97,10 @@ export const AccountStateSchema = z
     session: z.object({ id: z.uuid(), assurance: z.literal('OTP'), accessTokenExpiresAt: IsoDateTime }),
     riderProfile: z.object({ id: z.uuid(), status: z.literal('ACTIVE') }),
     requiredActions: z.array(RequiredActionSchema),
+    /** P2.5 (additive): Driver/Partner application/profile summary — server truth for routing, never a capability. */
+    driver: AccountDriverSectionSchema,
+    /** P2.5 (additive): restrictions affecting this account, its driver profile or its vehicles (V13). */
+    restrictions: z.array(AccountRestrictionSchema),
   })
   .meta({ id: 'AccountState' });
 export type AccountState = z.infer<typeof AccountStateSchema>;

@@ -199,7 +199,7 @@ jobs:
   e2e-web:
     name: Web E2E (Playwright + axe) against production builds
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -215,12 +215,23 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
-      - name: Production builds of the web surfaces
-        run: pnpm turbo run build --filter '@wayvro/web-public...' --filter '@wayvro/web-ops...'
+      - name: Production builds (web surfaces, API, API local runner)
+        run: |
+          pnpm build
+          pnpm build:local
+      - name: Start local infrastructure (compose project "wayvro") for the web-ops stack
+        run: pnpm infra:up
       - name: Install the Chromium revision pinned by @playwright/test (with OS dependencies)
         run: pnpm exec playwright install --with-deps chromium
-      - name: Playwright + axe
+      - name: Playwright + axe (web-public legal pages; web-ops staff sign-in, BFF, lock, administration)
+        env:
+          WAYVRO_E2E_OPS: '1'
+          DATABASE_URL: postgres://wayvro:wayvro-local-only@127.0.0.1:25432/wayvro
+          REDIS_URL: redis://127.0.0.1:26379
         run: pnpm test:e2e:web
+      - name: Stop local infrastructure
+        if: always()
+        run: pnpm infra:down
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:

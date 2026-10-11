@@ -22,11 +22,30 @@ describe('api configuration', () => {
       WAYVRO_ENV: 'production',
       DATABASE_URL: 'postgres://wayvro:x@db.internal:5432/wayvro?sslmode=verify-full',
       REDIS_URL: 'rediss://cache.internal:6379',
+      STAFF_WEBAUTHN_RP_ID: 'ops.wayvro.example',
+      STAFF_WEBAUTHN_ORIGINS: 'https://ops.wayvro.example',
     };
     expect(() => loadApiConfig({ ...prod, TRUST_PROXY: 'true' })).toThrow(/trust-all is refused/);
     expect(() => loadApiConfig({ ...prod, WAYVRO_ENV: 'staging', TRUST_PROXY: 'true' })).toThrow(/trust-all is refused/);
     expect(loadApiConfig({ ...prod, TRUST_PROXY: '10.20.0.0/16' }).TRUST_PROXY).toEqual(['10.20.0.0/16']);
     expect(loadApiConfig({ ...prod }).TRUST_PROXY).toBe(false);
+  });
+
+  it('staging/production require a real WebAuthn relying party and https origins for staff authentication', () => {
+    const prod = {
+      WAYVRO_ENV: 'production',
+      DATABASE_URL: 'postgres://wayvro:x@db.internal:5432/wayvro?sslmode=verify-full',
+      REDIS_URL: 'rediss://cache.internal:6379',
+    };
+    expect(() => loadApiConfig(prod)).toThrow(/https origins for staff WebAuthn/);
+    expect(() => loadApiConfig({ ...prod, STAFF_WEBAUTHN_RP_ID: 'ops.wayvro.example', STAFF_WEBAUTHN_ORIGINS: 'http://ops.wayvro.example' })).toThrow(
+      /staff WebAuthn/,
+    );
+    expect(
+      loadApiConfig({ ...prod, STAFF_WEBAUTHN_RP_ID: 'ops.wayvro.example', STAFF_WEBAUTHN_ORIGINS: 'https://ops.wayvro.example' }).STAFF_WEBAUTHN_ORIGINS,
+    ).toEqual(['https://ops.wayvro.example']);
+    expect(() => loadApiConfig({ ...base, STAFF_WEBAUTHN_ORIGINS: 'not a url' })).toThrow(/STAFF_WEBAUTHN_ORIGINS/);
+    expect(loadApiConfig(base)).toMatchObject({ STAFF_WEBAUTHN_RP_ID: 'localhost', STAFF_SESSION_IDLE_SECONDS: 900, STAFF_STEP_UP_SECONDS: 300 });
   });
 
   it('refuses to boot without its dependencies', () => {

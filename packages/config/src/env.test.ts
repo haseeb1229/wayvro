@@ -69,6 +69,20 @@ describe('loadConfig', () => {
     expect(() => loadConfig(keyed, { ...local, WAYVRO_LOCAL_KEY_SEED: 'short' })).toThrow(/WAYVRO_LOCAL_KEY_SEED/);
   });
 
+  it('reports service-specific environment rules together with the shared ones (no rule hides another)', () => {
+    const rules = (c: { WAYVRO_ENV: string }) => (c.WAYVRO_ENV === 'production' ? ['SERVICE_RULE: refused in production'] : []);
+    const db = serviceEnvSchema.extend(databaseEnvSchema.shape);
+    let message = '';
+    try {
+      loadConfig(db, { WAYVRO_ENV: 'production', DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/w?sslmode=require' }, rules);
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toMatch(/must not use a local host/);
+    expect(message).toMatch(/SERVICE_RULE: refused in production/);
+    expect(loadConfig(db, { WAYVRO_ENV: 'local', DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/w' }, rules).WAYVRO_ENV).toBe('local');
+  });
+
   it('refuses debug logging outside local/test', () => {
     expect(() => loadConfig(serviceEnvSchema, { WAYVRO_ENV: 'staging', LOG_LEVEL: 'debug' })).toThrow(/debug/);
     expect(loadConfig(serviceEnvSchema, { WAYVRO_ENV: 'local', LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe('debug');
