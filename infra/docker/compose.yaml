@@ -57,6 +57,26 @@ services:
       retries: 40
     restart: unless-stopped
 
+  clamav:
+    # Malware scanner for the evidence pipeline (ADR-041 §2.5): ClamAV 1.4 LTS, GPL-2.0, unmodified, separate process,
+    # clamd INSTREAM only. Host port 23310 (3310 is often taken by other ClamAV installs on developer machines).
+    # The image ships the official signature databases; WAYVRO_CLAMAV_NO_FRESHCLAM=true uses them without downloading
+    # (CI: avoids rate-limited signature downloads), otherwise freshclam keeps them current.
+    image: clamav/clamav:1.4.6-debian13-slim@sha256:6d0680780fd29855cb7018f68272cb520821f614259e2066f8ec669069ac91b3
+    environment:
+      CLAMAV_NO_FRESHCLAMD: ${WAYVRO_CLAMAV_NO_FRESHCLAM:-false}
+    ports:
+      - '127.0.0.1:${WAYVRO_CLAMAV_PORT:-23310}:3310'
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ['CMD-SHELL', 'clamdcheck.sh']
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 360s
+    restart: unless-stopped
+
 volumes:
   pg_data:
     name: wayvro_pg_data
@@ -64,3 +84,5 @@ volumes:
     name: wayvro_valkey_data
   s3_data:
     name: wayvro_s3_data
+  clamav_db:
+    name: wayvro_clamav_db

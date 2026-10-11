@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["node"], "rootDir": ".", "outDir": "dist-dev", "experimentalDecorators": true, "declaration": false, "declarationMap": false },
+  "include": ["src", "dev"],
+  "exclude": ["src/**/*.test.ts"]
+}

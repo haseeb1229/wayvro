@@ -3,14 +3,17 @@
  * domain events into an outbox table in the SAME transaction as the state change; this relay publishes them
  * at-least-once and marks them dispatched. Consumers deduplicate by `eventId` (see ../consumer/idempotent-consumer.ts).
  *
- * Phase 1 ships the relay logic behind ports only. The Postgres `OutboxSource` arrives with the outbox table migration
- * together with the first event-producing context (Phase 2/4); until then the worker does not start the relay.
+ * The Postgres `OutboxSource` (./pg-outbox.ts) reads `platform.outbox_events` (migration 0006); the worker runs the relay
+ * with an in-process dispatcher whose first consumer is the account-state hint (P2.7).
  */
 
 export interface OutboxEvent {
   readonly eventId: string;
   readonly type: string;
+  readonly aggregateType: string;
   readonly aggregateId: string;
+  /** The account the event concerns (state-change hints are routed by it), or null. */
+  readonly accountId: string | null;
   readonly payload: Readonly<Record<string, unknown>>;
   readonly attempts: number;
 }
@@ -68,8 +71,4 @@ export class OutboxRelay {
   }
 }
 
-/** Bounded exponential backoff with full jitter for the relay loop (no retry storms, CLAUDE.md §13). */
-export function backoffDelayMs(consecutiveFailures: number, random: () => number = Math.random, baseMs = 250, capMs = 30000): number {
-  const ceiling = Math.min(capMs, baseMs * 2 ** Math.min(consecutiveFailures, 16));
-  return Math.floor(random() * ceiling);
-}
+// The relay loop's backoff is `backoffDelayMs` from @wayvro/server-runtime (shared with the job runner, ADR-042).

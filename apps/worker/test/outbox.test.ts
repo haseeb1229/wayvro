@@ -1,7 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { createIdempotentConsumer, type ProcessedEventStore } from '../src/consumer/idempotent-consumer.js';
-import { OutboxRelay, backoffDelayMs, type EventPublisher, type OutboxEvent, type OutboxSource } from '../src/outbox/relay.js';
+import { backoffDelayMs } from '@wayvro/server-runtime';
+import { OutboxRelay, type EventPublisher, type OutboxEvent, type OutboxSource } from '../src/outbox/relay.js';
 import { loadWorkerConfig } from '../src/config.js';
 
 /** Test double of the outbox table: claim/dispatch/fail semantics only. */
@@ -41,6 +42,8 @@ class MemoryProcessedStore implements ProcessedEventStore {
 const event = (n: number, attempts = 0): OutboxEvent => ({
   eventId: `evt-${String(n)}`,
   type: 'platform.probe.v1',
+  aggregateType: 'platform.probe',
+  accountId: null,
   aggregateId: `agg-${String(n)}`,
   payload: { n },
   attempts,
@@ -133,5 +136,19 @@ describe('worker configuration', () => {
       HEALTH_PORT: 4002,
     });
     expect(() => loadWorkerConfig({ WAYVRO_ENV: 'local' })).toThrow(/DATABASE_URL/);
+  });
+
+  it('evidence pipeline defaults are safe; staging/production refuse the Docker-CLI sanitiser runner (ADR-041 §2.2)', () => {
+    const local = { WAYVRO_ENV: 'local', DATABASE_URL: 'postgres://a:b@127.0.0.1:25432/w', REDIS_URL: 'redis://127.0.0.1:26379' };
+    expect(loadWorkerConfig(local)).toMatchObject({ SANITISER_RUNNER: 'none', EVIDENCE_ORPHAN_DRY_RUN: true, CLAMD_PORT: 3310 });
+    expect(loadWorkerConfig({ ...local, SANITISER_RUNNER: 'docker', EVIDENCE_ORPHAN_DRY_RUN: 'false' })).toMatchObject({
+      SANITISER_RUNNER: 'docker',
+      EVIDENCE_ORPHAN_DRY_RUN: false,
+    });
+    const remote = { DATABASE_URL: 'postgres://a:b@db.example/w?sslmode=verify-full', REDIS_URL: 'rediss://cache.example:6380' };
+    for (const env of ['staging', 'production']) {
+      expect(() => loadWorkerConfig({ ...remote, WAYVRO_ENV: env, SANITISER_RUNNER: 'docker' })).toThrow(/refuses the Docker CLI runner/);
+      expect(loadWorkerConfig({ ...remote, WAYVRO_ENV: env }).SANITISER_RUNNER).toBe('none');
+    }
   });
 });

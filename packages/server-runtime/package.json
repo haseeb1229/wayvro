@@ -2,7 +2,7 @@
   "name": "@wayvro/server-runtime",
   "version": "0.0.0",
   "private": true,
-  "description": "SERVER-ONLY runtime utilities shared by api, worker and realtime: bounded readiness probes and a minimal health server.",
+  "description": "SERVER-ONLY runtime utilities shared by api, worker and realtime: readiness probes, health server, release-artefact policy, UUIDv7, transactions, append-only audit writes, the Valkey rate limiter and the PostgreSQL job runner.",
   "type": "module",
   "exports": {
     ".": {
@@ -20,14 +20,20 @@
     "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
   },
   "dependencies": {
+    "@wayvro/config": "workspace:*",
     "@wayvro/contracts": "workspace:*",
     "@wayvro/db": "workspace:*",
     "@wayvro/observability": "workspace:*",
-    "ioredis": "6.0.0"
+    "ioredis": "6.0.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "5.0.3",
+    "@wayvro/test-support": "workspace:*",
+    "fast-check": "4.10.2",
+    "pg": "8.23.1",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
   }

@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const COMPOSE_FILE = join(dirname(fileURLToPath(import.meta.url)), '..', 'infra', 'docker', 'compose.yaml');
 const PROJECT = 'wayvro';
-const OWNED_VOLUMES = ['wayvro_pg_data', 'wayvro_valkey_data', 'wayvro_s3_data'];
+const OWNED_VOLUMES = ['wayvro_pg_data', 'wayvro_valkey_data', 'wayvro_s3_data', 'wayvro_clamav_db'];
 
 function run(args, { allowFail = false } = {}) {
   const r = spawnSync('docker', args, { stdio: 'inherit' });

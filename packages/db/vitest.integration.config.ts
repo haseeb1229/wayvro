@@ -4,8 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'test/**/*.integration.test.ts'],
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    // every-prefix migration upgrades (one throwaway database each) grow with every migration
+    testTimeout: 90000,
+    hookTimeout: 90000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

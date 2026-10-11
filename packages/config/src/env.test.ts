@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, databaseEnvSchema, httpEnvSchema, isNonProductionLike, loadConfig, redisEnvSchema, serviceEnvSchema } from './env.js';
+import {
+  ConfigError,
+  databaseEnvSchema,
+  httpEnvSchema,
+  isNonProductionLike,
+  keyEnvSchema,
+  loadConfig,
+  redisEnvSchema,
+  serviceEnvSchema,
+  vaultEnvSchema,
+} from './env.js';
 
 const schema = serviceEnvSchema.extend(databaseEnvSchema.shape).extend(redisEnvSchema.shape).extend(httpEnvSchema.shape);
 const local = {
@@ -55,6 +65,58 @@ describe('loadConfig', () => {
       REDIS_URL: 'rediss://cache.internal.example:6380',
     });
     expect(ok.WAYVRO_ENV).toBe('production');
+  });
+
+  it('refuses local key material in staging/production (EG-05: no production key provider yet)', () => {
+    const remote = {
+      DATABASE_URL: 'postgres://u:p@db.internal.example/wayvro?sslmode=verify-full',
+      REDIS_URL: 'rediss://cache.internal.example:6380',
+      WAYVRO_LOCAL_KEY_SEED: 'synthetic-seed-that-is-long-enough-000000',
+    };
+    const keyed = serviceEnvSchema.extend(databaseEnvSchema.shape).extend(redisEnvSchema.shape).extend(keyEnvSchema.shape);
+    for (const env of ['staging', 'production']) expect(() => loadConfig(keyed, { ...remote, WAYVRO_ENV: env })).toThrow(/must not use local key material/);
+    expect(loadConfig(keyed, { ...local, WAYVRO_LOCAL_KEY_SEED: remote.WAYVRO_LOCAL_KEY_SEED }).WAYVRO_LOCAL_KEY_SEED).toBe(remote.WAYVRO_LOCAL_KEY_SEED);
+    expect(() => loadConfig(keyed, { ...local, WAYVRO_LOCAL_KEY_SEED: 'short' })).toThrow(/WAYVRO_LOCAL_KEY_SEED/);
+  });
+
+  it('reports service-specific environment rules together with the shared ones (no rule hides another)', () => {
+    const rules = (c: { WAYVRO_ENV: string }) => (c.WAYVRO_ENV === 'production' ? ['SERVICE_RULE: refused in production'] : []);
+    const db = serviceEnvSchema.extend(databaseEnvSchema.shape);
+    let message = '';
+    try {
+      loadConfig(db, { WAYVRO_ENV: 'production', DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/w?sslmode=require' }, rules);
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toMatch(/must not use a local host/);
+    expect(message).toMatch(/SERVICE_RULE: refused in production/);
+    expect(loadConfig(db, { WAYVRO_ENV: 'local', DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/w' }, rules).WAYVRO_ENV).toBe('local');
+  });
+
+  it('evidence-vault endpoints: staging/production refuse local or plaintext storage and vault databases', () => {
+    const vaulted = serviceEnvSchema.extend(vaultEnvSchema.shape);
+    const local = loadConfig(vaulted, {
+      WAYVRO_ENV: 'local',
+      DATABASE_VAULT_URL: 'postgres://v:p@127.0.0.1:25432/w',
+      S3_ENDPOINT: 'http://127.0.0.1:28333',
+      S3_FORCE_PATH_STYLE: 'true',
+    });
+    expect(local).toMatchObject({ S3_FORCE_PATH_STYLE: true, S3_QUARANTINE_PREFIX: 'quarantine/', S3_VAULT_PREFIX: 'vault/', S3_REGION: 'us-east-1' });
+    let message = '';
+    try {
+      loadConfig(vaulted, {
+        WAYVRO_ENV: 'production',
+        DATABASE_VAULT_URL: 'postgres://v:p@db.example/w',
+        S3_ENDPOINT: 'http://storage.example',
+        S3_PRESIGN_ENDPOINT: 'https://localhost',
+      });
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toMatch(/DATABASE_VAULT_URL: production requires sslmode/);
+    expect(message).toMatch(/S3_ENDPOINT: production requires a non-local https endpoint/);
+    expect(message).toMatch(/S3_PRESIGN_ENDPOINT: production requires a non-local https endpoint/);
+    expect(() => loadConfig(vaulted, { WAYVRO_ENV: 'local', S3_QUARANTINE_PREFIX: '../x' })).toThrow(ConfigError);
   });
 
   it('refuses debug logging outside local/test', () => {

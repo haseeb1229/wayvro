@@ -1,10 +1,11 @@
 /**
- * Provider binding guard (GR-05, I04). Each service binds the providers it needs at boot. Binding a mock outside
- * `local`/`test` throws, so a misconfigured staging/production process refuses to start rather than silently
+ * Provider binding guard (GR-05, I04, ADR-045). Production composition roots bind real adapters only; test doubles
+ * are physically absent from deployable artefacts. As defence in depth, binding a branded test double outside
+ * `local`/`test` still throws, so a misconfigured staging/production process refuses to start rather than silently
  * "succeeding" against a fake. Unbound providers fail loudly when used.
  */
-import { InMemoryObjectStorage, RecordingOtpDelivery, RecordingPushNotification, isMockProvider } from './mocks.js';
 import { isNonProductionLike, type WayvroEnv } from '@wayvro/config';
+import { isMockProvider } from './brand.js';
 import { PROVIDER_KINDS, type ProviderKind, type ProviderPorts } from './ports.js';
 
 export class ProviderBindingError extends Error {
@@ -13,6 +14,8 @@ export class ProviderBindingError extends Error {
 
 export interface ProviderRegistry {
   get<K extends ProviderKind>(kind: K): ProviderPorts[K];
+  /** True when an implementation is bound; features with an unbound port answer `503 WAYVRO_E_DEPENDENCY_UNAVAILABLE`. */
+  has(kind: ProviderKind): boolean;
   readonly bound: readonly ProviderKind[];
 }
 
@@ -26,16 +29,11 @@ export function bindProviders(env: WayvroEnv, bindings: Partial<ProviderPorts>):
   }
   return {
     bound: PROVIDER_KINDS.filter((k) => bindings[k] !== undefined),
+    has: (kind) => bindings[kind] !== undefined,
     get(kind) {
       const impl = bindings[kind];
       if (impl === undefined) throw new ProviderBindingError(`provider "${kind}" is not bound in WAYVRO_ENV=${env}`);
       return impl;
     },
   };
-}
-
-/** Default bindings: local/test get recording mocks; other environments get nothing until real adapters exist. */
-export function defaultProviderBindings(env: WayvroEnv): Partial<ProviderPorts> {
-  if (!isNonProductionLike(env)) return {};
-  return { objectStorage: new InMemoryObjectStorage(), otpDelivery: new RecordingOtpDelivery(), pushNotification: new RecordingPushNotification() };
 }

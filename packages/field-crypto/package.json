@@ -1,0 +1,32 @@
+{
+  "name": "@wayvro/field-crypto",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SERVER-ONLY field cryptography (data model §8): versioned AES-256-GCM envelope with AAD, key states, HMAC-SHA-256 lookups/MACs and key providers. node:crypto primitives only; local keys refused outside local/test.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@wayvro/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "4.10.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

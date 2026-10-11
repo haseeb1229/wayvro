@@ -4,7 +4,8 @@
  *   1. key-based: values under sensitive keys are replaced entirely, at any depth;
  *   2. value-based: free text is scrubbed for Pakistani CNICs, phone numbers, bearer/JWT tokens, card-like numbers,
  *      e-mail addresses, URL credentials and precise coordinates.
- * Redaction is lossy on purpose; observability must never become a second PII store.
+ * Redaction is lossy on purpose; observability must never become a second PII store. P2.1 adds OTP/nonce/challenge/
+ * installation/idempotency/envelope keys, Wayvro session tokens and presigned-URL credentials (Q36).
  */
 
 export const REDACTED = '[REDACTED]';
@@ -20,6 +21,16 @@ const SENSITIVE_KEY = new RegExp(
     'api[-_]?key',
     'private[-_]?key',
     'otp',
+    'otp_?code',
+    'verification_?code',
+    'nonce',
+    'challenge_?id',
+    'installation_?id',
+    'idempotency_?key',
+    'envelope',
+    'sealed',
+    'mac',
+    'x_amz_(signature|credential|security_token)',
     'pin',
     'cnic',
     'nic(op)?',
@@ -50,6 +61,10 @@ const SENSITIVE_KEY = new RegExp(
 );
 
 const VALUE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
+  // Wayvro opaque session tokens (access wva_ / refresh wvr_)
+  [/\bwv[ar]_[A-Za-z0-9_-]{20,}/g, '[REDACTED_TOKEN]'],
+  // presigned-URL credentials
+  [/(X-Amz-(?:Signature|Credential|Security-Token)=)[^&\s]+/gi, '$1[REDACTED]'],
   [/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 [REDACTED]'],
   [/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/g, '[REDACTED_JWT]'],
   [/\b\d{5}-\d{7}-\d\b/g, '[REDACTED_CNIC]'],

@@ -1,3 +1,19 @@
-export { ProviderBindingError, bindProviders, defaultProviderBindings, type ProviderRegistry } from './binding.js';
-export { InMemoryObjectStorage, MOCK_PROVIDER, RecordingOtpDelivery, RecordingPushNotification, isMockProvider, type MockBrand } from './mocks.js';
-export { PROVIDER_KINDS, type ObjectStoragePort, type OtpDeliveryPort, type ProviderKind, type ProviderPorts, type PushNotificationPort } from './ports.js';
+export { ProviderBindingError, bindProviders, type ProviderRegistry } from './binding.js';
+export { MOCK_PROVIDER, isMockProvider, type MockBrand } from './brand.js';
+export {
+  PROVIDER_KINDS,
+  type ImageSanitiserPort,
+  type MalwareScannerPort,
+  type ObjectStoragePort,
+  type OidcKeysPort,
+  type OidcProvider,
+  type OtpDeliveryPort,
+  type ProviderKind,
+  type ProviderPorts,
+  type PushNotificationPort,
+  type SanitiserRejection,
+  type SanitiserResult,
+  type ScanVerdict,
+  type StorageArea,
+  type StoredObjectInfo,
+} from './ports.js';

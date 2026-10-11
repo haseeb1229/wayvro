@@ -2,7 +2,7 @@
   "name": "@wayvro/provider-interfaces",
   "version": "0.0.0",
   "private": true,
-  "description": "Vendor-neutral provider ports, local/test-only mocks and the production mock-refusal guard.",
+  "description": "Vendor-neutral provider ports and the production test-double refusal guard. Test doubles live in a dev-only workspace package that is never deployed (ADR-045).",
   "type": "module",
   "exports": {
     ".": {

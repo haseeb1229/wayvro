@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 93,
+  "file_count_excluding_manifest": 105,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 8982,
-      "sha256": "dc990a5f6237c8a54f23fde854568af353cca0997a6d858e5dcdd2dc7d10bb99"
+      "bytes": 9413,
+      "sha256": "cfcbeba7e9fda9342fc1059585f40622277e0cd142c95e57f668ac30918150df"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8208,
-      "sha256": "e0fd31a22d8242f5ac88e04538d52d056f03359fbec995d4a51a8fe150e47f7d"
+      "bytes": 8381,
+      "sha256": "ec78d6c99a0de819d1f66d94222fe6abbd106b0f483ba8e4fcbc7ffae4735bf4"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 7124,
-      "sha256": "181b9116cf9e6c2e9e52be5769fcd38523313d8443aa359b2e3de410b3d889bf"
+      "bytes": 7656,
+      "sha256": "ada4a38a018372ac0aee116745bde62bcf3908b3442bf8f0a86d2ff65285050c"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -235,14 +235,59 @@
       "sha256": "5c20f83ed1a25ba56de042cd709fe6c9cef2038f890838c03f021d65e6172015"
     },
     {
+      "path": "docs/adr/ADR-038-consumer-auth-session.md",
+      "bytes": 8460,
+      "sha256": "a3b0b8b21a206e9df8d2b703f1d423fce56717ba32f32d869b94547381b90c76"
+    },
+    {
+      "path": "docs/adr/ADR-039-staff-webauthn-bff.md",
+      "bytes": 5824,
+      "sha256": "4feb202974270d601fbff643fba2cdd57d8701b19dfec8ed9c3434adea855714"
+    },
+    {
+      "path": "docs/adr/ADR-040-oidc-verification-with-jose.md",
+      "bytes": 4321,
+      "sha256": "8924996ac736eebabb487a8d38bd277e355e3fbf69ab35ea17c9bdfdfe6a48e2"
+    },
+    {
+      "path": "docs/adr/ADR-041-evidence-vault-and-image-sanitiser.md",
+      "bytes": 12050,
+      "sha256": "06fc946fcbd0dd6c0a85a19f7dd1e028ec4affb54143876554dac236242c7309"
+    },
+    {
+      "path": "docs/adr/ADR-042-postgresql-jobs.md",
+      "bytes": 5641,
+      "sha256": "d67a8b978a2766553bcdb852419877f05aee526f27ac1a1b2acf716a4e3fc44a"
+    },
+    {
+      "path": "docs/adr/ADR-043-mobile-platform-additions.md",
+      "bytes": 9055,
+      "sha256": "006c164a992b53292a703bb88f4f168c630f496fe66be5731f61f514ad0d80fc"
+    },
+    {
+      "path": "docs/adr/ADR-044-policy-content-package.md",
+      "bytes": 3960,
+      "sha256": "cece07a777d8bb44abfadb5bb129d7ae54caa58b818bd0611172853428b9c5e7"
+    },
+    {
+      "path": "docs/adr/ADR-045-production-test-double-isolation.md",
+      "bytes": 6435,
+      "sha256": "9206ae5d9b5462cc7e4e60185a50207065d6952ee9b57aa8f39f047f6502ee0b"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 2643,
-      "sha256": "3d2ef945936c12069fb600c8d5c769c2272e85f4ba63b126da12e1cdc0ca5822"
+      "bytes": 4844,
+      "sha256": "b270c012d129ce321ce310839a77a84af196b95146a03706484bb5d494463e7d"
     },
     {
       "path": "docs/operations/developer-setup.md",
-      "bytes": 4906,
-      "sha256": "03eb51b91de1d0c203189a7678b5653dc14c5667d0d65891f01e101c5254c91d"
+      "bytes": 7013,
+      "sha256": "6bafd5d7f5ea7b674e8197b2aabc28eb3b8fe875dda97576ed7c153d528ba200"
+    },
+    {
+      "path": "docs/operations/incident-playbooks.md",
+      "bytes": 7631,
+      "sha256": "c0fddd2ddab30b1d62894e1e9eb56b2d954758dfa5ee7f072adb5e24c2c3738e"
     },
     {
       "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
@@ -411,8 +456,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_API_AND_SURFACES.md",
-      "bytes": 13773,
-      "sha256": "9597dd606e9e8a7ede00df713cd63168b8738d89a5e300fcdf4fe31719fc225d"
+      "bytes": 14385,
+      "sha256": "9ff980ba2d7416b591958e3d7cd416578d89f5e961aea6e8824f104fbc3cd06a"
     },
     {
       "path": "docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md",
@@ -421,8 +466,13 @@
     },
     {
       "path": "docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md",
-      "bytes": 42247,
-      "sha256": "507208ec2965321a537d975fe3a68d08cbd99e4162cf65c4018996800ed68610"
+      "bytes": 43234,
+      "sha256": "384d19ad068af278841adb4195412656cadbd70744fe1bc004d85eae657a76d6"
+    },
+    {
+      "path": "docs/phase2/PHASE2_DPIA_INPUT_PACK.md",
+      "bytes": 8734,
+      "sha256": "11ca1e0f40bec65409322747963fd42790a3905537ad53446df072cc4e004b89"
     },
     {
       "path": "docs/phase2/PHASE2_EXTERNAL_GATES.md",
@@ -435,9 +485,14 @@
       "sha256": "243eda3b9e4f6effd75564b5c017ade936edac83b29db0c71e49489bc19bbc51"
     },
     {
+      "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
+      "bytes": 70862,
+      "sha256": "62948cef4c1494c79002961c4266a1cc13b856dd44999ccb6ceed199e9fbe0fe"
+    },
+    {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
-      "bytes": 14050,
-      "sha256": "aa78ffb89bab0551468688a498d9e63d22bf72b52e790b180e2a37646fc1dd3b"
+      "bytes": 14271,
+      "sha256": "133677738054cc75783c3682d800664acdd3f4fd725f9a2e0ef8946166fdc818"
     },
     {
       "path": "docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md",
@@ -445,14 +500,19 @@
       "sha256": "79c769eff768d5e39584828c2a7f9f39a2830e3022b3356c279d92af3357ccad"
     },
     {
+      "path": "docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md",
+      "bytes": 13021,
+      "sha256": "e82152d7a3d22e8dd21c4a645fb38f2a4800419cdf7eefd62966add06e793152"
+    },
+    {
       "path": "docs/phase2/PHASE2_PLAN.md",
-      "bytes": 18037,
-      "sha256": "a35a6349c3461fd07cfe8ac7a872852fde6260df3069b4887220c4fcae235aba"
+      "bytes": 18508,
+      "sha256": "d00cdd6e7a413e6e95ecc6ca98e6295b30d18dd1e21a5f58f631317516049333"
     },
     {
       "path": "docs/phase2/PHASE2_REQUIREMENT_MATRIX.md",
-      "bytes": 26438,
-      "sha256": "eb635dd6f63e746ee3fcb119867bfaef12e2eda0dc5929ae8cf98c27b3e9a20a"
+      "bytes": 27340,
+      "sha256": "09e3dd85b7901884383a23f9daf381c6f12a032a5bd9027730a3c0aec34fc03e"
     },
     {
       "path": "docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md",
@@ -461,8 +521,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md",
-      "bytes": 10513,
-      "sha256": "952c89ab7aa540d1d41541a00063c99278c08f879d39cb415931e5e0e9fc4861"
+      "bytes": 11428,
+      "sha256": "b68df57f5c7799610a9cf419d6c1a9d123c299f922e44614ee3876988dc32da2"
     },
     {
       "path": "docs/phase2/PHASE2_TEST_STRATEGY.md",

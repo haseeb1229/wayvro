@@ -1,12 +1,14 @@
-// Process composition root: validate config -> telemetry -> providers -> dependencies -> HTTP server.
-import { createDatabase } from '@wayvro/db';
+// Production composition root: config -> release-artefact policy -> telemetry -> real providers -> HTTP server.
+// Binds real adapters only (none exist before activation tracks P2.A*); test doubles are never imported here (ADR-045).
 import { createLogger, startTelemetry } from '@wayvro/observability';
-import { bindProviders, defaultProviderBindings } from '@wayvro/provider-interfaces';
-import { databaseCheck, redisCheck } from '@wayvro/server-runtime';
-import { createApp } from './app.js';
+import { bindProviders } from '@wayvro/provider-interfaces';
+import { enforceArtifactPolicy } from '@wayvro/server-runtime';
+import { objectStorageFromSettings } from '@wayvro/vault-adapters';
+import { composeApi } from './composition.js';
 import { loadApiConfig } from './config.js';
 
 const config = loadApiConfig(process.env);
+const build = enforceArtifactPolicy(new URL('./build-info.json', import.meta.url), config.WAYVRO_ENV);
 const telemetry = startTelemetry({
   service: 'api',
   version: config.WAYVRO_BUILD_VERSION,
@@ -14,31 +16,33 @@ const telemetry = startTelemetry({
   otlpEndpoint: config.OTEL_EXPORTER_OTLP_ENDPOINT,
 });
 const log = createLogger({ service: 'api', env: config.WAYVRO_ENV, level: config.LOG_LEVEL });
-// Refuses mock providers outside local/test (GR-05); Phase 1 API endpoints use no provider yet.
-const providers = bindProviders(config.WAYVRO_ENV, defaultProviderBindings(config.WAYVRO_ENV));
-const db = createDatabase(config.DATABASE_URL, { maxConnections: 10, applicationName: 'wayvro-api' });
-const redis = redisCheck(config.REDIS_URL);
-
-const app = await createApp({
-  info: { service: 'api', version: config.WAYVRO_BUILD_VERSION },
-  readinessChecks: [databaseCheck(db), redis],
-  log,
-  trustProxy: config.TRUST_PROXY,
-});
+// Real adapters only. Object storage (ADR-041) is bound when configured; production storage/KMS is EG-05, and
+// staging/production cannot boot without a KMS key provider anyway. No OTP adapter (EG-01) or push adapter (Phase 4)
+// exists: those features answer 503 WAYVRO_E_DEPENDENCY_UNAVAILABLE. The guard still refuses branded doubles.
+const storage = objectStorageFromSettings(config, config.EVIDENCE_UPLOAD_URL_SECONDS);
+const providers = bindProviders(config.WAYVRO_ENV, storage ? { objectStorage: storage } : {});
+const runtime = await composeApi(config, log, { providers });
 
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info({ signal }, 'api shutting down');
-  await app.close();
-  redis.close();
-  await db.close();
+  await runtime.close();
   await telemetry.shutdown();
   process.exit(0);
 }
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
-await app.listen(config.PORT, config.HOST);
-log.info({ host: config.HOST, port: config.PORT, providersBound: providers.bound, telemetryExporting: telemetry.exporting }, 'api listening');
+await runtime.app.listen(config.PORT, config.HOST);
+log.info(
+  {
+    host: config.HOST,
+    port: config.PORT,
+    artifact: build ? 'release' : 'development',
+    providersBound: providers.bound,
+    telemetryExporting: telemetry.exporting,
+  },
+  'api listening',
+);

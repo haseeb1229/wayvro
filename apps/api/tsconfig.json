@@ -1,5 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "types": ["node"], "noEmit": true, "experimentalDecorators": true },
-  "include": ["src", "test", "vitest.config.ts", "vitest.integration.config.ts"]
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "experimentalDecorators": true
+  },
+  "include": ["src", "dev", "test", "vitest.config.ts", "vitest.integration.config.ts"]
 }

@@ -4,9 +4,11 @@ export {
   databaseEnvSchema,
   httpEnvSchema,
   isNonProductionLike,
+  keyEnvSchema,
   loadConfig,
   redisEnvSchema,
   serviceEnvSchema,
+  vaultEnvSchema,
   type WayvroEnv,
 } from './env.js';
-export { FLAG_REGISTRY, validateFlagRegistry, type FlagDefinition } from './flags.js';
+export { FLAG_REGISTRY, isFlagEnabled, validateFlagRegistry, type FlagDefinition } from './flags.js';

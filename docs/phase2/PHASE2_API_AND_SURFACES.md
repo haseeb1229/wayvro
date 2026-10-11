@@ -33,7 +33,7 @@ Legend — **Auth:** `public`, `consumer`, `consumer+su` (fresh phone step-up), 
 | Step-up | `POST /v1/account/step-ups`, `POST /v1/account/step-ups/{id}/verifications` | consumer, restricted-ok | A, S | |
 | Phone change | `POST /v1/account/phone-changes`, `POST /v1/account/phone-changes/{id}/verifications` | consumer+su | A, S | generic conflict refusal |
 | Cancel phone change / recovery ("not me") | `POST /v1/account/phone-changes/{id}/cancellation` | consumer, restricted-ok | A, S | from any active session |
-| Lost-phone recovery (strong proof only) | `POST /v1/account-recoveries` `{ proof: "LINKED_OIDC" | "DRIVER_KYC" }` | new-number session, restricted-ok | A, S | `LINKED_OIDC` available from P2.10; `DRIVER_KYC` opens a staff case; rider-only without proof ⇒ `WAYVRO_E_RECOVERY_REQUIRED` with "continue with a new account" guidance |
+| Lost-phone recovery (strong proof only) | `POST /v1/account-recoveries` `{ proof: "LINKED_OIDC" | "DRIVER_KYC" }` | new-number session, restricted-ok | A, S | `LINKED_OIDC` available from P2.10; `DRIVER_KYC` opens a staff case; **as built (P2.9):** every caller gets `202 RECEIVED` (no disclosure of which numbers belong to driver accounts) and the "continue with a new account" guidance; `WAYVRO_E_RECOVERY_REQUIRED` marks a session restricted by the dormant-number review |
 | Dormant-number review choice | `POST /v1/account/recovery-reviews/{id}/choices` | restricted session | A, S | `I_AM_NEW` always; `THIS_IS_MY_ACCOUNT` only with strong proof |
 | Policies | `GET /v1/legal/policies` | public | — | versions, hashes, URLs, placeholder status |
 | Age policy (public view) | `GET /v1/legal/age-eligibility-policy` | public | — | current version, declaration mode, placeholder status — no threshold hard-coded in clients |
@@ -41,7 +41,7 @@ Legend — **Auth:** `public`, `consumer`, `consumer+su` (fresh phone step-up), 
 | Record age declaration | `POST /v1/account/age-declarations` | consumer, restricted-ok | A | shape depends on policy mode; DOB accepted **only** if the policy requires it |
 | Deletion (app) | `POST /v1/account/deletion-requests`, `GET …/current`, `POST …/{id}/cancellation` | consumer+su / consumer | A, S | blockers explicit |
 | Deletion (web) | `POST /v1/public/account-deletion-requests` | public + OTP (`ACCOUNT_DELETION_WEB`) | A, S | stricter limits; generic responses |
-| Appeals | `POST /v1/account/appeals`, `GET /v1/account/appeals` | consumer, restricted-ok | A | evidence attached through upload slots → `profile.appeal_evidence` |
+| Appeals | `POST /v1/account/appeals`, `GET /v1/account/appeals` | consumer, restricted-ok | A | evidence attached through upload slots → `profile.appeal_evidence`; **Phase-2 closure:** a REJECT of the caller's own document renewal is appealable too (`DriverCompliance.documents[].renewal.appealableDecisionId`) |
 | OIDC link/unlink | `POST /v1/account/oidc-links`, `DELETE /v1/account/oidc-links/{id}` | consumer+su | A, S | flag-gated |
 
 ### 2.3 Driver/Partner onboarding (flag `driver.onboarding`) — P2.5–P2.8
@@ -74,7 +74,7 @@ Foreign ids ⇒ 404 (not 403).
 | Restrictions | list, create, lift (+ approval) | staff+su(+mc) | A |
 | Requirement sets / age policy | draft, submit, approve | staff+su(+mc) | A |
 | Expiry roster | `GET /v1/admin/compliance/expiry-roster` (paginated, scoped, **no download**) | staff | A |
-| Accounts (support/T&S) | masked summary (reason), consumer session revocation, recovery cases (open / decide — strong proof only) | staff(+su,+mc) | A |
+| Accounts (support/T&S) | masked summary (reason), consumer session revocation, recovery cases (open / decide — strong proof only). **As built (Phase-2 closure):** `POST /v1/admin/account-summaries` (phone or account id + reason; privacy-minimised), `POST /v1/admin/accounts/{accountId}/session-revocations` (ONE/ALL, +su, reason, idempotent), `POST /v1/admin/account-recoveries/{id}/assistance` (attach/open the ACCOUNT_RECOVERY case; never decides) | staff(+su,+mc) | A |
 | Break-glass | activate, end, review | staff+su | A + alert |
 | Audit | events, seal verification, evidence-access log | staff (AUDITOR) | A |
 

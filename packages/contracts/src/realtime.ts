@@ -23,4 +23,16 @@ export const RealtimeEventEnvelopeSchema = z.object({
 });
 export type RealtimeEventEnvelope = z.infer<typeof RealtimeEventEnvelopeSchema>;
 
-export const REALTIME_EVENTS = { sessionHello: 'session.hello' } as const;
+export const REALTIME_EVENTS = { sessionHello: 'session.hello', accountStateChanged: 'account.state-changed.v1' } as const;
+
+/**
+ * P2.7: a state-change HINT for the caller's own account (driver application decided, restriction changed, appeal
+ * decided, …). It carries no data: the client re-fetches `/v1/account/state` (and the affected resource) over HTTP.
+ */
+export const AccountStateChangedSchema = z.object({
+  type: z.literal('account.state-changed.v1'),
+  cause: z.string().regex(/^[a-z]+(?:\.[a-z-]+)+\.v\d+$/),
+  resync: z.literal('fetch-snapshot'),
+  emittedAt: z.iso.datetime(),
+});
+export type AccountStateChanged = z.infer<typeof AccountStateChangedSchema>;

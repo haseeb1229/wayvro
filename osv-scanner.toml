@@ -21,3 +21,9 @@ reason = "uuid 7.0.3 via xcode@3.0.1 (@expo/config-plugins): missing bounds chec
 id = "GHSA-67mh-4wv8-2f99"
 ignoreUntil = 2027-01-09
 reason = "esbuild 0.18.20 via drizzle-kit/@esbuild-kit: the advisory concerns esbuild's development server (permissive CORS); drizzle-kit only uses esbuild to load its config file and never starts a server. Also present in the SP-03 disposable spike lockfile."
+
+# RUNTIME exception (unlike the tooling entries above) — decode-uri-component is in the mobile JS bundle.
+[[IgnoredVulns]]
+id = "GHSA-vcc3-ghjq-m6fr"
+ignoreUntil = 2026-12-31
+reason = "decode-uri-component 0.2.2 via query-string 7.1.3 (pinned by expo-router 57.0.25): CPU-exhaustion DoS on malformed percent-encoding (availability only). The fix 0.5.0 is ESM-only and query-string 7 require()s a callable CJS default, so an override would break routing. Reachability today: the router parses only the app's own navigation paths — no URL scheme, intent filter or universal link is registered (ADR-043), so no external input reaches it. GATE: re-check before any deep link/URL scheme is wired (must upgrade expo-router/query-string or bound URL length first); expires 2026-12-31."

@@ -1,0 +1,35 @@
+{
+  "name": "@wayvro/vault-adapters",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SERVER-ONLY real adapters for the evidence vault (ADR-041): S3-compatible object storage (AWS SDK v3, quarantine-only upload presigns), clamd INSTREAM malware scanner, and the per-image isolated sanitiser container runner (local/CI only; refused in staging/production).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1141.0",
+    "@aws-sdk/s3-request-presigner": "3.1141.0",
+    "@wayvro/provider-interfaces": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "sharp": "0.35.5",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

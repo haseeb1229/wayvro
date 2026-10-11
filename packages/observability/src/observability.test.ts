@@ -45,6 +45,18 @@ describe('redaction (Q36 default deny)', () => {
     ['card.pan', true],
     ['pickup_lat', true],
     ['selfieUrl', true],
+    ['refreshToken', true],
+    ['otpCode', true],
+    ['challengeId', true],
+    ['installationId', true],
+    ['idempotencyKey', true],
+    ['phoneEnvelope', true],
+    ['sealedPayload', true],
+    ['codeMac', true],
+    ['nonce', true],
+    ['errorCode', false],
+    ['statusCode', false],
+    ['jobType', false],
     ['requestId', false],
     ['latency', false],
     ['ping', false],
@@ -62,6 +74,17 @@ describe('redaction (Q36 default deny)', () => {
       expect(s).not.toContain(leaked);
     }
     expect(s).toContain('postgres://[REDACTED]@db:5432/x');
+  });
+
+  it('scrubs Wayvro session tokens and presigned-URL credentials (P2.1)', () => {
+    const access = 'wva_' + 'A'.repeat(43);
+    const refresh = 'wvr_' + 'b'.repeat(43);
+    const s = redactString(`tokens ${access} ${refresh} url https://s3.example/k?X-Amz-Signature=deadbeef&X-Amz-Credential=AKIA%2Fx&x=1`);
+    expect(s).not.toContain(access);
+    expect(s).not.toContain(refresh);
+    expect(s).not.toContain('deadbeef');
+    expect(s).not.toContain('AKIA');
+    expect(s).toContain('x=1');
   });
 
   it('redacts nested sensitive keys, keeps safe fields and survives cycles', () => {
@@ -112,6 +135,13 @@ describe('request ids', () => {
 });
 
 describe('error envelope mapping', () => {
+  it('carries optional details for rate limits', () => {
+    const e = toErrorEnvelope(new WayvroError('WAYVRO_E_RATE_LIMITED', { details: { retryAfterSeconds: 42 } }), 'req-abcdef12');
+    expect(e.status).toBe(429);
+    expect(ErrorEnvelopeSchema.parse(e.body).error.details).toEqual({ retryAfterSeconds: 42 });
+    expect('details' in toErrorEnvelope(new WayvroError('WAYVRO_E_FORBIDDEN'), 'r').body.error).toBe(false);
+  });
+
   it('maps WayvroError to its code and status and hides unknown errors', () => {
     const known = toErrorEnvelope(new WayvroError('WAYVRO_E_NOT_FOUND'), 'req-abcdef12');
     expect(known.status).toBe(404);

@@ -2,8 +2,11 @@
   "name": "@wayvro/realtime",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayvro realtime gateway (NestJS 12 + Socket.IO + Redis adapter, ADR-005b). Phase 1: fail-closed authenticated-connection shape and snapshot-resync hello only.",
+  "description": "Wayvro realtime gateway (NestJS 12 + Socket.IO + Redis adapter, ADR-005b): consumer session-authenticated connections (P2.1), server-derived rooms and snapshot-resync hello.",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
@@ -21,6 +24,8 @@
     "@socket.io/redis-adapter": "8.3.0",
     "@wayvro/config": "workspace:*",
     "@wayvro/contracts": "workspace:*",
+    "@wayvro/db": "workspace:*",
+    "@wayvro/identity-core": "workspace:*",
     "@wayvro/observability": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",
     "fastify": "5.12.5",
@@ -32,7 +37,10 @@
   },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "5.0.3",
+    "@wayvro/test-support": "workspace:*",
+    "pg": "8.23.1",
     "socket.io-client": "4.8.3",
     "typescript": "6.0.3",
     "vitest": "5.0.3"

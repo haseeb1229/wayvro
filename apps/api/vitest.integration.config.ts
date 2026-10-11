@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     testTimeout: 30000,
+    // beforeAll creates and migrates a throwaway database per suite; under parallel suites that exceeds the 10 s default
+    hookTimeout: 120000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

@@ -66,7 +66,7 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `docs/phase0/tools/` — coverage maps + generator (`phase0-coverage.js`), manifest/validation regenerator.
 
 ## Phase 1 foundation (2026-10-09; reviewed and integrated into `main` via PR #1, merge commit `eaa1fcb`, 2026-10-10)
-- `docs/adr/README.md` — index of Phase 1 ADRs (ADR-004, ADR-005, ADR-005b, ADR-010, ADR-027, ADR-030, ADR-034, ADR-036, ADR-037) with evidence.
+- `docs/adr/README.md` — index of Phase 1 ADRs (ADR-004, ADR-005, ADR-005b, ADR-010, ADR-027, ADR-030, ADR-034, ADR-036, ADR-037) with evidence, plus the P2.1 ADRs (ADR-038 consumer auth/session, ADR-042 PostgreSQL jobs, ADR-045 production test-double isolation) — accepted on P2.1 evidence, pending review.
 - `docs/operations/developer-setup.md` — clean-machine setup, infrastructure, build/test and Android commands.
 - `docs/phase1/PHASE1_HANDOFF_REPORT.md` — Phase 1 handoff (scope, spike verdicts, traceability, verification, NOT RUN items, risks); `docs/phase1/evidence/` — mobile release gate reports.
 - `apps/` — deployable skeletons: `api` (NestJS + Fastify), `worker`, `realtime` (Socket.IO), `wayvro-mobile` (the ONE Expo app), `web-public`, `web-ops` (Next.js). No product features.
@@ -75,8 +75,9 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `scripts/` — `infra.mjs`, `boot-smoke.mjs`, `android-build.mjs`; `.github/workflows/ci.yml` — CI.
 - `tests/spikes/` — disposable SP-AND / SP-03 / SP-05 / ADR-010 evidence harnesses with results (see `tests/spikes/README.md`).
 
-## Phase 2 planning (PLAN PASSED founder/ChatGPT review 2026-10-10; reviewed technical closure `47b1683`; implementation NOT started — P2.1 needs separate founder authorisation)
+## Phase 2 planning (PLAN PASSED founder/ChatGPT review 2026-10-10; reviewed technical closure `47b1683`) and implementation (P2.1 implemented on branch `phase-2/1-identity-session-core`, pending founder/ChatGPT review, not merged; P2.2+ not started)
 - `docs/phase2/PHASE2_PLAN.md` — overview, repository findings, proposed gap/clarifications/contradictions, deferrals, founder questions, readiness; it indexes the other twelve Phase 2 planning documents in `docs/phase2/` (requirement matrix, domain/data model, auth/session, KYC/evidence vault, staff authorization matrix, API/surfaces, security/abuse model, external gates, test strategy, implementation sequence, ADR/dependency proposals, proposed P2.1 prompt).
+- `docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md` — P2.1 per-ID status (P2.1 portion vs whole requirement), refinements R-01..R-15 of the accepted plan, test-evidence index, residual risks.
 
 ## Current baseline
 - Product: **Wayvro (WAY-VRO)**.

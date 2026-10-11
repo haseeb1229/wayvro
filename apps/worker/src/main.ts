@@ -1,10 +1,15 @@
-// Worker composition root: config -> telemetry -> dependencies -> health server -> (relay when a source exists).
+// Worker composition root: config -> release-artefact policy -> telemetry -> real providers -> job runner + scheduler.
+// Binds real adapters only; test doubles are never imported here (ADR-045).
 import { createDatabase } from '@wayvro/db';
 import { createLogger, startTelemetry } from '@wayvro/observability';
-import { createHealthServer, databaseCheck, redisCheck } from '@wayvro/server-runtime';
+import { bindProviders } from '@wayvro/provider-interfaces';
+import { backoffDelayMs, createHealthServer, createRequestPathRedis, databaseCheck, enforceArtifactPolicy, redisCheck } from '@wayvro/server-runtime';
+import { ClamdScanner, DockerSanitiser, objectStorageFromSettings } from '@wayvro/vault-adapters';
+import { composeWorker } from './composition.js';
 import { loadWorkerConfig } from './config.js';
 
 const config = loadWorkerConfig(process.env);
+enforceArtifactPolicy(new URL('./build-info.json', import.meta.url), config.WAYVRO_ENV);
 const telemetry = startTelemetry({
   service: 'worker',
   version: config.WAYVRO_BUILD_VERSION,
@@ -13,25 +18,69 @@ const telemetry = startTelemetry({
 });
 const log = createLogger({ service: 'worker', env: config.WAYVRO_ENV, level: config.LOG_LEVEL });
 const db = createDatabase(config.DATABASE_URL, { maxConnections: 5, applicationName: 'wayvro-worker' });
+// Evidence pipeline adapters (ADR-041), each bound only when configured. The Docker sanitiser runner is refused outside
+// local/test by configuration; production hosting of the isolated sanitiser, storage and scanner is P2.A4 (EG-05).
+const storage = objectStorageFromSettings(config);
+const scanner = config.CLAMD_HOST ? new ClamdScanner({ host: config.CLAMD_HOST, port: config.CLAMD_PORT, timeoutMs: config.CLAMD_TIMEOUT_MS }) : undefined;
+const sanitiser =
+  config.SANITISER_RUNNER === 'docker'
+    ? new DockerSanitiser({ image: config.SANITISER_IMAGE, timeoutMs: config.SANITISER_TIMEOUT_MS, memory: '768m', cpus: '1', maxOutputBytes: 8 * 1024 * 1024 })
+    : undefined;
+const providers = bindProviders(config.WAYVRO_ENV, {
+  ...(storage ? { objectStorage: storage } : {}),
+  ...(scanner ? { malwareScanner: scanner } : {}),
+  ...(sanitiser ? { imageSanitiser: sanitiser } : {}),
+});
+const vaultDb = config.DATABASE_VAULT_URL ? createDatabase(config.DATABASE_VAULT_URL, { maxConnections: 3, applicationName: 'wayvro-worker-vault' }) : null;
+// Hint publisher for the outbox's first consumer (account-state hints → realtime), on its own connection.
+const hintRedis = createRequestPathRedis(config.REDIS_URL);
+const { runner, scheduler, relay } = composeWorker(config, db.pool, log, providers, vaultDb?.pool ?? null, hintRedis);
 const redis = redisCheck(config.REDIS_URL);
 const health = createHealthServer({ service: 'worker', version: config.WAYVRO_BUILD_VERSION, checks: [databaseCheck(db), redis] });
 
-// No OutboxSource is bound in Phase 1: the outbox table ships with the first event-producing context (see
-// src/outbox/relay.ts). Starting a relay without a source would be a fake success path, so it is not started.
-log.info({ relay: 'not-started', reason: 'no outbox source bound until the outbox table migration' }, 'outbox relay status');
+runner.start(config.JOB_POLL_INTERVAL_MS);
+// Outbox relay loop: at-least-once, bounded backoff on source failures, dead letters alerted (never silently dropped).
+let relayFailures = 0;
+let relayTimer: NodeJS.Timeout | undefined;
+const relayPass = (): void => {
+  if (!relay) return;
+  relay.runOnce().then(
+    (r) => {
+      relayFailures = 0;
+      if (r.deadLettered > 0) log.error({ signal: 'OUTBOX_DEAD_LETTER', count: r.deadLettered }, 'outbox events moved to dead letter');
+      relayTimer = setTimeout(relayPass, r.claimed > 0 ? 50 : config.OUTBOX_POLL_INTERVAL_MS);
+    },
+    (e: unknown) => {
+      relayFailures++;
+      log.warn({ err: e }, 'outbox relay pass failed; backing off');
+      relayTimer = setTimeout(relayPass, backoffDelayMs(relayFailures));
+    },
+  );
+};
+relayPass();
+const scheduling = setInterval(() => {
+  scheduler.tick().catch((e: unknown) => {
+    log.error({ err: e }, 'recurring job scheduling failed');
+  });
+}, 15_000);
 
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info({ signal }, 'worker shutting down');
+  clearInterval(scheduling);
+  if (relayTimer) clearTimeout(relayTimer);
+  await runner.stop();
   await new Promise<void>((resolve) => {
     health.close(() => {
       resolve();
     });
   });
   redis.close();
+  hintRedis.disconnect();
   await db.close();
+  await vaultDb?.close();
   await telemetry.shutdown();
   process.exit(0);
 }
@@ -39,5 +88,8 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 health.listen(config.HEALTH_PORT, config.HEALTH_HOST, () => {
-  log.info({ host: config.HEALTH_HOST, port: config.HEALTH_PORT, telemetryExporting: telemetry.exporting }, 'worker started');
+  log.info(
+    { host: config.HEALTH_HOST, port: config.HEALTH_PORT, jobTypes: runner.types, providersBound: providers.bound, telemetryExporting: telemetry.exporting },
+    'worker started',
+  );
 });

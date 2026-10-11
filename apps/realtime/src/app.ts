@@ -6,13 +6,14 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import type { Logger } from '@wayvro/observability';
-import type { ReadinessCheck } from '@wayvro/server-runtime';
+import { AccountStateChangedSchema, REALTIME_EVENTS } from '@wayvro/contracts';
+import { ACCOUNT_HINT_CHANNEL, parseAccountHint, type ReadinessCheck } from '@wayvro/server-runtime';
 import { Redis } from 'ioredis';
 import type { Server, ServerOptions } from 'socket.io';
-import type { ConnectionAuthenticator } from './auth.js';
+import { principalRoom, type ConnectionAuthenticator } from './auth.js';
 import { RealtimeGateway } from './gateway.js';
 import { RealtimeHealthController } from './health.controller.js';
-import { CONNECTION_AUTHENTICATOR, LOGGER, READINESS_CHECKS, SERVICE_INFO } from './tokens.js';
+import { CONNECTION_AUTHENTICATOR, LOGGER, READINESS_CHECKS, REVALIDATE_INTERVAL_MS, SERVICE_INFO } from './tokens.js';
 
 /** Socket.IO tuning from SP-05 (ADR-005b): websocket only, faster dead-peer detection, small frames, no CORS. */
 const SOCKET_OPTIONS: Partial<ServerOptions> = {
@@ -23,10 +24,31 @@ const SOCKET_OPTIONS: Partial<ServerOptions> = {
   serveClient: false,
 };
 
+/**
+ * Account-state hints (P2.7): every gateway process subscribes to the internal hint channel and emits
+ * `account.state-changed.v1` to its OWN sockets of that account (`local`, so the Redis adapter does not fan the same
+ * hint out again). The hint carries no data; malformed messages are dropped.
+ */
+function relayAccountHints(subscriber: Redis, server: Server): void {
+  void subscriber.subscribe(ACCOUNT_HINT_CHANNEL);
+  subscriber.on('message', (channel: string, message: string) => {
+    if (channel !== ACCOUNT_HINT_CHANNEL) return;
+    const hint = parseAccountHint(message);
+    if (!hint) return;
+    server.local
+      .to(principalRoom({ subject: hint.accountId }))
+      .emit(
+        REALTIME_EVENTS.accountStateChanged,
+        AccountStateChangedSchema.parse({ type: 'account.state-changed.v1', cause: hint.cause, resync: 'fetch-snapshot', emittedAt: new Date().toISOString() }),
+      );
+  });
+}
+
 /** Socket.IO adapter with optional Redis fan-out so any number of gateway processes can share rooms. */
 class WayvroIoAdapter extends IoAdapter {
   private pub: Redis | undefined;
   private sub: Redis | undefined;
+  private hints: Redis | undefined;
   constructor(
     app: INestApplicationContext,
     private readonly redisUrl: string | undefined,
@@ -38,13 +60,15 @@ class WayvroIoAdapter extends IoAdapter {
     if (!this.redisUrl) return;
     this.pub = new Redis(this.redisUrl, { maxRetriesPerRequest: 3 });
     this.sub = this.pub.duplicate();
-    await Promise.all([this.pub.ping(), this.sub.ping()]);
+    this.hints = this.pub.duplicate();
+    await Promise.all([this.pub.ping(), this.sub.ping(), this.hints.ping()]);
   }
 
   override createIOServer(port: number, options?: ServerOptions): Server {
     // Nest passes a partial options object although socket.io types every field as required (SP-05 finding).
     const server: Server = super.createIOServer(port, { ...options, ...SOCKET_OPTIONS } as ServerOptions);
     if (this.pub && this.sub) server.adapter(createAdapter(this.pub, this.sub));
+    if (this.hints) relayAccountHints(this.hints, server);
     return server;
   }
 
@@ -52,6 +76,7 @@ class WayvroIoAdapter extends IoAdapter {
     await super.close(server);
     this.pub?.disconnect();
     this.sub?.disconnect();
+    this.hints?.disconnect();
   }
 }
 
@@ -62,6 +87,8 @@ export interface RealtimeDependencies {
   readonly log: Logger;
   /** Required in every deployed environment; omitted only by single-process unit tests. */
   readonly redisUrl: string | undefined;
+  /** Interval at which established connections re-validate their session. */
+  readonly revalidateIntervalMs: number;
 }
 
 @Module({})
@@ -75,6 +102,7 @@ class RealtimeModule {
         { provide: CONNECTION_AUTHENTICATOR, useValue: deps.authenticator },
         { provide: LOGGER, useValue: deps.log },
         { provide: READINESS_CHECKS, useValue: deps.readinessChecks },
+        { provide: REVALIDATE_INTERVAL_MS, useValue: deps.revalidateIntervalMs },
         { provide: SERVICE_INFO, useValue: deps.info },
       ],
     };
