@@ -295,6 +295,7 @@ All migrations are reviewed SQL (ADR-004), additive, with the five header fields
 | 0006_review_appeals | P2.7 | review_cases, review_decisions, review_decision_evidence, appeals, appeal_evidence | as above |
 | 0007_recovery_deletion | P2.9 | phone_change_requests, account_deletion_requests, deletion_request_blockers, deletion_retention_exceptions | as above |
 | 0008_oidc | P2.10 | oidc_identities | as above |
+| 0009_support_closure | Phase-2 closure | widened CHECKs only: session revoke reason `STAFF_ON_BEHALF`, security event `SESSIONS_REVOKED_BY_SUPPORT` | restore the 0007/0008 CHECKs while no row uses a new value; afterwards forward-fix only |
 
 Each table lands in the micro-phase that first uses it (no unused schema). Seeds are reference data only; synthetic accounts/drivers come from a local-only CLI that refuses any `WAYVRO_ENV` other than `local`/`test` and exists only in the non-deployable development tooling (§auth design 8).
 

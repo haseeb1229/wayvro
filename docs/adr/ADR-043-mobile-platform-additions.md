@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.3 and P2.8 build evidence** (device behaviour NOT RUN, see below). The CAMERA allowlist entry awaits founder review (CLAUDE.md §9). Pending founder/ChatGPT review of the full Phase 2 branch |
+| Status | **ACCEPTED on P2.3 and P2.8 build evidence** (physical-device behaviour NOT RUN, see below). **CAMERA allowlist entry APPROVED by founder/ChatGPT review (Phase-2 closure, 2026-10-11).** Phase 2 passed founder/ChatGPT review and the closure run |
 | Date | 2026-10-11 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-043 (proposal; founder Q-13 approved Expo Router + TanStack Query) |
 | Requirements | Q01 (token storage, capture cleanup), A02/A03/A05 (sign-in, sessions), A04/K09 (consent), A15 (age declaration UI), A11 (security activity), V13 (rider-facing restriction notice); P2.8: V01, V03, D01–D04 (UI), K02/K03 (capture), K05/K14 (explanations, appeals, corrections) |
@@ -68,7 +68,7 @@ New lockfile entries pulled in by these packages: barcode-detector 3.2.2, zxing-
 - **Barcode scanning compiled out.** The prebuilt expo-camera AAR always links ML Kit barcode scanning and the Play services code scanner, so `barcodeScannerEnabled: false` alone had no effect (first release AAB: 40,158,411 bytes). `expo.autolinking.android.buildFromSource: ["expo-camera"]` compiles it from source so the flag applies; the final AAB has no ML Kit, barcode or code-scanner entries. Cost: a longer native build.
 - **No microphone:** `microphonePermission: false`, `recordAudioAndroid: false`; RECORD_AUDIO stays blocked.
 - **expo-image-picker keeps `cameraPermission` as a text, not `false`:** `false` makes the plugin block `android.permission.CAMERA` and delete the iOS usage string, which would break expo-camera. The picker's own camera launcher is never called.
-- **Permission allowlist:** `android.permission.CAMERA` moved from forbidden to allowed with requirement IDs K02/K03/V03, requested just in time on the capture screen only. READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED and ACCESS_MEDIA_LOCATION are added to `blockedPermissions` and to the forbidden list. Founder review of this allowlist change is still required (CLAUDE.md §9).
+- **Permission allowlist:** `android.permission.CAMERA` moved from forbidden to allowed with requirement IDs K02/K03/V03, requested just in time on the capture screen only. READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED and ACCESS_MEDIA_LOCATION are added to `blockedPermissions` and to the forbidden list. **Founder/ChatGPT approved this allowlist change in the Phase-2 closure (2026-10-11).** The approved release permission set is exactly `android.permission.INTERNET`, `${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` and `android.permission.CAMERA`; any further permission needs its own founder-approved change (CLAUDE.md §9).
 - **Lazy loading:** every driver screen is a dynamic import; camera, picker and file-system code is imported only under `src/features/driver/` (enforced by the architecture test).
 
 **P2.8 measurements (release build, this machine):** AAB 34,845,150 bytes (+3,161,250, +10.0% vs P2.3); download arm64-v8a 25,467,632–25,651,727 and armeabi-v7a 24,725,524–24,909,619 bytes (about +3.12 MB each); JS bundle 3,321,764 bytes (+285,672); 16 KB PASS (20/20 64-bit libraries, zipalign PASS on both splits); ABIs arm64-v8a + armeabi-v7a; permissions exactly CAMERA, INTERNET and the AndroidX dynamic-receiver permission.

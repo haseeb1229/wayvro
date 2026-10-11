@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 7393,
-      "sha256": "123fd7a70a5539611d26f29355ae666544d671ecbe916407ce4b0f8c282634d0"
+      "bytes": 7656,
+      "sha256": "ada4a38a018372ac0aee116745bde62bcf3908b3442bf8f0a86d2ff65285050c"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -261,8 +261,8 @@
     },
     {
       "path": "docs/adr/ADR-043-mobile-platform-additions.md",
-      "bytes": 8205,
-      "sha256": "2df01bb9060974d29369de297906e03fc5ce1d02b031e9334bbad1ec76187e59"
+      "bytes": 8503,
+      "sha256": "e464fdc85323fcd3b83be516cebd6f4875ae665c410a4aa64bf458f27f924e87"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
@@ -276,8 +276,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4813,
-      "sha256": "41e2bbb9590b44f214badbf0d250c774a532260f2392e3f0157eac7cdd9d8691"
+      "bytes": 4844,
+      "sha256": "b270c012d129ce321ce310839a77a84af196b95146a03706484bb5d494463e7d"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -456,8 +456,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_API_AND_SURFACES.md",
-      "bytes": 13917,
-      "sha256": "c06ab18eaab213a6c4d92a12859b9fdd7eb439eeb786a948b08f558deb06f8ad"
+      "bytes": 14385,
+      "sha256": "9ff980ba2d7416b591958e3d7cd416578d89f5e961aea6e8824f104fbc3cd06a"
     },
     {
       "path": "docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md",
@@ -466,8 +466,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md",
-      "bytes": 42992,
-      "sha256": "c04f17f993ac878127f4effadb515030dcc1e457b0d726b3f0c2b2143925ad16"
+      "bytes": 43234,
+      "sha256": "384d19ad068af278841adb4195412656cadbd70744fe1bc004d85eae657a76d6"
     },
     {
       "path": "docs/phase2/PHASE2_DPIA_INPUT_PACK.md",
@@ -486,8 +486,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
-      "bytes": 58641,
-      "sha256": "1a5b5eefda495cf82c45c7c53d908202934cab12f09ed2e91ab69a6b61fdd4d5"
+      "bytes": 67809,
+      "sha256": "8bf07648e6af91fd7f788584fab9da65e5ba64f3d6c6cb4ec0adae7480ab4bd5"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
@@ -511,8 +511,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_REQUIREMENT_MATRIX.md",
-      "bytes": 26998,
-      "sha256": "6c4c3d55bdbfa5fb1b6498633277a82ea8c00f27f2c507fc6763d57f360c0d01"
+      "bytes": 27340,
+      "sha256": "09e3dd85b7901884383a23f9daf381c6f12a032a5bd9027730a3c0aec34fc03e"
     },
     {
       "path": "docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md",
@@ -521,8 +521,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_STAFF_AUTHORIZATION_MATRIX.md",
-      "bytes": 10513,
-      "sha256": "952c89ab7aa540d1d41541a00063c99278c08f879d39cb415931e5e0e9fc4861"
+      "bytes": 11428,
+      "sha256": "b68df57f5c7799610a9cf419d6c1a9d123c299f922e44614ee3876988dc32da2"
     },
     {
       "path": "docs/phase2/PHASE2_TEST_STRATEGY.md",

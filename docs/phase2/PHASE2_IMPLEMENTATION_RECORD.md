@@ -1,6 +1,6 @@
 # PHASE2_IMPLEMENTATION_RECORD — Full Phase 2 implementation (P2.1 review fixes, P2.2 – P2.10)
 
-**Branch:** `phase-2/identity-controlled-onboarding` from P2.1 `2666c8ba8627831dd2b40b2a7fa1b18aef65d809` (protected `main` = `8c8e528bf2a975f2fe385fd49ed9de78f29ed530`, unchanged). · **Authorisation:** founder authorised the whole Phase 2 engineering implementation in one run (2026-10-11); micro-phases P2.1–P2.10 are internal checkpoints. · **Status:** IN PROGRESS — one living record, updated at every checkpoint; **not merged, no PR**. · **Agent:** Claude Code (self-audit, not independent verification). · Synthetic data only; external gates EG-01..EG-23 remain open unless stated otherwise with evidence.
+**Branch:** `phase-2/identity-controlled-onboarding` from P2.1 `2666c8ba8627831dd2b40b2a7fa1b18aef65d809` (protected `main` = `8c8e528bf2a975f2fe385fd49ed9de78f29ed530`, unchanged). · **Authorisation:** founder authorised the whole Phase 2 engineering implementation in one run (2026-10-11); micro-phases P2.1–P2.10 are internal checkpoints. · **Status:** Phase-2 engineering implementation complete and passed the closure run; merged into `main` through the Phase 2 pull request with a normal merge commit (the PR records the merge SHA). External activation gates EG-01..EG-23 remain open. Phase 3 has not started. · **Agent:** Claude Code (self-audit, not independent verification). · Synthetic data only; external gates EG-01..EG-23 remain open unless stated otherwise with evidence.
 
 The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for P2.1; its §3a lists the review corrections.
 
@@ -19,7 +19,9 @@ The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for 
 | P2.8 | `de2e578` | Driver/Partner onboarding in the ONE app (camera, controlled import, upload queue, checklist, status, compliance view), document renewal end to end, evidence discard crypto-shredding fix. **CI run 38132775729: all five jobs green** |
 | P2.9 | `04defa6` | step-up, phone change, "this wasn't me", lost-phone recovery (strong proof only), dormant-number review, driver risk holds + re-verification, account deletion (app + web), incident playbooks |
 | CI fixes | `0e3b9a9` | CI run 38137835484 on `04defa6`: ESLint ran out of heap on the runner (lint step heap raised; rules unchanged) and a P2.6 sanitiser test caught a real cleanup race (bounded reaper added) |
-| P2.10 | (this commit) | Google/Apple OIDC linking: jose verifier, nonces, linked sign-in with PHONE_STEP_UP, link/unlink, linked-identity recovery, flags ON only in the test environment |
+| P2.10 | `ffdecb7` | Google/Apple OIDC linking: jose verifier, nonces, linked sign-in with PHONE_STEP_UP, link/unlink, linked-identity recovery, flags ON only in the test environment |
+
+| Closure | (closure commits) | support capabilities of the accepted staff matrix, per-district claims in the app (R46), appeal of a rejected renewal, CAMERA approval recorded, ruleset checks corrected — see "Phase-2 closure" |
 
 Intermediate checkpoint commits are not individually CI-verified. CI runs on the pushed HEAD.
 
@@ -266,11 +268,11 @@ The mobile slice was built in parallel by a delegated agent inside `apps/wayvro-
 - `failure()` is typed as a `Refusal` (subtype of `Outcome`) so helpers can return a refusal or their own result; no behaviour change.
 
 **Deviations / limitations (recorded for review):**
-- **Renewal rejections are not appealable** (the appeal route resolves decisions through applications); the driver starts a new renewal. The app offers no appeal for them.
+- ~~**Renewal rejections are not appealable**~~ — **closed in the Phase-2 closure** (see "Phase-2 closure" below): a REJECT of a renewal is appealable; NEEDS_INFO still means starting a new renewal.
 - **Restriction appeals in the app** are reachable from the Driver/Partner screens only; the rider home still says appeals can't be submitted in this version (accurate there). A rider-side entry is an open item for P2.9 hardening (V13).
-- **Per-district documents** (optional ROUTE_PERMIT) cannot be claimed from the app: no district list in the contract yet.
+- ~~**Per-district documents** cannot be claimed from the app~~ — **closed in the Phase-2 closure**: the checklist carries the server district list.
 - **Unused vault grant:** `wayvro_vault` still has SELECT on review-case assignment columns that no code reads any more; to be revoked in migration 0007 (P2.9).
-- **CAMERA allowlist change** needs founder review (CLAUDE.md §9).
+- **CAMERA allowlist change:** **APPROVED by founder/ChatGPT review (Phase-2 closure, 2026-10-11)**; recorded in ADR-043.
 
 **Evidence (local gates on the P2.8 tree):**
 
@@ -321,7 +323,7 @@ Built here: migration 0007, the API, the worker jobs and the docs. Delegated age
 - **Deletion closes open driver work:** non-terminal applications become WITHDRAWN and open cases CANCELLED (system action on the owner's request). Review decisions and reason codes are kept as retention exceptions.
 - **Unused states not created:** the phone-change kinds/states and the deletion `REQUESTED` state that nothing produces were left out (P2.10 adds the OIDC kind additively).
 - **Suppression reason `NO_ACCOUNT`** (audit only) for the web deletion path.
-- **Not built:** a staff route to revoke a consumer's sessions directly and the support summary (a `SECURITY_HOLD` restriction covers containment); push/SMS security notices (Phase 4 / EG-01).
+- **Not built:** push/SMS security notices (Phase 4 / EG-01). The staff on-behalf session revocation and the support summary were **built in the Phase-2 closure**.
 
 **Evidence (local gates on the P2.9 tree):**
 
@@ -386,3 +388,60 @@ Built here: migration 0007, the API, the worker jobs and the docs. Delegated age
 | Web E2E (web-public + web-ops) | 29/29 PASS |
 
 **Not run / external:** real Google/Apple tokens and keys (EG-06/EG-07); the native SDKs and the production JWKS adapter (P2.A2/P2.A3); device runs.
+
+## Phase-2 closure (founder/ChatGPT review follow-up, 2026-10-11)
+
+The founder/ChatGPT review of `ffdecb7` asked for one bounded closure run before merge. Scope: the accepted staff matrix's support capabilities, per-district claims in the app, appeal of a rejected document renewal, recording the CAMERA approval, an emulator smoke attempt, the ruleset's required checks, then PR and normal merge. Nothing else.
+
+| Area | Implementation |
+|---|---|
+| Migration | `0009_support_closure` (additive): session revoke reason `STAFF_ON_BEHALF`, security event `SESSIONS_REVOKED_BY_SUPPORT`. Widened CHECKs only; no data moved |
+| Support (staff matrix §4) | `SUPPORT_AGENT` (and `TRUST_SAFETY_AGENT`) hold `account.summary.view_masked`, `account.sessions.revoke_on_behalf`, `account.recovery_case.open`.<br>• `POST /v1/admin/account-summaries` — lookup by phone or account id with a mandatory reason (`CUSTOMER_CONTACT_VERIFIED`, `SAFETY_REPORT`, `FRAUD_INVESTIGATION`, `RECOVERY_ASSISTANCE`); privacy-minimised view only: masked phone (`+92 3** *** **NN`), statuses, restrictions, up to 20 sessions with hour-truncated times, device count, whether strong recovery factors exist, recovery/deletion status. No full phone, CNIC, document numbers, evidence, OIDC subject, tokens, IP or location. Every view and failed lookup is audited with the reason; conflict of interest and city scope (via the driver application) are enforced, both audited when denied.<br>• `POST /v1/admin/accounts/{accountId}/session-revocations` — ONE or ALL, fresh staff step-up, reason, idempotency key; `revoke_reason = STAFF_ON_BEHALF` + an account-visible security event + audit.<br>• `POST /v1/admin/account-recoveries/{id}/assistance` — only a driver-KYC recovery in MANUAL_REVIEW or a dormant-number review IN_REVIEW: attaches to the open ACCOUNT_RECOVERY case (priority +1) or opens one; never decides; founder Q-08 (in-person + second approver) is untouched.<br>• No bulk lookup or export. BFF allowlist derives from the contract routes (exactly the three POSTs) |
+| web-ops | `/support` (permission-gated, 404 otherwise): lookup with a required reason, masked summary, per-session and all-session sign-out through a modal dialog with reason and WebAuthn step-up, recovery assistance with the "support never decides" note. The typed phone is cleared once the summary loads |
+| Per-district claims (R46) | `RequirementChecklist.districts` = ENABLED districts of the application's city (server-authoritative). A per-district item requires one of them (missing, disabled or other-city → 400); any other item carrying a district → 400. The app renders the server list (no hard-coded list), shows the district on documents, compliance and renewal screens; a renewal keeps the original district (the renewal request has no district field) |
+| Rejected renewal appeal | `POST /v1/account/appeals` accepts the latest REJECT decision of the caller's own DOCUMENT_RENEWAL case whose renewal is REJECTED. Decided by a KYC senior in the city who is neither the decider nor the second approver. OVERTURNED → the renewal returns to SUBMITTED with a fresh DOCUMENT_RENEWAL case (a human decides again; nothing is validated automatically); UPHELD → stays REJECTED. `DriverCompliance.documents[].renewal` gains `appealableDecisionId` / `appealStatus` (additive); the app offers the appeal only when appealable; web-ops processes it in the existing appeals queue |
+| CAMERA | Founder/ChatGPT **APPROVED** the Phase-2 Android CAMERA permission. Release permissions stay exactly `INTERNET`, `${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, `CAMERA` (ADR-043). No other permission added |
+| Ruleset 24837051 | required checks corrected to the five current CI job names (the stale Integration context removed) |
+
+**Decisions (recorded for review):**
+- **T&S also holds the three support permissions**, as in the accepted matrix (§4 columns T&S and SUPPORT).
+- **Support assistance on a dormant-number review** attaches/opens the ACCOUNT_RECOVERY case only for reviews already IN_REVIEW; anything else answers 409.
+- **Re-claiming a per-district document** in another district: one live claim per document type, vehicle and district. Several districts at once are possible on the server; the app shows the latest claim per type. Multi-district permits wait for the Punjab matrix (EG-03/EG-04).
+
+### Requirement reconciliation (all 55 Phase-2 IDs, after the closure)
+
+| Class | Count | IDs |
+|---|---|---|
+| ENGINEERING_SATISFIED | 15 | A02, A05, D01, D04, H02, K05, K07, K09, K10, K13, Q01, Q36, V02, V13, W07 |
+| PARTIAL_EXTERNAL_GATED | 35 | A03, A04, A11, A15, D02, D03, H01, H08, K02, K03, K04, K06, K08, K11, K14, K15, K16, K17, Q06, Q08, Q39, Q42, R02, R03, R04, R05, R06, R09, R46, S12, S13, U06, V01, V03, W05 |
+| PARTIAL_FUTURE_PHASE | 2 | K01 (fleet identities), V07 (earnings/payments/ratings isolation re-checked when those features exist) |
+| EXTERNAL_ONLY | 3 | K22 (EG-11), Q44 (EG-12), Q45 (EG-10) |
+| NOT_SATISFIED | 0 | — |
+
+Closure items, reconciled explicitly:
+
+| Closure item | IDs | Effect |
+|---|---|---|
+| Support summary, on-behalf revocation, recovery assistance | A05, A11, K09, K10, H01, W07 | Internal debt closed. A05/K09/K10/W07 stay ENGINEERING_SATISFIED (now also for support); A11 stays PARTIAL (SMS notices, EG-01); H01 stays PARTIAL (staff SSO, EG-19) |
+| Per-district claims in the app | R02, R46 | App gap closed; both stay PARTIAL_EXTERNAL_GATED (Punjab matrix and permit details, EG-03/EG-04) |
+| Rejected renewal appeal | K05, D04, H02, R02–R06 | K05/D04/H02 stay ENGINEERING_SATISFIED (appeal now covers renewals); R02–R06 stay PARTIAL (EG-03/EG-04) |
+| CAMERA approval | K02, V03, V01 | Founder approval recorded; K02/V03 stay PARTIAL (DPIA and reviewer operations, EG-10/EG-20); V01 stays PARTIAL (store identity, EG-18) |
+
+EG-01..EG-23 all remain open. External debt stays deferred, unchanged: production KMS/KEK and key re-wrap, real JWKS adapter and native Google/Apple SDKs, SMS provider, counsel texts, Punjab matrix, DPIA, staff SSO, alert paging, Urdu/Roman-Urdu native review, device and iOS QA, load and penetration tests, push, Phase 3/4 features. The `decode-uri-component` osv exception keeps its existing conditions (expires 2026-12-31; no deep links) and was not extended.
+
+**Evidence (local gates on the closure tree):**
+
+| Suite | Result |
+|---|---|
+| `apps/api/test/support.integration.test.ts` (privacy-minimised summary incl. raw-key scan, reason audit, 400/404/403; conflict of interest; revoke: step-up required, ONE/ALL, foreign session 404, security event, reviewer 403; assistance attach/open, never decides, claim 403, 409, 404) | 4 PASS |
+| `apps/api/test/closure.integration.test.ts` (server district list; district required / disabled / other city / not per-district; round-trip; renewal keeps district; renewal appeal: owner only, one open appeal, decider refused, OVERTURNED → fresh DOCUMENT_RENEWAL case + SUBMITTED, UPHELD stays REJECTED, NEEDS_INFO not appealable) | 4 PASS |
+| `packages/db/test/support-closure.integration.test.ts` (previous → latest with live rows, re-run 0, widened CHECKs accept exactly the new values, API-role grants) | 2 PASS |
+| Mobile (districts, claim forms, checklist, renewal appeal visibility, new security event label) | typecheck, ESLint, Prettier, knip PASS; 31 files, 246 tests PASS |
+| web-ops (`/support`, Playwright `support.spec.ts` with axe: navigation scoped to the permission, BFF method/origin refusals, masked lookup with the phone in no page format, Escape cancels, ONE then ALL revocation with step-up and DB check, recovery hand-off without a decision, auditor 404/403) | 8 PASS |
+| `packages/contracts` (support summary subject/reason, ONE/ALL session rule, appeal subject) | 21 PASS; coverage thresholds PASS |
+| Quality gate (format, build, lint, typecheck, depcruise, knip normal + production + production strict, syncpack, flags, unit tests, coverage, OpenAPI drift, phase0 coverage, manifest) | PASS |
+| Integration gate (fresh DB, migrate — second run 0 applied, every integration suite incl. the three above, boot smoke) | PASS |
+| Web E2E (web-public + web-ops, axe) | 37/37 PASS |
+| Artifact isolation (`--negative-controls`) | 39/39 PASS |
+| gitleaks (staged, per commit) / osv-scanner (lockfile unchanged; existing documented exceptions only) | no leaks / no issues |
+| Android dev-client debug APK (`scripts/android-build.mjs debug`, JDK 17.0.20.1, `WAYVRO_DEV_LOCAL_API=1`) | BUILD SUCCESSFUL (package `dev.wayvro.app`; the debug-only manifest adds `SYSTEM_ALERT_WINDOW` for the developer overlay — the release AAB permission gate runs in CI) |

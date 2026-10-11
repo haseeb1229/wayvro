@@ -76,6 +76,8 @@ ABAC attributes: `cityScope`; `caseAssignment` (evidence and decisions only on c
 
 Self-assignment is denied and audited. With a single operator, two-person steps **block** rather than bypass (EG-20).
 
+**As built:** the matrix is implemented in `apps/api/src/staff/roles.ts` and enforced through route policies plus service-level ABAC; the authorization-matrix test derives from the route policies and `ROLE_PERMISSIONS`. Code names differ in three places: `kyc.appeal.decide` and `restriction.appeal.decide` are one permission `appeal.decide` (the service applies the per-subject role and not-the-original-decider rules); `vault.access_log.view` is `audit.evidence_access.view`; `account.recovery_case.decide` is the `kyc.decision.*` / `kyc.decision.second_approve` permissions on an ACCOUNT_RECOVERY case (in-person + second approver, founder Q-08). The three `account.*` support permissions (summary, on-behalf revocation, recovery-case open) were built in the Phase-2 closure for SUPPORT and T&S exactly as above (`docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §"Phase-2 closure"). No bulk or CSV export exists.
+
 ## 5. Reason-for-access, privileged confirmation and exports (W07, H08, CL-06)
 
 - Every PII view requires a reason code (+ text for non-case reasons), enforced server-side and stored with the audit event.
