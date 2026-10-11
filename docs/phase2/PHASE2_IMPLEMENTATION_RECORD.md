@@ -99,7 +99,13 @@ Intermediate checkpoint commits are not individually CI-verified. CI runs on the
 | Artifact isolation | **PASS** 36/36 |
 | Web E2E (Playwright + axe; web-public 11, web-ops 7) | **PASS** 18/18 |
 
-gitleaks and osv-scanner were **NOT RUN locally** (no binaries on this machine); CI runs both.
+**Correction (after commit `b35ad83`):** the line above originally said gitleaks/osv were not run locally; the binaries exist at `C:Dev	oolsscanners`. Run against `b35ad83`:
+- gitleaks: no leaks (19 commits).
+- osv-scanner: **1 new Medium**, GHSA-vcc3-ghjq-m6fr (decode-uri-component 0.2.2 via query-string 7.1.3, pinned by expo-router 57.0.25). It entered with P2.3.
+  - It is recorded as a time-boxed **runtime** exception in `osv-scanner.toml` (expires 2026-12-31).
+  - The fixed 0.5.0 is ESM-only and incompatible with query-string 7.
+  - It is unreachable from external input while no URL scheme or deep link is registered.
+  - **Gate:** re-check before deep links are wired.
 
 ## P2.3 — Mobile account slice in the ONE Wayvro app
 

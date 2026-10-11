@@ -47,6 +47,12 @@ No emulator, AVD or physical device was available, so none of these has been che
 
 All are **NOT RUN** and must be checked on a representative low-end Android device before any release (CLAUDE.md §9).
 
+## Supply-chain finding
+expo-router 57.0.25 pins query-string 7.1.3 → decode-uri-component 0.2.2, which is affected by GHSA-vcc3-ghjq-m6fr (Medium, CPU-exhaustion DoS on malformed percent-encoding).
+- The fixed 0.5.0 is ESM-only, and an override would break query-string 7.
+- It is accepted as a time-boxed runtime exception in `osv-scanner.toml` (expires 2026-12-31), because no URL scheme or deep link exists, so no external input reaches the parser.
+- **Gate:** before any deep link is wired, upgrade expo-router/query-string or bound URL length.
+
 ## Consequences / reversal
 - Navigation can move back to plain React Navigation by replacing the thin route files; the feature screens do not import the router.
 - If a later screen needs gestures or animation, the exclusion is removed in that change, with a size measurement.

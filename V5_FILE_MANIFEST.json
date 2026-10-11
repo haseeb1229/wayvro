@@ -251,8 +251,8 @@
     },
     {
       "path": "docs/adr/ADR-043-mobile-platform-additions.md",
-      "bytes": 4412,
-      "sha256": "d879f13a3d383be7c99d13193a98c7df56d5ae0fbbad76ee105010caae8b3116"
+      "bytes": 4965,
+      "sha256": "3fd4b30df1433d7afe999f5a69aabe598460821e76453e4c2b217c397fd33132"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
@@ -466,8 +466,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
-      "bytes": 18258,
-      "sha256": "1da766b4fadc2944049cfce1e34090b8ddc791d061745207788516ae4d39e774"
+      "bytes": 18844,
+      "sha256": "cd4c8721fda0e8cdef1c67317c5fb1b1ada64b3fde5423fcf8da0e9fd0b2e6ce"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
