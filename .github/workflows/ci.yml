@@ -49,6 +49,10 @@ jobs:
       - name: Build all packages and deployables (api, worker, realtime, web-public, web-ops)
         run: pnpm build
       - name: Lint (strict typescript-eslint + boundaries)
+        # Type-aware linting of the whole monorepo outgrew Node's default heap on the runner (P2.9: "JavaScript heap
+        # out of memory", exit 134). More memory only — every rule and --max-warnings=0 stay unchanged.
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm lint
       - name: Strict typecheck
         run: pnpm typecheck

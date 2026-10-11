@@ -7,6 +7,25 @@ import { randomBytes } from 'node:crypto';
 import type { ImageSanitiserPort, SanitiserResult } from '@wayvro/provider-interfaces';
 import { SanitiserUnavailableError, dockerRunArgs, interpretRun, type DockerSanitiserConfig } from './docker-sanitiser.js';
 
+/** Removal attempts after a kill (every 500 ms, bounded to 10 s). */
+const REAP_ATTEMPTS = 20;
+const REAP_INTERVAL_MS = 500;
+
+/**
+ * A killed CLI client can race the daemon: the container may still be CREATED after the first removal and, with no
+ * client attached, wait on stdin forever. Removing it by name again for a bounded time makes cleanup deterministic
+ * (`rm -f` of a missing container is a no-op).
+ */
+function reap(command: string, name: string): void {
+  let left = REAP_ATTEMPTS;
+  const attempt = (): void => {
+    spawnSync(command, ['rm', '-f', name], { stdio: 'ignore', windowsHide: true });
+    left--;
+    if (left > 0) setTimeout(attempt, REAP_INTERVAL_MS).unref();
+  };
+  attempt();
+}
+
 export class DockerSanitiser implements ImageSanitiserPort {
   constructor(private readonly config: DockerSanitiserConfig) {}
 
@@ -42,8 +61,8 @@ export class DockerSanitiser implements ImageSanitiserPort {
       });
       child.on('close', (code) => {
         clearTimeout(timer);
-        // A kill can race the daemon creating the container; remove it again once the client has gone.
-        if (timedOut || overflow) spawnSync(command, ['rm', '-f', name], { stdio: 'ignore', windowsHide: true });
+        // A kill can race the daemon creating the container; keep removing it once the client has gone.
+        if (timedOut || overflow) reap(command, name);
         try {
           resolve(interpretRun({ code, timedOut, overflow, stdout: Buffer.concat(chunks) }));
         } catch (e) {
