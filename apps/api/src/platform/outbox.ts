@@ -11,6 +11,10 @@ type OutboxEventType =
   | 'driver.approved.v1'
   | 'driver.document.decided.v1'
   | 'restriction.changed.v1'
+  | 'account.phone.changed.v1'
+  | 'account.recovery.requested.v1'
+  | 'account.recovery.decided.v1'
+  | 'account.deletion.changed.v1'
   | 'appeal.decided.v1';
 
 export interface OutboxEventInput {

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { formatDateTime, type StringKey } from '../../../core/i18n/strings';
@@ -9,7 +9,9 @@ import { useServices } from '../../../core/services/ServicesProvider';
 import { confirmDestructive } from '../../../core/ui/confirm';
 import { Banner, Body, Button, ErrorBanner, Heading, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { colors, spacing } from '../../../core/ui/tokens';
-import { errorView, viewStateFromQuery, type UiErrorView } from '../../../core/ui/view-state';
+import { viewStateFromQuery, type UiErrorView } from '../../../core/ui/view-state';
+import { GuardedActionPanel } from '../security/StepUpPanel';
+import { useGuardedAction } from '../security/use-account-security';
 import { revokeOneFailure, sessionsModel, type SessionRow } from './sessions';
 
 type Feedback = { readonly kind: 'info'; readonly key: StringKey; readonly count?: number } | { readonly kind: 'error'; readonly error: UiErrorView } | null;
@@ -31,17 +33,18 @@ export function SessionsScreen() {
     },
     onSettled: () => sessions.refetch(),
   });
-  const revokeOthers = useMutation({
-    mutationFn: () => client.revokeOtherSessions(),
-    onSuccess: (count) => {
+  // P2.9: signing out every other device may need a fresh step-up; the panel below handles it and the retry.
+  const runRevokeOthers = useCallback(() => client.revokeOtherSessions(), [client]);
+  const onRevokedOthers = useCallback(
+    (count: number) => {
       setFeedback({ kind: 'info', key: 'sessions.revokedOthers', count });
+      void sessions.refetch();
     },
-    onError: (error) => {
-      setFeedback({ kind: 'error', error: errorView(error) });
-    },
-    onSettled: () => sessions.refetch(),
-  });
-  const busy = revokeOne.isPending || revokeOthers.isPending;
+    [sessions],
+  );
+  const revokeOthers = useGuardedAction(runRevokeOthers, onRevokedOthers);
+  const revokeOthersRunning = revokeOthers.phase.kind === 'running';
+  const busy = revokeOne.isPending || revokeOthersRunning;
 
   const view = viewStateFromQuery(sessions, sessionsModel);
   if (view.kind !== 'ready') {
@@ -103,12 +106,13 @@ export function SessionsScreen() {
           />
         </View>
       ))}
-      {model.canRevokeOthers ? (
+      <GuardedActionPanel action={revokeOthers} />
+      {model.canRevokeOthers && revokeOthers.phase.kind !== 'step-up' && revokeOthers.phase.kind !== 'confirm-retry' ? (
         <Button
           variant="danger"
           label={t('sessions.revokeOthers')}
           busyLabel={t('common.signingOut')}
-          busy={revokeOthers.isPending}
+          busy={revokeOthersRunning}
           disabled={busy}
           onPress={() => {
             void confirmDestructive({
@@ -117,7 +121,7 @@ export function SessionsScreen() {
               confirm: t('sessions.revokeOthers'),
               cancel: t('common.cancel'),
             }).then((confirmed) => {
-              if (confirmed) revokeOthers.mutate();
+              if (confirmed) revokeOthers.start();
             });
           }}
         />

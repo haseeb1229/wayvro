@@ -1,4 +1,5 @@
 import {
+  AccountAppealSchema,
   AccountStateSchema,
   AgeDeclarationRecordedSchema,
   AgeEligibilityPolicySchema,
@@ -32,6 +33,7 @@ import {
   type SessionTokens,
 } from '@wayvro/contracts';
 import type { z } from 'zod';
+import type { AppealRequest } from '../account/appeal';
 import type { SessionManager } from '../session/session-manager';
 import { ApiError } from './errors';
 import { send, type HttpDeps, type HttpResult, type RequestSpec } from './http';
@@ -46,6 +48,7 @@ import { canonicalJson, type IdempotencyIntentStore } from './idempotency-intent
 
 export type PolicyLocale = 'en' | 'ur';
 export type Profile = z.infer<typeof ProfileSchema>;
+export type AccountAppeal = z.infer<typeof AccountAppealSchema>;
 
 export interface DeviceInfo {
   readonly platform: 'ANDROID' | 'IOS';
@@ -228,6 +231,16 @@ export function createWayvroClient(deps: WayvroClientDeps) {
     declareAge: async (request: AgeDeclarationRequest): Promise<AgeDeclarationRecorded> =>
       (await mutate('age-declaration', { method: 'POST', path: '/v1/account/age-declarations', body: request, schema: AgeDeclarationRecordedSchema }, true))
         .data,
+
+    /** Appeal of a review decision or of an appealable restriction (K05, V13; works under a restriction). */
+    createAppeal: async (request: AppealRequest): Promise<AccountAppeal> =>
+      (
+        await mutate(
+          `appeal:${'reviewDecisionId' in request ? request.reviewDecisionId : request.restrictionId}`,
+          { method: 'POST', path: '/v1/account/appeals', body: request, schema: AccountAppealSchema },
+          true,
+        )
+      ).data,
 
     /**
      * Authenticated transport for lazily loaded feature modules (P2.8 Driver/Partner flows): the same bearer, refresh,

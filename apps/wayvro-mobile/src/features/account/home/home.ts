@@ -14,6 +14,8 @@ export interface HomeModel {
   readonly restrictions: readonly RestrictionNoticeItem[];
   /** `apply`: offer to start an application; `driver`: open the Driver/Partner area; null: no entry. */
   readonly driverEntry: 'apply' | 'driver' | null;
+  /** P2.9: the account is in its deletion grace period (most actions are paused server-side). */
+  readonly deletionPending: boolean;
 }
 
 /**
@@ -36,5 +38,6 @@ export function homeModel(state: AccountState): HomeModel {
     preferredLocale: state.account.preferredLocale,
     restrictions: riderRestrictionNotices(state),
     driverEntry: driverEntry(state.driver),
+    deletionPending: state.account.status === 'DELETION_PENDING',
   };
 }

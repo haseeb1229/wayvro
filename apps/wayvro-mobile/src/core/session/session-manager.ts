@@ -100,6 +100,24 @@ export class SessionManager {
   }
 
   /**
+   * Replaces the session with one for ANOTHER account (P2.9 dormant-number review: "I'm new"). The new token pair
+   * overwrites the stored session in one write; then every installation-scoped wiper runs (idempotency intents, query
+   * cache, flow state, local evidence), so nothing of the previous account remains on this phone.
+   */
+  async switchAccount(tokens: SessionTokens): Promise<{ readonly complete: boolean }> {
+    await this.establish(tokens);
+    let complete = true;
+    for (const wiper of this.wipers) {
+      try {
+        await wiper();
+      } catch {
+        complete = false;
+      }
+    }
+    return { complete };
+  }
+
+  /**
    * Called after a 401 with `staleAccessToken`. Resolves 'refreshed' when a newer access token is available (either
    * from this call or because another caller already rotated it), 'expired' when the session is gone. Throws ApiError
    * for transient failures (offline/rate-limited/unavailable): tokens and the pending key are kept for a later retry.

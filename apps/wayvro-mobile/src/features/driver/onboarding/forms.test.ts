@@ -7,7 +7,6 @@ const NUMBER_ONLY: DocumentFieldHints = { number: true, licenceClass: false, iss
 const EXPIRY_ONLY: DocumentFieldHints = { number: false, licenceClass: false, issuedOn: true, expiresOn: true };
 const NONE: DocumentFieldHints = { number: false, licenceClass: false, issuedOn: false, expiresOn: false };
 import {
-  buildAppeal,
   buildClaimsUpdate,
   buildDocumentClaim,
   buildRenewalClaim,
@@ -136,21 +135,6 @@ describe('document claims and renewals', () => {
     expect(buildRenewalClaim(EXPIRY_ONLY, { ...emptyDocumentForm, number: 'IGNORED', expiresOn: { day: '31', month: '12', year: '2027' } }, TODAY)).toEqual({
       ok: true,
       request: { expiresOn: '2027-12-31' },
-    });
-  });
-});
-
-describe('appeal (K05)', () => {
-  it('needs 10 to 2000 characters and exactly one target', () => {
-    expect(buildAppeal({ reviewDecisionId: DRIVER_IDS.decision }, '  too short ')).toEqual({ ok: false, errors: { statement: 'appeal.invalid' } });
-    expect(buildAppeal({ reviewDecisionId: DRIVER_IDS.decision }, 'x'.repeat(2001))).toMatchObject({ ok: false });
-    expect(buildAppeal({ reviewDecisionId: DRIVER_IDS.decision }, ' The photos were clear; please look again. ')).toEqual({
-      ok: true,
-      request: { reviewDecisionId: DRIVER_IDS.decision, statement: 'The photos were clear; please look again.' },
-    });
-    expect(buildAppeal({ restrictionId: DRIVER_IDS.restriction }, 'Please review this restriction.')).toMatchObject({
-      ok: true,
-      request: { restrictionId: DRIVER_IDS.restriction },
     });
   });
 });

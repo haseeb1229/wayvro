@@ -232,6 +232,7 @@ describe('maintenance, scheduling and composition', () => {
       'crypto.key-rotation',
       'driver-application.intake',
       'compliance.document-expiry',
+      'identity.recovery-completion',
     ]);
     // When a delivery adapter is bound (a real one after EG-01), the worker also claims otp.deliver jobs.
     const withAdapter = composeWorker(local, worker, log, bindProviders('test', { otpDelivery: { send: () => Promise.resolve({ providerMessageId: 'x' }) } }));

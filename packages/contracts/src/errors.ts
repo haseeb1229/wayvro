@@ -33,6 +33,8 @@ export const ERROR_CODES = [
   'WAYVRO_E_FEATURE_DISABLED',
   // P2.6 (additive): a one-time resource (evidence view token) that was already used or has expired
   'WAYVRO_E_GONE',
+  // P2.9 (additive): the session must complete the dormant-number review (or recovery) before anything else
+  'WAYVRO_E_RECOVERY_REQUIRED',
 ] as const;
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);

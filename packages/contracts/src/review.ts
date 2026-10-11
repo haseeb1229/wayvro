@@ -13,7 +13,7 @@ const IsoDate = z.iso.date();
 const E = ErrorEnvelopeSchema;
 const Cursor = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
 
-const REVIEW_CASE_KINDS = ['INITIAL_APPLICATION', 'RESUBMISSION', 'APPEAL', 'DOCUMENT_RENEWAL'] as const;
+const REVIEW_CASE_KINDS = ['INITIAL_APPLICATION', 'RESUBMISSION', 'APPEAL', 'DOCUMENT_RENEWAL', 'ACCOUNT_RECOVERY', 'REVERIFICATION'] as const;
 const REVIEW_CASE_STATUSES = ['OPEN', 'CLAIMED', 'ESCALATED', 'DECIDED', 'CANCELLED'] as const;
 export const REVIEW_DECISIONS = ['APPROVE', 'NEEDS_INFO', 'REJECT', 'ESCALATE', 'REQUIRE_IN_PERSON'] as const;
 export const IDENTITY_MATCH_ASSESSMENTS = ['CONFIRMED_BY_REVIEWER', 'NOT_MATCHING', 'UNCERTAIN_ESCALATE', 'IN_PERSON_REQUIRED'] as const;
@@ -96,6 +96,15 @@ export const ReviewCaseDetailSchema = z
     leaseExpiresAt: IsoDateTime.nullable(),
     /** DOCUMENT_RENEWAL: the renewal document under review (listed in `documents` beside the document it renews). */
     subjectDocumentId: z.uuid().nullable(),
+    /**
+     * P2.9 (additive) — ACCOUNT_RECOVERY: what is being recovered. APPROVE needs an in-person identity check first
+     * (REQUIRE_IN_PERSON) and always a second senior approver; REVERIFICATION: the risk triggers behind the hold.
+     */
+    recovery: z
+      .object({ kind: z.enum(['LOST_PHONE', 'DORMANT_NUMBER']), maskedNewPhone: z.string().nullable(), requestedAt: IsoDateTime })
+      .nullable()
+      .optional(),
+    riskTriggers: z.array(z.string()).optional(),
     application: z.object({
       id: z.uuid(),
       state: z.string(),

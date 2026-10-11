@@ -2,12 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { z } from 'zod';
+import { APPEAL_MAX, buildAppeal, type AppealRequest, type AppealTarget } from '../../../core/account/appeal';
 import { toApiError } from '../../../core/api/errors';
 import { QUERY_KEYS } from '../../../core/query/query-client';
+import { useServices } from '../../../core/services/ServicesProvider';
 import { Banner, Body, Button, Screen, TextField, Title } from '../../../core/ui/primitives';
 import { DRIVER_KEYS } from '../api/driver-queries';
-import { APPEAL_MAX, buildAppeal, type AppealTarget } from '../onboarding/forms';
-import { useDriverApi } from '../upload/upload-service';
 import { driverErrorView } from '../ui/driver-errors';
 import { DriverErrorBanner, useDriverText } from '../ui/DriverUi';
 
@@ -34,18 +34,17 @@ export default function AppealScreen() {
 
 function AppealForm({ target }: { readonly target: AppealTarget }) {
   const dt = useDriverText();
-  const api = useDriverApi();
+  const { client } = useServices();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [statement, setStatement] = useState('');
   const [invalid, setInvalid] = useState(false);
   const title = dt('reviewDecisionId' in target ? 'appeal.title' : 'appeal.titleRestriction');
   const send = useMutation({
-    mutationFn: (request: Parameters<typeof api.createAppeal>[0]) => api.createAppeal(request),
+    mutationFn: (request: AppealRequest) => client.createAppeal(request),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: DRIVER_KEYS.application }),
-        queryClient.invalidateQueries({ queryKey: DRIVER_KEYS.appeals }),
         queryClient.invalidateQueries({ queryKey: DRIVER_KEYS.compliance }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.accountState }),
       ]);

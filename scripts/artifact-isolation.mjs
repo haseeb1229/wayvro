@@ -209,7 +209,7 @@ const app = await createApp({
   readinessChecks: [],
   log: silent,
   trustProxy: false,
-  identity: { otp: {}, sessions: {}, accounts: {}, consents: {}, legalStore: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
+  identity: { otp: {}, sessions: {}, accounts: {}, consents: {}, security: {}, recoveryReviews: {}, deletion: {}, legalStore: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
   staff: { auth: {}, admin: {}, oversight: {}, policy: {} },
   compliance: { onboarding: {}, admin: {} },
   evidence: null,

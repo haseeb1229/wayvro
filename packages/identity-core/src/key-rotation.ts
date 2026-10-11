@@ -41,6 +41,11 @@ interface FieldTarget {
 export const FIELD_ROTATION_TARGETS: Readonly<Record<string, FieldTarget>> = {
   [ENCRYPTED_FIELDS.accountPhone.field]: { table: 'identity.account_phones', column: 'phone_envelope', spec: ENCRYPTED_FIELDS.accountPhone },
   [ENCRYPTED_FIELDS.challengePhone.field]: { table: 'identity.otp_challenges', column: 'phone_envelope', spec: ENCRYPTED_FIELDS.challengePhone },
+  [ENCRYPTED_FIELDS.phoneChangePhone.field]: {
+    table: 'identity.phone_change_requests',
+    column: 'new_phone_envelope',
+    spec: ENCRYPTED_FIELDS.phoneChangePhone,
+  },
 };
 
 export class KeyRotationError extends Error {
@@ -143,7 +148,7 @@ async function fieldStep(deps: RotationDeps, tx: pg.PoolClient, rotation: Rotati
   if (!target) throw new KeyRotationError(`unknown field rotation target ${rotation.target}`);
   const keyClass = target.spec.keyClass;
   const rows = await tx.query<{ id: string; envelope: Buffer }>(
-    `select id, ${target.column} envelope from ${target.table} where ($1::uuid is null or id > $1) order by id limit $2`,
+    `select id, ${target.column} envelope from ${target.table} where ${target.column} is not null and ($1::uuid is null or id > $1) order by id limit $2`,
     [rotation.cursor_id, deps.batchSize],
   );
   let rewritten = 0;
@@ -184,7 +189,7 @@ async function countStaleEnvelopes(q: pg.PoolClient | pg.Pool, target: FieldTarg
 async function lookupStep(deps: RotationDeps, tx: pg.PoolClient, rotation: RotationRow): Promise<StepOutcome> {
   const spec = ENCRYPTED_FIELDS.accountPhone;
   const rows = await tx.query<{ id: string; envelope: Buffer }>(
-    `select id, phone_envelope envelope from identity.account_phones where ($1::uuid is null or id > $1) order by id limit $2`,
+    `select id, phone_envelope envelope from identity.account_phones where phone_envelope is not null and ($1::uuid is null or id > $1) order by id limit $2`,
     [rotation.cursor_id, deps.batchSize],
   );
   let inserted = 0;
@@ -236,7 +241,8 @@ async function lookupStep(deps: RotationDeps, tx: pg.PoolClient, rotation: Rotat
   if (rows.rows.length < deps.batchSize) {
     const missing = await tx.query<{ n: string }>(
       `select count(*) n from identity.account_phones p
-        where not exists (select 1 from identity.phone_lookup_index l where l.account_phone_id = p.id and l.lookup_key_version = $1)`,
+        where p.phone_envelope is not null
+          and not exists (select 1 from identity.phone_lookup_index l where l.account_phone_id = p.id and l.lookup_key_version = $1)`,
       [rotation.to_version],
     );
     const totalConflicts = Number(rotation.conflict_count) + conflicts;

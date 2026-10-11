@@ -23,7 +23,8 @@ import type { ApiConfig } from '../config.js';
 const HOUR = 3600;
 const DAY = 86_400;
 
-export type SendDecision = { readonly send: true } | { readonly send: false; readonly reason: 'PHONE_COOLDOWN' | 'PHONE_SEND_LIMIT' | 'PREFIX_FRICTION' };
+export type SendDecision =
+  { readonly send: true } | { readonly send: false; readonly reason: 'PHONE_COOLDOWN' | 'PHONE_SEND_LIMIT' | 'PREFIX_FRICTION' | 'NO_ACCOUNT' };
 
 export interface SendContext {
   readonly phoneKey: string;

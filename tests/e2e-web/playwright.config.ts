@@ -1,7 +1,7 @@
 /**
  * Web E2E (Playwright 1.62.1 + axe, ADR-044/CON-P2-03): runs against PRODUCTION builds of the web surfaces
  * (`pnpm build` first). Chromium only in Phase 2; the CI job installs the pinned browser revision.
- * - web-public: static legal pages (no infrastructure needed).
+ * - web-public: static legal pages and the account-deletion page (no infrastructure needed; no API — see below).
  * - web-ops (WAYVRO_E2E_OPS=1): needs PostgreSQL + Valkey (`pnpm infra:up`) and `pnpm build:local`; ops-stack.mjs
  *   creates a throwaway database, bootstraps staff invitations and runs the API local runner + web-ops.
  */
@@ -17,7 +17,9 @@ const servers: NonNullable<PlaywrightTestConfig['webServer']> = [
     url: 'http://127.0.0.1:3210/health',
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { NODE_ENV: 'production' },
+    // No API runs for this project: the account-deletion forwarder points at a closed local port so its fail-closed
+    // path (generic 503, never a success) is exercised end to end instead of being mocked.
+    env: { NODE_ENV: 'production', WAYVRO_API_INTERNAL_URL: 'http://127.0.0.1:9' },
   },
 ];
 if (OPS) {

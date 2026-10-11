@@ -14,7 +14,11 @@ import { HealthController } from './health/health.controller.js';
 import { ErrorEnvelopeFilter } from './http/error-filter.js';
 import { registerHttpHooks } from './http/hooks.js';
 import type { AccountService } from './identity/account.service.js';
+import { AccountSecurityController } from './identity/account-security.controller.js';
+import type { AccountSecurityService } from './identity/account-security.service.js';
 import { AccountController } from './identity/account.controller.js';
+import type { DeletionService } from './identity/deletion.service.js';
+import type { RecoveryReviewService } from './identity/recovery-review.service.js';
 import { AuthController } from './identity/auth.controller.js';
 import type { OtpService } from './identity/otp.service.js';
 import type { SessionService } from './identity/session.service.js';
@@ -28,7 +32,10 @@ import { OversightController, StaffAdminController, StaffAuthController } from '
 import { AccountAppealsController, ReviewController, type ReviewServices } from './review/review.controller.js';
 import { EvidenceController, EvidenceViewController, type EvidenceServices } from './vault/vault.controller.js';
 import {
+  ACCOUNT_SECURITY_SERVICE,
   ACCOUNT_SERVICE,
+  DELETION_SERVICE,
+  RECOVERY_REVIEW_SERVICE,
   COMPLIANCE_ADMIN_SERVICE,
   CONSENT_SERVICE,
   EVIDENCE_SERVICES,
@@ -64,6 +71,10 @@ interface IdentityServices {
   readonly sessions: SessionService;
   readonly accounts: AccountService;
   readonly consents: ConsentService;
+  /** P2.9: step-up, phone change, recovery, dormant-number review and deletion. */
+  readonly security: AccountSecurityService;
+  readonly recoveryReviews: RecoveryReviewService;
+  readonly deletion: DeletionService;
   /** Connection used for read-only policy-registry queries (current age-eligibility policy). */
   readonly legalStore: Queryable;
   /** Connection used by the policy guard to verify bearer access tokens against the session table. */
@@ -105,6 +116,7 @@ export const API_CONTROLLERS: readonly Type[] = [
   HealthController,
   AuthController,
   AccountController,
+  AccountSecurityController,
   LegalController,
   StaffAuthController,
   StaffAdminController,
@@ -130,6 +142,9 @@ class ApiModule {
         { provide: SESSION_SERVICE, useValue: deps.identity.sessions },
         { provide: ACCOUNT_SERVICE, useValue: deps.identity.accounts },
         { provide: CONSENT_SERVICE, useValue: deps.identity.consents },
+        { provide: ACCOUNT_SECURITY_SERVICE, useValue: deps.identity.security },
+        { provide: RECOVERY_REVIEW_SERVICE, useValue: deps.identity.recoveryReviews },
+        { provide: DELETION_SERVICE, useValue: deps.identity.deletion },
         { provide: LEGAL_DB, useValue: deps.identity.legalStore },
         { provide: STAFF_AUTH_SERVICE, useValue: deps.staff.auth },
         { provide: STAFF_ADMIN_SERVICE, useValue: deps.staff.admin },

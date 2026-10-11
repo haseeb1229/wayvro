@@ -89,12 +89,19 @@ export const AccountStateSchema = z
   .object({
     account: z.object({
       id: z.uuid(),
-      status: z.literal('ACTIVE'),
+      /** P2.9 (additive): DELETION_PENDING during the deletion grace period (the session is restricted). */
+      status: z.enum(['ACTIVE', 'DELETION_PENDING']),
       displayName: z.string().nullable(),
       preferredLocale: LocaleSchema,
       createdAt: IsoDateTime,
     }),
-    session: z.object({ id: z.uuid(), assurance: z.literal('OTP'), accessTokenExpiresAt: IsoDateTime }),
+    session: z.object({
+      id: z.uuid(),
+      assurance: z.literal('OTP'),
+      accessTokenExpiresAt: IsoDateTime,
+      /** P2.9 (additive): until when this session counts as stepped up (null = not stepped up). */
+      stepUpExpiresAt: IsoDateTime.nullable().optional(),
+    }),
     riderProfile: z.object({ id: z.uuid(), status: z.literal('ACTIVE') }),
     requiredActions: z.array(RequiredActionSchema),
     /** P2.5 (additive): Driver/Partner application/profile summary — server truth for routing, never a capability. */
@@ -145,6 +152,18 @@ export const SECURITY_EVENT_TYPES = [
   'SESSIONS_REVOKED_OTHERS',
   'REFRESH_TOKEN_REUSE_DETECTED',
   'PROFILE_UPDATED',
+  // P2.9 (additive)
+  'STEP_UP_VERIFIED',
+  'PHONE_CHANGE_REQUESTED',
+  'PHONE_CHANGED',
+  'PHONE_CHANGE_CANCELLED',
+  'RECOVERY_REQUESTED',
+  'RECOVERY_APPROVED_COOLDOWN',
+  'RECOVERY_COMPLETED',
+  'RECOVERY_DENIED',
+  'DORMANT_NUMBER_RELEASED',
+  'DELETION_REQUESTED',
+  'DELETION_CANCELLED',
 ] as const;
 export const SecurityEventListSchema = z
   .object({ events: z.array(z.object({ id: z.uuid(), type: z.enum(SECURITY_EVENT_TYPES), occurredAt: IsoDateTime })) })

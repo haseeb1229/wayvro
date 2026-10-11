@@ -27,6 +27,7 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_FEATURE_DISABLED: { status: 404, message: 'This feature is not available.' },
   WAYVRO_E_CONFLICT: { status: 409, message: 'This request conflicts with the current state. Please refresh and try again.' },
   WAYVRO_E_GONE: { status: 410, message: 'This link was already used or has expired.' },
+  WAYVRO_E_RECOVERY_REQUIRED: { status: 403, message: 'Please confirm whether this is your account before continuing.' },
 };
 
 export class WayvroError extends Error {

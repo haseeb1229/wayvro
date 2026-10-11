@@ -67,3 +67,17 @@ describe('i18n catalogue', () => {
     expect(dateLocaleTag('ur-Latn')).toBe('en-PK');
   });
 });
+
+describe('P2.9 account-security copy', () => {
+  it('generic refusals and the recovery receipt never disclose whether a number or account exists', () => {
+    const disclosure = /already|registered|in use|belongs|another account|someone else|exists|استعمال میں|رجسٹرڈ|pehle se/i;
+    const neutralKeys: StringKey[] = ['phoneChange.generic', 'lostPhone.received', 'lostPhone.guidance', 'review.body'];
+    for (const locale of LOCALES) for (const key of neutralKeys) expect(disclosure.test(CATALOGUE[locale][key]), `${locale}:${key}`).toBe(false);
+  });
+
+  it('the dormant-number review shows nothing of the earlier account and promises no automatic decision', () => {
+    expect(t('en', 'review.body')).toMatch(/nothing from that account is shown/);
+    expect(t('en', 'review.claimHint')).toMatch(/in person/);
+    expect(t('en', 'lostPhone.proof.LINKED_OIDC')).toMatch(/available later/);
+  });
+});

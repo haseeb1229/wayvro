@@ -2,9 +2,10 @@ import { Stack, useRouter } from 'expo-router';
 import { useAccountState } from '../../../core/account/use-account-state';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { formatDate } from '../../../core/i18n/strings';
-import { Banner, Body, ErrorBanner, LinkRow, RadioGroup, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, ErrorBanner, LinkRow, RadioGroup, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { useLocaleOptions, useUpdateProfile } from '../profile/use-update-profile';
+import { PhoneChangeNotice } from '../security/PhoneChangeNotice';
 import { RestrictionNotices } from './RestrictionNotices';
 import { SignOutButton } from './SignOutButton';
 import { homeModel } from './home';
@@ -38,6 +39,19 @@ export function HomeScreen() {
       <Title>{home.name === null ? t('home.greetingNoName') : t('home.greeting', { name: home.name })}</Title>
       <Body muted>{t('home.memberSince', { date: formatDate(home.memberSince, locale) })}</Body>
       {view.stale ? <Banner tone="warning" text={t('common.staleData')} /> : null}
+      {home.deletionPending ? (
+        <>
+          <Banner tone="warning" text={t('deletion.pendingBanner')} />
+          <Button
+            variant="secondary"
+            label={t('deletion.pendingOpen')}
+            onPress={() => {
+              router.push('/account/delete');
+            }}
+          />
+        </>
+      ) : null}
+      <PhoneChangeNotice />
       <RestrictionNotices items={home.restrictions} />
       <Banner tone="info" text={t('home.ridesComing')} />
       {home.driverEntry === null ? null : (
@@ -59,6 +73,12 @@ export function HomeScreen() {
         label={t('sessions.title')}
         onPress={() => {
           router.push('/sessions');
+        }}
+      />
+      <LinkRow
+        label={t('accountSecurity.title')}
+        onPress={() => {
+          router.push('/account');
         }}
       />
       <LinkRow

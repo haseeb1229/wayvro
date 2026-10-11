@@ -27,21 +27,35 @@ export class AccountService {
   async state(principal: Principal): Promise<AccountState> {
     const r = await this.db.query<{
       id: string;
+      status: 'ACTIVE' | 'DELETION_PENDING';
       display_name: string | null;
       preferred_locale: 'en' | 'ur' | 'ur-Latn';
       created_at: Date;
       rider_profile_id: string;
+      step_up_until: Date | null;
     }>(
-      `select a.id, a.display_name, a.preferred_locale, a.created_at, rp.id rider_profile_id
+      `select a.id, a.status, a.display_name, a.preferred_locale, a.created_at, rp.id rider_profile_id,
+              (select s.step_up_at + interval '10 minutes' from identity.sessions s where s.id = $2 and s.step_up_at > now() - interval '10 minutes') step_up_until
          from identity.accounts a join profile.rider_profiles rp on rp.account_id = a.id
-        where a.id = $1 and a.status = 'ACTIVE'`,
-      [principal.accountId],
+        where a.id = $1 and a.status in ('ACTIVE', 'DELETION_PENDING')`,
+      [principal.accountId, principal.sessionId],
     );
     const row = r.rows[0];
     if (!row) throw new Error('authenticated account has no active state row');
     return {
-      account: { id: row.id, status: 'ACTIVE', displayName: row.display_name, preferredLocale: row.preferred_locale, createdAt: row.created_at.toISOString() },
-      session: { id: principal.sessionId, assurance: 'OTP', accessTokenExpiresAt: principal.accessExpiresAt.toISOString() },
+      account: {
+        id: row.id,
+        status: row.status,
+        displayName: row.display_name,
+        preferredLocale: row.preferred_locale,
+        createdAt: row.created_at.toISOString(),
+      },
+      session: {
+        id: principal.sessionId,
+        assurance: 'OTP',
+        accessTokenExpiresAt: principal.accessExpiresAt.toISOString(),
+        stepUpExpiresAt: row.step_up_until?.toISOString() ?? null,
+      },
       riderProfile: { id: row.rider_profile_id, status: 'ACTIVE' },
       requiredActions: await requiredActionsFor(this.db, principal.accountId),
       driver: await driverSection(this.db, principal.accountId, this.onboardingAvailable),

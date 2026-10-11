@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ErrorEnvelopeSchema } from './errors.js';
 import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
+import { ACCOUNT_SECURITY_ROUTES } from './account-security.js';
 import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
 import { ONBOARDING_ROUTES } from './compliance.js';
 import { EVIDENCE_ROUTES } from './evidence.js';
@@ -13,6 +14,7 @@ import { STAFF_ROUTES } from './staff.js';
 export const API_ROUTES: readonly RouteContract[] = [
   ...HEALTH_ROUTES,
   ...IDENTITY_ROUTES,
+  ...ACCOUNT_SECURITY_ROUTES,
   ...LEGAL_ROUTES,
   ...STAFF_ROUTES,
   ...ONBOARDING_ROUTES,

@@ -20,6 +20,7 @@ import { ageOn } from '../compliance/eligibility.js';
 import type { EvidenceSummaryPort } from '../compliance/onboarding.service.js';
 import { currentAgePolicy } from '../legal/age-policy.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome, type Refusal } from '../platform/idempotency.js';
+import { securityEvent } from '../identity/session.service.js';
 import { emitEvent } from '../platform/outbox.js';
 import type { StaffPermission } from '../staff/roles.js';
 import { citiesFor, hasRole, type StaffPrincipal } from '../staff/staff-session.js';
@@ -36,11 +37,13 @@ const DECISION_PERMISSION: Readonly<Record<Decision, StaffPermission>> = {
 
 interface CaseRow {
   id: string;
-  kind: 'INITIAL_APPLICATION' | 'RESUBMISSION' | 'APPEAL' | 'DOCUMENT_RENEWAL';
+  kind: 'INITIAL_APPLICATION' | 'RESUBMISSION' | 'APPEAL' | 'DOCUMENT_RENEWAL' | 'ACCOUNT_RECOVERY' | 'REVERIFICATION';
   status: 'OPEN' | 'CLAIMED' | 'ESCALATED' | 'DECIDED' | 'CANCELLED';
   driver_application_id: string | null;
   driver_profile_id: string | null;
   compliance_document_id: string | null;
+  phone_change_request_id: string | null;
+  dormant_number_review_id: string | null;
   appeal_id: string | null;
   city_code: string;
   priority: number;
@@ -51,6 +54,15 @@ interface CaseRow {
   created_at: Date;
   version: number;
 }
+interface AccountSubject {
+  profile_id: string;
+  account_id: string;
+  application_id: string;
+  application_state: ApplicationState;
+  requested_by_account_id: string | null;
+}
+/** Lost-phone recovery: "cancel if this wasn't you" window after the second approval (auth design §6.4). */
+const RECOVERY_COOLDOWN_HOURS = 72;
 interface RenewalSubject {
   id: string;
   status: string;
@@ -61,7 +73,7 @@ interface RenewalSubject {
   application_id: string;
   application_state: ApplicationState;
 }
-const CASE_COLUMNS = `id, kind, status, driver_application_id, driver_profile_id, compliance_document_id, appeal_id, city_code, priority, assigned_staff_id, lease_expires_at, escalated,
+const CASE_COLUMNS = `id, kind, status, driver_application_id, driver_profile_id, compliance_document_id, phone_change_request_id, dormant_number_review_id, appeal_id, city_code, priority, assigned_staff_id, lease_expires_at, escalated,
   in_person_required, created_at, version`;
 
 export interface ReviewPolicy {
@@ -319,6 +331,31 @@ export class ReviewService {
     return this.detailIn(this.db, staff, id);
   }
 
+  private async recoveryOf(q: Queryable, c: CaseRow): Promise<{ kind: 'LOST_PHONE' | 'DORMANT_NUMBER'; maskedNewPhone: string | null; requestedAt: string }> {
+    if (c.phone_change_request_id !== null) {
+      const r = (
+        await q.query<{ new_phone_last4: string | null; created_at: Date }>(
+          `select new_phone_last4, created_at from identity.phone_change_requests where id = $1`,
+          [c.phone_change_request_id],
+        )
+      ).rows[0];
+      return {
+        kind: 'LOST_PHONE',
+        maskedNewPhone: r?.new_phone_last4 ? `+92 3** *** **${r.new_phone_last4.slice(-2)}` : null,
+        requestedAt: (r?.created_at ?? c.created_at).toISOString(),
+      };
+    }
+    return { kind: 'DORMANT_NUMBER', maskedNewPhone: null, requestedAt: c.created_at.toISOString() };
+  }
+
+  private async riskTriggersOf(q: Queryable, c: CaseRow): Promise<string[]> {
+    const r = await q.query<{ reason_code: string }>(
+      `select reason_code from profile.restrictions where driver_profile_id = $1 and reason_class = 'RISK_HOLD' and status = 'ACTIVE' order by created_at`,
+      [c.driver_profile_id],
+    );
+    return r.rows.map((x) => x.reason_code);
+  }
+
   private async detailIn(q: Queryable, staff: StaffPrincipal, id: string): Promise<unknown> {
     const c = await this.loadCase(q, id);
     const appId = c ? await this.applicationOf(q, c) : null;
@@ -435,6 +472,8 @@ export class ReviewService {
       inPersonRequired: c.in_person_required,
       leaseExpiresAt: c.lease_expires_at?.toISOString() ?? null,
       subjectDocumentId: c.compliance_document_id,
+      ...(c.kind === 'ACCOUNT_RECOVERY' ? { recovery: await this.recoveryOf(q, c) } : {}),
+      ...(c.kind === 'REVERIFICATION' ? { riskTriggers: await this.riskTriggersOf(q, c) } : {}),
       application: {
         id: app.id,
         state: app.state,
@@ -524,6 +563,7 @@ export class ReviewService {
       const leaseLive = c.status === 'CLAIMED' && c.assigned_staff_id === staff.staffId && (c.lease_expires_at?.getTime() ?? 0) > Date.now();
       if (!leaseLive || c.version !== input.expectedVersion) return failure('WAYVRO_E_CONFLICT');
       if (c.kind === 'DOCUMENT_RENEWAL') return this.decideRenewal(tx, staff, c, input, evidence);
+      if (c.kind === 'ACCOUNT_RECOVERY' || c.kind === 'REVERIFICATION') return this.decideDriverAccount(tx, staff, c, input, evidence);
       if (!c.driver_application_id) return failure('WAYVRO_E_NOT_FOUND');
       const app = (
         await tx.query<{
@@ -810,7 +850,9 @@ export class ReviewService {
       const result =
         c.kind === 'DOCUMENT_RENEWAL'
           ? await this.secondApproveRenewal(tx, staff, c, outcome, record)
-          : await this.secondApproveApplication(tx, staff, c, decisionId, outcome, record);
+          : c.kind === 'ACCOUNT_RECOVERY'
+            ? await this.secondApproveRecovery(tx, staff, c, outcome, record)
+            : await this.secondApproveApplication(tx, staff, c, decisionId, outcome, record);
       if (result.kind === 'error') return result;
       if (outcome === 'REJECTED') {
         // the approval does not take effect: the case goes back to the queue for a fresh review
@@ -894,6 +936,175 @@ export class ReviewService {
       const open = await this.caseSignals(tx, c, subject.application_id, true);
       await this.finaliseRenewal(tx, staff, c, subject, new Map(open.map((r) => [r.id, 'CLEARED' as const])));
       await this.emitRenewalDecided(tx, subject, 'APPROVE', ['ALL_CHECKS_CONFIRMED']);
+    }
+    return { kind: 'ok', applicationState: subject.application_state };
+  }
+
+  /** The driver account behind an ACCOUNT_RECOVERY or REVERIFICATION case (profile locked). */
+  private async accountSubject(tx: pg.PoolClient, c: CaseRow): Promise<AccountSubject | null> {
+    const r = await tx.query<AccountSubject>(
+      `select p.id profile_id, p.account_id, p.application_id, a.state application_state,
+              (select pc.requested_by_account_id from identity.phone_change_requests pc where pc.id = $2) requested_by_account_id
+         from compliance.driver_profiles p join compliance.driver_applications a on a.id = p.application_id
+        where p.id = $1 for no key update of p`,
+      [c.driver_profile_id, c.phone_change_request_id],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  /**
+   * ACCOUNT_RECOVERY (S12/K17; auth design §6.4): a credential moves only after an in-person identity check
+   * (REQUIRE_IN_PERSON first — a fresh guided capture for recovery is not built; EG-10), an APPROVE by a reviewer and a
+   * SECOND senior approver; the lost-phone move then waits a 72 h cooldown (worker). REJECT denies the recovery.
+   * REVERIFICATION (founder Q-14): APPROVE lifts the temporary RISK_HOLD; REJECT adds an appealable DRIVER_ROLE
+   * restriction (REVERIFICATION_FAILED). Neither kind touches the application or other cases; NEEDS_INFO does not apply.
+   */
+  private async decideDriverAccount(
+    tx: pg.PoolClient,
+    staff: StaffPrincipal,
+    c: CaseRow,
+    input: DecisionInput,
+    evidence: EvidenceSummaryPort,
+  ): Promise<Outcome> {
+    const subject = await this.accountSubject(tx, c);
+    if (!subject) return failure('WAYVRO_E_NOT_FOUND');
+    if (staff.consumerAccountId !== null && (staff.consumerAccountId === subject.account_id || staff.consumerAccountId === subject.requested_by_account_id)) {
+      await this.deny(tx, staff, c.id, 'CONFLICT_OF_INTEREST');
+      return failure('WAYVRO_E_FORBIDDEN');
+    }
+    if (input.decision === 'NEEDS_INFO') return failure('WAYVRO_E_VALIDATION');
+    const accepted = (await evidence.evidenceStates(subject.application_id)).filter((e) => e.status === 'ACCEPTED');
+    const invalid = this.validate(input, new Set(accepted.map((e) => e.evidenceId)));
+    if (invalid) return failure(invalid);
+    if ((input.signalResolutions?.length ?? 0) > 0) return failure('WAYVRO_E_VALIDATION');
+    const recovery = c.kind === 'ACCOUNT_RECOVERY';
+    if (recovery && input.decision === 'APPROVE' && !c.in_person_required) return failure('WAYVRO_E_CONFLICT', { reasonCodes: ['IN_PERSON_CHECK_REQUIRED'] });
+    const requiresSecond = recovery && input.decision === 'APPROVE';
+    const decisionId = await this.recordDecision(tx, staff, c.id, input, requiresSecond);
+    let caseStatus: 'OPEN' | 'ESCALATED' | 'DECIDED' = 'DECIDED';
+    switch (input.decision) {
+      case 'ESCALATE':
+      case 'REQUIRE_IN_PERSON':
+        caseStatus = await this.requeue(tx, c.id, input.decision);
+        break;
+      case 'APPROVE':
+        if (requiresSecond) caseStatus = await this.requeue(tx, c.id, 'AWAIT_SECOND_APPROVAL');
+        else await this.liftRiskHolds(tx, staff, c, subject);
+        break;
+      default:
+        if (recovery) await this.denyRecovery(tx, c, subject);
+        else await this.failReverification(tx, staff, c, subject);
+    }
+    await this.auditDecision(tx, staff, c.id, input.decision);
+    return success(201, { decisionId, caseStatus, applicationState: subject.application_state, pendingSecondApproval: requiresSecond });
+  }
+
+  private async liftRiskHolds(tx: pg.PoolClient, staff: StaffPrincipal, c: CaseRow, subject: AccountSubject): Promise<void> {
+    const lifted = await tx.query<{ id: string }>(
+      `update profile.restrictions set status = 'LIFTED', lifted_at = now(), lifted_by_staff_id = $2, lift_reason_code = 'REVERIFIED', version = version + 1
+        where driver_profile_id = $1 and reason_class = 'RISK_HOLD' and status = 'ACTIVE' returning id`,
+      [subject.profile_id, staff.staffId],
+    );
+    for (const r of lifted.rows) {
+      await tx.query(
+        `insert into profile.restriction_events (id, restriction_id, event, actor_staff_id, reason_code) values ($1, $2, 'LIFTED', $3, 'REVERIFIED')`,
+        [uuidv7(), r.id, staff.staffId],
+      );
+      await emitEvent(tx, {
+        type: 'restriction.changed.v1',
+        aggregateType: 'profile.restriction',
+        aggregateId: r.id,
+        accountId: subject.account_id,
+        payload: { status: 'LIFTED' },
+      });
+    }
+    await this.closeCase(tx, c.id);
+  }
+
+  private async failReverification(tx: pg.PoolClient, staff: StaffPrincipal, c: CaseRow, subject: AccountSubject): Promise<void> {
+    const id = uuidv7();
+    await tx.query(
+      `insert into profile.restrictions (id, scope, driver_profile_id, reason_code, reason_class, status, appealable, created_by_staff_id)
+       values ($1, 'DRIVER_ROLE', $2, 'REVERIFICATION_FAILED', 'COMPLIANCE', 'ACTIVE', true, $3)`,
+      [id, subject.profile_id, staff.staffId],
+    );
+    await tx.query(
+      `insert into profile.restriction_events (id, restriction_id, event, actor_staff_id, reason_code) values ($1, $2, 'CREATED', $3, 'REVERIFICATION_FAILED')`,
+      [uuidv7(), id, staff.staffId],
+    );
+    await emitEvent(tx, {
+      type: 'restriction.changed.v1',
+      aggregateType: 'profile.restriction',
+      aggregateId: id,
+      accountId: subject.account_id,
+      payload: { status: 'ACTIVE' },
+    });
+    await this.closeCase(tx, c.id);
+  }
+
+  private async denyRecovery(tx: pg.PoolClient, c: CaseRow, subject: AccountSubject): Promise<void> {
+    if (c.phone_change_request_id !== null) {
+      await tx.query(
+        `update identity.phone_change_requests set status = 'DENIED', updated_at = now(), version = version + 1 where id = $1 and status = 'MANUAL_REVIEW'`,
+        [c.phone_change_request_id],
+      );
+    } else {
+      await tx.query(
+        `update identity.dormant_number_reviews set status = 'DENIED', resolved_at = now(), version = version + 1 where id = $1 and status = 'IN_REVIEW'`,
+        [c.dormant_number_review_id],
+      );
+    }
+    await securityEvent(tx, subject.account_id, 'RECOVERY_DENIED', null);
+    await emitEvent(tx, {
+      type: 'account.recovery.decided.v1',
+      aggregateType: 'compliance.review_case',
+      aggregateId: c.id,
+      accountId: subject.account_id,
+      payload: { decision: 'REJECT' },
+    });
+    await this.closeCase(tx, c.id);
+  }
+
+  /** Second senior approval of a recovery: the lost-phone move enters its cooldown; a dormant-number claim resolves. */
+  private async secondApproveRecovery(
+    tx: pg.PoolClient,
+    staff: StaffPrincipal,
+    c: CaseRow,
+    outcome: 'APPROVED' | 'REJECTED',
+    record: () => Promise<void>,
+  ): Promise<{ readonly kind: 'ok'; readonly applicationState: string } | Refusal> {
+    const subject = await this.accountSubject(tx, c);
+    if (!subject) return failure('WAYVRO_E_CONFLICT');
+    if (staff.consumerAccountId !== null && (staff.consumerAccountId === subject.account_id || staff.consumerAccountId === subject.requested_by_account_id)) {
+      await this.deny(tx, staff, c.id, 'CONFLICT_OF_INTEREST');
+      return failure('WAYVRO_E_FORBIDDEN');
+    }
+    await record();
+    if (outcome === 'APPROVED') {
+      if (c.phone_change_request_id !== null) {
+        const moved = await tx.query(
+          `update identity.phone_change_requests set status = 'COOLDOWN', cooldown_until = now() + ($2::int * interval '1 hour'), updated_at = now(), version = version + 1
+            where id = $1 and status = 'MANUAL_REVIEW'`,
+          [c.phone_change_request_id, RECOVERY_COOLDOWN_HOURS],
+        );
+        if (moved.rowCount !== 1) return failure('WAYVRO_E_CONFLICT');
+        await securityEvent(tx, subject.account_id, 'RECOVERY_APPROVED_COOLDOWN', null);
+      } else {
+        const resolved = await tx.query(
+          `update identity.dormant_number_reviews set status = 'RESOLVED_OWNER', resolved_at = now(), version = version + 1 where id = $1 and status = 'IN_REVIEW'`,
+          [c.dormant_number_review_id],
+        );
+        if (resolved.rowCount !== 1) return failure('WAYVRO_E_CONFLICT');
+        await securityEvent(tx, subject.account_id, 'RECOVERY_COMPLETED', null);
+      }
+      await emitEvent(tx, {
+        type: 'account.recovery.decided.v1',
+        aggregateType: 'compliance.review_case',
+        aggregateId: c.id,
+        accountId: subject.account_id,
+        payload: { decision: 'APPROVE' },
+      });
+      await this.closeCase(tx, c.id);
     }
     return { kind: 'ok', applicationState: subject.application_state };
   }

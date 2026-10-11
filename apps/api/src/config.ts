@@ -77,6 +77,8 @@ const identityPolicySchema = z.object({
   SESSION_REFRESH_REPLAY_LEEWAY_SECONDS: int(30, 1, 120),
   SESSION_REFRESHES_PER_HOUR: int(120, 1, 100000),
   ACCOUNT_DORMANCY_RISK_DAYS: int(90, 1, 3650),
+  // U06 grace period before a deletion request is processed (14 days proposed; pending counsel, EG-16)
+  ACCOUNT_DELETION_GRACE_DAYS: int(14, 1, 90),
   IDEMPOTENCY_TTL_SECONDS: int(86_400, 60, 604_800),
   IDEMPOTENCY_SESSION_RESPONSE_TTL_SECONDS: int(600, 60, 86_400),
 });

@@ -19,6 +19,7 @@ import type pg from 'pg';
 import type { ApiConfig } from '../config.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
 import type { OtpAbuseControls, SendDecision } from './otp-abuse.js';
+import type { OtpPurpose } from './otp-verify.js';
 
 export interface OtpDependencies {
   readonly db: pg.Pool;
@@ -51,6 +52,9 @@ function normalise(phone: string): PakistanMobileE164 {
 }
 
 interface IssueInput {
+  readonly purpose: OtpPurpose;
+  /** Requesting session for STEP_UP and PHONE_CHANGE_NEW; null for SIGN_IN and ACCOUNT_DELETION_WEB. */
+  readonly sessionId: string | null;
   readonly e164: PakistanMobileE164;
   readonly locale: OtpLocale;
   readonly installation: Buffer;
@@ -89,7 +93,10 @@ export class OtpService {
       },
       async (tx) => {
         const decision = await this.deps.abuse.admitSend(this.sendContext(e164, installation, ctx.clientIp));
-        return success(202, await this.issue(tx, { e164, locale: input.locale, installation, resendCount: 0, supersedes: null, decision }));
+        return success(
+          202,
+          await this.issue(tx, { purpose: 'SIGN_IN', sessionId: null, e164, locale: input.locale, installation, resendCount: 0, supersedes: null, decision }),
+        );
       },
     );
   }
@@ -144,10 +151,41 @@ export class OtpService {
         await tx.query(`update identity.otp_challenges set status = 'SUPERSEDED' where id = $1 and status in ('ISSUED', 'DELIVERY_FAILED')`, [challengeId]);
         return success(
           202,
-          await this.issue(tx, { e164, locale: row.locale, installation, resendCount: row.resend_count + 1, supersedes: challengeId, decision }),
+          await this.issue(tx, {
+            purpose: 'SIGN_IN',
+            sessionId: null,
+            e164,
+            locale: row.locale,
+            installation,
+            resendCount: row.resend_count + 1,
+            supersedes: challengeId,
+            decision,
+          }),
         );
       },
     );
+  }
+
+  /**
+   * Issues a code for another purpose inside the caller's transaction (step-up, phone change, web deletion), with the
+   * same send limits. `send: false` creates a SUPPRESSED challenge (no code exists) with an identical response.
+   */
+  async issueFor(
+    tx: pg.PoolClient,
+    input: {
+      purpose: Exclude<OtpPurpose, 'SIGN_IN'>;
+      sessionId: string | null;
+      e164: PakistanMobileE164;
+      locale: OtpLocale;
+      installation: Buffer;
+      send: boolean;
+    },
+    clientIp: string,
+  ): Promise<OtpChallenge> {
+    this.requireDelivery();
+    const admitted = await this.deps.abuse.admitSend(this.sendContext(input.e164, input.installation, clientIp));
+    const decision: SendDecision = input.send ? admitted : { send: false, reason: 'NO_ACCOUNT' };
+    return this.issue(tx, { ...input, resendCount: 0, supersedes: null, decision });
   }
 
   private async issue(tx: pg.PoolClient, input: IssueInput): Promise<OtpChallenge> {
@@ -161,13 +199,13 @@ export class OtpService {
     // A new code supersedes every still-live code for the same phone, purpose and installation.
     await tx.query(
       `update identity.otp_challenges set status = 'SUPERSEDED'
-        where phone_lookup_key_version = $1 and phone_lookup_hash = $2 and purpose = 'SIGN_IN' and installation_hash = $3 and status = 'ISSUED'`,
-      [lookup.version, lookup.digest, input.installation],
+        where phone_lookup_key_version = $1 and phone_lookup_hash = $2 and purpose = $4 and installation_hash = $3 and status = 'ISSUED'`,
+      [lookup.version, lookup.digest, input.installation, input.purpose],
     );
     const inserted = await tx.query<{ expires_at: Date; next_resend_at: Date }>(
       `insert into identity.otp_challenges (id, purpose, phone_lookup_key_version, phone_lookup_hash, phone_envelope, code_mac, mac_key_version, channel, locale,
-                                            installation_hash, status, max_attempts, resend_count, next_resend_at, expires_at, supersedes_id)
-       values ($1, 'SIGN_IN', $2, $3, $4, $5, $6, 'SMS', $7, $8, $9, $10, $11, now() + ($12::int * interval '1 second'), now() + ($13::int * interval '1 second'), $14)
+                                            installation_hash, status, max_attempts, resend_count, next_resend_at, expires_at, supersedes_id, session_id)
+       values ($1, $15, $2, $3, $4, $5, $6, 'SMS', $7, $8, $9, $10, $11, now() + ($12::int * interval '1 second'), now() + ($13::int * interval '1 second'), $14, $16)
        returning expires_at, next_resend_at`,
       [
         id,
@@ -184,6 +222,8 @@ export class OtpService {
         cooldown,
         p.OTP_TTL_SECONDS,
         input.supersedes,
+        input.purpose,
+        input.sessionId,
       ],
     );
     if (input.decision.send) {

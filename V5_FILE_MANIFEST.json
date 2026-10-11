@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 103,
+  "file_count_excluding_manifest": 104,
   "files": [
     {
       "path": ".gitattributes",
@@ -280,6 +280,11 @@
       "sha256": "6bafd5d7f5ea7b674e8197b2aabc28eb3b8fe875dda97576ed7c153d528ba200"
     },
     {
+      "path": "docs/operations/incident-playbooks.md",
+      "bytes": 7631,
+      "sha256": "c0fddd2ddab30b1d62894e1e9eb56b2d954758dfa5ee7f072adb5e24c2c3738e"
+    },
+    {
       "path": "docs/phase0/PHASE0_ADR_BACKLOG.md",
       "bytes": 18073,
       "sha256": "946eb15b24034f66549ff3651cf0f91826b9fc374dd1acfd0eb55fa6480dd3dc"
@@ -446,8 +451,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_API_AND_SURFACES.md",
-      "bytes": 13773,
-      "sha256": "9597dd606e9e8a7ede00df713cd63168b8738d89a5e300fcdf4fe31719fc225d"
+      "bytes": 13917,
+      "sha256": "c06ab18eaab213a6c4d92a12859b9fdd7eb439eeb786a948b08f558deb06f8ad"
     },
     {
       "path": "docs/phase2/PHASE2_AUTH_SESSION_DESIGN.md",
@@ -456,8 +461,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md",
-      "bytes": 42247,
-      "sha256": "507208ec2965321a537d975fe3a68d08cbd99e4162cf65c4018996800ed68610"
+      "bytes": 42602,
+      "sha256": "28f03651364bad01852cbd2b76634fdc164efa62056a919c9f7a7ccd770a29b9"
     },
     {
       "path": "docs/phase2/PHASE2_DPIA_INPUT_PACK.md",
@@ -476,8 +481,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
-      "bytes": 41505,
-      "sha256": "4c80ca82944e46c86a8b1faa7b4f04984052515db6eddc59f27099e63195955c"
+      "bytes": 52467,
+      "sha256": "b713e44346462d981cdfd3b59a8ed7829ae209bac678e0c2c2cec69d52ae1de6"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",

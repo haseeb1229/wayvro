@@ -145,12 +145,17 @@ describe('migration lifecycle (every migration)', () => {
       'compliance.service_capabilities',
       'compliance.vehicle_affiliations',
       'compliance.vehicles',
+      'identity.account_deletion_requests',
       'identity.account_devices',
       'identity.account_phones',
       'identity.accounts',
       'identity.age_declarations',
       'identity.consent_records',
+      'identity.deletion_request_blockers',
+      'identity.deletion_retention_exceptions',
+      'identity.dormant_number_reviews',
       'identity.otp_challenges',
+      'identity.phone_change_requests',
       'identity.phone_lookup_index',
       'identity.refresh_tokens',
       'identity.security_events',
@@ -310,7 +315,9 @@ describe('grants executed as LOGIN members of each restricted role', () => {
       `insert into audit.audit_seals (first_seq, last_seq, leaf_count, merkle_root, seal_hash, algorithm) values (900, 900, 1, '\\x00', '\\x00', 'sha256-merkle-v1')`,
       `select * from platform.jobs`,
       `delete from identity.accounts`,
-      `update identity.account_phones set status = 'VERIFIED'`,
+      // 0007: the API may release a phone (status/reason/time) but never rewrites or erases the number itself
+      `update identity.account_phones set phone_envelope = null`,
+      `update identity.account_phones set account_id = account_id`,
       `delete from identity.sessions`,
       `truncate identity.sessions`,
       `select * from platform.key_rotations`,
@@ -319,7 +326,7 @@ describe('grants executed as LOGIN members of each restricted role', () => {
     for (const sql of denied) expect(await pgCode(api.query(sql)), sql).toBe('42501');
   });
 
-  it('wayvro_worker: jobs and rotation tables; envelope column only on account phones; no session access', async () => {
+  it('wayvro_worker: jobs and rotation tables; phone envelope/release columns only; session status columns only', async () => {
     const worker = await poolAs('wayvro_worker');
     const seeded = await seedAccount(owner);
     await worker.query(`update identity.account_phones set phone_envelope = $1 where id = $2`, [bytes(48), seeded.phoneId]);
@@ -331,10 +338,12 @@ describe('grants executed as LOGIN members of each restricted role', () => {
     );
     const denied = [
       `update identity.account_phones set account_id = account_id`,
-      `select phone_last4 from identity.account_phones`,
+      // 0007 grants the worker the release/erasure columns (recovery completion, deletion) — nothing else
+      `select * from identity.account_devices`,
       `select * from identity.sessions`,
+      `select access_token_hash from identity.sessions`,
       `select * from identity.refresh_tokens`,
-      `update identity.accounts set display_name = 'x'`,
+      `update identity.accounts set preferred_locale = 'ur'`,
       `select * from audit.audit_events`,
     ];
     for (const sql of denied) expect(await pgCode(worker.query(sql)), sql).toBe('42501');

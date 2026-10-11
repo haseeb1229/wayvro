@@ -132,7 +132,7 @@ describe('driver API on the contract schemas', () => {
     expect(h.body(0)).toEqual({ expectedVersion: 4 });
   });
 
-  it('capture challenge decline, renewal start/submission and appeals', async () => {
+  it('capture challenge decline and renewal start/submission', async () => {
     const h = await harness((path) => {
       if (path.endsWith('/declines')) return jsonResponse(200, { status: 'DECLINED_ACCESSIBILITY', replacement: null });
       if (path.endsWith('/renewals') || path.endsWith('/renewal-submission'))
@@ -144,15 +144,7 @@ describe('driver API on the contract schemas', () => {
           evidenceKinds: ['LICENCE_FRONT', 'LICENCE_BACK'],
           status: path.endsWith('/renewals') ? 'DRAFT' : 'IN_REVIEW',
         });
-      return jsonResponse(201, {
-        id: DRIVER_IDS.appeal,
-        subject: 'REVIEW_DECISION',
-        subjectId: DRIVER_IDS.decision,
-        status: 'SUBMITTED',
-        outcomeReasonCode: null,
-        createdAt: '2026-10-11T09:00:00.000Z',
-        decidedAt: null,
-      });
+      return jsonResponse(404, errorBody('WAYVRO_E_NOT_FOUND'));
     });
     expect((await h.api.declineCaptureChallenge(DRIVER_IDS.application, DRIVER_IDS.challenge, 'NONE_ACCESSIBLE')).status).toBe('DECLINED_ACCESSIBILITY');
     expect(h.body(0)).toEqual({ choice: 'NONE_ACCESSIBLE' });
@@ -160,8 +152,6 @@ describe('driver API on the contract schemas', () => {
     expect(h.calls[1]?.path).toBe(`/v1/driver/documents/${DRIVER_IDS.licenceDoc}/renewals`);
     expect((await h.api.submitRenewal(DRIVER_IDS.renewalDoc)).status).toBe('IN_REVIEW');
     expect(h.calls[2]?.path).toBe(`/v1/driver/documents/${DRIVER_IDS.renewalDoc}/renewal-submission`);
-    expect((await h.api.createAppeal({ reviewDecisionId: DRIVER_IDS.decision, statement: 'Please look again at my photos.' })).status).toBe('SUBMITTED');
-    expect(h.calls[3]?.path).toBe('/v1/account/appeals');
   });
 
   it('feature switched off and policy acceptance refusals keep their codes', async () => {

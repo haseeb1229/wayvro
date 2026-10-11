@@ -1,5 +1,4 @@
 import {
-  AppealCreateRequestSchema,
   ApplicationUpdateRequestSchema,
   DocumentClaimRequestSchema,
   DocumentRenewalRequestSchema,
@@ -8,7 +7,7 @@ import {
   type DriverApplication,
 } from '@wayvro/contracts';
 import { parseDateParts, toAsciiDigits, type DateParts } from '../../../core/input/digits';
-import type { AppealRequest, ClaimsUpdate, DocumentClaim, RenewalClaim, VehicleCreate, VehicleUpdate } from '../api/driver-api';
+import type { ClaimsUpdate, DocumentClaim, RenewalClaim, VehicleCreate, VehicleUpdate } from '../api/driver-api';
 import type { DriverStringKey } from '../i18n/driver-strings';
 import type { DocumentFieldHints } from './field-hints';
 
@@ -230,18 +229,4 @@ export function buildRenewalClaim(hints: DocumentFieldHints, form: DocumentForm,
   if (Object.keys(errors).length > 0 || values.expiresOn === undefined) return { ok: false, errors: { expiresOn: 'claim.expiryRequired', ...errors } };
   const request: RenewalClaim = { ...values, expiresOn: values.expiresOn };
   return DocumentRenewalRequestSchema.safeParse(request).success ? { ok: true, request } : { ok: false, errors: { expiresOn: 'claim.expiryInvalid' } };
-}
-
-// ── appeal (K05) ─────────────────────────────────────────────────────────────────────────────────────────────────
-
-const APPEAL_MIN = 10;
-export const APPEAL_MAX = 2000;
-
-export type AppealTarget = { readonly reviewDecisionId: string } | { readonly restrictionId: string };
-
-export function buildAppeal(target: AppealTarget, statement: string): FormResult<AppealRequest, 'statement'> {
-  const text = statement.trim();
-  if (text.length < APPEAL_MIN || text.length > APPEAL_MAX) return { ok: false, errors: { statement: 'appeal.invalid' } };
-  const request: AppealRequest = { ...target, statement: text };
-  return AppealCreateRequestSchema.safeParse(request).success ? { ok: true, request } : { ok: false, errors: { statement: 'appeal.invalid' } };
 }

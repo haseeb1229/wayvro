@@ -16,7 +16,8 @@ The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for 
 | CI fixes | `d49a2ae`, `86bd13a` | osv runtime exception (decode-uri-component, expires 2026-12-31); Android job builds the workspace packages the app imports. **CI run 38097638550 on `86bd13a`: all five jobs green** (quality, integration, security, Android, web E2E) |
 | P2.6 | `c42c2eb` | evidence vault, upload pipeline, isolated sanitiser, ClamAV, staff evidence views (ADR-041). **CI run 38101743619: all five jobs green** |
 | P2.7 | `4dd5a39` | manual review, decisions, second approvals, appeals, expiry monitoring, outbox relay + first consumer, reviewer UI. **CI run 38124807942: all five jobs green** |
-| P2.8 | (this commit) | Driver/Partner onboarding in the ONE app (camera, controlled import, upload queue, checklist, status, compliance view), document renewal end to end, evidence discard crypto-shredding fix |
+| P2.8 | `de2e578` | Driver/Partner onboarding in the ONE app (camera, controlled import, upload queue, checklist, status, compliance view), document renewal end to end, evidence discard crypto-shredding fix. **CI run 38132775729: all five jobs green** |
+| P2.9 | (this commit) | step-up, phone change, "this wasn't me", lost-phone recovery (strong proof only), dormant-number review, driver risk holds + re-verification, account deletion (app + web), incident playbooks |
 
 Intermediate checkpoint commits are not individually CI-verified. CI runs on the pushed HEAD.
 
@@ -287,3 +288,58 @@ The mobile slice was built in parallel by a delegated agent inside `apps/wayvro-
 - **No device or emulator:** camera and permission prompts, the Photo Picker, the PUT upload, file deletion, lazy route loading at runtime, RTL, dynamic type, screen readers — all NOT RUN; no iOS build; no cross-mode regression on a device.
 - No end-to-end run of the app against the real API and vault.
 - Urdu and Roman-Urdu copy pending native review; real reviewers and the in-person route (EG-20).
+
+## P2.9 — Recovery, phone change, SIM safeguards, risk holds, deletion and hardening
+
+**IDs:** A05, A11 (notices), K08 (SIM-swap heuristics), K17, S12, S13, U06, K11 (evidence deletion), K13 (adversarial suite completion), V07 (full suite), Q06 (playbooks).
+
+Built here: migration 0007, the API, the worker jobs and the docs. Delegated agents built the mobile account-security screens (inside `apps/wayvro-mobile/**` only), plus the web-public deletion page and the web-ops case additions (inside `apps/web-public/**`, `apps/web-ops/**` and `tests/e2e-web/**` only). Both were reviewed and gated here.
+
+| Area | Implementation |
+|---|---|
+| Migration | `0007_recovery_deletion`:<br>• widened CHECKs: account `DELETION_PENDING`/`DELETED` (tombstone: `deleted_at`, no display name); phone `RELEASED` with reason/time; number erased only for `ACCOUNT_DELETED`; OTP purposes `STEP_UP`/`PHONE_CHANGE_NEW` (bound to a session) and `ACCOUNT_DELETION_WEB`; session `step_up_at` + new revoke reasons; new security event types;<br>• `identity.phone_change_requests` (one open per account; kind binds its proof; numbers erasable only once closed);<br>• `identity.dormant_number_reviews` (one open per session);<br>• `identity.account_deletion_requests` + `deletion_request_blockers` (one open blocker per code) + `deletion_retention_exceptions`;<br>• review-case kinds `ACCOUNT_RECOVERY` (driver profile + exactly one of the two recovery subjects) and `REVERIFICATION` (one open per profile);<br>• least-privilege grants; the vault's unused review-case column grant revoked |
+| Step-up | `POST /v1/account/step-ups` → code to the CURRENT phone, bound to the session → 10 minutes. Required for a phone change and for deletion, and accepted for revoke-all from a young session. `AccountState.session.stepUpExpiresAt` |
+| Phone change | Stepped-up session → code to the NEW number (session-bound) → old phone RELEASED, new one current, other sessions revoked, security events, outbox. A number current on another account fails with the same generic 409 as any conflict (no merge, nothing recorded). **SIM-swap pattern:** a device first verified within 24 h, on an account that has older devices, waits 24 h (`NEW_DEVICE_COOLDOWN` + `retryAfterSeconds`) |
+| "This wasn't me" | `GET /v1/account/phone-changes/current` + cancellation, both restricted-ok, from any session of the account (also for recoveries in cooldown) |
+| Lost-phone recovery | Strong proof only, from the new number's session. `DRIVER_KYC` opens a `RECOVERY_DRIVER_KYC` request + `ACCOUNT_RECOVERY` case when the caller is a clean account and the lost number belongs to a driver account. APPROVE needs a prior REQUIRE_IN_PERSON and ALWAYS a second senior approver, then a 72 h COOLDOWN in which the owner can cancel; the worker then moves the number and signs both accounts out everywhere. `LINKED_OIDC` arrives with P2.10. The caller always sees `RECEIVED`. Rider-only accounts cannot be moved (new-account guidance) |
+| Dormant-number review (S12) | A sign-in on a dormant account (`ACCOUNT_DORMANCY_RISK_DAYS`, provisional 90) from an unknown installation gets a RESTRICTED session. Every route except the review and sign-out answers `WAYVRO_E_RECOVERY_REQUIRED` and exposes nothing. Dormancy and "unknown installation" persist while the review is open, so a second sign-in cannot bypass it.<br>• **I_AM_NEW:** number RELEASED (`RECYCLED_NUMBER_NEW_OWNER`), old account appealable `SECURITY_HOLD` + every session revoked, a clean new account on the same installation;<br>• **THIS_IS_MY_ACCOUNT:** driver accounts only, through an `ACCOUNT_RECOVERY` case (same in-person + second-approver rules) |
+| Risk policy (founder Q-14) | Triggers wired: a driver's phone change (`RISK_PHONE_CHANGED`) and device velocity (≥ 3 new installations in 7 days, `RISK_DEVICE_VELOCITY`). Effect: a system-created, reason-coded, appealable DRIVER_ROLE `RISK_HOLD` (72 h, auto-expiring) + one REVERIFICATION case. Rider mode is unaffected. Reviewer APPROVE lifts the hold; REJECT adds an appealable `REVERIFICATION_FAILED` restriction; NEEDS_INFO does not apply |
+| Deletion (U06) | **App:** fresh step-up → `GRACE` (`ACCOUNT_DELETION_GRACE_DAYS`, 14 proposed, pending counsel) or `BLOCKED` with explicit blockers (`LEGAL_HOLD`, `RECOVERY_IN_PROGRESS`, `OPEN_SAFETY_OR_FRAUD_INVESTIGATION`). The account becomes `DELETION_PENDING` (restricted session; cancel within grace). Retention exceptions list what is kept and why (placeholder bases, EG-16).<br>**Web:** `/account-deletion` on web-public → same-origin route handlers → the public API routes. Identical answers whether or not an account exists (no SMS to a number without an account; SUPPRESSED challenge); per-IP limit<br>**Worker `identity.deletion-processing`:** re-evaluates blockers incl. evidence legal holds; due requests: evidence crypto-shredded and deleted from storage (K11), numbers erased, lookups deleted, sessions revoked, open applications/cases/appeals closed, account tombstoned. Registered only with the vault and storage bound |
+| Worker `identity.recovery-completion` | Completes due cooldowns (or lapses them when the number is no longer the requester's). Expires stale recoveries and cancels their cases |
+| Identity core | Shared OTP verification for every purpose (one code path, purpose + binding checked, generic refusals); phone release / session revocation and deletion blockers/retention shared by the API and the worker; key rotation skips erased envelopes and covers the change-request number |
+| Mobile (agent) | Step-up panel (confirm before one retry with a new key); phone change; "this wasn't me" notice; dormant-number review screen (`switchAccount` replaces tokens and wipes local data); lost-phone recovery; deletion screens + `DELETION_PENDING` banner; rider-side restriction appeal (V13, closing the P2.8 open item). Copy tests forbid disclosure wording |
+| web-ops (agent) | Case-kind labels; recovery section with the in-person + second-approver note; risk-trigger labels |
+| Q06 | `docs/operations/incident-playbooks.md`: OTP pumping, consumer and staff compromise, evidence exposure (U09 counsel-dependent), provider outages, key-rotation emergency, recycled-number takeover. Each playbook marks what is not built or is externally gated. Not rehearsed (Phase 7 drills) |
+
+**Deviations / decisions (recorded for review):**
+- **New table `identity.dormant_number_reviews`** (not in the data model): the dormant-number review needs a subject for its state and for the `ACCOUNT_RECOVERY` case. Additive.
+- **Recovery answers `RECEIVED` for everyone** instead of `WAYVRO_E_RECOVERY_REQUIRED` for rider-only accounts (API doc §2): this prevents the endpoint from revealing which numbers belong to driver accounts. The new-account guidance is shown to everyone.
+- **Recovery approval needs REQUIRE_IN_PERSON first:** a fresh guided capture compared against vault evidence is **not built** (it needs vault support for recovery evidence and the DPIA, EG-10). Until then the in-person identity check is the strong proof. The in-person process itself is EG-20.
+- **A recovered number triggers no RISK_HOLD:** the in-person check plus a second approver already re-verified the person.
+- **Deletion closes open driver work:** non-terminal applications become WITHDRAWN and open cases CANCELLED (system action on the owner's request). Review decisions and reason codes are kept as retention exceptions.
+- **Unused states not created:** the phone-change kinds/states and the deletion `REQUESTED` state that nothing produces were left out (P2.10 adds the OIDC kind additively).
+- **Suppression reason `NO_ACCOUNT`** (audit only) for the web deletion path.
+- **Not built:** a staff route to revoke a consumer's sessions directly and the support summary (a `SECURITY_HOLD` restriction covers containment); push/SMS security notices (Phase 4 / EG-01).
+
+**Evidence (local gates on the P2.9 tree):**
+
+| Suite | Result |
+|---|---|
+| `packages/db/test/recovery-deletion.integration.test.ts` (widened CHECKs, one open request/review/deletion, erasure rules, per-kind case subjects, grants incl. the revoked vault grant) | 6 PASS; db suite 67 PASS (identity-core inventory/grant assertions updated for 0007) |
+| `packages/identity-core/test/account-lifecycle.integration.test.ts` (phone release, session revocation, deletion blockers incl. expired restrictions, retention exceptions) | 4 PASS; identity-core 23 PASS |
+| `apps/api/test/account-security.integration.test.ts` (step-up binding; phone change; generic conflict; new-device cooldown; "this wasn't me"; driver RISK_HOLD + REVERIFICATION; DRIVER_KYC recovery with in-person + second senior + cooldown; dormant-number review incl. re-sign-in bypass attempt and I_AM_NEW; dormant driver claim; deletion app/blocked/web) | 11 PASS |
+| `apps/api/test/account-security-rejections.integration.test.ts` (purpose/session-bound codes, stale requests, foreign ids, recovery attempt limit and non-clean callers, recovery REJECT and rejected second approval, re-verification REJECT, deletion/review refusals, browser-bound web codes) | 6 PASS |
+| API integration suite (all files, coverage thresholds) | 161 PASS (statements 91.2 %, branches 81.0 %) |
+| `apps/worker/test/account-jobs.integration.test.ts` (number moved after cooldown, both accounts signed out; lapse; stale expiry; blockers incl. vault legal hold; evidence crypto-shredded + storage deleted; tombstone) | 4 PASS; worker 37 PASS |
+| Integration gate (fresh DB, migrate twice — second run 0 applied, every package's integration suite, boot smoke) | PASS |
+| Quality gate (format, build, lint, typecheck, depcruise, knip, syncpack, flags, unit tests, coverage, openapi, phase0 coverage, manifest) | PASS |
+| Mobile (delegated agent): typecheck, unit tests, ESLint, Prettier, depcruise, knip | PASS; 31 files, 235 tests |
+| Artifact isolation (`--negative-controls`) | 39/39 PASS |
+| Web E2E (web-public incl. 7 deletion-page tests + web-ops) | 29/29 PASS |
+| gitleaks (staged) / osv-scanner | no leaks (one false positive, a synthetic idempotency key in a spec, removed by generating it) / no issues |
+
+**Not run / external:**
+- No device or emulator for the new mobile screens. The Android release build was not re-run locally: no native or dependency change; CI builds it.
+- The web deletion page's code step, 429 and confirmation have not run against a live API in E2E (covered by the API tests).
+- The real SMS channel (EG-01); operator recycling data and SIM-swap signals (EG-22); the in-person identity process (EG-20); retention periods and lawful bases (EG-16); breach steps (U09).
+- The playbooks have not been rehearsed (Phase 7).

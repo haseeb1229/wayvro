@@ -1,3 +1,5 @@
+export { releasePhone, revokeSessions, type PhoneReleaseReason, type SessionRevokeReason } from './account-phones.js';
+export { deletionBlockers, retentionExceptions, type DeletionBlocker } from './deletion.js';
 export { ENCRYPTED_FIELDS, PHONE_LOOKUP_TARGET, fieldContext, type EncryptedField } from './fields.js';
 export {
   FIELD_ROTATION_TARGETS,

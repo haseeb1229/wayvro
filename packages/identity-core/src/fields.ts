@@ -7,6 +7,8 @@ import type { FieldContext } from '@wayvro/field-crypto';
 export const ENCRYPTED_FIELDS = {
   accountPhone: { field: 'identity.account_phones.phone_envelope', fieldSchemaVersion: 1, keyClass: 'contact' },
   challengePhone: { field: 'identity.otp_challenges.phone_envelope', fieldSchemaVersion: 1, keyClass: 'contact' },
+  /** P2.9: the new number of a phone change or lost-phone recovery request (E.164). */
+  phoneChangePhone: { field: 'identity.phone_change_requests.new_phone_envelope', fieldSchemaVersion: 1, keyClass: 'contact' },
   jobSecret: { field: 'platform.jobs.sealed_payload', fieldSchemaVersion: 1, keyClass: 'job_secrets' },
   idempotencyResponse: { field: 'platform.idempotency_records.response_envelope', fieldSchemaVersion: 1, keyClass: 'idempotency_responses' },
   /** ISO-8601 calendar date (YYYY-MM-DD). */

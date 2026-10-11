@@ -15,14 +15,16 @@ import type { PakistanMobileE164 } from '@wayvro/domain';
 import type { FieldCipher, KeyedHasher } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, fieldContext, hashToken, newOpaqueToken, tokenKind, type PhoneLookup } from '@wayvro/identity-core';
 import { WayvroError } from '@wayvro/observability';
-import { appendAudit, sqlState, uuidv7 } from '@wayvro/server-runtime';
+import { appendAudit, sqlState, uuidv7, type Queryable } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import type { Principal } from '../auth/policy.js';
 import type { ApiConfig } from '../config.js';
 import { requiredActionsFor } from '../legal/consent.service.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome } from '../platform/idempotency.js';
 import type { OtpAbuseControls } from './otp-abuse.js';
+import { consumeChallenge } from './otp-verify.js';
 import { installationHash, installationScope } from './otp.service.js';
+import { DEVICE_VELOCITY, applyDriverRiskHold } from './risk-policy.js';
 
 export interface SessionDependencies {
   readonly db: pg.Pool;
@@ -42,10 +44,21 @@ type SecurityEventType =
   | 'SESSION_REVOKED'
   | 'SESSIONS_REVOKED_ALL'
   | 'SESSIONS_REVOKED_OTHERS'
-  | 'REFRESH_TOKEN_REUSE_DETECTED';
+  | 'REFRESH_TOKEN_REUSE_DETECTED'
+  | 'STEP_UP_VERIFIED'
+  | 'PHONE_CHANGE_REQUESTED'
+  | 'PHONE_CHANGED'
+  | 'PHONE_CHANGE_CANCELLED'
+  | 'RECOVERY_REQUESTED'
+  | 'RECOVERY_APPROVED_COOLDOWN'
+  | 'RECOVERY_DENIED'
+  | 'RECOVERY_COMPLETED'
+  | 'DORMANT_NUMBER_RELEASED'
+  | 'DELETION_REQUESTED'
+  | 'DELETION_CANCELLED';
 
 export async function securityEvent(
-  tx: pg.PoolClient,
+  tx: Queryable,
   accountId: string,
   type: SecurityEventType | 'PROFILE_UPDATED',
   sessionId: string | null,
@@ -82,70 +95,9 @@ export class SessionService {
   }
 
   private async verifyAndCreate(tx: pg.PoolClient, input: SessionCreateRequest, installation: Buffer): Promise<Outcome> {
-    const r = await tx.query<{
-      purpose: string;
-      status: string;
-      installation_hash: Buffer;
-      code_mac: Buffer | null;
-      mac_key_version: number | null;
-      attempts: number;
-      max_attempts: number;
-      phone_envelope: Buffer;
-      phone_lookup_hash: Buffer;
-      locale: 'en' | 'ur' | 'ur-Latn';
-      expired: boolean;
-    }>(
-      `select purpose, status, installation_hash, code_mac, mac_key_version, attempts, max_attempts, phone_envelope, phone_lookup_hash, locale,
-              expires_at <= now() expired
-         from identity.otp_challenges where id = $1 for update`,
-      [input.challengeId],
-    );
-    const c = r.rows[0];
-    // Unknown, foreign (other installation) or wrong-purpose challenges: generic, and no attempt is counted.
-    if (!c || !c.installation_hash.equals(installation) || c.purpose !== 'SIGN_IN') return failure('WAYVRO_E_OTP_INVALID_OR_EXPIRED');
-    if (c.status === 'LOCKED') return failure('WAYVRO_E_OTP_LOCKED');
-    if (c.status !== 'ISSUED' || !c.code_mac || c.mac_key_version === null) return failure('WAYVRO_E_OTP_INVALID_OR_EXPIRED');
-    if (c.expired) {
-      await tx.query(`update identity.otp_challenges set status = 'EXPIRED' where id = $1 and status = 'ISSUED'`, [input.challengeId]);
-      return failure('WAYVRO_E_OTP_INVALID_OR_EXPIRED');
-    }
-    if (!this.deps.hasher.verify('otp_mac', c.mac_key_version, `${input.challengeId}|${input.code}`, c.code_mac)) {
-      const attempts = c.attempts + 1;
-      const locked = attempts >= c.max_attempts;
-      await tx.query(`update identity.otp_challenges set attempts = $2, status = $3 where id = $1 and status = 'ISSUED'`, [
-        input.challengeId,
-        attempts,
-        locked ? 'LOCKED' : 'ISSUED',
-      ]);
-      await appendAudit(tx, {
-        actor: { type: 'ANONYMOUS' },
-        action: 'OTP_VERIFICATION',
-        objectType: 'identity.otp_challenge',
-        objectId: input.challengeId,
-        outcome: 'FAILURE',
-        reasonCode: locked ? 'OTP_LOCKED' : 'OTP_MISMATCH',
-      });
-      if (locked) await this.deps.abuse.recordFailedChallenge(c.phone_lookup_hash.toString('hex'));
-      return failure(locked ? 'WAYVRO_E_OTP_LOCKED' : 'WAYVRO_E_OTP_INVALID_OR_EXPIRED');
-    }
-    const consumed = await tx.query(
-      `update identity.otp_challenges set status = 'CONSUMED', consumed_at = now() where id = $1 and status = 'ISSUED' and expires_at > now()`,
-      [input.challengeId],
-    );
-    if (consumed.rowCount !== 1) return failure('WAYVRO_E_OTP_INVALID_OR_EXPIRED');
-    await appendAudit(tx, {
-      actor: { type: 'ANONYMOUS' },
-      action: 'OTP_VERIFICATION',
-      objectType: 'identity.otp_challenge',
-      objectId: input.challengeId,
-      outcome: 'SUCCESS',
-    });
-
-    const e164 = this.deps.cipher.decryptString(
-      'contact',
-      c.phone_envelope,
-      fieldContext(ENCRYPTED_FIELDS.challengePhone, input.challengeId),
-    ) as PakistanMobileE164;
+    const c = await consumeChallenge(tx, this.deps, { challengeId: input.challengeId, code: input.code, purpose: 'SIGN_IN', binding: { installation } });
+    if (c.kind === 'error') return c;
+    const e164 = c.e164;
     const { accountId, isNew } = await this.resolveAccount(tx, e164, c.locale);
     const dormant = !isNew && (await this.dormantOnUnknownInstallation(tx, accountId, installation));
     const device = await tx.query<{ id: string; inserted: boolean }>(
@@ -158,10 +110,15 @@ export class SessionService {
     const deviceRow = device.rows[0];
     if (!deviceRow) throw new Error('device upsert returned no row');
     const tokens = await this.openSession(tx, accountId, deviceRow.id, input.device.appVersion);
-    await tx.query(`update identity.accounts set last_active_at = now() where id = $1`, [accountId]);
 
     if (dormant) {
-      // S12 (P2.1 = signal recording only): the restricted RECOVERY_REVIEW flow arrives in P2.9.
+      // S12 (P2.9): a RESTRICTED session that exposes nothing until the dormant-number review is answered. Dormancy is
+      // kept (no last-active update) and this installation does not become a known device while the review is open.
+      await tx.query(`insert into identity.dormant_number_reviews (id, account_id, session_id, status) values ($1, $2, $3, 'PENDING')`, [
+        uuidv7(),
+        accountId,
+        tokens.sessionId,
+      ]);
       await securityEvent(tx, accountId, 'DORMANT_ACCOUNT_NEW_INSTALLATION', tokens.sessionId, deviceRow.id);
       await appendAudit(tx, {
         actor: { type: 'ACCOUNT', id: accountId },
@@ -171,6 +128,9 @@ export class SessionService {
         outcome: 'SUCCESS',
         reasonCode: 'DORMANT_ACCOUNT_NEW_INSTALLATION',
       });
+    } else {
+      await tx.query(`update identity.accounts set last_active_at = now() where id = $1`, [accountId]);
+      if (!isNew && deviceRow.inserted) await this.deviceVelocity(tx, accountId);
     }
     await securityEvent(tx, accountId, !isNew && deviceRow.inserted ? 'SIGN_IN_NEW_DEVICE' : 'SIGN_IN', tokens.sessionId, deviceRow.id);
     if (isNew)
@@ -189,8 +149,54 @@ export class SessionService {
       outcome: 'SUCCESS',
     });
     await this.deps.abuse.recordVerified(e164.slice(0, 6));
-    const body: SessionCreated = { ...tokens, isNewAccount: isNew, requiredActions: await requiredActionsFor(tx, accountId) };
+    const body: SessionCreated = { ...tokens, isNewAccount: isNew, requiredActions: dormant ? ['RECOVERY_REVIEW'] : await requiredActionsFor(tx, accountId) };
     return success(201, body);
+  }
+
+  /** Driver risk policy: several new installations of one driver within a short window (auth design §5). */
+  private async deviceVelocity(tx: pg.PoolClient, accountId: string): Promise<void> {
+    const r = await tx.query<{ n: string }>(
+      `select count(*) n from identity.account_devices where account_id = $1 and first_verified_at > now() - ($2::int * interval '1 day')`,
+      [accountId, DEVICE_VELOCITY.days],
+    );
+    if (Number(r.rows[0]?.n ?? 0) >= DEVICE_VELOCITY.devices) await applyDriverRiskHold(tx, accountId, 'DEVICE_VELOCITY');
+  }
+
+  /**
+   * "I'm new to Wayvro" (dormant-number review): a brand-new account for the number just released from the dormant
+   * account, signed in on the same installation. The new owner never sees anything of the previous account.
+   */
+  async startFreshAccount(
+    tx: pg.PoolClient,
+    e164: PakistanMobileE164,
+    locale: string,
+    device: { installation: Buffer; platform: 'ANDROID' | 'IOS'; appVersion: string },
+  ): Promise<SessionCreated> {
+    const { accountId, isNew } = await this.resolveAccount(tx, e164, locale);
+    if (!isNew) throw new WayvroError('WAYVRO_E_CONFLICT');
+    const d = await tx.query<{ id: string }>(
+      `insert into identity.account_devices (id, account_id, installation_hash, platform, app_version, first_verified_at, last_seen_at, trust_state)
+       values ($1, $2, $3, $4, $5, now(), now(), 'NEW') returning id`,
+      [uuidv7(), accountId, device.installation, device.platform, device.appVersion],
+    );
+    const deviceId = d.rows[0]?.id;
+    if (!deviceId) throw new Error('device insert returned no row');
+    const tokens = await this.openSession(tx, accountId, deviceId, device.appVersion);
+    await securityEvent(tx, accountId, 'SIGN_IN', tokens.sessionId, deviceId);
+    for (const [action, objectType, objectId] of [
+      ['ACCOUNT_CREATED', 'identity.account', accountId],
+      ['SESSION_CREATED', 'identity.session', tokens.sessionId],
+    ] as const) {
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: accountId },
+        action,
+        objectType,
+        objectId,
+        outcome: 'SUCCESS',
+        reasonCode: 'DORMANT_NUMBER_NEW_OWNER',
+      });
+    }
+    return { ...tokens, isNewAccount: true, requiredActions: await requiredActionsFor(tx, accountId) };
   }
 
   /** Current owner of the phone, or a new account; concurrent creators converge on the database's single winner. */
@@ -222,7 +228,10 @@ export class SessionService {
   private async dormantOnUnknownInstallation(tx: pg.PoolClient, accountId: string, installation: Buffer): Promise<boolean> {
     const r = await tx.query<{ dormant: boolean; known: boolean }>(
       `select a.last_active_at < now() - ($2::int * interval '1 day') dormant,
-              exists (select 1 from identity.account_devices d where d.account_id = a.id and d.installation_hash = $3) known
+              exists (
+                select 1 from identity.account_devices d where d.account_id = a.id and d.installation_hash = $3
+                   and not exists (select 1 from identity.sessions s join identity.dormant_number_reviews r on r.session_id = s.id
+                                    where s.device_id = d.id and r.status in ('PENDING', 'IN_REVIEW', 'DENIED'))) known
          from identity.accounts a where a.id = $1`,
       [accountId, this.deps.policy.ACCOUNT_DORMANCY_RISK_DAYS, installation],
     );
@@ -283,7 +292,7 @@ export class SessionService {
     const p = this.deps.policy;
     const r = await tx.query<{ session_id: string; account_id: string; used: boolean; token_expired: boolean; session_live: boolean }>(
       `select rt.session_id, s.account_id, rt.used_at is not null used, rt.expires_at <= now() token_expired,
-              (s.status = 'ACTIVE' and a.status = 'ACTIVE' and s.idle_expires_at > now() and s.absolute_expires_at > now()) session_live
+              (s.status = 'ACTIVE' and a.status in ('ACTIVE', 'DELETION_PENDING') and s.idle_expires_at > now() and s.absolute_expires_at > now()) session_live
          from identity.refresh_tokens rt
          join identity.sessions s on s.id = rt.session_id
          join identity.accounts a on a.id = s.account_id
@@ -331,7 +340,13 @@ export class SessionService {
       session.idle_expires_at,
     ]);
     await tx.query(`update identity.refresh_tokens set successor_id = $2 where id = $1`, [refreshTokenId, successorId]);
-    await tx.query(`update identity.accounts set last_active_at = now() where id = $1 and last_active_at < now() - interval '1 hour'`, [row.account_id]);
+    // a session restricted by an open dormant-number review never counts as activity (dormancy must persist)
+    await tx.query(
+      `update identity.accounts set last_active_at = now()
+        where id = $1 and last_active_at < now() - interval '1 hour'
+          and not exists (select 1 from identity.dormant_number_reviews r where r.session_id = $2 and r.status in ('PENDING', 'IN_REVIEW', 'DENIED'))`,
+      [row.account_id, row.session_id],
+    );
     const body: SessionTokens = {
       sessionId: row.session_id,
       accessToken: access,
@@ -410,11 +425,12 @@ export class SessionService {
 
   /**
    * Revoke all sessions or all other sessions. Needs a fresh OTP proof: the calling session was created by OTP within
-   * the last 10 minutes, or it is older than 24 hours (design §5; a dedicated step-up flow arrives in P2.9).
+   * the last 10 minutes or stepped up within the last 10 minutes (P2.9), or it is older than 24 hours (design §5).
    */
   async revokeMany(principal: Principal, scope: 'ALL' | 'ALL_OTHERS', idempotencyKey: string): Promise<IdempotentResult> {
     const s = await this.deps.db.query<{ fresh: boolean; mature: boolean }>(
-      `select created_at > now() - interval '10 minutes' fresh, created_at < now() - interval '24 hours' mature from identity.sessions where id = $1`,
+      `select (created_at > now() - interval '10 minutes' or step_up_at > now() - interval '10 minutes') fresh, created_at < now() - interval '24 hours' mature
+         from identity.sessions where id = $1`,
       [principal.sessionId],
     );
     const row = s.rows[0];

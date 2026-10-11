@@ -348,15 +348,20 @@ describe('idempotency (F-03)', () => {
 });
 
 describe('S12 signal recording and audit', () => {
-  it('S12-01 a dormant account signing in from an unknown installation records a risk signal (P2.1: signal only)', async () => {
+  it('S12-01 a dormant account signing in from an unknown installation records a risk signal and is review-restricted (P2.9)', async () => {
     const a = await signIn(h);
     await h.owner.query(
       `update identity.accounts set last_active_at = now() - interval '120 days' where id = (select account_id from identity.sessions where id = $1)`,
       [a.sessionId],
     );
     const b = await signIn(h, a.phone);
-    const events = SecurityEventListSchema.parse((await get('/v1/account/security-events', b.accessToken)).json());
-    expect(events.events.map((e) => e.type)).toContain('DORMANT_ACCOUNT_NEW_INSTALLATION');
+    // the new session is restricted to the dormant-number review (P2.9; account-security tests cover the flow)
+    expect((await get('/v1/account/security-events', b.accessToken)).statusCode).toBe(403);
+    const types = await h.owner.query<{ type: string }>(
+      `select type from identity.security_events where account_id = (select account_id from identity.sessions where id = $1)`,
+      [b.sessionId],
+    );
+    expect(types.rows.map((e) => e.type)).toContain('DORMANT_ACCOUNT_NEW_INSTALLATION');
     expect((await h.owner.query(`select 1 from audit.audit_events where action = 'RECYCLED_NUMBER_SIGNAL'`)).rowCount).toBeGreaterThanOrEqual(1);
     // A known installation does not raise it.
     await h.owner.query(

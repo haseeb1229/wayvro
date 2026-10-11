@@ -8,6 +8,7 @@ import { useServices } from '../../../core/services/ServicesProvider';
 import { Banner, Body, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { colors, spacing } from '../../../core/ui/tokens';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
+import { PhoneChangeNotice } from './PhoneChangeNotice';
 import { securityEventsModel } from './security-activity';
 
 export function SecurityActivityScreen() {
@@ -31,6 +32,7 @@ export function SecurityActivityScreen() {
         <>
           <Title>{t('security.title')}</Title>
           {view.stale ? <Banner tone="warning" text={t('common.staleData')} /> : null}
+          <PhoneChangeNotice />
           <Body muted>{t('security.hint')}</Body>
           {view.data.map((row) => (
             <View key={row.id} style={styles.row} accessible>

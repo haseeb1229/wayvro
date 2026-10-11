@@ -85,6 +85,8 @@ const KIND_BY_CODE: Readonly<Partial<Record<ErrorCode, UiErrorKind>>> = {
   WAYVRO_E_AGE_DECLARATION_REQUIRED: 'required-action',
   WAYVRO_E_ACCOUNT_RESTRICTED: 'restricted',
   WAYVRO_E_FEATURE_DISABLED: 'feature-disabled',
+  // P2.9: the session is restricted to the dormant-number review; the account state is re-fetched and the gate opens it.
+  WAYVRO_E_RECOVERY_REQUIRED: 'required-action',
 };
 
 function kindForStatus(status: number): UiErrorKind {

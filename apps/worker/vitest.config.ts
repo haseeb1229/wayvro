@@ -18,6 +18,7 @@ export default defineConfig({
         'src/scheduler.ts',
         'src/vault/**',
         'src/review/**',
+        'src/identity/**',
         'src/outbox/pg-outbox.ts',
         'src/outbox/account-state-hint.ts',
       ],

@@ -9,7 +9,6 @@ export const DRIVER_KEYS = {
   requirements: (applicationId: string) => ['driver', 'requirements', applicationId] as const,
   evidence: (applicationId: string) => ['driver', 'evidence', applicationId] as const,
   compliance: ['driver', 'compliance'] as const,
-  appeals: ['account', 'appeals'] as const,
 };
 
 /**

@@ -108,7 +108,7 @@ export function ReviewQueue() {
           <tbody>
             {data.items.map((c) => (
               <tr key={c.id} data-testid="review-case-row">
-                <td>{c.kind}</td>
+                <td>{R.kinds[c.kind]}</td>
                 <td>
                   {c.status}
                   {c.inPersonRequired ? ' · in person' : ''}
@@ -427,6 +427,49 @@ function DecisionForm({ detail, onDone }: { readonly detail: CaseDetail; readonl
   );
 }
 
+/**
+ * ACCOUNT_RECOVERY: what is being recovered (display only). The approval rules — in-person identity check first, then
+ * a second senior reviewer — are enforced by the server; the note only tells the reviewer what the server will require.
+ */
+function RecoverySection({ recovery }: { readonly recovery: CaseDetail['recovery'] }) {
+  return (
+    <section aria-labelledby="recovery-heading" data-testid="recovery-section">
+      <h3 id="recovery-heading">{R.recoveryHeading}</h3>
+      <p role="note">{R.recoveryApprovalNote}</p>
+      {recovery ? (
+        <dl>
+          <dt>{R.recoveryKind}</dt>
+          <dd>{R.recoveryKinds[recovery.kind]}</dd>
+          <dt>{R.recoveryNewPhone}</dt>
+          <dd>{recovery.maskedNewPhone ?? '—'}</dd>
+          <dt>{R.recoveryRequestedAt}</dt>
+          <dd>
+            <time dateTime={recovery.requestedAt}>{recovery.requestedAt}</time>
+          </dd>
+        </dl>
+      ) : null}
+    </section>
+  );
+}
+
+/** REVERIFICATION: the risk triggers behind the hold, shown as plain labels (no client-side interpretation). */
+function RiskTriggers({ triggers }: { readonly triggers: readonly string[] }) {
+  return (
+    <section aria-labelledby="risk-triggers-heading" data-testid="risk-triggers">
+      <h3 id="risk-triggers-heading">{R.riskTriggersHeading}</h3>
+      {triggers.length === 0 ? (
+        <p>{R.riskTriggersNone}</p>
+      ) : (
+        <ul>
+          {triggers.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Case page: masked claims, documents, evidence (one-time views), signals, decisions, decision form, second approval. */
 export function ReviewCase({ caseId, viewer, canSecondApprove }: { readonly caseId: string; readonly viewer: string; readonly canSecondApprove: boolean }) {
   const [version, setVersion] = useState(0);
@@ -464,7 +507,7 @@ export function ReviewCase({ caseId, viewer, canSecondApprove }: { readonly case
   return (
     <section aria-labelledby="case-heading">
       <h2 id="case-heading">
-        {R.caseHeading} · {c.kind} · {c.status}
+        {R.caseHeading} · {R.kinds[c.kind]} · {c.status}
       </h2>
       {notice ? <p role="status">{notice}</p> : null}
       {c.leaseExpiresAt ? (
@@ -482,6 +525,8 @@ export function ReviewCase({ caseId, viewer, canSecondApprove }: { readonly case
       ) : null}
       {c.requirementSet?.isPlaceholder ? <p role="note">{R.placeholderSet}</p> : null}
       {c.subjectDocumentId ? <p role="note">{R.renewalSubject}</p> : null}
+      {c.kind === 'ACCOUNT_RECOVERY' ? <RecoverySection recovery={c.recovery ?? null} /> : null}
+      {c.kind === 'REVERIFICATION' ? <RiskTriggers triggers={c.riskTriggers ?? []} /> : null}
       <h3>{R.claims}</h3>
       <dl>
         <dt>{R.legalName}</dt>

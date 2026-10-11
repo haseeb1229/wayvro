@@ -7,13 +7,14 @@
  * `wayvro_audit_sealer` (read audit events, append seals) — never the owner/migrator.
  */
 import { FieldCipher, KeyedHasher, loadKeyRing } from '@wayvro/field-crypto';
-import { keyRotationJob, otpDeliveryJob, type RotationDeps } from '@wayvro/identity-core';
+import { PhoneLookup, keyRotationJob, otpDeliveryJob, type RotationDeps } from '@wayvro/identity-core';
 import type { Logger } from '@wayvro/observability';
 import type { ProviderRegistry } from '@wayvro/provider-interfaces';
 import { JobRunner, type JobDefinition } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import { AUDIT_SEAL_JOB, AUDIT_VERIFY_JOB, auditJobs } from './audit-seal.js';
 import type { WorkerConfig } from './config.js';
+import { DELETION_PROCESSING_JOB, RECOVERY_COMPLETION_JOB, deletionProcessingJob, recoveryCompletionJob } from './identity/account-jobs.js';
 import { MAINTENANCE_PURGE_JOB, maintenanceJob } from './maintenance.js';
 import { RecurringScheduler } from './scheduler.js';
 import { accountStateHintConsumer, type HintPublisher } from './outbox/account-state-hint.js';
@@ -58,6 +59,7 @@ export function composeWorker(
     keyRotationJob(rotation),
     applicationIntakeJob(pool),
     documentExpiryJob(pool, log),
+    recoveryCompletionJob({ pool, cipher, lookup: new PhoneLookup(rotation.hasher), log }),
   ];
   if (providers.has('otpDelivery')) definitions.push(otpDeliveryJob({ db: pool, cipher, port: providers.get('otpDelivery') }));
   const recurring = [
@@ -65,6 +67,7 @@ export function composeWorker(
     { type: AUDIT_VERIFY_JOB, everySeconds: 3600 },
     { type: MAINTENANCE_PURGE_JOB, everySeconds: 600 },
     { type: DOCUMENT_EXPIRY_JOB, everySeconds: 86_400 },
+    { type: RECOVERY_COMPLETION_JOB, everySeconds: 600 },
   ];
   if (vaultPool && providers.has('objectStorage')) {
     const storage = providers.get('objectStorage');
@@ -75,6 +78,9 @@ export function composeWorker(
     }
     definitions.push(evidenceOrphansJob({ vault: vaultPool, storage, log, dryRun: config.EVIDENCE_ORPHAN_DRY_RUN, batch: 500 }));
     recurring.push({ type: EVIDENCE_ORPHANS_JOB, everySeconds: 86_400 });
+    // account deletion erases evidence, so it runs only where the vault and its storage are bound
+    definitions.push(deletionProcessingJob({ pool, vault: vaultPool, storage, log }));
+    recurring.push({ type: DELETION_PROCESSING_JOB, everySeconds: 3600 });
   }
   const runner = new JobRunner(pool, definitions, { workerId: `worker-${String(process.pid)}`, leaseMs: config.JOB_LEASE_MS, batchSize: 10, log });
   const scheduler = new RecurringScheduler(pool, recurring);

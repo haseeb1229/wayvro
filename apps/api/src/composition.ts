@@ -13,9 +13,12 @@ import type { ProviderRegistry } from '@wayvro/provider-interfaces';
 import { RateLimiter, awaitRedisReady, createRequestPathRedis, databaseCheck, redisCheck } from '@wayvro/server-runtime';
 import { createApp } from './app.js';
 import type { ApiConfig } from './config.js';
+import { AccountSecurityService } from './identity/account-security.service.js';
 import { AccountService } from './identity/account.service.js';
+import { DeletionService } from './identity/deletion.service.js';
 import { OtpAbuseControls } from './identity/otp-abuse.js';
 import { OtpService } from './identity/otp.service.js';
+import { RecoveryReviewService } from './identity/recovery-review.service.js';
 import { SessionService } from './identity/session.service.js';
 import { ComplianceAdminService } from './compliance/compliance-admin.service.js';
 import { OnboardingService } from './compliance/onboarding.service.js';
@@ -69,6 +72,9 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     deliveryAvailable: options.providers.has('otpDelivery'),
   });
   const sessions = new SessionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, policy: config });
+  const security = new AccountSecurityService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, otp, limiter, policy: config });
+  const recoveryReviews = new RecoveryReviewService(db.pool, cipher, idempotency, sessions, config);
+  const deletion = new DeletionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, otp, limiter, policy: config });
   // Evidence vault (ADR-041): a SEPARATE pool authenticated as a member of wayvro_vault, handed only to src/vault/**.
   // Without it, or without bound object storage, evidence routes answer 503 DEPENDENCY_UNAVAILABLE.
   const vaultDb =
@@ -93,7 +99,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     readinessChecks: [databaseCheck(db), redisProbe],
     log,
     trustProxy: config.TRUST_PROXY,
-    identity: { otp, sessions, accounts, consents, legalStore: db.pool, sessionStore: db.pool },
+    identity: { otp, sessions, accounts, consents, security, recoveryReviews, deletion, legalStore: db.pool, sessionStore: db.pool },
     staff: {
       auth: new StaffAuthService(db.pool, new StaffWebAuthn(config), idempotency, limiter, hasher, config),
       admin: new StaffAdminService(db.pool, idempotency, config),

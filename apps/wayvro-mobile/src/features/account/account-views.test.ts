@@ -199,3 +199,11 @@ describe('home — Driver/Partner entry (P2.8, one app)', () => {
     expect(homeModel(accountState()).driverEntry).toBeNull();
   });
 });
+
+describe('home — deletion pending (P2.9)', () => {
+  it('flags the restricted deletion grace period from the server status', () => {
+    const state = accountState();
+    expect(homeModel(state).deletionPending).toBe(false);
+    expect(homeModel({ ...state, account: { ...state.account, status: 'DELETION_PENDING' } }).deletionPending).toBe(true);
+  });
+});

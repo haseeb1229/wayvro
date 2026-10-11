@@ -213,13 +213,12 @@ describe('appeals and outbox', () => {
 });
 
 describe('grants executed as restricted roles', () => {
-  it('the API cannot change decisions or read the outbox; the vault reads only case-assignment facts', async () => {
+  it('the API cannot change decisions or read the outbox; the vault does not read review cases (revoked in 0007)', async () => {
     expect(await pgCode(api.query(`update compliance.review_decisions set reason_codes = '{}'`))).toBe('42501');
     expect(await pgCode(api.query(`select 1 from platform.outbox_events`))).toBe('42501');
     expect(await pgCode(api.query(`select 1 from platform.processed_events`))).toBe('42501');
-    expect((await vault.query(`select id, status, assigned_staff_id, lease_expires_at from compliance.review_cases limit 1`)).rowCount).toBeGreaterThanOrEqual(
-      0,
-    );
+    // P2.8 moved evidence case scoping to the review module; 0007 revoked the vault's column grant on review cases
+    expect(await pgCode(vault.query(`select id, status, assigned_staff_id, lease_expires_at from compliance.review_cases limit 1`))).toBe('42501');
     expect(await pgCode(vault.query(`select priority from compliance.review_cases limit 1`))).toBe('42501');
     expect(await pgCode(vault.query(`update compliance.review_cases set status = 'OPEN'`))).toBe('42501');
     expect(await pgCode(worker.query(`select statement_envelope from profile.appeals limit 1`))).toBe('42501');

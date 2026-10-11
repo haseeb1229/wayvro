@@ -17,6 +17,7 @@ import { WayvroError } from '@wayvro/observability';
 import { appendAudit, type Queryable } from '@wayvro/server-runtime';
 import type { FastifyRequest } from 'fastify';
 import { accountRestrictionsInForce } from '../compliance/restrictions.js';
+import { sessionUnderReview } from '../identity/review-restriction.js';
 import type { StaffPermission } from '../staff/roles.js';
 import { resolveStaffPrincipal, stepUpFresh, type StaffPrincipal, type StaffSessionPolicy } from '../staff/staff-session.js';
 
@@ -31,19 +32,26 @@ export interface StaffRoutePolicy {
 }
 
 /**
- * `restrictedOk`: reachable while an ACCOUNT-scope restriction is in force (V13 "restricted session": own state,
- * sessions/security, policies, appeals, data/deletion, sign-out). Every other consumer route answers 403
- * ACCOUNT_RESTRICTED with the reason codes.
+ * `restrictedOk`: reachable while an ACCOUNT-scope restriction is in force or the account is DELETION_PENDING (V13
+ * "restricted session": own state, sessions/security, policies, appeals, data/deletion, sign-out). Every other consumer
+ * route answers 403 ACCOUNT_RESTRICTED with the reason codes.
+ * `recoveryReviewOk`: reachable by a session restricted by a dormant-number review (P2.9, S12) — only the review
+ * itself and sign-out; every other route answers 403 RECOVERY_REQUIRED and exposes nothing of the account.
  */
-export type RoutePolicy = { readonly kind: 'public' } | { readonly kind: 'consumer-session'; readonly restrictedOk: boolean } | StaffRoutePolicy;
+export type RoutePolicy =
+  { readonly kind: 'public' } | { readonly kind: 'consumer-session'; readonly restrictedOk: boolean; readonly recoveryReviewOk: boolean } | StaffRoutePolicy;
 
 const ROUTE_POLICY = 'wayvro:route-policy';
 // Nest's handler metadata key for HTTP routes (`@Get`/`@Post`/… set it on the handler function).
 const NEST_PATH_METADATA = 'path';
 
 export const Public = (): MethodDecorator => SetMetadata(ROUTE_POLICY, { kind: 'public' } satisfies RoutePolicy);
-export const ConsumerSession = (options: { restrictedOk?: boolean } = {}): MethodDecorator =>
-  SetMetadata(ROUTE_POLICY, { kind: 'consumer-session', restrictedOk: options.restrictedOk ?? false } satisfies RoutePolicy);
+export const ConsumerSession = (options: { restrictedOk?: boolean; recoveryReviewOk?: boolean } = {}): MethodDecorator =>
+  SetMetadata(ROUTE_POLICY, {
+    kind: 'consumer-session',
+    restrictedOk: options.restrictedOk ?? false,
+    recoveryReviewOk: options.recoveryReviewOk ?? false,
+  } satisfies RoutePolicy);
 export const StaffSession = (options: { permission?: StaffPermission; stepUp?: boolean; allowLocked?: boolean } = {}): MethodDecorator =>
   SetMetadata(ROUTE_POLICY, {
     kind: 'staff-session',
@@ -111,7 +119,10 @@ export class PolicyGuard implements CanActivate {
     if (!session) throw new WayvroError('WAYVRO_E_UNAUTHENTICATED');
     // Coarse "last used" for the session list (at most one write per session every 5 minutes).
     await this.db.query(`update identity.sessions set last_used_at = now() where id = $1 and last_used_at < now() - interval '5 minutes'`, [session.sessionId]);
+    if (!policy.recoveryReviewOk && (await sessionUnderReview(this.db, session.sessionId))) throw new WayvroError('WAYVRO_E_RECOVERY_REQUIRED');
     if (!policy.restrictedOk) {
+      if (session.accountStatus === 'DELETION_PENDING')
+        throw new WayvroError('WAYVRO_E_ACCOUNT_RESTRICTED', { details: { reasonCodes: ['DELETION_PENDING'] } });
       const restrictions = await accountRestrictionsInForce(this.db, session.accountId, new Date());
       if (restrictions.length > 0) throw new WayvroError('WAYVRO_E_ACCOUNT_RESTRICTED', { details: { reasonCodes: restrictions.map((r) => r.reasonCode) } });
     }

@@ -1,6 +1,4 @@
 import {
-  AccountAppealListSchema,
-  AccountAppealSchema,
   CaptureChallengeDeclineSchema,
   CaptureChallengeSchema,
   DocumentClaimedSchema,
@@ -37,8 +35,6 @@ export type EvidenceUploadSlot = z.infer<typeof EvidenceUploadSlotSchema>;
 export type CaptureChallenge = z.infer<typeof CaptureChallengeSchema>;
 export type CaptureChallengeDecline = z.infer<typeof CaptureChallengeDeclineSchema>;
 export type DocumentRenewal = z.infer<typeof DocumentRenewalSchema>;
-export type AccountAppeal = z.infer<typeof AccountAppealSchema>;
-export type AccountAppealList = z.infer<typeof AccountAppealListSchema>;
 export type VehicleCreated = z.infer<typeof VehicleCreatedSchema>;
 
 /** Request bodies (contract request schemas; the client builds them in the form adapters). */
@@ -88,7 +84,6 @@ export interface EvidenceSlotRequest {
   readonly mime: 'image/jpeg' | 'image/png';
   readonly challengeId?: string;
 }
-export type AppealRequest = { readonly reviewDecisionId: string; readonly statement: string } | { readonly restrictionId: string; readonly statement: string };
 
 const seg = encodeURIComponent;
 const APP = (id: string) => `/v1/driver-onboarding/applications/${seg(id)}`;
@@ -199,17 +194,6 @@ export function createDriverApi(t: SessionTransport) {
         body: {},
         schema: DocumentRenewalSchema,
       }),
-
-    // ── appeals (K05) ─────────────────────────────────────────────────────────────────────────────────────────
-    createAppeal: (request: AppealRequest): Promise<AccountAppeal> =>
-      t.mutate(`appeal:${'reviewDecisionId' in request ? request.reviewDecisionId : request.restrictionId}`, {
-        method: 'POST',
-        path: '/v1/account/appeals',
-        body: request,
-        schema: AccountAppealSchema,
-      }),
-
-    appeals: (): Promise<AccountAppealList> => t.read({ method: 'GET', path: '/v1/account/appeals', schema: AccountAppealListSchema }),
   };
 }
 
