@@ -1,5 +1,7 @@
 # PHASE2_P2_1_IMPLEMENTATION_RECORD — Consumer identity/session core + production test-double isolation
 
+> Current repository status (2026-10-11): this document is a historical planning/checkpoint snapshot. Phase 2 later completed P2.1–P2.10 plus closure and merged via PR #4 at merge commit `7da51b0`. For current status use `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` and root status docs.
+
 **Date:** 2026-10-10 · **Branch:** `phase-2/1-identity-session-core` from `main` @ `8c8e528bf2a975f2fe385fd49ed9de78f29ed530` · **Status:** **IMPLEMENTED ON THE BRANCH — PENDING FOUNDER/CHATGPT REVIEW; NOT MERGED; no PR opened.** P2.2 and later micro-phases have not started. · **Agent:** Claude Code (self-audit, not independent verification). · **Authorisation:** founder authorised P2.1 only.
 
 Synthetic data only. No provider account was created, no SMS/OTP was sent to a device, no real phone number, CNIC or customer data was used. External gates EG-01..EG-23 remain open; none is claimed resolved.

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.3 and P2.8 build evidence** (physical-device behaviour NOT RUN, see below). **CAMERA allowlist entry APPROVED by founder/ChatGPT review (Phase-2 closure, 2026-10-11).** Phase 2 passed founder/ChatGPT review and the closure run |
+| Status | **ACCEPTED on P2.3 and P2.8 build evidence** (physical-device behaviour NOT RUN, see below). **CAMERA allowlist entry APPROVED by founder/ChatGPT review (Phase-2 closure, 2026-10-11).** In force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11) |
 | Date | 2026-10-11 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-043 (proposal; founder Q-13 approved Expo Router + TanStack Query) |
 | Requirements | Q01 (token storage, capture cleanup), A02/A03/A05 (sign-in, sessions), A04/K09 (consent), A15 (age declaration UI), A11 (security activity), V13 (rider-facing restriction notice); P2.8: V01, V03, D01–D04 (UI), K02/K03 (capture), K05/K14 (explanations, appeals, corrections) |

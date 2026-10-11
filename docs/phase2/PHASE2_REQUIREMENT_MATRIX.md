@@ -134,8 +134,8 @@ Columns: **Class** — `NOW` = IMPLEMENTABLE_NOW, `N+G` = NOW + GATED_ACTIVATION
 
 ## 3. Implementation status
 
-| Micro-phase | IDs touched | Status (2026-10-10) |
+| Micro-phase | IDs touched | Status (2026-10-11) |
 |---|---|---|
-| P2.1 | A02, A03, A05, A11, K01, K08, K09, K13, Q06, Q36, Q39, S12, V02, V07 (+ F-01, F-03, F-04, F-05 job runner, F-06, F-08) | P2.1 portions implemented on `phase-2/1-identity-session-core`, **pending founder/ChatGPT review, not merged**; every ID remains **PARTIAL** as a whole and A03/A11/K08/Q06/Q39 are also external-gated — per-ID detail in `docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md` §1 |
-| P2.2 – P2.10 + closure | all 55 | implemented and passed founder/ChatGPT review plus the closure run; per-ID reconciliation (15 ENGINEERING_SATISFIED, 35 PARTIAL_EXTERNAL_GATED, 2 PARTIAL_FUTURE_PHASE, 3 EXTERNAL_ONLY, 0 NOT_SATISFIED) in `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §"Phase-2 closure" |
+| P2.1 | A02, A03, A05, A11, K01, K08, K09, K13, Q06, Q36, Q39, S12, V02, V07 (+ F-01, F-03, F-04, F-05 job runner, F-06, F-08) | implemented, review-fixed (`9cfbc55`) and merged with the rest of Phase 2 via PR #4 (`7da51b0`); the P2.1 portion per ID is in the historical `docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md` §1, current per-ID status in `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §"Phase-2 closure" |
+| P2.2 – P2.10 + closure | all 55 | implemented, passed founder/ChatGPT review plus the closure run and merged via PR #4 (`7da51b0`); per-ID reconciliation (15 ENGINEERING_SATISFIED, 35 PARTIAL_EXTERNAL_GATED, 2 PARTIAL_FUTURE_PHASE, 3 EXTERNAL_ONLY, 0 NOT_SATISFIED) in `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §"Phase-2 closure" |
 | P2.A1 – P2.A9 | — | not started (activation; external gates EG-01..EG-23 open) |

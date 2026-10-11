@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.10 evidence** for the server-side verifier. Production use stays **EXTERNAL_GATED** (EG-06 Google, EG-07 Apple; activation P2.A2/P2.A3). Pending founder/ChatGPT review of the full Phase 2 branch |
+| Status | **ACCEPTED on P2.10 evidence** for the server-side verifier. Production use stays **EXTERNAL_GATED** (EG-06 Google, EG-07 Apple; activation P2.A2/P2.A3). The server-side verifier decision is in force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11) |
 | Date | 2026-10-11 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-040 (proposal) |
 | Requirements | K15 (Google), K16 (Apple), S13 (link collisions, no merge), A05 (recovery with a linked identity) |

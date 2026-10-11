@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on Phase 1 spike evidence (SP-03 PASS)** — pending founder/ChatGPT review before merge to `main` |
+| Status | **ACCEPTED on Phase 1 spike evidence (SP-03 PASS)** — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-09 |
 | Supersedes | `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-004 row (OPEN-SPIKE) |
 | Requirements | I03, Q15, R44 (process); groundwork for E-family dispatch invariants (INV-01/INV-03 in `docs/phase0/PHASE0_UNIFIED_APP_ROLE_MODEL.md`) — no dispatch feature is implemented |

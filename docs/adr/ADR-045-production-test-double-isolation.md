@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.1 evidence** — pending founder/ChatGPT review of micro-phase P2.1 (branch `phase-2/1-identity-session-core`) |
+| Status | **ACCEPTED on P2.1 evidence** — in force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11) |
 | Date | 2026-10-10 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-045 (proposal) |
 | Requirements / findings | F-01 (`docs/phase2/PHASE2_PLAN.md` §7), T-30, ART-ISO, BOOT-NEG; CLAUDE.md §7 (no mock success path reachable in production) |

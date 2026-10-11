@@ -66,22 +66,27 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `docs/phase0/tools/` — coverage maps + generator (`phase0-coverage.js`), manifest/validation regenerator.
 
 ## Phase 1 foundation (2026-10-09; reviewed and integrated into `main` via PR #1, merge commit `eaa1fcb`, 2026-10-10)
-- `docs/adr/README.md` — index of Phase 1 ADRs (ADR-004, ADR-005, ADR-005b, ADR-010, ADR-027, ADR-030, ADR-034, ADR-036, ADR-037) with evidence, plus the P2.1 ADRs (ADR-038 consumer auth/session, ADR-042 PostgreSQL jobs, ADR-045 production test-double isolation) — accepted on P2.1 evidence, pending review.
+- `docs/adr/README.md` — index of the Phase 1 ADRs (ADR-004, ADR-005, ADR-005b, ADR-010, ADR-027, ADR-030, ADR-034, ADR-036, ADR-037) and the Phase 2 ADRs (ADR-038 … ADR-045), all in force after review and merge; their externally gated clauses and re-test gates stay open.
 - `docs/operations/developer-setup.md` — clean-machine setup, infrastructure, build/test and Android commands.
 - `docs/phase1/PHASE1_HANDOFF_REPORT.md` — Phase 1 handoff (scope, spike verdicts, traceability, verification, NOT RUN items, risks); `docs/phase1/evidence/` — mobile release gate reports.
-- `apps/` — deployable skeletons: `api` (NestJS + Fastify), `worker`, `realtime` (Socket.IO), `wayvro-mobile` (the ONE Expo app), `web-public`, `web-ops` (Next.js). No product features.
+- `apps/` — deployable skeletons: `api` (NestJS + Fastify), `worker`, `realtime` (Socket.IO), `wayvro-mobile` (the ONE Expo app), `web-public`, `web-ops` (Next.js). No product features at Phase 1; Phase 2 added the identity, staff and Driver/Partner onboarding slice (below).
 - `packages/` — `contracts`, `domain`, `config`, `observability`, `provider-interfaces`, `db`, `server-runtime`, `web-security`.
 - `infra/docker/` — Compose project `wayvro` (PostGIS, Valkey, SeaweedFS); `infra/ci/android/` — 16 KB/ABI and permission gates.
 - `scripts/` — `infra.mjs`, `boot-smoke.mjs`, `android-build.mjs`; `.github/workflows/ci.yml` — CI.
 - `tests/spikes/` — disposable SP-AND / SP-03 / SP-05 / ADR-010 evidence harnesses with results (see `tests/spikes/README.md`).
 
-## Phase 2 planning (PLAN PASSED founder/ChatGPT review 2026-10-10; reviewed technical closure `47b1683`) and implementation (P2.1 implemented on branch `phase-2/1-identity-session-core`, pending founder/ChatGPT review, not merged; P2.2+ not started)
+## Phase 2 — identity and controlled Driver/Partner onboarding (plan reviewed 2026-10-10; P2.1–P2.10 plus closure merged into `main` via PR #4, merge commit `7da51b0`, 2026-10-11; Phase 3 not started)
 - `docs/phase2/PHASE2_PLAN.md` — overview, repository findings, proposed gap/clarifications/contradictions, deferrals, founder questions, readiness; it indexes the other twelve Phase 2 planning documents in `docs/phase2/` (requirement matrix, domain/data model, auth/session, KYC/evidence vault, staff authorization matrix, API/surfaces, security/abuse model, external gates, test strategy, implementation sequence, ADR/dependency proposals, proposed P2.1 prompt).
-- `docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md` — P2.1 per-ID status (P2.1 portion vs whole requirement), refinements R-01..R-15 of the accepted plan, test-evidence index, residual risks.
+- `docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md` — historical P2.1 checkpoint record: per-ID status of the P2.1 portion, refinements R-01..R-15 of the accepted plan, test-evidence index, residual risks.
+- `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` — **current Phase 2 record**: checkpoints P2.1-fix … P2.10, the closure section (support tools, per-district claims, rejected-renewal appeals, CAMERA approval, emulator smoke, ruleset) and the reconciliation of all 55 Phase 2 IDs; evidence and NOT RUN items.
+- `docs/phase2/PHASE2_EXTERNAL_GATES.md` — external gates EG-01..EG-23 (all open) and activation micro-phases P2.A1–P2.A9.
+- `docs/adr/ADR-038` … `ADR-045` — Phase 2 decisions (consumer auth/session, staff WebAuthn/BFF, OIDC verifier, evidence vault, PostgreSQL jobs, mobile platform additions incl. the approved CAMERA permission, policy content, test-double isolation); in force, external clauses open.
+- `docs/operations/incident-playbooks.md` — Phase 2 incident playbooks (not rehearsed).
+- **Phase 3 prerequisites still open:** SP-01 (real-device background location, permissions, OEM behaviour, driver online state and offer delivery), SP-02 (rider cold start, startup size and performance on representative low-end real hardware) and SP-04 (50-route/address Lahore maps, geocoding and routing field benchmark with founder field drives) remain **OPEN / NOT RUN** and must complete before the Phase 3 mobile-architecture and map-provider freezes; SP-08 (cross-mode E2E regression harness) belongs to Phase 3/4. The Phase 2 Android emulator smoke does **not** satisfy SP-01 or SP-02, which need real devices (`docs/phase0/PHASE0_ADR_BACKLOG.md`).
 
 ## Current baseline
 - Product: **Wayvro (WAY-VRO)**.
 - Public mobile distribution: **one Wayvro app** with Rider mode and optional approved Driver/Partner profile/mode.
 - Proposed requirements: **532** (P0 217 / P1 209 / P2 89 / P3 17): 531 after Phase 0 plus A15 (Phase 2 planning closure, 2026-10-10); dispositions NOW 396 / LATER 107 / EXTERNAL_DECISION 26 / OUT_OF_SCOPE 3.
-- Macro phases: **13** (Phase 0 through Phase 12).
+- Macro phases: **13** (Phase 0 through Phase 12). Status: Phases 0–2 complete; Phase 2 merged via PR #4 (`7da51b0`); external gates EG-01..EG-23 open; **Phase 3 not started**.
 - Coding/planning AI: **Claude Code only**.

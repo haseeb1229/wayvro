@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.1 evidence** — pending founder/ChatGPT review of micro-phase P2.1. Not a security certification: the independent assessment EG-17/U01 remains a gate before any real user |
+| Status | **ACCEPTED on P2.1 evidence** — in force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11). Not a security certification: the independent assessment EG-17/U01 remains a gate before any real user |
 | Date | 2026-10-10 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-038 (proposal, founder Q-11 conditional approval) |
 | Requirements | P2.1 portions of A02, A03 (engineering), A05 (display name/locale), A11, K01, K08, K09, K13, Q06, Q36, Q39, S12 (signal), V02, V07; findings F-03, F-04, F-06 |

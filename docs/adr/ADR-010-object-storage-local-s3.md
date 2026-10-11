@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Local development server: ACCEPTED (Phase 1 evidence)** — pending founder/ChatGPT review. **Production storage: still PROPOSED** (Cloudflare R2 candidate per `docs/phase0/PHASE0_ADR_BACKLOG.md`; not decided here) |
+| Status | **Local development server: ACCEPTED (Phase 1 evidence)** — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10). **Production storage: still PROPOSED** (Cloudflare R2 candidate per `docs/phase0/PHASE0_ADR_BACKLOG.md`; not decided here) |
 | Date | 2026-10-09 |
 | Requirements | I01 (environment separation), I02 (synthetic data only), U03 (licence inventory); groundwork for KYC/evidence storage (K11/Q08) — **no storage feature is implemented** |
 | Evidence | `tests/spikes/adr-010-s3-local-eval/` (`eval.mjs`, run against the compose service) and the research summary below |

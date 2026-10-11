@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.6 evidence** — pending founder/ChatGPT review of the full Phase 2 branch |
+| Status | **ACCEPTED on P2.6 evidence** for the local/CI architecture — in force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11). Production storage and KMS stay **EXTERNAL_GATED** (EG-05; activation P2.A4) |
 | Date | 2026-10-11 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-041 (proposal, revised by the planning closure correction) |
 | Requirements | K11, Q08, K02 (backend), K03 (optional challenge backend), D02, D03, K07 (evidence signals), Q36, Q44/Q45 (inputs only) |

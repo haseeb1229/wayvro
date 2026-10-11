@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED — founder review correction (2026-10-10)**; pending merge of Phase 1 |
+| Status | **ACCEPTED — founder review correction (2026-10-10)**; in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-10 |
 | Supersedes | the framework part of `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-030 (PROPOSED: "Next.js"); hosting remains PROPOSED there and in ADR-028 |
 | Applies to | `apps/web-public`, `apps/web-ops`, root `@next/eslint-plugin-next`; the maturity rule applies to every framework/runtime in the workspace |

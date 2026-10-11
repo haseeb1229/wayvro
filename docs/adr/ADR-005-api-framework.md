@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on Phase 1 spike evidence (SP-05)** — pending founder/ChatGPT review before merge to `main` |
+| Status | **ACCEPTED on Phase 1 spike evidence (SP-05)** — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-09 |
 | Supersedes | `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-005 row (OPEN-SPIKE) |
 | Requirements | I03, I04, I09 (API schemas/quality gates); no product endpoint is implemented |
