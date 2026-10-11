@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 9413,
-      "sha256": "cfcbeba7e9fda9342fc1059585f40622277e0cd142c95e57f668ac30918150df"
+      "bytes": 11036,
+      "sha256": "b0938d31c187de728729cf5ce054812fc9186f372c075f3173eb58b4181e8310"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8381,
-      "sha256": "ec78d6c99a0de819d1f66d94222fe6abbd106b0f483ba8e4fcbc7ffae4735bf4"
+      "bytes": 8412,
+      "sha256": "85b700b8f22f819a5f45b6607224b0c312dbdfe79fcf954f4df98adbd791cd79"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 7656,
-      "sha256": "ada4a38a018372ac0aee116745bde62bcf3908b3442bf8f0a86d2ff65285050c"
+      "bytes": 8464,
+      "sha256": "e39befc2a1f1d1c1868b49b844abddc751554ca38af3d543dd21932fdf4a12b4"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -106,8 +106,8 @@
     },
     {
       "path": "docs/12_PHASE_PLAN_AND_GATES.md",
-      "bytes": 11398,
-      "sha256": "ab02174985263d61c61ccb66a04a05d800c8a5298529b20b730255bc6a1acdd6"
+      "bytes": 12825,
+      "sha256": "f54dac8ef83151d925084f77afc640a8555efcd55f3b29ae0d9f452393e16bf5"
     },
     {
       "path": "docs/13_CLAUDE_ONLY_ENGINEERING_WORKFLOW.md",
@@ -191,93 +191,93 @@
     },
     {
       "path": "docs/adr/ADR-004-query-layer-and-migrations.md",
-      "bytes": 11798,
-      "sha256": "86e1429de45249d5767c108d376a95a606f726c98f3610bb67845b9525716ceb"
+      "bytes": 11828,
+      "sha256": "4e5f7be2d9cbc8f647bd564122915cf303898075d14bf892bc4e1abcdf67ecb0"
     },
     {
       "path": "docs/adr/ADR-005-api-framework.md",
-      "bytes": 5859,
-      "sha256": "70b4993517a011f47ca63a0d79daf7f85740e019b76b24a8d4b297379d00d8ed"
+      "bytes": 5889,
+      "sha256": "cc4db959c036abe73e9b0b68b79df6323edad5b0ec97cad21c8b8941892db22c"
     },
     {
       "path": "docs/adr/ADR-005b-realtime-transport.md",
-      "bytes": 7595,
-      "sha256": "c28d8a7e1684459f18335767e45dd79d00d88c7819a72d77bc6349276d81b080"
+      "bytes": 7687,
+      "sha256": "0202bd57d223cebfe1ccf0b463b54807fe7d278d6aaf0b1302d3b237824c503d"
     },
     {
       "path": "docs/adr/ADR-010-object-storage-local-s3.md",
-      "bytes": 5237,
-      "sha256": "834eabccc55101c8b69fc80528a819e8713eba78785d7acc4f768e95235dcdd8"
+      "bytes": 5290,
+      "sha256": "ff6fb833ddc9d9ffee281c888d1c3cffc2314787202253cb21d6f48087e30c0a"
     },
     {
       "path": "docs/adr/ADR-027-ci-quality-and-dead-code-tooling.md",
-      "bytes": 6319,
-      "sha256": "78d1c90a39d258a604fb217524e893d157cc399737c20951f976a9a023e729a0"
+      "bytes": 6372,
+      "sha256": "088436d966408c7594c4479f627d52fb01fe7d42ac1fe3da880b15b1cb1a1783"
     },
     {
       "path": "docs/adr/ADR-030-web-framework-and-version-maturity.md",
-      "bytes": 3634,
-      "sha256": "148a638accf0b7908ae0fb6d007eac81195b466cfa28c7f9a7b291fa0dd36e61"
+      "bytes": 3693,
+      "sha256": "dc682aad5918d25ba0d8975ab5ad5bda67f2840fafc28b69d6e68535ffa44354"
     },
     {
       "path": "docs/adr/ADR-034-monorepo-tooling-and-runtime.md",
-      "bytes": 4923,
-      "sha256": "70bb590188072365bda8034f74a9e920913462c6fe72230baa014e829bb30666"
+      "bytes": 4976,
+      "sha256": "5590d61e3dd9eba11d568bd24719ea2d6d25eb256ab96f6dbecc9eca5caf1ccf"
     },
     {
       "path": "docs/adr/ADR-036-android-build-toolchain.md",
-      "bytes": 9005,
-      "sha256": "e8ae811412be8e9e1f824b43ad038429939435cc513adaaafb4ceac02e75b937"
+      "bytes": 9058,
+      "sha256": "f0509cca75fdab0fb5380ed032c0f953345f76fa8ea812e0c2f5bd1437d5d71e"
     },
     {
       "path": "docs/adr/ADR-037-local-development-infrastructure.md",
-      "bytes": 3413,
-      "sha256": "5c20f83ed1a25ba56de042cd709fe6c9cef2038f890838c03f021d65e6172015"
+      "bytes": 3466,
+      "sha256": "0cd70e1cdbd1cfca00fc5f0947b16fd9e78ad37252a51bad1c4689124e7ffc23"
     },
     {
       "path": "docs/adr/ADR-038-consumer-auth-session.md",
-      "bytes": 8460,
-      "sha256": "a3b0b8b21a206e9df8d2b703f1d423fce56717ba32f32d869b94547381b90c76"
+      "bytes": 8493,
+      "sha256": "fb516bc661c56de0058d29423fc99ee26f8747ab8b3b62283bfd80753bc1735e"
     },
     {
       "path": "docs/adr/ADR-039-staff-webauthn-bff.md",
-      "bytes": 5824,
-      "sha256": "4feb202974270d601fbff643fba2cdd57d8701b19dfec8ed9c3434adea855714"
+      "bytes": 5850,
+      "sha256": "fcb0130b2c732baa0280f2d65e232580188e042813b51f41d7ffcc2125584015"
     },
     {
       "path": "docs/adr/ADR-040-oidc-verification-with-jose.md",
-      "bytes": 4321,
-      "sha256": "8924996ac736eebabb487a8d38bd277e355e3fbf69ab35ea17c9bdfdfe6a48e2"
+      "bytes": 4384,
+      "sha256": "2b3f47a9b0b083061993e355212ff8750cd8e2e89d15e252a8a76b72a19248a3"
     },
     {
       "path": "docs/adr/ADR-041-evidence-vault-and-image-sanitiser.md",
-      "bytes": 12050,
-      "sha256": "06fc946fcbd0dd6c0a85a19f7dd1e028ec4affb54143876554dac236242c7309"
+      "bytes": 12184,
+      "sha256": "5b082e5bed6fb842adda8576ea9e5524ccfcd76499891bc4a0b47d831e489e74"
     },
     {
       "path": "docs/adr/ADR-042-postgresql-jobs.md",
-      "bytes": 5641,
-      "sha256": "d67a8b978a2766553bcdb852419877f05aee526f27ac1a1b2acf716a4e3fc44a"
+      "bytes": 5674,
+      "sha256": "ea7acebf08ffa4d972b3d5d8288e7b2cc9cffe529b7a9c35d7cf3d2139ce6194"
     },
     {
       "path": "docs/adr/ADR-043-mobile-platform-additions.md",
-      "bytes": 9055,
-      "sha256": "006c164a992b53292a703bb88f4f168c630f496fe66be5731f61f514ad0d80fc"
+      "bytes": 9081,
+      "sha256": "e75c7c91b37f850f538c6dea0e04a930edffdb16a473b45bc6196d30547c7d3d"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
-      "bytes": 3960,
-      "sha256": "cece07a777d8bb44abfadb5bb129d7ae54caa58b818bd0611172853428b9c5e7"
+      "bytes": 3986,
+      "sha256": "102c3f18d4aec22c45c07d62d3f337a6ffe3f0eb59a062dd679d14849977b8f8"
     },
     {
       "path": "docs/adr/ADR-045-production-test-double-isolation.md",
-      "bytes": 6435,
-      "sha256": "9206ae5d9b5462cc7e4e60185a50207065d6952ee9b57aa8f39f047f6502ee0b"
+      "bytes": 6425,
+      "sha256": "4f2cbb514e249ba3ab9750d391bba597b84777a00b7f1a773f1ef195026954e4"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4844,
-      "sha256": "b270c012d129ce321ce310839a77a84af196b95146a03706484bb5d494463e7d"
+      "bytes": 5234,
+      "sha256": "bf21dc70a72241a511f4d8046584c6b4a5c2301027594921800e590d4fa638ca"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -436,8 +436,8 @@
     },
     {
       "path": "docs/phase1/PHASE1_HANDOFF_REPORT.md",
-      "bytes": 10522,
-      "sha256": "ae93d2d18ae0c8b515749189063a50e80b6aa1bf2c9f8934b0a01249ebf806f6"
+      "bytes": 10881,
+      "sha256": "302f5ed086f1a1eba71bde7a219b2ef85f97ae2c50b1f20c1835411209296e7b"
     },
     {
       "path": "docs/phase1/evidence/wayvro-mobile-release-16kb-report.json",
@@ -491,8 +491,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",
-      "bytes": 14271,
-      "sha256": "133677738054cc75783c3682d800664acdd3f4fd725f9a2e0ef8946166fdc818"
+      "bytes": 14563,
+      "sha256": "ac59aa8581f0313462a253f4fc22cba0c80993136165ba96828c55cb0e94fe3b"
     },
     {
       "path": "docs/phase2/PHASE2_KYC_AND_EVIDENCE_VAULT.md",
@@ -501,18 +501,18 @@
     },
     {
       "path": "docs/phase2/PHASE2_P2_1_IMPLEMENTATION_RECORD.md",
-      "bytes": 13021,
-      "sha256": "e82152d7a3d22e8dd21c4a645fb38f2a4800419cdf7eefd62966add06e793152"
+      "bytes": 13313,
+      "sha256": "fdc1b3f2003bd81ff22e5d60d83eaac1a7eb4d263aa2d985a0711f7b54ab2980"
     },
     {
       "path": "docs/phase2/PHASE2_PLAN.md",
-      "bytes": 18508,
-      "sha256": "d00cdd6e7a413e6e95ecc6ca98e6295b30d18dd1e21a5f58f631317516049333"
+      "bytes": 18800,
+      "sha256": "dcfba2e401b3b9edf8e4fa42e34ceede3c4ebbb563723d87a92d10d362392867"
     },
     {
       "path": "docs/phase2/PHASE2_REQUIREMENT_MATRIX.md",
-      "bytes": 27340,
-      "sha256": "09e3dd85b7901884383a23f9daf381c6f12a032a5bd9027730a3c0aec34fc03e"
+      "bytes": 27383,
+      "sha256": "c73a4b4c7d1de5041f87590ecdd5270114dbd8f89416f106e5f93a0680cde3b6"
     },
     {
       "path": "docs/phase2/PHASE2_SECURITY_AND_ABUSE_MODEL.md",

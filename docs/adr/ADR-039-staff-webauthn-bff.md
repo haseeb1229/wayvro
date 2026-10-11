@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.4 evidence** — pending founder/ChatGPT review of the full Phase 2 branch |
+| Status | **ACCEPTED on P2.4 evidence** — in force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11) |
 | Date | 2026-10-11 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-039 (proposal; founder Q-01 approved WebAuthn-native now, SSO later) |
 | Requirements | H01, H08, K01 (staff realm), K10, Q39 (viewer, verification visibility), Q42 (app part), W07 (shell, banner, idle lock) |

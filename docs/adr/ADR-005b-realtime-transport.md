@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on Phase 1 spike evidence (SP-05: correctness/recovery PASS; 2k-herd latency target NOT MET on the dev laptop — root-caused, re-test gate set)** — pending founder/ChatGPT review |
+| Status | **ACCEPTED on Phase 1 spike evidence (SP-05: correctness/recovery PASS; 2k-herd latency target NOT MET on the dev laptop — root-caused, re-test gate set)** — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10); the Phase 4 re-test gate remains open |
 | Date | 2026-10-09 |
 | Supersedes | `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-005b row (OPEN-SPIKE) |
 | Requirements | groundwork for M26/ADR-033 (socket/poll primary offer channel), Q33 (resilience); SLO "realtime reconnect to authoritative state < 5 s p95" (`docs/phase0/PHASE0_ARCHITECTURE_PROPOSAL.md` §9). No realtime product feature is implemented |

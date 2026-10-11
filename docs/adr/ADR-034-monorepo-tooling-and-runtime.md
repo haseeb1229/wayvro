@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on Phase 1 evidence** — pending founder/ChatGPT review |
+| Status | **ACCEPTED on Phase 1 evidence** — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-09 |
 | Supersedes | `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-034 row (PROPOSED) |
 | Requirements | I03, Q10/U03 (lockfiles), R41 |

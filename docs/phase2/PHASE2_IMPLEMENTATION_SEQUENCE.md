@@ -1,5 +1,7 @@
 # PHASE2_IMPLEMENTATION_SEQUENCE — Phase 2 micro-phases (PROPOSED)
 
+> Current repository status (2026-10-11): this document is a historical planning/checkpoint snapshot. Phase 2 later completed P2.1–P2.10 plus closure and merged via PR #4 at merge commit `7da51b0`. For current status use `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` and root status docs.
+
 **Date:** 2026-10-10 (planning closure correction applied the same day) · **Status:** Phase 2 PLAN ONLY. Micro-phases are bounded review units inside Phase 2, not new macro phases (roadmap stays Phase 0–12). Each runs on its own branch from the then-current `main` (proposed `phase-2/<n>-<slug>`), is reviewed by the founder/ChatGPT and merged by PR under the ruleset before the next starts, unless the founder authorises batching.
 
 ## 1. Ordering rationale

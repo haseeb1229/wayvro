@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on Phase 1 evidence — SP-AND PASS through the executed fallback** (primary pnpm layout FAILED on Windows) — pending founder/ChatGPT review |
+| Status | **ACCEPTED on Phase 1 evidence — SP-AND PASS through the executed fallback** (primary pnpm layout FAILED on Windows) — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-09 |
 | Supersedes | `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-036 row (FOUNDER-APPROVED, gated by this build smoke) |
 | Requirements | Q49 (Play AAB, 64-bit/target SDK/16 KB, evidence-based ABI set), V01 (one public app), CLAUDE.md §9 (JDK 17, permissions), M26/ADR-033 (no full-screen intent) |

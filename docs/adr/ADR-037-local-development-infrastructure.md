@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED** (local development and CI only) — pending founder/ChatGPT review |
+| Status | **ACCEPTED** (local development and CI only) — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-09 |
 | Requirements | I01, I02, R42 (Docker/data safety), CLAUDE.md §15 |
 | Files | `infra/docker/compose.yaml`, `infra/docker/seaweedfs/s3.json`, `scripts/infra.mjs`, `.env.example` |

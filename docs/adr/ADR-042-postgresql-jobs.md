@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.1 evidence** — pending founder/ChatGPT review of micro-phase P2.1 |
+| Status | **ACCEPTED on P2.1 evidence** — in force since Phase 2 review and merge (PR #4, merge commit `7da51b0`, 2026-10-11) |
 | Date | 2026-10-10 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-042 (proposal); resolves CON-P2-01 (BullMQ in the architecture proposal vs `SKIP LOCKED` in ADR-004) |
 | Requirements / findings | F-05 (job runner part), A03 (OTP delivery), Q39 (sealing), Q08/§8 rotation jobs |

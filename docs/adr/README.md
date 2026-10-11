@@ -4,6 +4,8 @@ ADRs record decisions with evidence. Numbering follows `docs/phase0/PHASE0_ADR_B
 
 **Phase 1 status (2026-10-10):** Phase 1 passed founder/ChatGPT review and was merged into `main` (PR #1, merge commit `eaa1fcb`), so the Phase 1 ADRs below are in force and supersede their Phase 0 backlog rows. The open items they record (for example the ADR-005b Phase 4 re-test gate) remain open.
 
+**Phase 2 status (2026-10-11):** Phase 2 (P2.1–P2.10 plus the closure run) passed founder/ChatGPT review and was merged into `main` (PR #4, merge commit `7da51b0`), so the Phase 2 ADRs below are in force and supersede their Phase 0 backlog rows. Their externally gated or unverified clauses stay open: ADR-038 independent security assessment (EG-17) before real users; ADR-040 production OIDC keys and SDKs (EG-06/EG-07); ADR-041 production storage and KMS (EG-05); ADR-043 physical-device and iOS runs.
+
 Every ADR states: status, context, alternatives, evidence (commands, versions, measurements, environment), decision, consequences and reversal path. A failed spike is recorded as FAIL together with the fallback that was executed — history is never rewritten to make a first choice look successful.
 
 ## Phase 1 decisions (2026-10-09)
@@ -20,7 +22,7 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-036](ADR-036-android-build-toolchain.md) | Android build toolchain (SP-AND) | ACCEPTED on evidence — SP-AND PASS via the executed fallback (pnpm hoisted layout after an isolated-layout Windows FAIL) |
 | [ADR-037](ADR-037-local-development-infrastructure.md) | Local development infrastructure (Docker Compose) | ACCEPTED |
 
-## Phase 2 micro-phase P2.1 decisions (2026-10-10) — ACCEPTED on P2.1 evidence, pending founder/ChatGPT review (branch `phase-2/1-identity-session-core`, not merged)
+## Phase 2 micro-phase P2.1 decisions (2026-10-10) — in force (reviewed; merged with Phase 2 via PR #4, `7da51b0`)
 
 | ADR | Title | Status |
 |---|---|---|
@@ -28,7 +30,7 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-042](ADR-042-postgresql-jobs.md) | Background jobs on PostgreSQL (`SKIP LOCKED`), not BullMQ | ACCEPTED on P2.1 evidence |
 | [ADR-045](ADR-045-production-test-double-isolation.md) | Production test-double isolation (F-01) | ACCEPTED on P2.1 evidence — ART-ISO 39/39 |
 
-## Phase 2 full-branch decisions (2026-10-11) — ACCEPTED on evidence, pending founder/ChatGPT review (branch `phase-2/identity-controlled-onboarding`, not merged)
+## Phase 2 full-branch decisions (2026-10-11) — in force (reviewed; merged via PR #4, `7da51b0`)
 
 | ADR | Title | Status |
 |---|---|---|

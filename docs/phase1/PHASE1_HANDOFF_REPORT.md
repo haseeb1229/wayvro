@@ -1,5 +1,7 @@
 # PHASE 1 HANDOFF — Safe monorepo, reproducible local environment and architecture validation
 
+> Current repository status (2026-10-11): this document is a historical checkpoint snapshot. Phase 1 later passed review and merged via PR #1 at merge commit `eaa1fcb`; Phase 2 later completed P2.1–P2.10 plus closure and merged via PR #4 at merge commit `7da51b0`. For current status use `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` and root status docs.
+
 **Date:** 2026-10-09 · **Branch:** `phase-1/foundation` (from Phase 0 baseline `41ff67d5b06f8d788dcd773141f75e274411678c`) · **Agent:** Claude Code (self-audit — not independent verification) · **Status:** delivered for founder/ChatGPT review; **not merged to `main`; Phase 2 not started.** Commit SHAs, push result and CI run URLs are reported in the chat handoff (a commit cannot contain its own SHA).
 
 ## 1. Scope delivered (and not delivered)

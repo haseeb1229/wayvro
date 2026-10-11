@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on Phase 1 evidence** — pending founder/ChatGPT review |
+| Status | **ACCEPTED on Phase 1 evidence** — in force since Phase 1 review and merge (PR #1, merge commit `eaa1fcb`, 2026-10-10) |
 | Date | 2026-10-09 |
 | Supersedes | `docs/phase0/PHASE0_ADR_BACKLOG.md` ADR-027 row (PROPOSED); implements `docs/phase0/PHASE0_ENGINEERING_GUARDRAILS.md` §2 stages 1–9 for the skeleton |
 | Requirements | I03, I09, Q09, Q10, Q11 (partly — branch protection is a GitHub setting the founder applies), Q48, R41, R45, U03 (partly) |
