@@ -1,6 +1,8 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
+import type { DriverCompliance } from '@wayvro/contracts';
 import { useAccountState } from '../../../core/account/use-account-state';
 import { QUERY_KEYS } from '../../../core/query/query-client';
+import type { District } from '../onboarding/districts';
 import { useDriverApi } from '../upload/upload-service';
 
 /** Query keys of the Driver/Partner flows (cleared with the whole cache on sign-out). */
@@ -42,4 +44,16 @@ export function useEvidence(applicationId: string | null) {
 export function useCompliance() {
   const api = useDriverApi();
   return useQuery({ queryKey: DRIVER_KEYS.compliance, queryFn: () => api.compliance() });
+}
+
+const NO_DISTRICTS: readonly District[] = [];
+
+/**
+ * District names for the verified driver's documents: the server's district list of the application's checklist, read
+ * only when a document names a district. Until it loads (or if it cannot be read) the district code is shown instead.
+ */
+export function useComplianceDistricts(compliance: DriverCompliance | undefined): readonly District[] {
+  const needed = compliance !== undefined && compliance.documents.some((d) => d.districtCode !== null);
+  const requirements = useRequirements(needed ? (compliance.applicationId ?? null) : null);
+  return requirements.data?.districts ?? NO_DISTRICTS;
 }

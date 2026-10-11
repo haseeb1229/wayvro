@@ -1,6 +1,7 @@
 import { EVIDENCE_KIND_VALUES, type DriverApplication, type EvidenceUploadStatus } from '@wayvro/contracts';
 import type { RequirementChecklist } from '../api/driver-api';
 import type { EvidenceKind, FailureReason, RejectionReason, UploadItem } from '../upload/upload-queue';
+import type { District } from './districts';
 import { checklistFieldHints, type DocumentFieldHints } from './field-hints';
 
 /**
@@ -24,14 +25,18 @@ export interface EvidenceSlotView {
   readonly display: EvidenceDisplay;
 }
 
-type ItemStatus = 'not-started' | 'details-saved' | 'in-progress' | 'ready' | 'action-needed' | 'unsupported';
+type ItemStatus = 'not-started' | 'details-saved' | 'in-progress' | 'ready' | 'action-needed' | 'no-district';
 
 export interface ChecklistItem {
   readonly documentType: string;
   readonly mandatory: boolean;
   readonly subject: RequirementItem['subject'];
-  /** Route permits are claimed per district; the app has no district list yet (contract gap), so they are not offered. */
-  readonly supported: boolean;
+  /** Claimed per district (e.g. route permits, R46): the claim must name one of `districts`. */
+  readonly perDistrict: boolean;
+  /** The server's enabled districts of the application's city for a per-district item; empty otherwise. */
+  readonly districts: readonly District[];
+  /** False only for a per-district item while the server lists no district (nothing can be claimed yet). */
+  readonly claimable: boolean;
   readonly licenceClassesAllowed: readonly string[];
   /** Claim fields offered for this item, derived from the server's document facts. */
   readonly hints: DocumentFieldHints;
@@ -101,8 +106,8 @@ export function evidenceDisplay(
   return { state: 'none' };
 }
 
-function itemStatus(document: DocumentView | null, evidence: readonly EvidenceSlotView[], supported: boolean): ItemStatus {
-  if (!supported) return 'unsupported';
+function itemStatus(document: DocumentView | null, evidence: readonly EvidenceSlotView[], claimable: boolean): ItemStatus {
+  if (!claimable && document === null) return 'no-district';
   if (evidence.some((e) => e.display.state === 'failed' || e.display.state === 'rejected')) return 'action-needed';
   if (document === null) return 'not-started';
   if (evidence.length > 0 && evidence.every((e) => e.display.state === 'accepted')) return 'ready';
@@ -123,19 +128,22 @@ export function checklistModel(
       notApplicable.push(req.documentType);
       continue;
     }
-    const supported = !req.perDistrict;
+    const districts = req.perDistrict ? (checklist.districts ?? []) : [];
+    const claimable = !req.perDistrict || districts.length > 0;
     const document = currentDocument(application, req.documentType);
     const evidence = req.evidenceKinds.filter(isEvidenceKind).map((kind) => ({ kind, display: evidenceDisplay(document?.id ?? null, kind, server, queue) }));
     items.push({
       documentType: req.documentType,
       mandatory: req.mandatory,
       subject: req.subject,
-      supported,
+      perDistrict: req.perDistrict,
+      districts,
+      claimable,
       licenceClassesAllowed: req.licenceClassesAllowed,
       hints: checklistFieldHints(req),
       document,
       evidence,
-      status: itemStatus(document, evidence, supported),
+      status: itemStatus(document, evidence, claimable),
     });
   }
   // Required first, then in the server's order.

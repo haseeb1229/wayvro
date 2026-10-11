@@ -6,6 +6,7 @@ import { useI18n } from '../../../core/i18n/I18nProvider';
 import type { TranslationParams } from '../../../core/i18n/strings';
 import { Banner, Body, Button, ErrorBanner, Heading, TextField } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
+import type { RenewalAppealView } from '../compliance/compliance';
 import { driverText, type DriverStringKey } from '../i18n/driver-strings';
 import type { ReasonItem } from '../onboarding/status';
 import type { DriverErrorView } from './driver-errors';
@@ -63,6 +64,34 @@ export function ReasonList({ reasons }: { readonly reasons: readonly ReasonItem[
       ))}
     </View>
   );
+}
+
+/**
+ * Appeal of a rejected renewal: the existing appeal flow on the server-named REJECT decision, or the appeal's status in
+ * plain words. Nothing is shown when the server offers no appeal.
+ */
+export function RenewalAppealNotice({ appeal }: { readonly appeal: RenewalAppealView }) {
+  const dt = useDriverText();
+  const router = useRouter();
+  switch (appeal.kind) {
+    case 'none':
+      return null;
+    case 'status':
+      return <Body>{dt(appeal.key)}</Body>;
+    case 'can-appeal':
+      return (
+        <View style={styles.group}>
+          <Body muted>{dt('renewalAppeal.offer')}</Body>
+          <Button
+            variant="secondary"
+            label={dt('renewalAppeal.appeal')}
+            onPress={() => {
+              router.push({ pathname: '/earn/appeal', params: { decision: appeal.decisionId } });
+            }}
+          />
+        </View>
+      );
+  }
 }
 
 /** Day / month / year entry (any digit script; validated by the form adapters). */

@@ -4,19 +4,22 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
+import { useI18n } from '../../../core/i18n/I18nProvider';
 import { deviceTodayIso } from '../../../core/input/digits';
 import { Banner, Body, Button, Heading, Screen, StateView, TextField, Title } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { combineQueries, viewStateFromQuery } from '../../../core/ui/view-state';
 import type { DocumentRenewal } from '../api/driver-api';
-import { DRIVER_KEYS, useCompliance, useEvidence } from '../api/driver-queries';
+import { DRIVER_KEYS, useCompliance, useComplianceDistricts, useEvidence } from '../api/driver-queries';
+import { renewalAppeal, type RenewalAppealView } from '../compliance/compliance';
 import { evidenceDisplay, isEvidenceKind, missingItems } from '../onboarding/checklist';
+import { districtName, type District } from '../onboarding/districts';
 import { renewalFieldHints } from '../onboarding/field-hints';
 import { buildRenewalClaim, emptyDocumentForm, type DocumentForm, type FieldErrors } from '../onboarding/forms';
 import { useDriverApi, useUploadQueue } from '../upload/upload-service';
 import type { EvidenceKind } from '../upload/upload-queue';
 import { driverErrorView, refusalReasonCodes } from '../ui/driver-errors';
-import { DateFields, DriverErrorBanner, useDriverText } from '../ui/DriverUi';
+import { DateFields, DriverErrorBanner, RenewalAppealNotice, useDriverText } from '../ui/DriverUi';
 import { EvidenceRows } from '../ui/EvidenceRows';
 import { documentLabel } from '../ui/labels';
 import { useQueueRefresh } from '../ui/use-queue-refresh';
@@ -24,7 +27,9 @@ import { useQueueRefresh } from '../ui/use-queue-refresh';
 /**
  * Document renewal of a verified driver (D03; R02–R06): new claims (the new expiry date is required), then photos for
  * the renewal document through the same upload queue (slots of the driver's application), then submission. A human
- * reviewer decides; a refused renewal is restarted, not appealed.
+ * reviewer decides. A refused renewal can be appealed through the existing appeal flow when the server names an
+ * appealable decision, and a new renewal can always be started. The renewal keeps the document's district (the server
+ * copies it), so the district is only displayed here.
  */
 const ParamsSchema = z.object({ document: z.uuid() });
 type DocumentField = 'number' | 'licenceClass' | 'issuedOn' | 'expiresOn';
@@ -33,6 +38,7 @@ export default function RenewalScreen() {
   const dt = useDriverText();
   const params = ParamsSchema.safeParse(useLocalSearchParams());
   const compliance = useCompliance();
+  const districts = useComplianceDistricts(compliance.data);
   if (!params.success) {
     return (
       <Screen scroll={false}>
@@ -65,13 +71,15 @@ export default function RenewalScreen() {
       </Screen>
     );
   }
-  return <Renewal compliance={view.data.compliance} doc={doc} />;
+  return <Renewal compliance={view.data.compliance} doc={doc} districts={districts} />;
 }
 
 type ComplianceDocument = DriverCompliance['documents'][number];
 
-function Renewal({ compliance, doc }: { readonly compliance: DriverCompliance; readonly doc: ComplianceDocument }) {
+function Renewal(props: { readonly compliance: DriverCompliance; readonly doc: ComplianceDocument; readonly districts: readonly District[] }) {
+  const { compliance, doc } = props;
   const dt = useDriverText();
+  const { locale } = useI18n();
   const api = useDriverApi();
   const queryClient = useQueryClient();
   const title = dt('renewal.title', { document: documentLabel(dt, doc.documentType) });
@@ -80,6 +88,7 @@ function Renewal({ compliance, doc }: { readonly compliance: DriverCompliance; r
   const [errors, setErrors] = useState<FieldErrors<DocumentField>>({});
   const [started, setStarted] = useState<DocumentRenewal | null>(null);
   const refresh = () => queryClient.invalidateQueries({ queryKey: DRIVER_KEYS.compliance });
+  const district = doc.districtCode === null ? null : dt('renewal.district', { district: districtName(locale, doc.districtCode, props.districts) });
 
   const start = useMutation({
     mutationFn: (request: Parameters<typeof api.startRenewal>[1]) => api.startRenewal(doc.id, request),
@@ -96,6 +105,9 @@ function Renewal({ compliance, doc }: { readonly compliance: DriverCompliance; r
     (live !== null && live.status !== 'REJECTED'
       ? { renewalDocumentId: live.renewalDocumentId, status: live.status, applicationId: compliance.applicationId ?? null, evidenceKinds: live.evidenceKinds }
       : null);
+  const appeal = renewalAppeal(live);
+  // The appeal belongs to the server's renewal, never to one just started on this screen.
+  const evidenceAppeal: RenewalAppealView = started === null ? appeal : { kind: 'none' };
 
   if (renewal === null) {
     const fieldError = (name: DocumentField) => {
@@ -107,6 +119,8 @@ function Renewal({ compliance, doc }: { readonly compliance: DriverCompliance; r
         <Stack.Screen options={{ title }} />
         <Title>{title}</Title>
         <Body>{dt('renewal.body')}</Body>
+        {district === null ? null : <Body muted>{district}</Body>}
+        <RenewalAppealNotice appeal={appeal} />
         {hints.number ? (
           <TextField
             label={dt('claim.number')}
@@ -175,6 +189,8 @@ function Renewal({ compliance, doc }: { readonly compliance: DriverCompliance; r
       renewalDocumentId={renewal.renewalDocumentId}
       inReview={renewal.status === 'IN_REVIEW'}
       kinds={kinds}
+      district={district}
+      appeal={evidenceAppeal}
       onSubmitted={() => {
         void refresh();
       }}
@@ -188,6 +204,8 @@ function RenewalEvidence(props: {
   readonly renewalDocumentId: string;
   readonly inReview: boolean;
   readonly kinds: readonly EvidenceKind[];
+  readonly district: string | null;
+  readonly appeal: RenewalAppealView;
   readonly onSubmitted: () => void;
 }) {
   const dt = useDriverText();
@@ -212,7 +230,9 @@ function RenewalEvidence(props: {
       <Screen>
         <Stack.Screen options={{ title: props.title }} />
         <Title>{props.title}</Title>
+        {props.district === null ? null : <Body muted>{props.district}</Body>}
         <Banner tone="info" text={dt(submit.isSuccess ? 'renewal.submitted' : 'renewal.inReview')} />
+        <RenewalAppealNotice appeal={props.appeal} />
       </Screen>
     );
   }
@@ -238,6 +258,7 @@ function RenewalEvidence(props: {
     <Screen>
       <Stack.Screen options={{ title: props.title }} />
       <Title>{props.title}</Title>
+      {props.district === null ? null : <Body muted>{props.district}</Body>}
       <Heading>{dt('claim.photosTitle')}</Heading>
       <EvidenceRows
         applicationId={props.applicationId}

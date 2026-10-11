@@ -256,6 +256,11 @@ export const RequirementChecklistSchema = z
         hasExpiry: z.boolean(),
       }),
     ),
+    /**
+     * Closure (additive): the ENABLED districts of the application's city — the only valid `districtCode` values for a
+     * per-district item (server-authoritative; clients never hard-code districts).
+     */
+    districts: z.array(z.object({ code: z.string(), nameEn: z.string(), nameUr: z.string() })).optional(),
   })
   .meta({ id: 'RequirementChecklist' });
 
@@ -274,7 +279,15 @@ export const DriverComplianceSchema = z
         hasExpiry: z.boolean(),
         /** P2.8 (additive): the renewal in progress for this document, if any, with the evidence kinds it needs. */
         renewal: z
-          .object({ renewalDocumentId: z.uuid(), status: z.enum(['DRAFT', 'IN_REVIEW', 'APPROVED', 'REJECTED']), evidenceKinds: z.array(z.string()) })
+          .object({
+            renewalDocumentId: z.uuid(),
+            status: z.enum(['DRAFT', 'IN_REVIEW', 'APPROVED', 'REJECTED']),
+            evidenceKinds: z.array(z.string()),
+            /** Closure (additive): the REJECT decision that may be appealed (null when not appealable). */
+            appealableDecisionId: z.uuid().nullable().optional(),
+            /** Closure (additive): the appeal of that rejection, if one was made. */
+            appealStatus: z.enum(['SUBMITTED', 'UNDER_REVIEW', 'UPHELD', 'OVERTURNED', 'WITHDRAWN']).nullable().optional(),
+          })
           .nullable()
           .optional(),
       }),

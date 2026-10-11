@@ -5,9 +5,10 @@ import { formatDate } from '../../../core/i18n/strings';
 import { Banner, Body, Button, Heading, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
-import { useCompliance } from '../api/driver-queries';
+import { useCompliance, useComplianceDistricts } from '../api/driver-queries';
 import { complianceModel, type BlockerView, type DocumentRowView, type RestrictionView } from '../compliance/compliance';
-import { useDriverText } from '../ui/DriverUi';
+import { districtName, type District } from '../onboarding/districts';
+import { RenewalAppealNotice, useDriverText } from '../ui/DriverUi';
 import { cityLabel, documentLabel } from '../ui/labels';
 
 /**
@@ -18,6 +19,7 @@ export default function ComplianceScreen() {
   const dt = useDriverText();
   const { t } = useI18n();
   const compliance = useCompliance();
+  const districts = useComplianceDistricts(compliance.data);
   const view = viewStateFromQuery(compliance, complianceModel);
   if (view.kind !== 'ready') {
     return (
@@ -56,7 +58,7 @@ export default function ComplianceScreen() {
       <Heading>{dt('compliance.documentsTitle')}</Heading>
       {model.documents.length === 0 ? <Body muted>{dt('compliance.empty')}</Body> : null}
       {model.documents.map((doc) => (
-        <DocumentRow key={doc.id} doc={doc} />
+        <DocumentRow key={doc.id} doc={doc} districts={districts} />
       ))}
       {model.restrictions.length > 0 ? <Heading>{dt('compliance.restrictionsTitle')}</Heading> : null}
       {model.restrictions.map((r) => (
@@ -74,18 +76,20 @@ function BlockerLine({ blocker }: { readonly blocker: BlockerView }) {
   return <Body>{blocker.documentType === null ? reason : dt('blocker.document', { document: documentLabel(dt, blocker.documentType), reason })}</Body>;
 }
 
-function DocumentRow({ doc }: { readonly doc: DocumentRowView }) {
+function DocumentRow({ doc, districts }: { readonly doc: DocumentRowView; readonly districts: readonly District[] }) {
   const dt = useDriverText();
   const { locale } = useI18n();
   const router = useRouter();
   return (
     <View style={styles.group} accessibilityRole="summary">
       <Heading>{documentLabel(dt, doc.documentType)}</Heading>
+      {doc.districtCode === null ? null : <Body muted>{dt('docs.district', { district: districtName(locale, doc.districtCode, districts) })}</Body>}
       <Body
         muted
       >{`${dt(doc.statusKey)} · ${doc.expiresOn === null ? dt('compliance.noExpiry') : dt('compliance.expires', { date: formatDate(doc.expiresOn, locale) })}`}</Body>
       {doc.renewalDue ? <Banner tone="warning" text={dt('compliance.renewalDue')} /> : null}
       {doc.renewalStatusKey === null ? null : <Body muted>{dt(doc.renewalStatusKey)}</Body>}
+      <RenewalAppealNotice appeal={doc.appeal} />
       {doc.action === 'start' || doc.action === 'continue' ? (
         <Button
           variant={doc.action === 'start' ? 'primary' : 'secondary'}

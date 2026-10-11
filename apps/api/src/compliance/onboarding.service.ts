@@ -889,8 +889,14 @@ export class OnboardingService {
       [set.id],
     );
     const ownership = new Set(view.vehicles.map((v) => v.ownershipType));
+    // per-district items take their district only from this server list (enabled districts of the application's city)
+    const districts = await this.db.query<{ code: string; name_en: string; name_ur: string }>(
+      `select code, name_en, name_ur from catalog.districts where city_code = $1 and status = 'ENABLED' order by code`,
+      [app.city_code],
+    );
     return {
       requirementSetId: set.id,
+      districts: districts.rows.map((d) => ({ code: d.code, nameEn: d.name_en, nameUr: d.name_ur })),
       version: set.version,
       isPlaceholder: set.is_placeholder,
       items: items.rows.map((i) => ({
@@ -946,11 +952,19 @@ export class OnboardingService {
       has_number: boolean;
       has_expiry: boolean;
       evidence_kinds: string[];
+      last_decision_id: string | null;
+      last_decision: string | null;
+      appeal_status: 'SUBMITTED' | 'UNDER_REVIEW' | 'UPHELD' | 'OVERTURNED' | 'WITHDRAWN' | null;
     }>(
       `select d.id, d.document_type_code, d.vehicle_id, d.district_code, d.number_last4, d.licence_class, to_char(d.claimed_expires_on, 'YYYY-MM-DD') claimed_expires_on,
               to_char(d.expires_on, 'YYYY-MM-DD') expires_on, d.status, d.supersedes_id, t.has_number, t.has_expiry, t.evidence_kinds,
-              exists (select 1 from compliance.review_cases c where c.compliance_document_id = d.id and c.status in ('OPEN', 'CLAIMED', 'ESCALATED')) open_case
+              exists (select 1 from compliance.review_cases c where c.compliance_document_id = d.id and c.status in ('OPEN', 'CLAIMED', 'ESCALATED')) open_case,
+              ld.id last_decision_id, ld.decision last_decision,
+              (select ap.status from profile.appeals ap where ap.review_decision_id = ld.id order by ap.created_at desc limit 1) appeal_status
          from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
+         left join lateral (
+           select rd.id, rd.decision from compliance.review_decisions rd join compliance.review_cases rc on rc.id = rd.review_case_id
+            where rc.compliance_document_id = d.id order by rd.decided_at desc limit 1) ld on true
         where (d.driver_profile_id = $1 or d.driver_application_id = $2 or d.vehicle_id = any($3::uuid[])) and d.status <> 'SUPERSEDED'
         order by d.created_at`,
       [profile.id, profile.application_id, vehicles.rows.map((v) => v.id)],
@@ -1059,7 +1073,15 @@ export class OnboardingService {
           const r = renewals.get(d.id);
           if (!r) return null;
           const status = r.status === 'REJECTED' ? ('REJECTED' as const) : r.open_case ? ('IN_REVIEW' as const) : ('DRAFT' as const);
-          return { renewalDocumentId: r.id, status, evidenceKinds: r.evidence_kinds };
+          // a renewal rejected by a REJECT decision is appealable (Phase-2 closure); NEEDS_INFO means start a new renewal
+          const appealable = r.status === 'REJECTED' && r.last_decision === 'REJECT' && r.appeal_status === null;
+          return {
+            renewalDocumentId: r.id,
+            status,
+            evidenceKinds: r.evidence_kinds,
+            appealableDecisionId: appealable ? r.last_decision_id : null,
+            appealStatus: r.appeal_status,
+          };
         })(),
       })),
       restrictions: restrictions.filter((r) => inForce(r, now)).map(accountView),

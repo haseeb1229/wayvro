@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { application, checklist, doc, DRIVER_IDS, evidence } from '../../../__mocks__/driver-fixtures';
 import { createUploadItem, reduceUpload, type UploadItem } from '../upload/upload-queue';
 import { checklistModel, currentDocument, evidenceDisplay, missingItems } from './checklist';
+import { districtName, districtOptions } from './districts';
 import { documentNameKey, KNOWN_DOCUMENT_TYPES } from './document-names';
 import { DRIVER_CATALOGUE } from '../i18n/driver-strings';
 
@@ -30,7 +31,14 @@ describe('requirement checklist', () => {
     expect(model.placeholder).toBe(true);
     expect(model.items.map((i) => i.documentType)).toEqual(['CNIC', 'SELFIE', 'VEHICLE_REGISTRATION', 'ROUTE_PERMIT']);
     expect(model.notApplicable).toEqual(['AUTHORISED_USE_LETTER']);
-    expect(model.items.find((i) => i.documentType === 'ROUTE_PERMIT')).toMatchObject({ supported: false, status: 'unsupported', mandatory: false });
+    // Per-district item while the server lists no district: honestly not claimable yet.
+    expect(model.items.find((i) => i.documentType === 'ROUTE_PERMIT')).toMatchObject({
+      perDistrict: true,
+      districts: [],
+      claimable: false,
+      status: 'no-district',
+      mandatory: false,
+    });
     expect(model).toMatchObject({ readyMandatory: 0, totalMandatory: 3, canSubmit: false });
   });
 
@@ -85,6 +93,43 @@ describe('requirement checklist', () => {
     expect(evidenceDisplay(DRIVER_IDS.cnicDoc, 'CNIC_FRONT', [evidence(DRIVER_IDS.upload1, DRIVER_IDS.cnicDoc, 'CNIC_FRONT', 'EXPIRED')], [])).toEqual({
       state: 'none',
     });
+  });
+});
+
+describe('per-district items (R46)', () => {
+  const districts = [
+    { code: 'LHR-SYN01', nameEn: 'Synthetic North', nameUr: 'مصنوعی شمال' },
+    { code: 'LHR-SYN02', nameEn: 'Synthetic South', nameUr: 'مصنوعی جنوب' },
+  ];
+
+  it('offers only the server-listed districts, and only on per-district items', () => {
+    const model = checklistModel(checklist({ districts }), application(), [], []);
+    const permit = model.items.find((i) => i.documentType === 'ROUTE_PERMIT');
+    expect(permit).toMatchObject({ perDistrict: true, districts, claimable: true, status: 'not-started' });
+    for (const item of model.items.filter((i) => i.documentType !== 'ROUTE_PERMIT')) {
+      expect(item, item.documentType).toMatchObject({ perDistrict: false, districts: [], claimable: true });
+    }
+  });
+
+  it('an existing per-district claim keeps its status even when no district is listed now', () => {
+    const app = application({ documents: [{ ...doc(DRIVER_IDS.regDoc, 'ROUTE_PERMIT'), districtCode: 'LHR-SYN01' }] });
+    const permit = checklistModel(checklist({ districts: [] }), app, [], []).items.find((i) => i.documentType === 'ROUTE_PERMIT');
+    expect(permit).toMatchObject({ claimable: false, status: 'details-saved' });
+    expect(permit?.document?.districtCode).toBe('LHR-SYN01');
+  });
+
+  it('district names: Urdu script in the Urdu UI, English otherwise, the code as fallback', () => {
+    expect(districtName('en', 'LHR-SYN01', districts)).toBe('Synthetic North');
+    expect(districtName('ur-Latn', 'LHR-SYN01', districts)).toBe('Synthetic North');
+    expect(districtName('ur', 'LHR-SYN01', districts)).toBe('مصنوعی شمال');
+    expect(districtName('ur', 'LHR-UNLISTED', districts)).toBe('LHR-UNLISTED');
+    expect(districtName('en', 'LHR-SYN01', [])).toBe('LHR-SYN01');
+    expect(districtName('en', 'LHR-SYN03', [{ code: 'LHR-SYN03', nameEn: ' ', nameUr: '' }])).toBe('LHR-SYN03');
+    expect(districtOptions('ur', districts)).toEqual([
+      { value: 'LHR-SYN01', label: 'مصنوعی شمال' },
+      { value: 'LHR-SYN02', label: 'مصنوعی جنوب' },
+    ]);
+    expect(districtOptions('en', [])).toEqual([]);
   });
 });
 

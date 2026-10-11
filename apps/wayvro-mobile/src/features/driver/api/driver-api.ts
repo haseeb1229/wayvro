@@ -65,6 +65,8 @@ export interface VehicleUpdate {
 export interface DocumentClaim {
   readonly documentType: string;
   readonly vehicleId?: string;
+  /** Only for a per-district document type (required there; the server refuses it for any other type). */
+  readonly districtCode?: string;
   readonly number?: string;
   readonly licenceClass?: string;
   readonly issuedOn?: string;

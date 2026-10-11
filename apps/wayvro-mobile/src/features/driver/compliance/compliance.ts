@@ -25,16 +25,31 @@ interface EligibilityView {
 }
 
 type RenewalAction = 'start' | 'continue' | 'in-review' | 'none';
+type Renewal = NonNullable<ComplianceDocument['renewal']>;
+type AppealStatus = NonNullable<Renewal['appealStatus']>;
+
+/**
+ * Appeal of a rejected renewal (K05 on renewals): offered only when the server names an appealable REJECT decision and
+ * no appeal was made yet; otherwise the appeal's status is shown in plain words. OVERTURNED sends the renewal back to a
+ * person (its status returns to in review). Starting a new renewal stays available either way.
+ */
+export type RenewalAppealView =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'can-appeal'; readonly decisionId: string }
+  | { readonly kind: 'status'; readonly status: AppealStatus; readonly key: DriverStringKey };
 
 export interface DocumentRowView {
   readonly id: string;
   readonly documentType: string;
   readonly statusKey: DriverStringKey;
+  /** The district of a per-district document (shown by name when the district list is available). */
+  readonly districtCode: string | null;
   readonly expiresOn: string | null;
   readonly renewalDue: boolean;
   readonly renewalStatusKey: DriverStringKey | null;
   readonly renewalDocumentId: string | null;
   readonly action: RenewalAction;
+  readonly appeal: RenewalAppealView;
 }
 
 export interface RestrictionView {
@@ -70,6 +85,15 @@ export function renewalAction(doc: ComplianceDocument): RenewalAction {
   return renewable && (doc.renewalDue || doc.status === 'EXPIRED' || renewal?.status === 'REJECTED') ? 'start' : 'none';
 }
 
+/** The appeal view of a document's renewal (see RenewalAppealView). */
+export function renewalAppeal(renewal: Renewal | null | undefined): RenewalAppealView {
+  if (renewal === null || renewal === undefined) return { kind: 'none' };
+  const status = renewal.appealStatus ?? null;
+  if (status !== null) return { kind: 'status', status, key: `renewalAppeal.status.${status}` };
+  const decisionId = renewal.appealableDecisionId ?? null;
+  return renewal.status === 'REJECTED' && decisionId !== null ? { kind: 'can-appeal', decisionId } : { kind: 'none' };
+}
+
 const restrictionView = (r: Restriction): RestrictionView => ({
   id: r.id,
   key: `driverRestriction.${r.reasonClass}`,
@@ -95,11 +119,13 @@ export function complianceModel(compliance: DriverCompliance): ComplianceModel {
         id: d.id,
         documentType: d.documentType,
         statusKey: `docStatus.${d.status}`,
+        districtCode: d.districtCode,
         expiresOn: d.expiresOn,
         renewalDue: d.renewalDue,
         renewalStatusKey: d.renewal ? (`renewalStatus.${d.renewal.status}` as const) : null,
         renewalDocumentId: d.renewal?.renewalDocumentId ?? null,
         action: renewalAction(d),
+        appeal: renewalAppeal(d.renewal),
       })),
     restrictions: compliance.restrictions.map(restrictionView),
   };

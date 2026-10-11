@@ -209,18 +209,43 @@ function documentFields(
   return { errors, values };
 }
 
-/** A document claim for one requirement item; vehicle documents name the application's vehicle. */
+/** A first claim also names the district of a per-district document (R46); a renewal keeps the original district. */
+export interface ClaimForm extends DocumentForm {
+  /** '' until the user picks one of the server's districts. */
+  readonly districtCode: string;
+}
+export type ClaimField = DocumentField | 'district';
+
+export const emptyClaimForm: ClaimForm = { ...emptyDocumentForm, districtCode: '' };
+
+/**
+ * A document claim for one requirement item; vehicle documents name the application's vehicle. `districtCodes` is the
+ * server's district list for a per-district item (a district from it is REQUIRED, as on the server) and `null` for any
+ * other item, which never carries a district (the server refuses one).
+ */
 export function buildDocumentClaim(
   documentType: string,
   hints: DocumentFieldHints,
-  form: DocumentForm,
+  form: ClaimForm,
   vehicleId: string | null,
+  districtCodes: readonly string[] | null,
   todayIso: string,
-): FormResult<DocumentClaim, DocumentField> {
+): FormResult<DocumentClaim, ClaimField> {
   const { errors, values } = documentFields(hints, form, todayIso, false);
-  if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const request: DocumentClaim = { documentType, ...(vehicleId === null ? {} : { vehicleId }), ...values };
-  return DocumentClaimRequestSchema.safeParse(request).success ? { ok: true, request } : { ok: false, errors: { number: 'claim.numberInvalid' } };
+  const allErrors: FieldErrors<ClaimField> = { ...errors };
+  if (districtCodes !== null && !districtCodes.includes(form.districtCode))
+    allErrors.district = districtCodes.length === 0 ? 'claim.noDistrict' : 'claim.districtRequired';
+  if (Object.keys(allErrors).length > 0) return { ok: false, errors: allErrors };
+  const request: DocumentClaim = {
+    documentType,
+    ...(vehicleId === null ? {} : { vehicleId }),
+    ...(districtCodes === null ? {} : { districtCode: form.districtCode }),
+    ...values,
+  };
+  const parsed = DocumentClaimRequestSchema.safeParse(request);
+  if (parsed.success) return { ok: true, request };
+  const districtIssue = parsed.error.issues.some((issue) => issue.path[0] === 'districtCode');
+  return { ok: false, errors: districtIssue ? { district: 'claim.districtRequired' } : { number: 'claim.numberInvalid' } };
 }
 
 /** A renewal always carries the new expiry date (the server requires it). */

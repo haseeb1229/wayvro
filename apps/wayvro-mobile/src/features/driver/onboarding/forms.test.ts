@@ -13,6 +13,7 @@ import {
   buildVehicleCreate,
   buildVehicleUpdate,
   claimsComplete,
+  emptyClaimForm,
   emptyDate,
   emptyDocumentForm,
   emptyVehicleForm,
@@ -109,25 +110,58 @@ describe('vehicle', () => {
 
 describe('document claims and renewals', () => {
   it('claims only the fields the type has, with the vehicle for vehicle documents', () => {
-    const form = { ...emptyDocumentForm, number: ' AB-123 ', licenceClass: 'ltv', expiresOn: { day: '1', month: '1', year: '2030' } };
-    expect(buildDocumentClaim('DRIVING_LICENCE', ALL, form, null, TODAY)).toEqual({
+    const form = { ...emptyClaimForm, number: ' AB-123 ', licenceClass: 'ltv', expiresOn: { day: '1', month: '1', year: '2030' } };
+    expect(buildDocumentClaim('DRIVING_LICENCE', ALL, form, null, null, TODAY)).toEqual({
       ok: true,
       request: { documentType: 'DRIVING_LICENCE', number: 'AB-123', licenceClass: 'LTV', expiresOn: '2030-01-01' },
     });
-    expect(buildDocumentClaim('VEHICLE_REGISTRATION', NUMBER_ONLY, form, DRIVER_IDS.vehicle, TODAY)).toEqual({
+    expect(buildDocumentClaim('VEHICLE_REGISTRATION', NUMBER_ONLY, form, DRIVER_IDS.vehicle, null, TODAY)).toEqual({
       ok: true,
       request: { documentType: 'VEHICLE_REGISTRATION', vehicleId: DRIVER_IDS.vehicle, number: 'AB-123' },
     });
-    expect(buildDocumentClaim('SELFIE', NONE, form, null, TODAY)).toEqual({ ok: true, request: { documentType: 'SELFIE' } });
+    expect(buildDocumentClaim('SELFIE', NONE, form, null, null, TODAY)).toEqual({ ok: true, request: { documentType: 'SELFIE' } });
   });
 
   it('refuses past expiry dates and malformed values', () => {
-    const past = { ...emptyDocumentForm, expiresOn: { day: '1', month: '1', year: '2020' } };
-    expect(buildDocumentClaim('CNIC', EXPIRY_ONLY, past, null, TODAY)).toEqual({ ok: false, errors: { expiresOn: 'claim.expiryInvalid' } });
-    expect(buildDocumentClaim('DRIVING_LICENCE', ALL, { ...emptyDocumentForm, licenceClass: 'L T V' }, null, TODAY)).toMatchObject({
+    const past = { ...emptyClaimForm, expiresOn: { day: '1', month: '1', year: '2020' } };
+    expect(buildDocumentClaim('CNIC', EXPIRY_ONLY, past, null, null, TODAY)).toEqual({ ok: false, errors: { expiresOn: 'claim.expiryInvalid' } });
+    expect(buildDocumentClaim('DRIVING_LICENCE', ALL, { ...emptyClaimForm, licenceClass: 'L T V' }, null, null, TODAY)).toMatchObject({
       ok: false,
       errors: { licenceClass: 'claim.licenceClassInvalid' },
     });
+  });
+
+  it('a per-district document requires one of the server-listed districts and sends it (R46)', () => {
+    const codes = ['LHR-SYN01', 'LHR-SYN02'];
+    expect(buildDocumentClaim('ROUTE_PERMIT', NONE, emptyClaimForm, DRIVER_IDS.vehicle, codes, TODAY)).toEqual({
+      ok: false,
+      errors: { district: 'claim.districtRequired' },
+    });
+    // A code the server did not list is refused on the device too.
+    expect(buildDocumentClaim('ROUTE_PERMIT', NONE, { ...emptyClaimForm, districtCode: 'LHR-OTHER' }, DRIVER_IDS.vehicle, codes, TODAY)).toEqual({
+      ok: false,
+      errors: { district: 'claim.districtRequired' },
+    });
+    expect(buildDocumentClaim('ROUTE_PERMIT', NONE, { ...emptyClaimForm, districtCode: 'LHR-SYN02' }, DRIVER_IDS.vehicle, codes, TODAY)).toEqual({
+      ok: true,
+      request: { documentType: 'ROUTE_PERMIT', vehicleId: DRIVER_IDS.vehicle, districtCode: 'LHR-SYN02' },
+    });
+    // No district listed by the server: nothing can be claimed yet (no fallback district is invented).
+    expect(buildDocumentClaim('ROUTE_PERMIT', NONE, { ...emptyClaimForm, districtCode: 'LHR-SYN01' }, DRIVER_IDS.vehicle, [], TODAY)).toEqual({
+      ok: false,
+      errors: { district: 'claim.noDistrict' },
+    });
+    // A listed code that the contract would refuse is reported against the district, never sent.
+    expect(buildDocumentClaim('ROUTE_PERMIT', NONE, { ...emptyClaimForm, districtCode: 'lahore' }, DRIVER_IDS.vehicle, ['lahore'], TODAY)).toEqual({
+      ok: false,
+      errors: { district: 'claim.districtRequired' },
+    });
+  });
+
+  it('a document that is not per district never carries a district, even if one is left in the form', () => {
+    const built = buildDocumentClaim('CNIC', NONE, { ...emptyClaimForm, districtCode: 'LHR-SYN01' }, null, null, TODAY);
+    expect(built).toEqual({ ok: true, request: { documentType: 'CNIC' } });
+    expect(built.ok && 'districtCode' in built.request).toBe(false);
   });
 
   it('a renewal always needs the new expiry date', () => {

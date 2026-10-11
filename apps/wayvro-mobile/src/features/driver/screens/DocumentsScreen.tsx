@@ -3,11 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { toApiError } from '../../../core/api/errors';
+import { useI18n } from '../../../core/i18n/I18nProvider';
 import { Banner, Body, Button, Heading, LinkRow, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { combineQueries, viewStateFromQuery } from '../../../core/ui/view-state';
 import { DRIVER_KEYS, useEvidence, useRequirements } from '../api/driver-queries';
 import { checklistModel, missingItems, type ChecklistItem, type MissingItem } from '../onboarding/checklist';
+import { districtName } from '../onboarding/districts';
 import { useDriverApi, useUploadQueue } from '../upload/upload-service';
 import { ApplicationGate } from '../ui/ApplicationGate';
 import { driverErrorView, refusalReasonCodes } from '../ui/driver-errors';
@@ -112,8 +114,12 @@ function Checklist({ application }: { readonly application: DriverApplication })
 
 function ItemRow({ item, onPress }: { readonly item: ChecklistItem; readonly onPress: () => void }) {
   const dt = useDriverText();
+  const { locale } = useI18n();
   const name = documentLabel(dt, item.documentType);
-  return <LinkRow label={`${name} · ${dt(item.mandatory ? 'docs.required' : 'docs.optional')}`} detail={dt(`docs.status.${item.status}`)} onPress={onPress} />;
+  const status = dt(`docs.status.${item.status}`);
+  const districtCode = item.document?.districtCode ?? null;
+  const detail = districtCode === null ? status : `${status} · ${dt('docs.district', { district: districtName(locale, districtCode, item.districts) })}`;
+  return <LinkRow label={`${name} · ${dt(item.mandatory ? 'docs.required' : 'docs.optional')}`} detail={detail} onPress={onPress} />;
 }
 
 function MissingList({ items }: { readonly items: readonly MissingItem[] }) {

@@ -1,3 +1,4 @@
+import { DocumentClaimRequestSchema } from '@wayvro/contracts';
 import { describe, expect, it } from 'vitest';
 import { application, checklist, compliance, DRIVER_IDS, evidence } from '../../../__mocks__/driver-fixtures';
 import { errorBody, jsonResponse, tokens } from '../../../__mocks__/fixtures';
@@ -7,6 +8,7 @@ import type { HttpDeps } from '../../../core/api/http';
 import { createIdempotencyIntentStore } from '../../../core/api/idempotency-intents';
 import { createRefreshCall, createWayvroClient } from '../../../core/api/wayvro-client';
 import { SessionManager } from '../../../core/session/session-manager';
+import { buildDocumentClaim, emptyClaimForm } from '../onboarding/forms';
 import { createDriverApi } from './driver-api';
 
 type Handler = (path: string, init: RequestInit) => Response | Promise<Response>;
@@ -81,6 +83,52 @@ describe('driver API on the contract schemas', () => {
     expect((await h.api.evidence(DRIVER_IDS.application)).items).toHaveLength(1);
     expect((await h.api.compliance()).applicationId).toBe(DRIVER_IDS.application);
     expect(h.calls.map((c) => c.init.method)).toEqual(['GET', 'GET', 'GET']);
+  });
+
+  it('document claims carry districtCode only for a per-district item, and every body passes the contract schema', async () => {
+    const h = await harness(() => jsonResponse(201, { documentId: DRIVER_IDS.regDoc }));
+    const none = { number: false, licenceClass: false, issuedOn: false, expiresOn: false };
+    const permit = buildDocumentClaim('ROUTE_PERMIT', none, { ...emptyClaimForm, districtCode: 'LHR-SYN01' }, DRIVER_IDS.vehicle, ['LHR-SYN01'], '2026-10-11');
+    const cnic = buildDocumentClaim('CNIC', none, { ...emptyClaimForm, districtCode: 'LHR-SYN01' }, null, null, '2026-10-11');
+    if (!permit.ok || !cnic.ok) throw new Error('synthetic claims must build');
+    expect(await h.api.claimDocument(DRIVER_IDS.application, permit.request)).toBe(DRIVER_IDS.regDoc);
+    await h.api.claimDocument(DRIVER_IDS.application, cnic.request);
+    expect(h.calls.map((c) => `${c.init.method ?? ''} ${c.path}`)).toEqual([`POST ${APP}/documents`, `POST ${APP}/documents`]);
+    expect(h.body(0)).toEqual({ documentType: 'ROUTE_PERMIT', vehicleId: DRIVER_IDS.vehicle, districtCode: 'LHR-SYN01' });
+    expect(h.body(1)).toEqual({ documentType: 'CNIC' });
+    expect(DocumentClaimRequestSchema.safeParse(h.body(0)).success).toBe(true);
+    expect(DocumentClaimRequestSchema.safeParse(h.body(1)).success).toBe(true);
+  });
+
+  it('a server refusal of a district (400) surfaces as a validation error', async () => {
+    const h = await harness(() => jsonResponse(400, errorBody('WAYVRO_E_VALIDATION')));
+    await expect(h.api.claimDocument(DRIVER_IDS.application, { documentType: 'ROUTE_PERMIT', districtCode: 'LHR-SYN09' })).rejects.toMatchObject({
+      kind: 'validation',
+      code: 'WAYVRO_E_VALIDATION',
+    });
+  });
+
+  it('requirements carry the server district list; compliance renewals carry the appealable decision and appeal status', async () => {
+    const districts = [{ code: 'LHR-SYN01', nameEn: 'Synthetic North', nameUr: 'مصنوعی شمال' }];
+    const renewal = {
+      renewalDocumentId: DRIVER_IDS.renewalDoc,
+      status: 'REJECTED',
+      evidenceKinds: ['DOCUMENT_PAGE'],
+      appealableDecisionId: DRIVER_IDS.decision,
+      appealStatus: 'UNDER_REVIEW',
+    };
+    const base = compliance();
+    const h = await harness((path) =>
+      path.endsWith('/requirements')
+        ? jsonResponse(200, checklist({ districts }))
+        : jsonResponse(200, { ...base, documents: base.documents.map((d, i) => (i === 0 ? { ...d, districtCode: 'LHR-SYN01', renewal } : d)) }),
+    );
+    expect((await h.api.requirements(DRIVER_IDS.application)).districts).toEqual(districts);
+    const first = (await h.api.compliance()).documents[0];
+    expect(first?.districtCode).toBe('LHR-SYN01');
+    expect(first?.renewal).toMatchObject({ appealableDecisionId: DRIVER_IDS.decision, appealStatus: 'UNDER_REVIEW' });
+    const invalid = await harness(() => jsonResponse(200, { ...base, documents: [{ ...base.documents[0], renewal: { ...renewal, appealStatus: 'MAYBE' } }] }));
+    await expect(invalid.api.compliance()).rejects.toMatchObject({ kind: 'unknown' });
   });
 
   it('upload slot → completion → discard use the evidence routes; slot retries reuse the same key', async () => {

@@ -6,6 +6,10 @@
  * Decision appeals are decided by a KYC senior reviewer, restriction appeals by Trust & Safety — never by the original
  * decider (or second approver) of the decision, nor by the restriction's creator, and never with a conflict of
  * interest. OVERTURNED reopens human review (new APPEAL case) or lifts the restriction; UPHELD makes a rejection final.
+ *
+ * Phase-2 closure: a REJECT of a document RENEWAL (DOCUMENT_RENEWAL case) is appealable too, because a rejected renewal
+ * can keep a driver from earning. OVERTURNED returns the renewal to SUBMITTED with a fresh DOCUMENT_RENEWAL review case
+ * (a human decides again; nothing is validated automatically); UPHELD leaves it REJECTED.
  */
 import type { FieldCipher } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, fieldContext } from '@wayvro/identity-core';
@@ -71,9 +75,26 @@ export class AppealsService {
             [input.reviewDecisionId, principal.accountId],
           )
         ).rows[0];
-        if (!d) return failure('WAYVRO_E_NOT_FOUND');
-        if (d.decision !== 'REJECT' || !canTransition(d.state, 'APPEALED', 'APPLICANT')) return failure('WAYVRO_E_CONFLICT');
-        applicationId = d.application_id;
+        if (d) {
+          if (d.decision !== 'REJECT' || !canTransition(d.state, 'APPEALED', 'APPLICANT')) return failure('WAYVRO_E_CONFLICT');
+          applicationId = d.application_id;
+        } else {
+          // a rejected document renewal of the caller's own driver profile (its latest decision only)
+          const r = (
+            await tx.query<{ decision: string; doc_status: string; latest: boolean }>(
+              `select d.decision, doc.status doc_status,
+                      d.id = (select d2.id from compliance.review_decisions d2 join compliance.review_cases c2 on c2.id = d2.review_case_id
+                               where c2.compliance_document_id = c.compliance_document_id order by d2.decided_at desc limit 1) latest
+                 from compliance.review_decisions d join compliance.review_cases c on c.id = d.review_case_id
+                 join compliance.driver_profiles p on p.id = c.driver_profile_id
+                 join compliance.compliance_documents doc on doc.id = c.compliance_document_id
+                where d.id = $1 and c.kind = 'DOCUMENT_RENEWAL' and p.account_id = $2 for no key update of doc`,
+              [input.reviewDecisionId, principal.accountId],
+            )
+          ).rows[0];
+          if (!r) return failure('WAYVRO_E_NOT_FOUND');
+          if (r.decision !== 'REJECT' || r.doc_status !== 'REJECTED' || !r.latest) return failure('WAYVRO_E_CONFLICT');
+        }
       } else {
         const r = (
           await tx.query<{ appealable: boolean; status: string }>(
@@ -149,7 +170,8 @@ export class AppealsService {
          from profile.appeals ap
          left join compliance.review_decisions d on d.id = ap.review_decision_id
          left join compliance.review_cases c on c.id = d.review_case_id
-         left join compliance.driver_applications a on a.id = c.driver_application_id
+         left join compliance.driver_profiles p on p.id = c.driver_profile_id
+         left join compliance.driver_applications a on a.id = coalesce(c.driver_application_id, p.application_id)
         where ap.status in ('SUBMITTED', 'UNDER_REVIEW')
           and ((ap.review_decision_id is not null and $1::boolean and ($2::text[] is null or a.city_code = any($2::text[])))
                or (ap.restriction_id is not null and $3::boolean))
@@ -197,7 +219,46 @@ export class AppealsService {
       if (appeal.status !== 'SUBMITTED' && appeal.status !== 'UNDER_REVIEW') return failure('WAYVRO_E_CONFLICT');
       if (staff.consumerAccountId !== null && staff.consumerAccountId === appeal.account_id) return this.deny(tx, staff, appealId, 'CONFLICT_OF_INTEREST');
       let reviewCaseId: string | null = null;
-      if (appeal.review_decision_id !== null) {
+      const renewal =
+        appeal.review_decision_id === null
+          ? undefined
+          : (
+              await tx.query<{
+                decided_by_staff_id: string;
+                second_approver: string | null;
+                doc_id: string;
+                doc_status: string;
+                profile_id: string;
+                city_code: string;
+              }>(
+                `select d.decided_by_staff_id, s.approver_staff_id second_approver, c.compliance_document_id doc_id, doc.status doc_status,
+                        c.driver_profile_id profile_id, a.city_code
+                   from compliance.review_decisions d join compliance.review_cases c on c.id = d.review_case_id
+                   join compliance.driver_profiles p on p.id = c.driver_profile_id
+                   join compliance.driver_applications a on a.id = p.application_id
+                   join compliance.compliance_documents doc on doc.id = c.compliance_document_id
+                   left join compliance.review_second_approvals s on s.review_decision_id = d.id
+                  where d.id = $1 and c.kind = 'DOCUMENT_RENEWAL' for no key update of doc`,
+                [appeal.review_decision_id],
+              )
+            ).rows[0];
+      if (renewal) {
+        const cities = citiesFor(staff, 'appeal.decide');
+        if (!hasRole(staff, 'KYC_SENIOR_REVIEWER') || (cities !== null && !cities.has(renewal.city_code)))
+          return this.deny(tx, staff, appealId, 'NOT_PERMITTED');
+        if (renewal.decided_by_staff_id === staff.staffId || renewal.second_approver === staff.staffId)
+          return this.deny(tx, staff, appealId, 'ORIGINAL_DECIDER');
+        if (input.outcome === 'OVERTURNED') {
+          if (renewal.doc_status !== 'REJECTED') return failure('WAYVRO_E_CONFLICT');
+          // a fresh human review of the same renewal; the document is NOT validated here
+          await tx.query(`update compliance.compliance_documents set status = 'SUBMITTED', version = version + 1 where id = $1`, [renewal.doc_id]);
+          reviewCaseId = uuidv7();
+          await tx.query(
+            `insert into compliance.review_cases (id, kind, driver_profile_id, compliance_document_id, city_code, priority, status) values ($1, 'DOCUMENT_RENEWAL', $2, $3, $4, 5, 'OPEN')`,
+            [reviewCaseId, renewal.profile_id, renewal.doc_id, renewal.city_code],
+          );
+        }
+      } else if (appeal.review_decision_id !== null) {
         const d = (
           await tx.query<{ decided_by_staff_id: string; second_approver: string | null; application_id: string; city_code: string; state: ApplicationState }>(
             `select d.decided_by_staff_id, s.approver_staff_id second_approver, a.id application_id, a.city_code, a.state
