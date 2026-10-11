@@ -26,6 +26,7 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_ACCOUNT_RESTRICTED: { status: 403, message: 'Your account is restricted. See the account notice for details and how to appeal.' },
   WAYVRO_E_FEATURE_DISABLED: { status: 404, message: 'This feature is not available.' },
   WAYVRO_E_CONFLICT: { status: 409, message: 'This request conflicts with the current state. Please refresh and try again.' },
+  WAYVRO_E_GONE: { status: 410, message: 'This link was already used or has expired.' },
 };
 
 export class WayvroError extends Error {

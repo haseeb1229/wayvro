@@ -27,6 +27,8 @@ export const KEY_CLASSES = {
   cnicLookup: 'cnic_lookup',
   /** deterministic document-number lookups (HMAC; duplicate signals) */
   documentLookup: 'document_lookup',
+  /** key-encryption key wrapping the per-object evidence data keys (ADR-041 §2.4; KMS custody in production, EG-05) */
+  evidenceKek: 'evidence_kek',
 } as const;
 export type KeyClass = (typeof KEY_CLASSES)[keyof typeof KEY_CLASSES];
 

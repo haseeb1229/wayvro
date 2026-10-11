@@ -7,6 +7,7 @@ import { otpDeliveryJob } from '@wayvro/identity-core';
 import { createLogger } from '@wayvro/observability';
 import { bindProviders } from '@wayvro/provider-interfaces';
 import { createTestDoubleBindings } from '@wayvro/provider-test-doubles';
+import { objectStorageFromSettings } from '@wayvro/vault-adapters';
 import { JobRunner } from '@wayvro/server-runtime';
 import { composeApi } from '../src/composition.js';
 import { loadApiConfig } from '../src/config.js';
@@ -18,7 +19,10 @@ if (!isNonProductionLike(config.WAYVRO_ENV)) {
 }
 const log = createLogger({ service: 'api', env: config.WAYVRO_ENV, level: config.LOG_LEVEL });
 const doubles = createTestDoubleBindings();
-const providers = bindProviders(config.WAYVRO_ENV, doubles);
+// Evidence uploads need a reachable store: the REAL S3 adapter against the local SeaweedFS when configured (ADR-041);
+// the in-memory double otherwise (its upload URLs are not reachable, so evidence then works only in unit tests).
+const storage = objectStorageFromSettings(config, config.EVIDENCE_UPLOAD_URL_SECONDS);
+const providers = bindProviders(config.WAYVRO_ENV, { ...doubles, ...(storage ? { objectStorage: storage } : {}) });
 const runtime = await composeApi(config, log, { providers, extraControllers: [localOtpInbox(doubles.otpDelivery)] });
 const delivery = new JobRunner(runtime.db.pool, [otpDeliveryJob({ db: runtime.db.pool, cipher: runtime.cipher, port: doubles.otpDelivery })], {
   workerId: `api-local-runner-${String(process.pid)}`,

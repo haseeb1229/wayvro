@@ -1,4 +1,4 @@
-import { databaseEnvSchema, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema } from '@wayvro/config';
+import { databaseEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema, vaultEnvSchema } from '@wayvro/config';
 import { z } from 'zod';
 
 const int = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
@@ -7,7 +7,22 @@ const workerEnvSchema = serviceEnvSchema
   .extend(databaseEnvSchema.shape)
   .extend(redisEnvSchema.shape)
   .extend(keyEnvSchema.shape)
+  .extend(vaultEnvSchema.shape)
   .extend({
+    // Evidence pipeline (ADR-041). The scanner and the sanitiser are bound only when configured; without them evidence
+    // stays UPLOADED and is retried — never treated as clean.
+    CLAMD_HOST: z.string().min(1).optional(),
+    CLAMD_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+    CLAMD_TIMEOUT_MS: int(30_000, 1000, 300_000),
+    /** 'docker' = one hardened container per image via the Docker CLI: LOCAL DEVELOPMENT AND CI ONLY (refused below). */
+    SANITISER_RUNNER: z.enum(['none', 'docker']).default('none'),
+    SANITISER_IMAGE: z.string().min(1).default('wayvro-sanitiser:local'),
+    SANITISER_TIMEOUT_MS: int(60_000, 1000, 300_000),
+    /** Orphan reconciliation reports instead of deleting until an operator turns this off (KYC doc §4). */
+    EVIDENCE_ORPHAN_DRY_RUN: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
     HEALTH_HOST: z.string().min(1).default('127.0.0.1'),
     HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(4002),
     WAYVRO_BUILD_VERSION: z.string().min(1).default('dev'),
@@ -26,6 +41,14 @@ const workerEnvSchema = serviceEnvSchema
 
 export type WorkerConfig = Readonly<z.infer<typeof workerEnvSchema>>;
 
+/** WAYVRO_ENV-dependent rules: a production worker never holds a Docker socket (ADR-041 §2.2; hosting is P2.A4). */
+function workerEnvironmentRules(c: z.infer<typeof workerEnvSchema>): string[] {
+  if (isNonProductionLike(c.WAYVRO_ENV)) return [];
+  return c.SANITISER_RUNNER === 'docker'
+    ? [`SANITISER_RUNNER: ${c.WAYVRO_ENV} refuses the Docker CLI runner (isolated sanitiser hosting is activation track P2.A4)`]
+    : [];
+}
+
 export function loadWorkerConfig(env: Readonly<Record<string, string | undefined>>): WorkerConfig {
-  return loadConfig(workerEnvSchema, env);
+  return loadConfig(workerEnvSchema, env, workerEnvironmentRules);
 }

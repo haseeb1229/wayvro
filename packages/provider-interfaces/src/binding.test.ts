@@ -17,8 +17,17 @@ class FakeRealStorage implements ObjectStoragePort {
   getObject(): Promise<Uint8Array | null> {
     return Promise.resolve(null);
   }
-  createUploadUrl(): Promise<{ url: string; expiresAt: Date }> {
-    return Promise.resolve({ url: 'https://storage.example/upload', expiresAt: new Date() });
+  headObject(): Promise<null> {
+    return Promise.resolve(null);
+  }
+  deleteObject(): Promise<void> {
+    return Promise.resolve();
+  }
+  listObjects(): Promise<[]> {
+    return Promise.resolve([]);
+  }
+  createUploadUrl(): Promise<{ url: string; method: 'PUT'; headers: Record<string, string>; expiresAt: Date }> {
+    return Promise.resolve({ url: 'https://storage.example/upload', method: 'PUT', headers: {}, expiresAt: new Date() });
   }
 }
 

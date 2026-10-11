@@ -13,7 +13,9 @@ import {
   KeyedHasher,
   loadKeyRing,
   localKeyRing,
+  openEvidence,
   parseEnvelope,
+  sealEvidence,
   type FieldContext,
   type KeyEntry,
   type KeyState,
@@ -184,5 +186,43 @@ describe('key provider (local/test only; staging/production refuse — EG-05)', 
     expect(ring.active('contact').id).toBe('contact.v2');
     expect(() => localKeyRing(SEED, 'contact.v1=MAYBE')).toThrow(KeyProviderError);
     expect(() => localKeyRing(SEED, 'contact=ACTIVE')).toThrow(/invalid key id/);
+  });
+});
+
+describe('evidence objects: per-object DEK wrapped by the evidence KEK (UNIT-CRYPTO, ADR-041 §2.4)', () => {
+  const cipher = new FieldCipher(localKeyRing(SEED));
+  const image = randomBytes(4096);
+
+  it('round-trips, uses a fresh DEK and nonce per object, and never contains the plaintext', () => {
+    const id = randomUUID();
+    const a = sealEvidence(cipher, id, image);
+    const b = sealEvidence(cipher, id, image);
+    expect(openEvidence(cipher, id, a).equals(image)).toBe(true);
+    expect(a.content.equals(b.content)).toBe(false);
+    expect(a.wrappedDek.equals(b.wrappedDek)).toBe(false);
+    expect(a.content.includes(image.subarray(0, 32))).toBe(false);
+    expect(parseEnvelope(a.wrappedDek).keyId).toBe('evidence_kek.v1');
+    expect(parseEnvelope(a.content).keyId).toBe('evidence_dek.v1');
+  });
+
+  it('fails closed when content or the wrapped DEK is moved to another object, swapped or tampered with', () => {
+    const id = randomUUID();
+    const other = randomUUID();
+    const sealed = sealEvidence(cipher, id, image);
+    const sealedOther = sealEvidence(cipher, other, image);
+    expect(reason(() => openEvidence(cipher, other, sealed))).toBe('AUTHENTICATION_FAILED');
+    expect(reason(() => openEvidence(cipher, id, { wrappedDek: sealed.wrappedDek, content: sealedOther.content }))).toBe('AUTHENTICATION_FAILED');
+    const flipped = Buffer.from(sealed.content);
+    flipped[flipped.length - 1] = (flipped[flipped.length - 1] ?? 0) ^ 1;
+    expect(reason(() => openEvidence(cipher, id, { ...sealed, content: flipped }))).toBe('AUTHENTICATION_FAILED');
+    const otherKek = new FieldCipher(localKeyRing('another-synthetic-seed-0123456789abcdef'));
+    expect(reason(() => openEvidence(otherKek, id, sealed))).toBe('AUTHENTICATION_FAILED');
+  });
+
+  it('a retired evidence KEK can no longer open evidence (rotation re-wraps DEKs before retiring)', () => {
+    const id = randomUUID();
+    const sealed = sealEvidence(cipher, id, image);
+    const retired = new FieldCipher(localKeyRing(SEED, 'evidence_kek.v1=RETIRED,evidence_kek.v2=ACTIVE'));
+    expect(reason(() => openEvidence(retired, id, sealed))).toBe('KEY_RETIRED');
   });
 });

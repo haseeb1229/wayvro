@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 101,
+  "file_count_excluding_manifest": 103,
   "files": [
     {
       "path": ".gitattributes",
@@ -245,6 +245,11 @@
       "sha256": "4feb202974270d601fbff643fba2cdd57d8701b19dfec8ed9c3434adea855714"
     },
     {
+      "path": "docs/adr/ADR-041-evidence-vault-and-image-sanitiser.md",
+      "bytes": 12050,
+      "sha256": "06fc946fcbd0dd6c0a85a19f7dd1e028ec4affb54143876554dac236242c7309"
+    },
+    {
       "path": "docs/adr/ADR-042-postgresql-jobs.md",
       "bytes": 5641,
       "sha256": "d67a8b978a2766553bcdb852419877f05aee526f27ac1a1b2acf716a4e3fc44a"
@@ -266,8 +271,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4320,
-      "sha256": "07e6b9c532df8150e9f14379aae01d8efc40bfb6649b6fe48f37776265903ebb"
+      "bytes": 4552,
+      "sha256": "90cee9a35f9bb87661effc268fb787796ec9e3e38c836c3db8f03c5f1a8c7a55"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -455,6 +460,11 @@
       "sha256": "507208ec2965321a537d975fe3a68d08cbd99e4162cf65c4018996800ed68610"
     },
     {
+      "path": "docs/phase2/PHASE2_DPIA_INPUT_PACK.md",
+      "bytes": 8734,
+      "sha256": "11ca1e0f40bec65409322747963fd42790a3905537ad53446df072cc4e004b89"
+    },
+    {
       "path": "docs/phase2/PHASE2_EXTERNAL_GATES.md",
       "bytes": 13121,
       "sha256": "a0ac74de4ec416236c8fc66809d8ea48273c6ae233d485daa7c85cdefe0aae03"
@@ -466,8 +476,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
-      "bytes": 18844,
-      "sha256": "cd4c8721fda0e8cdef1c67317c5fb1b1ada64b3fde5423fcf8da0e9fd0b2e6ce"
+      "bytes": 26155,
+      "sha256": "a955650e2b78d77b30342c754941224031ac9f7d92f145bb6ae698540cf79bbc"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",

@@ -36,8 +36,10 @@ export interface RouteContract {
   readonly params?: z.ZodObject;
   /** Query-string parameters (all optional unless the schema says otherwise). */
   readonly query?: z.ZodObject;
-  /** Response schema per status; `null` means the status has no body (204). */
+  /** Response schema per status; `null` means the status has no body (204) or a binary body (`binaryResponses`). */
   readonly responses: Readonly<Record<number, z.ZodType | null>>;
+  /** Statuses whose body is binary, with the possible media types (e.g. a streamed evidence image). */
+  readonly binaryResponses?: Readonly<Record<number, readonly string[]>>;
 }
 
 export const HEALTH_ROUTES = [

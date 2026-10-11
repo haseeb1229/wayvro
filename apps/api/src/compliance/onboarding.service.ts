@@ -8,8 +8,9 @@
  * create SIGNALS (CNIC hash, document number, plate) for human review — never rejections or merges (K07, §1).
  * Evidence upload and submission arrive with the vault (P2.6).
  */
+import { randomInt } from 'node:crypto';
 import { isFlagEnabled, type WayvroEnv } from '@wayvro/config';
-import type { DriverApplication, DriverCompliance } from '@wayvro/contracts';
+import { CAPTURE_CHALLENGE_CODES, type DriverApplication, type DriverCompliance, type ErrorCode } from '@wayvro/contracts';
 import type { FieldCipher, KeyedHasher } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, fieldContext } from '@wayvro/identity-core';
 import { WayvroError } from '@wayvro/observability';
@@ -17,7 +18,7 @@ import { appendAudit, sqlState, uuidv7, type Queryable } from '@wayvro/server-ru
 import type pg from 'pg';
 import { currentAgePolicy } from '../legal/age-policy.js';
 import { consentStatuses, requiredActionsFor } from '../legal/consent.service.js';
-import { failure, success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
+import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome } from '../platform/idempotency.js';
 import { EDITABLE_APPLICATION_STATES, canTransition, type ApplicationState } from './application-state.js';
 import { evaluateEarningEligibility, inForce, type DocumentFact, type RequirementItemFact } from './eligibility.js';
 import { canonicalCnic, canonicalDocumentNumber, normalisePlate, plausibleBirthDate } from './normalise.js';
@@ -26,6 +27,21 @@ import { accountRestrictionsInForce, accountView, restrictionsForAccount } from 
 export interface OnboardingPolicy {
   readonly WAYVRO_ENV: WayvroEnv;
   readonly IDEMPOTENCY_TTL_SECONDS: number;
+  readonly CAPTURE_CHALLENGE_TTL_SECONDS: number;
+}
+
+/**
+ * What submission needs from the evidence vault (implemented by the vault module, which owns its own database role):
+ * user-safe evidence states per application. The compliance module never reads vault tables.
+ */
+export interface EvidenceSummaryPort {
+  evidenceStates(applicationId: string): Promise<ReadonlyArray<{ readonly documentId: string; readonly kind: string; readonly status: string }>>;
+}
+
+interface CaptureChallenge {
+  readonly challengeId: string;
+  readonly challengeCode: string;
+  readonly expiresAt: string;
 }
 
 interface Principal {
@@ -70,6 +86,8 @@ export class OnboardingService {
     private readonly hasher: KeyedHasher,
     private readonly idempotency: IdempotencyStore,
     private readonly policy: OnboardingPolicy,
+    /** Null when the vault is not configured: submission then answers 503 DEPENDENCY_UNAVAILABLE. */
+    private readonly evidence: EvidenceSummaryPort | null = null,
   ) {}
 
   get available(): boolean {
@@ -102,10 +120,15 @@ export class OnboardingService {
     );
   }
 
+  /**
+   * `lock` takes FOR NO KEY UPDATE (no path changes the key): it serialises application mutations but, unlike FOR UPDATE,
+   * does not block foreign-key KEY SHARE checks — the vault module inserts rows referencing the application on its OWN
+   * connection while this transaction is open, and a cross-connection wait would be an undetectable deadlock.
+   */
   private async loadApplication(q: Queryable, accountId: string, id: string, lock = false): Promise<AppRow | null> {
     const r = await q.query<AppRow>(
       `select id, state, version, city_code, cnic_last4, legal_name_envelope, date_of_birth_envelope, created_at, submitted_at
-         from compliance.driver_applications where id = $1 and account_id = $2 ${lock ? 'for update' : ''}`,
+         from compliance.driver_applications where id = $1 and account_id = $2 ${lock ? 'for no key update' : ''}`,
       [id, accountId],
     );
     return r.rows[0] ?? null;
@@ -802,5 +825,178 @@ export class OnboardingService {
       })),
       restrictions: restrictions.filter((r) => inForce(r, now)).map(accountView),
     };
+  }
+
+  /** Runs `work` behind the onboarding gates in an idempotent, account-scoped transaction (used by the vault module). */
+  gated(principal: Principal, operation: string, key: string, payload: unknown, work: (tx: pg.PoolClient) => Promise<Outcome>): Promise<IdempotentResult> {
+    return this.run(principal, operation, key, payload, work);
+  }
+
+  /**
+   * Evidence-slot preconditions in the caller's transaction (P2.6): the application is the caller's and editable after
+   * consent (the first slot moves CONSENTED → DOCUMENTS_PENDING), the document claim belongs to it and its type lists
+   * the evidence kind. Returns a failure code, or the application's city.
+   */
+  async prepareEvidence(
+    tx: pg.PoolClient,
+    accountId: string,
+    applicationId: string,
+    documentId: string,
+    kind: string,
+  ): Promise<{ readonly failure: ErrorCode } | { readonly failure: null; readonly cityCode: string }> {
+    const app = await this.loadApplication(tx, accountId, applicationId, true);
+    if (!app) return { failure: 'WAYVRO_E_NOT_FOUND' };
+    if (!EDITABLE_APPLICATION_STATES.has(app.state) || app.state === 'DRAFT') return { failure: 'WAYVRO_E_CONFLICT' };
+    const doc = (
+      await tx.query<{ evidence_kinds: string[] }>(
+        `select t.evidence_kinds from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
+          where d.id = $1 and d.driver_application_id = $2 and d.status = 'SUBMITTED'`,
+        [documentId, applicationId],
+      )
+    ).rows[0];
+    if (!doc) return { failure: 'WAYVRO_E_NOT_FOUND' };
+    if (!doc.evidence_kinds.includes(kind)) return { failure: 'WAYVRO_E_VALIDATION' };
+    if (canTransition(app.state, 'DOCUMENTS_PENDING', 'APPLICANT')) {
+      await tx.query(`update compliance.driver_applications set state = 'DOCUMENTS_PENDING', version = version + 1, updated_at = now() where id = $1`, [
+        applicationId,
+      ]);
+    }
+    return { failure: null, cityCode: app.city_code };
+  }
+
+  private async issueChallengeIn(tx: pg.PoolClient, applicationId: string, exclude: ReadonlySet<string>): Promise<CaptureChallenge | null> {
+    const candidates = CAPTURE_CHALLENGE_CODES.filter((c) => !exclude.has(c));
+    const code = candidates[randomInt(candidates.length || 1)];
+    if (code === undefined) return null;
+    const id = uuidv7();
+    const r = await tx.query<{ expires_at: Date }>(
+      `insert into compliance.capture_challenges (id, application_id, challenge_code, status, expires_at)
+       values ($1, $2, $3, 'ISSUED', now() + ($4::int * interval '1 second')) returning expires_at`,
+      [id, applicationId, code, this.policy.CAPTURE_CHALLENGE_TTL_SECONDS],
+    );
+    const expiresAt = r.rows[0]?.expires_at;
+    if (!expiresAt) throw new Error('capture challenge insert returned no row');
+    return { challengeId: id, challengeCode: code, expiresAt: expiresAt.toISOString() };
+  }
+
+  /**
+   * Optional, accessible selfie capture challenge (KYC doc §2.2): an anti-replay aid for MANUAL review, never liveness
+   * and never required. A new request replaces the live challenge.
+   */
+  async issueCaptureChallenge(principal: Principal, id: string, key: string): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.capture-challenge', key, { id }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      if (!EDITABLE_APPLICATION_STATES.has(app.state) || app.state === 'DRAFT') return failure('WAYVRO_E_CONFLICT');
+      const replaced = await tx.query<{ challenge_code: string }>(
+        `update compliance.capture_challenges set status = 'REPLACED' where application_id = $1 and status = 'ISSUED' returning challenge_code`,
+        [id],
+      );
+      const challenge = await this.issueChallengeIn(tx, id, new Set(replaced.rows.map((r) => r.challenge_code)));
+      if (!challenge) throw new Error('no capture challenge available');
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'CAPTURE_CHALLENGE_ISSUED',
+        objectType: 'compliance.capture_challenge',
+        objectId: challenge.challengeId,
+        outcome: 'SUCCESS',
+      });
+      return success(201, challenge);
+    });
+  }
+
+  /**
+   * "I can't do this one" → REPLACE with a challenge not yet offered on this application; "None of these work for me"
+   * (or no alternative left) → DECLINED_ACCESSIBILITY, shown to the reviewer as neutral information. Never a rejection.
+   */
+  async declineCaptureChallenge(
+    principal: Principal,
+    id: string,
+    challengeId: string,
+    choice: 'REPLACE' | 'NONE_ACCESSIBLE',
+    key: string,
+  ): Promise<IdempotentResult> {
+    return this.run(principal, 'driver-onboarding.capture-challenge-decline', key, { id, challengeId, choice }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      const live = await tx.query(`select 1 from compliance.capture_challenges where id = $1 and application_id = $2 and status = 'ISSUED'`, [challengeId, id]);
+      if (live.rowCount === 0) return failure('WAYVRO_E_NOT_FOUND');
+      if (!EDITABLE_APPLICATION_STATES.has(app.state)) return failure('WAYVRO_E_CONFLICT');
+      let replacement: CaptureChallenge | null = null;
+      if (choice === 'REPLACE') {
+        await tx.query(`update compliance.capture_challenges set status = 'REPLACED' where id = $1`, [challengeId]);
+        const offered = await tx.query<{ challenge_code: string }>(`select challenge_code from compliance.capture_challenges where application_id = $1`, [id]);
+        replacement = await this.issueChallengeIn(tx, id, new Set(offered.rows.map((r) => r.challenge_code)));
+      }
+      if (replacement === null) await tx.query(`update compliance.capture_challenges set status = 'DECLINED_ACCESSIBILITY' where id = $1`, [challengeId]);
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'CAPTURE_CHALLENGE_DECLINED',
+        objectType: 'compliance.capture_challenge',
+        objectId: challengeId,
+        outcome: 'SUCCESS',
+        reasonCode: replacement ? 'REPLACED' : 'ACCESSIBILITY',
+      });
+      return success(200, { status: replacement ? 'REPLACED' : 'DECLINED_ACCESSIBILITY', replacement });
+    });
+  }
+
+  /**
+   * DOCUMENTS_PENDING | NEEDS_INFO → SUBMITTED once every mandatory, applicable item of the ACTIVE requirement set has a
+   * document claim and ACCEPTED evidence of every kind its type lists; pins the set. Missing items are itemised as
+   * reason codes. Review is always human (P2.7); nothing here decides an application.
+   */
+  async submit(principal: Principal, id: string, expectedVersion: number, key: string): Promise<IdempotentResult> {
+    const evidence = this.evidence;
+    if (evidence === null) throw new WayvroError('WAYVRO_E_DEPENDENCY_UNAVAILABLE');
+    return this.run(principal, 'driver-onboarding.submit', key, { id, expectedVersion }, async (tx) => {
+      const app = await this.loadApplication(tx, principal.accountId, id, true);
+      if (!app) return failure('WAYVRO_E_NOT_FOUND');
+      if (app.version !== expectedVersion || !canTransition(app.state, 'SUBMITTED', 'APPLICANT')) return failure('WAYVRO_E_CONFLICT');
+      const view = await this.view(tx, principal.accountId, app);
+      const set = (
+        await tx.query<{ id: string }>(`select id from compliance.requirement_sets where city_code = $1 and service_category = $2 and status = 'ACTIVE'`, [
+          app.city_code,
+          view.serviceCategories[0] ?? '',
+        ])
+      ).rows[0];
+      if (!set) return failure('WAYVRO_E_CONFLICT', { reasonCodes: ['NO_ACTIVE_REQUIREMENT_SET'] });
+      const items = await tx.query<{ document_type_code: string; evidence_kinds: string[]; applies_to_ownership_types: string[] }>(
+        `select i.document_type_code, t.evidence_kinds, i.applies_to_ownership_types
+           from compliance.requirement_set_items i join compliance.document_types t on t.code = i.document_type_code
+          where i.requirement_set_id = $1 and i.mandatory order by i.document_type_code`,
+        [set.id],
+      );
+      const ownership = new Set<string>(view.vehicles.map((v) => v.ownershipType));
+      const states = await evidence.evidenceStates(id);
+      const missing: string[] = [];
+      if (states.some((s) => s.status === 'PROCESSING')) missing.push('EVIDENCE_PROCESSING');
+      for (const item of items.rows) {
+        if (item.applies_to_ownership_types.length > 0 && !item.applies_to_ownership_types.some((o) => ownership.has(o))) continue;
+        const docs = view.documents.filter((d) => d.documentType === item.document_type_code && d.status === 'SUBMITTED').map((d) => d.id);
+        if (docs.length === 0) {
+          missing.push(`MISSING_DOCUMENT_${item.document_type_code}`);
+          continue;
+        }
+        for (const kind of item.evidence_kinds) {
+          if (!states.some((s) => docs.includes(s.documentId) && s.kind === kind && s.status === 'ACCEPTED')) missing.push(`MISSING_EVIDENCE_${kind}`);
+        }
+      }
+      if (missing.length > 0) return failure('WAYVRO_E_CONFLICT', { reasonCodes: [...new Set(missing)] });
+      await tx.query(
+        `update compliance.driver_applications set state = 'SUBMITTED', requirement_set_id = $2, submitted_at = now(), version = version + 1, updated_at = now() where id = $1`,
+        [id, set.id],
+      );
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_APPLICATION_SUBMITTED',
+        objectType: 'compliance.driver_application',
+        objectId: id,
+        outcome: 'SUCCESS',
+      });
+      const fresh = await this.loadApplication(tx, principal.accountId, id);
+      if (!fresh) throw new Error('application vanished');
+      return success(200, await this.view(tx, principal.accountId, fresh));
+    });
   }
 }

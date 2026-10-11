@@ -65,6 +65,27 @@ export {
 } from './legal.js';
 export { API_ROUTES, buildOpenApiDocument } from './openapi.js';
 export {
+  CAPTURE_CHALLENGE_CODES,
+  CAPTURE_SOURCE_VALUES,
+  CaptureChallengeDeclineRequestSchema,
+  CaptureChallengeDeclineSchema,
+  CaptureChallengeSchema,
+  ChallengeParamSchema,
+  EVIDENCE_KIND_VALUES,
+  EVIDENCE_MAX_BYTES,
+  EVIDENCE_ROUTES,
+  EvidenceListSchema,
+  EvidenceUploadRequestSchema,
+  EvidenceUploadSlotSchema,
+  EvidenceUploadStatusSchema,
+  EvidenceViewRequestSchema,
+  EvidenceViewSchema,
+  SubmissionRequestSchema,
+  UploadIdParamSchema,
+  ViewTokenParamSchema,
+  type EvidenceUploadStatus,
+} from './evidence.js';
+export {
   APPLICATION_STATE_VALUES,
   AccountRestrictionSchema,
   ApplicationCreateRequestSchema,

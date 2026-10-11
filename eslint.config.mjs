@@ -19,10 +19,24 @@ const SERVER_ONLY_PACKAGES = [
   '@wayvro/config',
   '@wayvro/field-crypto',
   '@wayvro/identity-core',
+  '@wayvro/vault-adapters',
+  '@wayvro/image-sanitiser',
 ];
 // Development/test-only packages (ADR-045): production source of any app/package must never import them.
 const DEV_ONLY_PACKAGES = ['@wayvro/provider-test-doubles', '@wayvro/test-support'];
-const SERVER_ONLY_MODULES = ['pg', 'ioredis', 'drizzle-orm', 'drizzle-orm/*', 'fastify', '@nestjs/*', 'socket.io', 'pino', '@opentelemetry/*'];
+const SERVER_ONLY_MODULES = [
+  'pg',
+  'ioredis',
+  'drizzle-orm',
+  'drizzle-orm/*',
+  'fastify',
+  '@nestjs/*',
+  'socket.io',
+  'pino',
+  '@opentelemetry/*',
+  '@aws-sdk/*',
+  'sharp',
+];
 const CLIENT_APPS = ['app-mobile', 'app-web-public', 'app-web-ops'];
 const ALL_APPS = ['app-api', 'app-worker', 'app-realtime', ...CLIENT_APPS];
 

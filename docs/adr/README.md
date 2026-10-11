@@ -34,10 +34,11 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 |---|---|---|
 | [ADR-039](ADR-039-staff-webauthn-bff.md) | Staff authentication: WebAuthn-native, BFF-held session, code-defined RBAC + ABAC | ACCEPTED on P2.4 evidence |
 | [ADR-044](ADR-044-policy-content-package.md) | Policy content as a versioned, immutable workspace package (+ Playwright/axe web E2E) | ACCEPTED on P2.2 evidence |
+| [ADR-041](ADR-041-evidence-vault-and-image-sanitiser.md) | Evidence vault: storage client, encryption, malware scanning, isolated image sanitiser (sharp/libvips, one container per image) | ACCEPTED on P2.6 evidence — production hosting P2.A4/EG-05 |
 | [ADR-043](ADR-043-mobile-platform-additions.md) | Mobile platform additions for the ONE Wayvro app (P2.3 account slice) | ACCEPTED on P2.3 evidence — device runs NOT RUN |
 
 ADR-038 and ADR-042 were corrected on this branch after the P2.1 review (lookup-rotation locking; per-claim lease tokens).
 
-ADR-040 (OIDC/`jose`) and ADR-041 (evidence vault) remain **proposals** in `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` until their micro-phases.
+ADR-040 (OIDC/`jose`) remains a **proposal** in `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` until its micro-phase (P2.10).
 
 Founder-locked decisions that are not repeated here: ADR-001 (name), ADR-026 (one public Wayvro app), ADR-035 (modular monolith baseline) — see the Phase 0 backlog.

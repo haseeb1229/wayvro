@@ -34,6 +34,16 @@ export const FLAG_REGISTRY: readonly FlagDefinition[] = [
     defaults: { local: true, test: true, staging: false, production: false },
     expiresOn: '2027-06-30',
   },
+  {
+    key: 'ops.kyc-real-evidence',
+    owner: 'founder',
+    purpose:
+      'Staff may view REAL identity evidence in staging/production. OFF until production storage/KMS (EG-05), the DPIA/biometric gate (EG-10) and the independent security assessment (EG-17) clear; when ON, viewers also need two registered authenticators. Local/test hold synthetic evidence only and are not gated by this flag.',
+    requirementIds: ['K11', 'H02', 'W07'],
+    enforcement: 'server',
+    defaults: { local: false, test: false, staging: false, production: false },
+    expiresOn: '2027-06-30',
+  },
 ];
 
 /** Server-side flag evaluation (registered default for the environment). Unknown keys are OFF. */

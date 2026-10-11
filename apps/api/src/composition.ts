@@ -26,6 +26,8 @@ import { StaffAdminService } from './staff/staff-admin.service.js';
 import { StaffAuthService } from './staff/staff-auth.service.js';
 import { StaffWebAuthn } from './staff/webauthn.js';
 import { IdempotencyStore } from './platform/idempotency.js';
+import { EvidenceViewService } from './vault/evidence-view.service.js';
+import { EvidenceService, EvidenceSummary } from './vault/evidence.service.js';
 
 export interface ApiRuntime {
   readonly app: NestFastifyApplication;
@@ -64,7 +66,19 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     deliveryAvailable: options.providers.has('otpDelivery'),
   });
   const sessions = new SessionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, policy: config });
-  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config);
+  // Evidence vault (ADR-041): a SEPARATE pool authenticated as a member of wayvro_vault, handed only to src/vault/**.
+  // Without it, or without bound object storage, evidence routes answer 503 DEPENDENCY_UNAVAILABLE.
+  const vaultDb =
+    config.DATABASE_VAULT_URL !== undefined && options.providers.has('objectStorage')
+      ? createDatabase(config.DATABASE_VAULT_URL, { maxConnections: 5, applicationName: 'wayvro-api-vault' })
+      : null;
+  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config, vaultDb ? new EvidenceSummary(vaultDb.pool) : null);
+  const evidence = vaultDb
+    ? {
+        evidence: new EvidenceService(vaultDb.pool, options.providers.get('objectStorage'), onboarding, idempotency, config),
+        views: new EvidenceViewService(vaultDb.pool, options.providers.get('objectStorage'), cipher, config.WAYVRO_ENV, log),
+      }
+    : null;
   const accounts = new AccountService(db.pool, idempotency, config, onboarding.available);
   const consents = new ConsentService(db.pool, cipher, idempotency, config);
   // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
@@ -82,6 +96,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       policy: config,
     },
     compliance: { onboarding, admin: new ComplianceAdminService(db.pool, idempotency, config) },
+    evidence,
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {
@@ -93,6 +108,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       redisProbe.close();
       limiterRedis.disconnect();
       await db.close();
+      await vaultDb?.close();
     },
   };
 }

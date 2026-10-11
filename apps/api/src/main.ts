@@ -3,6 +3,7 @@
 import { createLogger, startTelemetry } from '@wayvro/observability';
 import { bindProviders } from '@wayvro/provider-interfaces';
 import { enforceArtifactPolicy } from '@wayvro/server-runtime';
+import { objectStorageFromSettings } from '@wayvro/vault-adapters';
 import { composeApi } from './composition.js';
 import { loadApiConfig } from './config.js';
 
@@ -15,9 +16,11 @@ const telemetry = startTelemetry({
   otlpEndpoint: config.OTEL_EXPORTER_OTLP_ENDPOINT,
 });
 const log = createLogger({ service: 'api', env: config.WAYVRO_ENV, level: config.LOG_LEVEL });
-// No real provider adapter exists yet (OTP EG-01, storage EG-05, push Phase 4): every port stays unbound and the
-// features that need one answer 503 WAYVRO_E_DEPENDENCY_UNAVAILABLE. The guard still refuses branded doubles.
-const providers = bindProviders(config.WAYVRO_ENV, {});
+// Real adapters only. Object storage (ADR-041) is bound when configured; production storage/KMS is EG-05, and
+// staging/production cannot boot without a KMS key provider anyway. No OTP adapter (EG-01) or push adapter (Phase 4)
+// exists: those features answer 503 WAYVRO_E_DEPENDENCY_UNAVAILABLE. The guard still refuses branded doubles.
+const storage = objectStorageFromSettings(config, config.EVIDENCE_UPLOAD_URL_SECONDS);
+const providers = bindProviders(config.WAYVRO_ENV, storage ? { objectStorage: storage } : {});
 const runtime = await composeApi(config, log, { providers });
 
 let shuttingDown = false;

@@ -10,8 +10,11 @@ The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for 
 |---|---|---|
 | P2.1-fix | `9cfbc55` | RB-01 per-claim job lease tokens; RB-02 ledger-derived lookup plans + PostgreSQL advisory locks; DH-01/DH-02 deployment hardening (ADR-038, ADR-042) |
 | P2.2 | `41dd03a` | policy registry, consent, age-eligibility mechanism, legal pages, Playwright + axe |
-| P2.4 + P2.5 | (first of two checkpoint commits) | staff realm: WebAuthn, BFF, RBAC/ABAC, maker-checker, offboarding, break-glass, audit viewer (ADR-039); driver/vehicle compliance domain, requirement sets, age-policy data entry, restrictions. Committed together because they share the API composition, contracts index, guard and web-ops shell, which were developed in one pass |
-| P2.3 | (second checkpoint commit) | mobile account slice in the ONE app (ADR-043); built in parallel by a delegated agent inside `apps/wayvro-mobile` only, reviewed and gated here |
+| P2.4 + P2.5 | `842c244` | staff realm: WebAuthn, BFF, RBAC/ABAC, maker-checker, offboarding, break-glass, audit viewer (ADR-039); driver/vehicle compliance domain, requirement sets, age-policy data entry, restrictions. Committed together because they share the API composition, contracts index, guard and web-ops shell, which were developed in one pass |
+| P2.3 | `b35ad83` | mobile account slice in the ONE app (ADR-043); built in parallel by a delegated agent inside `apps/wayvro-mobile` only, reviewed and gated here |
+
+| CI fixes | `d49a2ae`, `86bd13a` | osv runtime exception (decode-uri-component, expires 2026-12-31); Android job builds the workspace packages the app imports. **CI run 38097638550 on `86bd13a`: all five jobs green** (quality, integration, security, Android, web E2E) |
+| P2.6 | (this commit) | evidence vault, upload pipeline, isolated sanitiser, ClamAV, staff evidence views (ADR-041) |
 
 Intermediate checkpoint commits are not individually CI-verified. CI runs on the pushed HEAD.
 
@@ -150,3 +153,45 @@ Intermediate checkpoint commits are not individually CI-verified. CI runs on the
 - **A02/A03/A05/A11:** client side done; OTP delivery is EG-01.
 - **A04/K09/A15:** client side done; texts are EG-02 and thresholds EG-23.
 - **V13:** rider notice done; appeal UI comes with P2.7/P2.8.
+
+## P2.6 — Evidence vault and upload pipeline (started with the image-processing evaluation)
+
+**IDs:** K11, Q08, K02 (backend), K03 (optional challenge backend), D02, D03, K07 (evidence signals), Q36, Q44 (inventory), Q45 (DPIA input pack). **ADR:** ADR-041 (Step-0 evaluation recorded before any sanitiser code).
+
+| Area | Implementation |
+|---|---|
+| Step 0 | `sharp` 0.35.5 / libvips 8.18.7 evaluated on synthetic inputs: EXIF/GPS/ICC/XMP and PNG text chunks absent (independent reader); bomb refused by the pixel cap in 2 ms; truncated, disguised, SVG, PDF, WebP, TIFF and AVIF refused; polyglot payload absent; blocked loaders refuse at library level; deterministic; libjpeg-turbo q88 ≤ 2560 px chosen (about 0.6 s vs 12–17 s for mozjpeg on 12 MP). No custom parser |
+| Sanitiser | `packages/image-sanitiser` (sharp only), run as ONE hardened container per image: `infra/sanitiser/Dockerfile`, Node 24.20 slim pinned by digest, `npm ci --ignore-scripts` from a committed lockfile, uid 65532. Runner flags: `--network none --read-only --cap-drop ALL no-new-privileges --memory/--cpus/--pids-limit`, tmpfs, `--pull never`, no env/volumes, plus a wall clock. Built by `scripts/sanitiser-image.mjs` from a minimal context. The Docker-CLI runner is refused in staging/production (production hosting is P2.A4) |
+| Adapters | `packages/vault-adapters`:<br>• S3 (AWS SDK v3 3.1141.0, `WHEN_REQUIRED` checksums, area-aware, upload presign for quarantine only with content type and length signed, ≤ 300 s);<br>• clamd INSTREAM;<br>• Docker sanitiser runner |
+| Scanner | compose service `clamav` 1.4.6 LTS pinned by digest on 127.0.0.1:23310. CI uses the signatures bundled in the image (`WAYVRO_CLAMAV_NO_FRESHCLAM=true`) |
+| Migration | `0005_vault`:<br>• role `wayvro_vault`; schema `vault` with `evidence_objects` (status/key/selfie-source/AVAILABLE-facts CHECKs), `evidence_view_tokens` (SHA-256, ≤ 60 s), append-only `evidence_access_log`;<br>• `compliance.capture_challenges` (one live per application);<br>• `duplicate_signals` gains `EVIDENCE_HASH_MATCH` with evidence FKs;<br>• **the API and worker roles have no `vault.*` grant** |
+| Crypto | per-object DEK (envelope v1) wrapped by the new key class `evidence_kek`; AAD bound to the object id; KEK rotation re-wraps only |
+| API | consumer routes:<br>• evidence-upload slot (consent first; selfie camera-only; challenge only with a selfie; kind must belong to the claimed document; ≤ 40 per application; ≤ 10 slots per account per 10 min);<br>• list, completion (HEAD size check, then a job in the same vault transaction), discard (editable applications only; storage deleted);<br>• capture challenge issue/replace/decline-neutral;<br>• **submission** (itemised `MISSING_DOCUMENT_*` / `MISSING_EVIDENCE_*` / `EVIDENCE_PROCESSING`, pinned requirement set).<br>Staff: `POST /v1/admin/evidence-views` (permission `vault.evidence.view`, step-up, reason catalogue, city scope, conflict-of-interest block) and `GET …/{token}/content` (one-time, session-bound, AEAD + SHA-256 verified, no-store/inline/sandbox headers; replay 410 `WAYVRO_E_GONE`). New flag `ops.kyc-real-evidence` (OFF everywhere; real evidence also needs two authenticators). The vault module owns a separate `wayvro_vault` pool (`DATABASE_VAULT_URL`); dependency-cruiser forbids other modules importing `src/vault/**` |
+| Worker | `evidence.process` (scan → isolated sanitise → hash → encrypt → vault → AVAILABLE via CAS, plus `EVIDENCE_HASH_MATCH` for exact replays on other applications; scanner or sanitiser unavailable ⇒ retry, never clean); `evidence.orphans` daily, dry run by default (expired slots, quarantine leftovers older than 24 h, unreferenced vault objects older than 1 h) |
+| web-ops BFF | the image content route passes bytes through untouched with no-store/inline/sandbox headers. The reviewer UI and reason-for-access modal arrive with P2.7 |
+| Docs | ADR-041 accepted; `docs/phase2/PHASE2_DPIA_INPUT_PACK.md` (Q45 inputs, Q44 data-location inventory — engineering input only) |
+
+**Deviations (recorded for review):**
+- **Document link:** evidence links to its document through a FK on `vault.evidence_objects` (exactly one document per object), so the `compliance.document_evidence` junction of the data model is not created.
+- **Case scoping:** evidence views are scoped by city and conflict only until review cases exist (case-claim scoping, T&S limited to recovery/duplicate cases, auditor access-log viewer and per-view watermark arrive in P2.7).
+- **Submission state:** it stops at `SUBMITTED`; review-case creation and `AUTO_CHECK_PENDING → MANUAL_REVIEW` arrive in P2.7.
+- **Upload URL storage:** the upload URL (which embeds the quarantine key) is part of the idempotent slot response and is therefore stored encrypted in `platform.idempotency_records` for replay, for at most the idempotency TTL. It is a 5-minute, single-object, upload-only URL; no other storage key is stored outside `vault`.
+- **Lock mode:** onboarding row locks now use `FOR NO KEY UPDATE`. The API transaction and the vault connection touch the same application row (FK key-share check); `FOR UPDATE` made that an undetectable cross-connection deadlock, which the first test run found.
+
+**Evidence:**
+
+| Suite | Result |
+|---|---|
+| `packages/image-sanitiser/src/sanitise.test.ts` (in-process SEC-FILE) | 14 PASS |
+| `packages/vault-adapters/src/protocol.test.ts` (clamd framing/timeouts, frame decoding, outcome mapping, hardened container flags) | 7 PASS |
+| `packages/vault-adapters/test/adapters.integration.test.ts` (SeaweedFS, SEC-URL type/length/key/expiry/cap all enforced by the signature, no checksum params; ClamAV EICAR; real container: clean re-encode without metadata, disguised/bomb/truncated refused, timeout kill with no leftover container, missing image/CLI = unavailable) | 8 PASS |
+| `packages/field-crypto` evidence DEK tests | 3 new, 18 total PASS |
+| `packages/db/test/vault.integration.test.ts` (constraints, append-only log, grants as restricted roles) | 7 PASS |
+| `apps/api/test/evidence.integration.test.ts` (slot → PUT → completion → job; SEC-VAULT; slot rules; size mismatch; expiry; rate limit; discard; challenges; submission; staff views incl. step-up, permission, reason catalogue, city scope, conflict, one-time token, 410 replay, integrity failure, access log + audit) | 8 PASS |
+| `apps/worker/test/evidence.integration.test.ts` (end to end with real ClamAV, SeaweedFS and the container: AVAILABLE + decrypt + metadata absent; EICAR/PDF/bomb rejected; scanner or sanitiser unavailable ⇒ UPLOADED; hash-match signals; discarded not processed; orphans dry run then delete; SEC-LOG) | 7 PASS |
+
+**Not run / external:**
+- production storage, KMS, scanner and sanitiser hosting (P2.A4 / EG-05);
+- real KYC evidence (never in Phase 2);
+- the DPIA itself (EG-10, prepared inputs only);
+- an independent assessment of the sanitiser boundary (EG-17).

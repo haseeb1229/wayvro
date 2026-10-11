@@ -4,6 +4,7 @@ import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
 import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
 import { ONBOARDING_ROUTES } from './compliance.js';
+import { EVIDENCE_ROUTES } from './evidence.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { IDENTITY_ROUTES } from './routes.js';
 import { STAFF_ROUTES } from './staff.js';
@@ -15,6 +16,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...STAFF_ROUTES,
   ...ONBOARDING_ROUTES,
   ...COMPLIANCE_ADMIN_ROUTES,
+  ...EVIDENCE_ROUTES,
 ];
 
 const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> = { public: [], session: [{ sessionBearer: [] }], staff: [{ staffBearer: [] }] };
@@ -22,6 +24,9 @@ const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> =
 type JsonObject = Record<string, unknown>;
 
 const jsonSchema = (schema: z.ZodType, io: 'input' | 'output'): JsonObject => z.toJSONSchema(schema, { target: 'draft-2020-12', unrepresentable: 'throw', io });
+
+const binaryContent = (mediaTypes: readonly string[] | undefined): JsonObject =>
+  mediaTypes ? { content: Object.fromEntries(mediaTypes.map((m) => [m, { schema: { type: 'string', contentMediaType: m } }])) } : {};
 
 /** Builds the OpenAPI 3.1 document from the Zod route registry (the registry, not this file, is the source of truth). */
 export function buildOpenApiDocument(version: string, routes: readonly RouteContract[] = API_ROUTES): JsonObject {
@@ -33,6 +38,7 @@ export function buildOpenApiDocument(version: string, routes: readonly RouteCont
         description: Number(status) < 400 ? 'Success' : 'Error',
         headers: { [REQUEST_ID_HEADER]: { schema: z.toJSONSchema(RequestIdSchema) } },
         ...(schema ? { content: { 'application/json': { schema: jsonSchema(schema, 'output') } } } : {}),
+        ...binaryContent(route.binaryResponses?.[Number(status)]),
       };
     }
     const parameters: JsonObject[] = [{ name: REQUEST_ID_HEADER, in: 'header', required: false, schema: z.toJSONSchema(RequestIdSchema) }];

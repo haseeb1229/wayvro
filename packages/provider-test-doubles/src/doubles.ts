@@ -5,24 +5,64 @@
  * make no network calls, and a recorded OTP message is never evidence for the real OTP vendor gate (EG-01).
  */
 import { randomUUID } from 'node:crypto';
-import { MOCK_PROVIDER, type MockBrand, type ObjectStoragePort, type OtpDeliveryPort, type PushNotificationPort } from '@wayvro/provider-interfaces';
+import {
+  MOCK_PROVIDER,
+  type MockBrand,
+  type ObjectStoragePort,
+  type OtpDeliveryPort,
+  type PushNotificationPort,
+  type StorageArea,
+  type StoredObjectInfo,
+} from '@wayvro/provider-interfaces';
 
 export class InMemoryObjectStorage implements ObjectStoragePort, MockBrand {
   readonly [MOCK_PROVIDER] = true as const;
-  private readonly objects = new Map<string, Uint8Array>();
+  private readonly objects = new Map<string, { body: Uint8Array; contentType: string; lastModified: Date }>();
 
-  putObject(input: { key: string; body: Uint8Array; contentType: string }): Promise<void> {
-    this.objects.set(input.key, input.body);
+  private static id(area: StorageArea, key: string): string {
+    return `${area}:${key}`;
+  }
+
+  putObject(input: { area: StorageArea; key: string; body: Uint8Array; contentType: string }): Promise<void> {
+    this.objects.set(InMemoryObjectStorage.id(input.area, input.key), { body: input.body, contentType: input.contentType, lastModified: new Date() });
     return Promise.resolve();
   }
 
-  getObject(key: string): Promise<Uint8Array | null> {
-    return Promise.resolve(this.objects.get(key) ?? null);
+  getObject(input: { area: StorageArea; key: string }): Promise<Uint8Array | null> {
+    return Promise.resolve(this.objects.get(InMemoryObjectStorage.id(input.area, input.key))?.body ?? null);
   }
 
-  createUploadUrl(input: { key: string; contentType: string; expiresInSeconds: number }): Promise<{ url: string; expiresAt: Date }> {
+  headObject(input: { area: StorageArea; key: string }): Promise<{ size: number; contentType: string | null } | null> {
+    const o = this.objects.get(InMemoryObjectStorage.id(input.area, input.key));
+    return Promise.resolve(o ? { size: o.body.byteLength, contentType: o.contentType } : null);
+  }
+
+  deleteObject(input: { area: StorageArea; key: string }): Promise<void> {
+    this.objects.delete(InMemoryObjectStorage.id(input.area, input.key));
+    return Promise.resolve();
+  }
+
+  listObjects(input: { area: StorageArea; prefix: string; limit: number }): Promise<readonly StoredObjectInfo[]> {
+    const head = InMemoryObjectStorage.id(input.area, input.prefix);
+    return Promise.resolve(
+      [...this.objects.entries()]
+        .filter(([id]) => id.startsWith(head))
+        .slice(0, input.limit)
+        .map(([id, o]) => ({ key: id.slice(input.area.length + 1), size: o.body.byteLength, lastModified: o.lastModified })),
+    );
+  }
+
+  /** Never a reachable URL: a local double records intent only (uploads in local development use the real S3 adapter). */
+  createUploadUrl(input: { key: string; contentType: string; contentLength: number; expiresInSeconds: number }): Promise<{
+    url: string;
+    method: 'PUT';
+    headers: Readonly<Record<string, string>>;
+    expiresAt: Date;
+  }> {
     return Promise.resolve({
-      url: `mock-storage://upload/${encodeURIComponent(input.key)}`,
+      url: `mock-storage://quarantine/${encodeURIComponent(input.key)}`,
+      method: 'PUT',
+      headers: { 'content-type': input.contentType, 'content-length': String(input.contentLength) },
       expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000),
     });
   }

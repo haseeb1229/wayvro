@@ -16,7 +16,7 @@ const adminUrl: string = ADMIN_URL;
 
 const bytes = (n: number): Buffer => randomBytes(n);
 /** Every application schema created by the migrations (grows additively with later micro-phases). */
-const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal', 'staff', 'catalog', 'compliance'] as const;
+const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal', 'staff', 'catalog', 'compliance', 'vault'] as const;
 const APP_SCHEMAS_SQL = APP_SCHEMAS.map((s) => `'${s}'`).join(',');
 const pgCode = async (p: Promise<unknown>): Promise<string | undefined> => {
   try {
@@ -128,6 +128,7 @@ describe('migration lifecycle (every migration)', () => {
       'catalog.districts',
       'catalog.service_categories',
       'compliance.application_service_categories',
+      'compliance.capture_challenges',
       'compliance.cnic_lookup_index',
       'compliance.compliance_documents',
       'compliance.document_number_lookup_index',
@@ -167,6 +168,9 @@ describe('migration lifecycle (every migration)', () => {
       'staff.staff_accounts',
       'staff.webauthn_challenges',
       'staff.webauthn_credentials',
+      'vault.evidence_access_log',
+      'vault.evidence_objects',
+      'vault.evidence_view_tokens',
     ]);
   });
 });

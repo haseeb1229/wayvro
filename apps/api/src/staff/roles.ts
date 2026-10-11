@@ -41,12 +41,14 @@ export type StaffPermission =
   | 'compliance.requirement_set.draft'
   | 'compliance.requirement_set.approve'
   | 'legal.age_policy.draft'
-  | 'legal.age_policy.approve';
+  | 'legal.age_policy.approve'
+  // evidence vault (P2.6): one-time evidence views with a recorded reason (case-claim scoping arrives with review cases, P2.7)
+  | 'vault.evidence.view';
 
 /** Role → permissions (the ✓ cells of the matrix). Step-up and maker-checker are attributes of the ROUTE. @internal */
 export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermission[]>> = {
-  KYC_REVIEWER: ['breakglass.activate'],
-  KYC_SENIOR_REVIEWER: ['breakglass.activate', 'restriction.view', 'restriction.create', 'restriction.lift'],
+  KYC_REVIEWER: ['breakglass.activate', 'vault.evidence.view'],
+  KYC_SENIOR_REVIEWER: ['breakglass.activate', 'restriction.view', 'restriction.create', 'restriction.lift', 'vault.evidence.view'],
   COMPLIANCE_ADMIN: [
     'breakglass.activate',
     'compliance.requirement_set.view',
@@ -55,7 +57,14 @@ export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermissi
     'legal.age_policy.draft',
     'legal.age_policy.approve',
   ],
-  TRUST_SAFETY_AGENT: ['breakglass.activate', 'restriction.view', 'restriction.create', 'restriction.create_account', 'restriction.lift'],
+  TRUST_SAFETY_AGENT: [
+    'breakglass.activate',
+    'restriction.view',
+    'restriction.create',
+    'restriction.create_account',
+    'restriction.lift',
+    'vault.evidence.view',
+  ],
   SUPPORT_AGENT: [],
   STAFF_ADMIN: [
     'staff.invite',

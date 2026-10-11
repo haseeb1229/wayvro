@@ -1,0 +1,10 @@
+{
+  "name": "wayvro-image-sanitiser-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runtime manifest of the isolated sanitiser container (ADR-041). Installed only inside the image with `npm ci --omit=dev --ignore-scripts` from the committed package-lock.json; the code is packages/image-sanitiser/dist.",
+  "type": "module",
+  "dependencies": {
+    "sharp": "0.35.5"
+  }
+}

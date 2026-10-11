@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, databaseEnvSchema, httpEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema } from './env.js';
+import {
+  ConfigError,
+  databaseEnvSchema,
+  httpEnvSchema,
+  isNonProductionLike,
+  keyEnvSchema,
+  loadConfig,
+  redisEnvSchema,
+  serviceEnvSchema,
+  vaultEnvSchema,
+} from './env.js';
 
 const schema = serviceEnvSchema.extend(databaseEnvSchema.shape).extend(redisEnvSchema.shape).extend(httpEnvSchema.shape);
 const local = {
@@ -81,6 +91,32 @@ describe('loadConfig', () => {
     expect(message).toMatch(/must not use a local host/);
     expect(message).toMatch(/SERVICE_RULE: refused in production/);
     expect(loadConfig(db, { WAYVRO_ENV: 'local', DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/w' }, rules).WAYVRO_ENV).toBe('local');
+  });
+
+  it('evidence-vault endpoints: staging/production refuse local or plaintext storage and vault databases', () => {
+    const vaulted = serviceEnvSchema.extend(vaultEnvSchema.shape);
+    const local = loadConfig(vaulted, {
+      WAYVRO_ENV: 'local',
+      DATABASE_VAULT_URL: 'postgres://v:p@127.0.0.1:25432/w',
+      S3_ENDPOINT: 'http://127.0.0.1:28333',
+      S3_FORCE_PATH_STYLE: 'true',
+    });
+    expect(local).toMatchObject({ S3_FORCE_PATH_STYLE: true, S3_QUARANTINE_PREFIX: 'quarantine/', S3_VAULT_PREFIX: 'vault/', S3_REGION: 'us-east-1' });
+    let message = '';
+    try {
+      loadConfig(vaulted, {
+        WAYVRO_ENV: 'production',
+        DATABASE_VAULT_URL: 'postgres://v:p@db.example/w',
+        S3_ENDPOINT: 'http://storage.example',
+        S3_PRESIGN_ENDPOINT: 'https://localhost',
+      });
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toMatch(/DATABASE_VAULT_URL: production requires sslmode/);
+    expect(message).toMatch(/S3_ENDPOINT: production requires a non-local https endpoint/);
+    expect(message).toMatch(/S3_PRESIGN_ENDPOINT: production requires a non-local https endpoint/);
+    expect(() => loadConfig(vaulted, { WAYVRO_ENV: 'local', S3_QUARANTINE_PREFIX: '../x' })).toThrow(ConfigError);
   });
 
   it('refuses debug logging outside local/test', () => {

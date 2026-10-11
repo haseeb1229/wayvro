@@ -5,10 +5,10 @@
  */
 const CLIENT_APPS = '^apps/(wayvro-mobile|web-public|web-ops)/';
 const SERVER_ONLY_WORKSPACE =
-  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core)/)';
+  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|image-sanitiser)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|image-sanitiser)/)';
 // Development/test-only workspace packages (ADR-045): never reachable from production source.
 const DEV_ONLY_WORKSPACE = '(^packages/(provider-test-doubles|test-support)/|node_modules/@wayvro/(provider-test-doubles|test-support)/)';
-const SERVER_ONLY_NPM = 'node_modules/(pg|pg-pool|ioredis|drizzle-orm|fastify|@nestjs/[^/]+|socket\\.io|pino|@opentelemetry/[^/]+)/';
+const SERVER_ONLY_NPM = 'node_modules/(pg|pg-pool|ioredis|drizzle-orm|fastify|@nestjs/[^/]+|socket\\.io|pino|@opentelemetry/[^/]+|@aws-sdk/[^/]+|sharp)/';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -43,6 +43,21 @@ module.exports = {
       comment: 'One app, isolated modes: Rider and Driver/Partner feature modules never import each other (V06/V11).',
       from: { path: '^apps/wayvro-mobile/src/features/(rider|driver)/' },
       to: { path: '^apps/wayvro-mobile/src/features/(rider|driver)/', pathNot: '^apps/wayvro-mobile/src/features/$1/' },
+    },
+    {
+      name: 'vault-module-boundary',
+      severity: 'error',
+      comment:
+        'ADR-041: only the API app module and composition root wire the evidence vault; no other module imports src/vault/** (the vault owns its own wayvro_vault pool).',
+      from: { path: '^apps/api/src/', pathNot: ['^apps/api/src/vault/', '^apps/api/src/(app|composition)\\.ts$'] },
+      to: { path: '^apps/api/src/vault/' },
+    },
+    {
+      name: 'sanitiser-only-in-its-container',
+      severity: 'error',
+      comment: 'ADR-041: the image decoder runs only inside the isolated sanitiser container; no app or other package imports it.',
+      from: { path: '^(apps|packages)/', pathNot: '^packages/image-sanitiser/' },
+      to: { path: '(^packages/image-sanitiser/|node_modules/@wayvro/image-sanitiser/)' },
     },
     {
       name: 'no-production-to-test',

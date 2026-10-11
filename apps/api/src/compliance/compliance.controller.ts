@@ -7,6 +7,10 @@ import {
   ApplicationCreateRequestSchema,
   ApplicationIdParamSchema,
   ApplicationUpdateRequestSchema,
+  CaptureChallengeDeclineRequestSchema,
+  CaptureChallengeDeclineSchema,
+  CaptureChallengeSchema,
+  ChallengeParamSchema,
   DecisionRequestSchema,
   DocumentClaimRequestSchema,
   DocumentClaimedSchema,
@@ -24,6 +28,7 @@ import {
   RestrictionListSchema,
   RestrictionQuerySchema,
   RestrictionSchema,
+  SubmissionRequestSchema,
   VehicleCreateRequestSchema,
   VehicleCreatedSchema,
   VehicleParamSchema,
@@ -102,6 +107,51 @@ export class OnboardingController {
   async requirements(@Param() params: unknown, @Req() req: AuthenticatedRequest): Promise<z.infer<typeof RequirementChecklistSchema>> {
     const { id } = idParam(ApplicationIdParamSchema, params);
     return RequirementChecklistSchema.parse(await this.onboarding.requirements(principalOf(req), id));
+  }
+
+  @Post('/v1/driver-onboarding/applications/:id/capture-challenges')
+  @ConsumerSession()
+  async challenge(
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: Reply,
+  ): Promise<z.infer<typeof CaptureChallengeSchema> | undefined> {
+    const { id } = idParam(ApplicationIdParamSchema, params);
+    parse(EmptyRequestSchema, body ?? {});
+    return render(reply, await this.onboarding.issueCaptureChallenge(principalOf(req), id, idempotencyKey(req)), CaptureChallengeSchema);
+  }
+
+  @Post('/v1/driver-onboarding/applications/:id/capture-challenges/:challengeId/declines')
+  @HttpCode(200)
+  @ConsumerSession()
+  async decline(
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: Reply,
+  ): Promise<z.infer<typeof CaptureChallengeDeclineSchema> | undefined> {
+    const { id, challengeId } = idParam(ChallengeParamSchema, params);
+    const { choice } = parse(CaptureChallengeDeclineRequestSchema, body);
+    return render(
+      reply,
+      await this.onboarding.declineCaptureChallenge(principalOf(req), id, challengeId, choice, idempotencyKey(req)),
+      CaptureChallengeDeclineSchema,
+    );
+  }
+
+  @Post('/v1/driver-onboarding/applications/:id/submission')
+  @HttpCode(200)
+  @ConsumerSession()
+  async submit(
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: Reply,
+  ): Promise<DriverApplication | undefined> {
+    const { id } = idParam(ApplicationIdParamSchema, params);
+    const { expectedVersion } = parse(SubmissionRequestSchema, body);
+    return render(reply, await this.onboarding.submit(principalOf(req), id, expectedVersion, idempotencyKey(req)), DriverApplicationSchema);
   }
 
   @Post('/v1/driver-onboarding/applications/:id/vehicles')

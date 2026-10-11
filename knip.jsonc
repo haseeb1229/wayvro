@@ -29,5 +29,8 @@
     "packages/config": { "entry": ["src/index.ts!", "src/check-flags.ts!"], "project": ["src/**/*.ts!"] },
     "packages/contracts": { "entry": ["src/index.ts!", "src/generate-openapi.ts!"], "project": ["src/**/*.ts!"] },
     "packages/db": { "entry": ["src/index.ts!", "src/bin/migrate.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    // The sanitiser's production entry is its container command (infra/sanitiser/Dockerfile → dist/cli.js), ADR-041.
+    "packages/image-sanitiser": { "entry": ["src/index.ts!", "src/cli.ts!"], "project": ["src/**/*.ts!"] },
+    "packages/vault-adapters": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
   },
 }

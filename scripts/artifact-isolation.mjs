@@ -212,6 +212,7 @@ const app = await createApp({
   identity: { otp: {}, sessions: {}, accounts: {}, consents: {}, legalStore: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
   staff: { auth: {}, admin: {}, oversight: {}, policy: {} },
   compliance: { onboarding: {}, admin: {} },
+  evidence: null,
 });
 const served = [...routeManifest(app)];
 const expected = new Set(API_ROUTES.map((r) => r.method + ' ' + r.path.replace(/\\{(\\w+)\\}/g, ':$1')));

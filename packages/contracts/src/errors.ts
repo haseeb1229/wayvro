@@ -31,6 +31,8 @@ export const ERROR_CODES = [
   'WAYVRO_E_AGE_DECLARATION_REQUIRED',
   'WAYVRO_E_ACCOUNT_RESTRICTED',
   'WAYVRO_E_FEATURE_DISABLED',
+  // P2.6 (additive): a one-time resource (evidence view token) that was already used or has expired
+  'WAYVRO_E_GONE',
 ] as const;
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);

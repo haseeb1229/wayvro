@@ -8,5 +8,6 @@ export {
   type DecryptionFailure,
   type FieldContext,
 } from './envelope.js';
+export { EVIDENCE_CONTENT_ENVELOPE_VERSION, openEvidence, sealEvidence, type SealedEvidence } from './evidence.js';
 export { KEY_STATES, KeyRing, KeyRingError, type KeyEntry, type KeyState } from './keyring.js';
 export { DEFAULT_LOCAL_KEY_SPEC, KeyProviderError, loadKeyRing, localKeyRing, type KeySource } from './provider.js';

@@ -88,6 +88,20 @@ export async function forward(request: Request, rest: string, cfg: BffConfig = b
   }
   const url = new URL(request.url);
   const upstream = await fetch(`${cfg.apiUrl}/v1/admin/${rest}${url.search}`, { method, headers, ...(body !== undefined ? { body } : {}), cache: 'no-store' });
+  const upstreamType = upstream.headers.get('content-type') ?? '';
+  if (upstream.status === 200 && /^image\/(jpeg|png)$/.test(upstreamType)) {
+    // One-time evidence view (H02/W07): bytes pass through untouched, never cached, shown inline, never re-interpreted.
+    return new Response(await upstream.arrayBuffer(), {
+      status: 200,
+      headers: {
+        'content-type': upstreamType,
+        'cache-control': 'no-store, max-age=0',
+        'content-disposition': 'inline',
+        'x-content-type-options': 'nosniff',
+        'content-security-policy': "default-src 'none'; sandbox",
+      },
+    });
+  }
   const text = await upstream.text();
   const key = `${method} ${route.path}`;
   if (SESSION_ISSUING.has(key) && upstream.status === 201) {

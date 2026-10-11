@@ -1,5 +1,14 @@
 import { isIP } from 'node:net';
-import { databaseEnvSchema, httpEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema } from '@wayvro/config';
+import {
+  databaseEnvSchema,
+  httpEnvSchema,
+  isNonProductionLike,
+  keyEnvSchema,
+  loadConfig,
+  redisEnvSchema,
+  serviceEnvSchema,
+  vaultEnvSchema,
+} from '@wayvro/config';
 import { z } from 'zod';
 
 /** An IPv4/IPv6 address or CIDR block (e.g. 10.0.0.0/8, fd00::/8). */
@@ -78,7 +87,15 @@ const apiEnvSchema = serviceEnvSchema
   .extend(httpEnvSchema.shape)
   .extend(keyEnvSchema.shape)
   .extend(identityPolicySchema.shape)
+  .extend(vaultEnvSchema.shape)
   .extend({
+    // Evidence uploads (KYC doc §4; configuration, not law): slot TTL 10 min, upload URL ≤ 5 min, ≤ 40 objects per
+    // application, ≤ 10 slots per account per 10 minutes, optional capture challenge valid 10 min.
+    EVIDENCE_SLOT_TTL_SECONDS: int(600, 60, 3600),
+    EVIDENCE_UPLOAD_URL_SECONDS: int(300, 30, 300),
+    EVIDENCE_MAX_PER_APPLICATION: int(40, 1, 200),
+    EVIDENCE_SLOTS_PER_10_MIN: int(10, 1, 1000),
+    CAPTURE_CHALLENGE_TTL_SECONDS: int(600, 60, 3600),
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     /** Set only when a trusted reverse proxy terminates TLS in front of the API (see trustProxySchema). */
     TRUST_PROXY: trustProxySchema,

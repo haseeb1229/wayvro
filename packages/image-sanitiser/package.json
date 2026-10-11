@@ -1,0 +1,31 @@
+{
+  "name": "@wayvro/image-sanitiser",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SERVER-ONLY isolated image sanitiser (ADR-041): JPEG/PNG-only decode with strict limits, canonical re-encode, metadata absent by construction. Runs only inside its own network-less container (infra/sanitiser); never imported by an application.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

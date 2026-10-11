@@ -24,6 +24,7 @@
     "@wayvro/observability": "workspace:*",
     "@wayvro/provider-interfaces": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",
+    "@wayvro/vault-adapters": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {
@@ -33,6 +34,7 @@
     "@wayvro/test-support": "workspace:*",
     "fast-check": "4.10.2",
     "pg": "8.23.1",
+    "sharp": "0.35.5",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
   }

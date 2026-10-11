@@ -76,7 +76,7 @@ jobs:
         run: node scripts/artifact-isolation.mjs --negative-controls
 
   integration:
-    name: Integration (PostgreSQL+PostGIS, Valkey, SeaweedFS) + migrations + boot smoke
+    name: Integration (PostgreSQL+PostGIS, Valkey, SeaweedFS, ClamAV, sanitiser container) + migrations + boot smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -97,7 +97,11 @@ jobs:
       - run: pnpm build
       - name: Build the API local runner (dist-dev, never deployed — ADR-045)
         run: pnpm build:local
-      - name: Start local infrastructure (compose project "wayvro")
+      - name: Build the isolated image-sanitiser container (ADR-041; minimal build context)
+        run: node scripts/sanitiser-image.mjs
+      - name: Start local infrastructure (compose project "wayvro"; ClamAV with the signatures bundled in its pinned image)
+        env:
+          WAYVRO_CLAMAV_NO_FRESHCLAM: 'true'
         run: pnpm infra:up
       - name: Local environment file (non-secret local defaults)
         run: cp .env.example .env
@@ -223,6 +227,8 @@ jobs:
           pnpm build
           pnpm build:local
       - name: Start local infrastructure (compose project "wayvro") for the web-ops stack
+        env:
+          WAYVRO_CLAMAV_NO_FRESHCLAM: 'true'
         run: pnpm infra:up
       - name: Install the Chromium revision pinned by @playwright/test (with OS dependencies)
         run: pnpm exec playwright install --with-deps chromium

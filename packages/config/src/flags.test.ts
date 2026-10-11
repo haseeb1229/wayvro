@@ -56,4 +56,9 @@ describe('registered flags (P2.5+)', () => {
     expect(enabled('driver.onboarding', 'production')).toBe(false);
     expect(enabled('nope.unknown', 'local')).toBe(false);
   });
+
+  it('real KYC evidence viewing is OFF in every environment until its gates clear (EG-05/EG-10/EG-17)', async () => {
+    const { isFlagEnabled: enabled } = await import('./flags.js');
+    for (const env of ['local', 'test', 'staging', 'production'] as const) expect(enabled('ops.kyc-real-evidence', env)).toBe(false);
+  });
 });

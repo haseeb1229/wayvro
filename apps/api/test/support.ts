@@ -16,6 +16,7 @@ import { JobRunner, createRequestPathRedis } from '@wayvro/server-runtime';
 import { captureLogs, createRestrictedLogin, createTestDatabase, type LogCapture } from '@wayvro/test-support';
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
 import pg from 'pg';
+import { S3ObjectStorage } from '@wayvro/vault-adapters';
 import { composeApi, type ApiRuntime } from '../src/composition.js';
 import { loadApiConfig } from '../src/config.js';
 
@@ -32,6 +33,9 @@ export interface Harness {
   readonly sink: RecordingOtpDelivery;
   readonly owner: pg.Pool;
   readonly logs: LogCapture;
+  /** Present with `vault: true`: the storage adapter and a pool authenticated as a member of wayvro_vault. */
+  readonly storage: S3ObjectStorage | null;
+  readonly vault: pg.Pool | null;
   inject(opts: InjectOptions): Promise<LightMyRequestResponse>;
   /** Runs pending otp.deliver jobs (as the worker role). */
   deliver(): Promise<void>;
@@ -42,6 +46,8 @@ export interface HarnessOptions {
   readonly env?: Readonly<Record<string, string>>;
   /** false = no OTP delivery adapter bound (production-like). */
   readonly otpDelivery?: boolean;
+  /** true = evidence vault on: a wayvro_vault login + the REAL S3 adapter on the local SeaweedFS (per-run prefixes). */
+  readonly vault?: boolean;
 }
 
 export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
@@ -49,6 +55,23 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
   await runMigrations(database.url);
   const apiLogin = await createRestrictedLogin(adminUrl, database.url, 'wayvro_api');
   const workerLogin = await createRestrictedLogin(adminUrl, database.url, 'wayvro_worker');
+  const vaultLogin = options.vault ? await createRestrictedLogin(adminUrl, database.url, 'wayvro_vault') : null;
+  const run = randomBytes(5).toString('hex');
+  const storage = options.vault
+    ? new S3ObjectStorage({
+        endpoint: process.env['WAYVRO_S3_ENDPOINT'] ?? 'http://127.0.0.1:28333',
+        region: 'us-east-1',
+        accessKeyId: 'wayvro-local-access',
+        secretAccessKey: 'wayvro-local-secret-not-for-production',
+        forcePathStyle: true,
+        areas: {
+          quarantine: { bucket: 'wayvro-local', prefix: `api-it-${run}/quarantine/` },
+          vault: { bucket: 'wayvro-local', prefix: `api-it-${run}/vault/` },
+        },
+        maxUploadUrlSeconds: 300,
+        requestTimeoutMs: 10000,
+      })
+    : null;
   const prefix = `wv:it:${randomBytes(6).toString('hex')}:`;
   const config = loadApiConfig({
     WAYVRO_ENV: 'test',
@@ -58,16 +81,18 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
     RATE_LIMIT_KEY_PREFIX: prefix,
     OTP_DAILY_SEND_BUDGET: '1000000',
     OTP_MONTHLY_SEND_BUDGET: '1000000',
+    ...(vaultLogin ? { DATABASE_VAULT_URL: vaultLogin.url } : {}),
     ...options.env,
   });
   const logs = captureLogs();
   const log = createLogger({ service: 'api', env: 'test', level: 'info', destination: logs.stream });
   const sink = new RecordingOtpDelivery();
-  const providers = bindProviders('test', options.otpDelivery === false ? {} : { otpDelivery: sink });
+  const providers = bindProviders('test', { ...(options.otpDelivery === false ? {} : { otpDelivery: sink }), ...(storage ? { objectStorage: storage } : {}) });
   const runtime = await composeApi(config, log, { providers });
   await runtime.app.getHttpAdapter().getInstance().ready();
   const owner = new pg.Pool({ connectionString: database.url, max: 3 });
   const worker = new pg.Pool({ connectionString: workerLogin.url, max: 3 });
+  const vault = vaultLogin ? new pg.Pool({ connectionString: vaultLogin.url, max: 3 }) : null;
   const runner = new JobRunner(worker, [otpDeliveryJob({ db: worker, cipher: runtime.cipher, port: sink })], {
     workerId: 'it-delivery',
     leaseMs: 30000,
@@ -79,15 +104,18 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
     sink,
     owner,
     logs,
+    storage,
+    vault,
     inject: (opts) => runtime.app.getHttpAdapter().getInstance().inject(opts),
     async deliver() {
       await runner.runOnce();
     },
     async close() {
       await runtime.close();
-      await Promise.all([owner.end(), worker.end()]);
+      await Promise.all([owner.end(), worker.end(), vault?.end()]);
       await apiLogin.drop();
       await workerLogin.drop();
+      await vaultLogin?.drop();
       await database.drop();
       const redis = createRequestPathRedis(redisUrl, 2000);
       await new Promise((r) => setTimeout(r, 50));

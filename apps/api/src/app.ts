@@ -25,10 +25,12 @@ import type { StaffAdminService } from './staff/staff-admin.service.js';
 import type { StaffAuthService } from './staff/staff-auth.service.js';
 import type { StaffSessionPolicy } from './staff/staff-session.js';
 import { OversightController, StaffAdminController, StaffAuthController } from './staff/staff.controller.js';
+import { EvidenceController, EvidenceViewController, type EvidenceServices } from './vault/vault.controller.js';
 import {
   ACCOUNT_SERVICE,
   COMPLIANCE_ADMIN_SERVICE,
   CONSENT_SERVICE,
+  EVIDENCE_SERVICES,
   LEGAL_DB,
   ONBOARDING_SERVICE,
   OTP_SERVICE,
@@ -75,6 +77,8 @@ export interface AppDependencies {
   readonly identity: IdentityServices;
   readonly staff: StaffServices;
   readonly compliance: ComplianceServices;
+  /** Evidence vault (P2.6); null when the vault database role or object storage is not configured (routes answer 503). */
+  readonly evidence: EvidenceServices | null;
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
 }
@@ -103,6 +107,8 @@ export const API_CONTROLLERS: readonly Type[] = [
   OversightController,
   OnboardingController,
   ComplianceAdminController,
+  EvidenceController,
+  EvidenceViewController,
 ];
 
 @Module({})
@@ -124,6 +130,7 @@ class ApiModule {
         { provide: STAFF_OVERSIGHT_SERVICE, useValue: deps.staff.oversight },
         { provide: ONBOARDING_SERVICE, useValue: deps.compliance.onboarding },
         { provide: COMPLIANCE_ADMIN_SERVICE, useValue: deps.compliance.admin },
+        { provide: EVIDENCE_SERVICES, useValue: deps.evidence },
         { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore, deps.staff.policy) },
       ],
     };
