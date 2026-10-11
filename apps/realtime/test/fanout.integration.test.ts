@@ -3,7 +3,8 @@ import type { AddressInfo } from 'node:net';
 import { Writable } from 'node:stream';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createLogger } from '@wayvro/observability';
-import { redisCheck } from '@wayvro/server-runtime';
+import { AccountStateChangedSchema } from '@wayvro/contracts';
+import { ACCOUNT_HINT_CHANNEL, awaitRedisReady, createRequestPathRedis, redisCheck } from '@wayvro/server-runtime';
 import { io, type Socket } from 'socket.io-client';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createRealtimeApp } from '../src/app.js';
@@ -67,5 +68,53 @@ describe('horizontal fan-out through the Redis adapter (Valkey)', () => {
     a.app.get(RealtimeGateway).server.to(principalRoom({ subject })).emit('platform.probe.v1', { version: 1 });
     expect(await received).toEqual({ version: 1 });
     expect((await fetch(`${a.url}/v1/health/ready`)).status).toBe(200);
+  });
+});
+
+describe('account-state hints (P2.7 outbox consumer → realtime)', () => {
+  it('a hint reaches only that account, exactly once across two gateways; malformed messages are dropped', async () => {
+    await gateway();
+    const b = await gateway();
+    const accountId = '0198c5a2-2222-7000-8000-00000000a001';
+    const other = '0198c5a2-2222-7000-8000-00000000a002';
+    const connect = async (subject: string) => {
+      const client = io(b.url, { transports: ['websocket'], reconnection: false, forceNew: true, auth: { subject } });
+      sockets.push(client);
+      await new Promise<void>((resolve) => {
+        client.on('session.hello', () => {
+          resolve();
+        });
+      });
+      return client;
+    };
+    const mine = await connect(accountId);
+    const theirs = await connect(other);
+    const got: unknown[] = [];
+    const leaked: unknown[] = [];
+    mine.on('account.state-changed.v1', (e: unknown) => {
+      got.push(e);
+    });
+    theirs.on('account.state-changed.v1', (e: unknown) => {
+      leaked.push(e);
+    });
+    const pub = createRequestPathRedis(REDIS_URL);
+    try {
+      expect(await awaitRedisReady(pub, 5000)).toBe(true);
+      await pub.publish(ACCOUNT_HINT_CHANNEL, 'not json');
+      await pub.publish(
+        ACCOUNT_HINT_CHANNEL,
+        JSON.stringify({ accountId, cause: 'driver.application.decided.v1', eventId: '0198c5a2-2222-7000-8000-00000000e001' }),
+      );
+      await new Promise((r) => setTimeout(r, 500));
+    } finally {
+      pub.disconnect();
+    }
+    expect(got).toHaveLength(1);
+    expect(AccountStateChangedSchema.parse(got[0])).toMatchObject({
+      type: 'account.state-changed.v1',
+      cause: 'driver.application.decided.v1',
+      resync: 'fetch-snapshot',
+    });
+    expect(leaked).toEqual([]);
   });
 });

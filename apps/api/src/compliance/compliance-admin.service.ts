@@ -10,6 +10,7 @@ import { WayvroError } from '@wayvro/observability';
 import { appendAudit, sqlState, uuidv7, type Queryable } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import { failure, success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
+import { emitEvent } from '../platform/outbox.js';
 import { COMPLIANCE_REASON_CLASSES } from '../staff/roles.js';
 import { citiesFor, hasRole, type StaffPrincipal } from '../staff/staff-session.js';
 import { toRestriction, type RestrictionRow } from './restrictions.js';
@@ -204,6 +205,7 @@ export class ComplianceAdminService {
         staff.staffId,
         input.reasonCode,
       ]);
+      await this.restrictionChanged(tx, id, 'ACTIVE');
       await appendAudit(tx, {
         actor: { type: 'STAFF', id: staff.staffId },
         action: 'RESTRICTION_CREATED',
@@ -213,6 +215,23 @@ export class ComplianceAdminService {
         reasonCode: input.reasonCode,
       });
       return success(201, restrictionView(await this.loadRestriction(tx, id)));
+    });
+  }
+
+  /** Outbox: the affected account's apps re-fetch their state (ids and status only). */
+  private async restrictionChanged(q: Queryable, id: string, status: 'ACTIVE' | 'LIFTED'): Promise<void> {
+    const owner = (
+      await q.query<{ account_id: string | null }>(
+        `select coalesce(r.account_id, p.account_id) account_id from profile.restrictions r left join compliance.driver_profiles p on p.id = r.driver_profile_id where r.id = $1`,
+        [id],
+      )
+    ).rows[0];
+    await emitEvent(q, {
+      type: 'restriction.changed.v1',
+      aggregateType: 'profile.restriction',
+      aggregateId: id,
+      accountId: owner?.account_id ?? null,
+      payload: { status },
     });
   }
 
@@ -258,6 +277,7 @@ export class ComplianceAdminService {
           staff.staffId,
           reasonCode,
         ]);
+        await this.restrictionChanged(tx, id, 'LIFTED');
       }
       await appendAudit(tx, {
         actor: { type: 'STAFF', id: staff.staffId },
@@ -298,6 +318,7 @@ export class ComplianceAdminService {
         staff.staffId,
         decision === 'APPROVE' ? 'LIFT_APPROVED' : 'LIFT_REJECTED',
       ]);
+      if (decision === 'APPROVE') await this.restrictionChanged(tx, id, 'LIFTED');
       await appendAudit(tx, {
         actor: { type: 'STAFF', id: staff.staffId },
         action: decision === 'APPROVE' ? 'RESTRICTION_LIFTED' : 'RESTRICTION_LIFT_REJECTED',

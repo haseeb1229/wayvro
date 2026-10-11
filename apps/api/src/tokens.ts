@@ -16,6 +16,7 @@ export const STAFF_OVERSIGHT_SERVICE = Symbol('STAFF_OVERSIGHT_SERVICE');
 export const ONBOARDING_SERVICE = Symbol('ONBOARDING_SERVICE');
 export const COMPLIANCE_ADMIN_SERVICE = Symbol('COMPLIANCE_ADMIN_SERVICE');
 export const EVIDENCE_SERVICES = Symbol('EVIDENCE_SERVICES');
+export const REVIEW_SERVICES = Symbol('REVIEW_SERVICES');
 
 export interface ServiceInfo {
   readonly service: string;

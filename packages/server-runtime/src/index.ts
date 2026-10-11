@@ -16,3 +16,4 @@ export { LimiterUnavailableError, RateLimiter, awaitRedisReady, createRequestPat
 export { databaseCheck, evaluateReadiness, redisCheck, type ReadinessCheck } from './readiness.js';
 export { sqlState, withTransaction, type Queryable } from './sql.js';
 export { uuidv7, uuidv7Timestamp } from './uuidv7.js';
+export { ACCOUNT_HINT_CHANNEL, parseAccountHint, type AccountHint } from './hints.js';

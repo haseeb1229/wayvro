@@ -14,7 +14,7 @@ import { WayvroError } from '@wayvro/observability';
 import type { ObjectStoragePort } from '@wayvro/provider-interfaces';
 import { appendAudit, enqueueJob, uuidv7, withTransaction, type Queryable } from '@wayvro/server-runtime';
 import type pg from 'pg';
-import type { EvidenceSummaryPort, OnboardingService } from '../compliance/onboarding.service.js';
+import type { EvidenceState, EvidenceSummaryPort, OnboardingService } from '../compliance/onboarding.service.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult } from '../platform/idempotency.js';
 
 const EVIDENCE_PROCESS_JOB = 'evidence.process';
@@ -315,8 +315,19 @@ export class EvidenceService {
 export class EvidenceSummary implements EvidenceSummaryPort {
   constructor(private readonly vault: pg.Pool) {}
 
-  async evidenceStates(applicationId: string): Promise<ReadonlyArray<{ documentId: string; kind: string; status: string }>> {
-    const rows = await this.vault.query<EvidenceRow>(`select ${COLUMNS} from vault.evidence_objects where driver_application_id = $1`, [applicationId]);
-    return rows.rows.map((r) => ({ documentId: r.compliance_document_id, kind: r.kind, status: publicStatus(r).status }));
+  async evidenceStates(applicationId: string): Promise<ReadonlyArray<EvidenceState>> {
+    const rows = await this.vault.query<EvidenceRow & { pixel_width: number | null; pixel_height: number | null }>(
+      `select ${COLUMNS}, pixel_width, pixel_height from vault.evidence_objects where driver_application_id = $1 order by created_at, id`,
+      [applicationId],
+    );
+    return rows.rows.map((r) => ({
+      evidenceId: r.id,
+      documentId: r.compliance_document_id,
+      kind: r.kind,
+      status: publicStatus(r).status,
+      captureSource: r.capture_source,
+      pixelWidth: r.pixel_width,
+      pixelHeight: r.pixel_height,
+    }));
   }
 }

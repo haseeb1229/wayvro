@@ -17,7 +17,7 @@ import { WayvroError, type Logger } from '@wayvro/observability';
 import type { ObjectStoragePort } from '@wayvro/provider-interfaces';
 import { appendAudit, uuidv7, withTransaction, type Queryable } from '@wayvro/server-runtime';
 import type pg from 'pg';
-import { citiesFor, type StaffPrincipal } from '../staff/staff-session.js';
+import { citiesFor, hasRole, type StaffPrincipal } from '../staff/staff-session.js';
 
 const VIEW_SECONDS = 60;
 const sha256 = (b: Uint8Array | string): Buffer => createHash('sha256').update(b).digest();
@@ -60,6 +60,30 @@ export class EvidenceViewService {
     throw new WayvroError('WAYVRO_E_FORBIDDEN');
   }
 
+  /**
+   * Case scoping (staff matrix row `vault.evidence.view`): a KYC reviewer only on a case they hold (live lease); a KYC
+   * senior on any in-scope application; Trust & Safety only where an OPEN duplicate signal involves the application.
+   * Break-glass bypasses this (tagged, alerted and reviewed).
+   */
+  private async caseAllows(staff: StaffPrincipal, applicationId: string): Promise<boolean> {
+    if (hasRole(staff, 'KYC_SENIOR_REVIEWER')) return true;
+    if (hasRole(staff, 'KYC_REVIEWER')) {
+      const held = await this.vault.query(
+        `select 1 from compliance.review_cases where driver_application_id = $1 and status = 'CLAIMED' and assigned_staff_id = $2 and lease_expires_at > now()`,
+        [applicationId, staff.staffId],
+      );
+      if ((held.rowCount ?? 0) > 0) return true;
+    }
+    if (hasRole(staff, 'TRUST_SAFETY_AGENT')) {
+      const signal = await this.vault.query(
+        `select 1 from compliance.duplicate_signals where status = 'OPEN' and (subject_application_id = $1 or matched_application_id = $1)`,
+        [applicationId],
+      );
+      if ((signal.rowCount ?? 0) > 0) return true;
+    }
+    return false;
+  }
+
   async issue(staff: StaffPrincipal, input: { evidenceId: string; reasonCode: string }): Promise<{ viewToken: string; expiresAt: string; reasonCode: string }> {
     if (!isNonProductionLike(this.env)) {
       // real identity evidence: gated by the flag and the two-authenticator rule (staff matrix §1)
@@ -67,8 +91,8 @@ export class EvidenceViewService {
       if (staff.activeCredentials < 2) await this.deny(staff, input.evidenceId, 'SECOND_AUTHENTICATOR_REQUIRED');
     }
     const target = (
-      await this.vault.query<{ status: string; owner_account_id: string; city_code: string }>(
-        `select e.status, e.owner_account_id, a.city_code from vault.evidence_objects e join compliance.driver_applications a on a.id = e.driver_application_id
+      await this.vault.query<{ status: string; owner_account_id: string; city_code: string; application_id: string }>(
+        `select e.status, e.owner_account_id, a.city_code, a.id application_id from vault.evidence_objects e join compliance.driver_applications a on a.id = e.driver_application_id
           where e.id = $1`,
         [input.evidenceId],
       )
@@ -78,6 +102,7 @@ export class EvidenceViewService {
     if (cities !== null && !cities.has(target.city_code)) await this.deny(staff, input.evidenceId, 'CITY_SCOPE');
     if (staff.consumerAccountId !== null && staff.consumerAccountId === target.owner_account_id)
       await this.deny(staff, input.evidenceId, 'CONFLICT_OF_INTEREST');
+    if (staff.breakGlassId === null && !(await this.caseAllows(staff, target.application_id))) await this.deny(staff, input.evidenceId, 'CASE_NOT_CLAIMED');
     if (target.status !== 'AVAILABLE') throw new WayvroError('WAYVRO_E_CONFLICT');
     const token = randomUUID();
     const tokenId = uuidv7();
@@ -163,5 +188,45 @@ export class EvidenceViewService {
       });
     });
     return { contentType: row.canonical_format === 'PNG' ? 'image/png' : 'image/jpeg', bytes: image };
+  }
+
+  /** Evidence access log for auditors (ids and codes only; paginated, newest first). */
+  async accessLog(query: { evidenceId?: string | undefined; staffId?: string | undefined; cursor?: string | undefined; limit?: number | undefined }) {
+    const limit = query.limit ?? 50;
+    let before: { at: string; id: string } | null = null;
+    if (query.cursor !== undefined) {
+      const [at, id] = Buffer.from(query.cursor, 'base64url').toString('utf8').split('|');
+      if (!at || !id || Number.isNaN(Date.parse(at)) || !/^[0-9a-f-]{36}$/.test(id)) throw new WayvroError('WAYVRO_E_VALIDATION');
+      before = { at, id };
+    }
+    const r = await this.vault.query<{
+      id: string;
+      evidence_object_id: string;
+      staff_account_id: string;
+      event: string;
+      reason_code: string;
+      break_glass_grant_id: string | null;
+      at: Date;
+    }>(
+      `select id, evidence_object_id, staff_account_id, event, reason_code, break_glass_grant_id, at from vault.evidence_access_log
+        where ($1::uuid is null or evidence_object_id = $1) and ($2::uuid is null or staff_account_id = $2)
+          and ($3::timestamptz is null or (at, id) < ($3::timestamptz, $4::uuid))
+        order by at desc, id desc limit $5`,
+      [query.evidenceId ?? null, query.staffId ?? null, before?.at ?? null, before?.id ?? null, limit + 1],
+    );
+    const rows = r.rows.slice(0, limit);
+    const last = rows.at(-1);
+    return {
+      items: rows.map((e) => ({
+        id: e.id,
+        evidenceId: e.evidence_object_id,
+        staffId: e.staff_account_id,
+        event: e.event,
+        reasonCode: e.reason_code,
+        breakGlass: e.break_glass_grant_id !== null,
+        at: e.at.toISOString(),
+      })),
+      nextCursor: r.rows.length > limit && last ? Buffer.from(`${last.at.toISOString()}|${last.id}`).toString('base64url') : null,
+    };
   }
 }

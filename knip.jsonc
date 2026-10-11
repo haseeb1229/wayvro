@@ -15,10 +15,6 @@
     "apps/worker": {
       "entry": ["src/main.ts!", "src/bin/key-rotation.ts!"],
       "project": ["src/**/*.ts!", "test/**/*.ts"],
-      // EXPLAINED EXCEPTION (production mode only): the transactional-outbox relay and idempotent-consumer skeletons are
-      // required by the Phase 1 scope but have no production caller until the outbox table ships with the first
-      // event-producing context. Removal gate: wire both into src/main.ts in that phase, then delete this ignore.
-      "ignore": ["src/outbox/relay.ts", "src/consumer/idempotent-consumer.ts"],
     },
     "apps/realtime": { "entry": ["src/main.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     "apps/web-public": { "project": ["src/**/*.{ts,tsx}!"] },

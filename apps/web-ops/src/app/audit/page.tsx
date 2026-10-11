@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { currentStaff } from '../../bff/session';
 import { AuditView } from '../../ui/Oversight';
+import { EvidenceAccessLog } from '../../ui/Review';
 import { Shell } from '../../ui/Shell';
 
 export default async function AuditPage() {
@@ -12,6 +13,7 @@ export default async function AuditPage() {
   return (
     <Shell me={view.me} initiallyLocked={view.state === 'LOCKED'}>
       <AuditView />
+      {view.me.permissions.includes('audit.evidence_access.view') ? <EvidenceAccessLog /> : null}
     </Shell>
   );
 }

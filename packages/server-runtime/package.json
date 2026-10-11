@@ -24,7 +24,8 @@
     "@wayvro/contracts": "workspace:*",
     "@wayvro/db": "workspace:*",
     "@wayvro/observability": "workspace:*",
-    "ioredis": "6.0.0"
+    "ioredis": "6.0.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "24.19.1",

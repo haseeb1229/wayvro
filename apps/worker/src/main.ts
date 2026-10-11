@@ -3,7 +3,7 @@
 import { createDatabase } from '@wayvro/db';
 import { createLogger, startTelemetry } from '@wayvro/observability';
 import { bindProviders } from '@wayvro/provider-interfaces';
-import { createHealthServer, databaseCheck, enforceArtifactPolicy, redisCheck } from '@wayvro/server-runtime';
+import { backoffDelayMs, createHealthServer, createRequestPathRedis, databaseCheck, enforceArtifactPolicy, redisCheck } from '@wayvro/server-runtime';
 import { ClamdScanner, DockerSanitiser, objectStorageFromSettings } from '@wayvro/vault-adapters';
 import { composeWorker } from './composition.js';
 import { loadWorkerConfig } from './config.js';
@@ -32,13 +32,32 @@ const providers = bindProviders(config.WAYVRO_ENV, {
   ...(sanitiser ? { imageSanitiser: sanitiser } : {}),
 });
 const vaultDb = config.DATABASE_VAULT_URL ? createDatabase(config.DATABASE_VAULT_URL, { maxConnections: 3, applicationName: 'wayvro-worker-vault' }) : null;
-const { runner, scheduler } = composeWorker(config, db.pool, log, providers, vaultDb?.pool ?? null);
+// Hint publisher for the outbox's first consumer (account-state hints → realtime), on its own connection.
+const hintRedis = createRequestPathRedis(config.REDIS_URL);
+const { runner, scheduler, relay } = composeWorker(config, db.pool, log, providers, vaultDb?.pool ?? null, hintRedis);
 const redis = redisCheck(config.REDIS_URL);
 const health = createHealthServer({ service: 'worker', version: config.WAYVRO_BUILD_VERSION, checks: [databaseCheck(db), redis] });
 
-// The transactional-outbox relay is not started: no outbox source exists until its first consumer (P2.7, see
-// src/outbox/relay.ts); starting it without a source would be a fake success path.
 runner.start(config.JOB_POLL_INTERVAL_MS);
+// Outbox relay loop: at-least-once, bounded backoff on source failures, dead letters alerted (never silently dropped).
+let relayFailures = 0;
+let relayTimer: NodeJS.Timeout | undefined;
+const relayPass = (): void => {
+  if (!relay) return;
+  relay.runOnce().then(
+    (r) => {
+      relayFailures = 0;
+      if (r.deadLettered > 0) log.error({ signal: 'OUTBOX_DEAD_LETTER', count: r.deadLettered }, 'outbox events moved to dead letter');
+      relayTimer = setTimeout(relayPass, r.claimed > 0 ? 50 : config.OUTBOX_POLL_INTERVAL_MS);
+    },
+    (e: unknown) => {
+      relayFailures++;
+      log.warn({ err: e }, 'outbox relay pass failed; backing off');
+      relayTimer = setTimeout(relayPass, backoffDelayMs(relayFailures));
+    },
+  );
+};
+relayPass();
 const scheduling = setInterval(() => {
   scheduler.tick().catch((e: unknown) => {
     log.error({ err: e }, 'recurring job scheduling failed');
@@ -51,6 +70,7 @@ async function shutdown(signal: string): Promise<void> {
   shuttingDown = true;
   log.info({ signal }, 'worker shutting down');
   clearInterval(scheduling);
+  if (relayTimer) clearTimeout(relayTimer);
   await runner.stop();
   await new Promise<void>((resolve) => {
     health.close(() => {
@@ -58,6 +78,7 @@ async function shutdown(signal: string): Promise<void> {
     });
   });
   redis.close();
+  hintRedis.disconnect();
   await db.close();
   await vaultDb?.close();
   await telemetry.shutdown();

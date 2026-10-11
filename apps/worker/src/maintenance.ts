@@ -30,6 +30,7 @@ export async function purgeOnce(
   breakGlassExpired: readonly string[];
   restrictionsExpired: number;
   draftsExpired: number;
+  reviewLeasesExpired: number;
 }> {
   const idempotency = await pool.query(
     `delete from platform.idempotency_records where ctid in (select ctid from platform.idempotency_records where expires_at <= now() limit $1)`,
@@ -60,7 +61,20 @@ export async function purgeOnce(
       `insert into profile.restriction_events (id, restriction_id, event, actor_system, reason_code) values ($1, $2, 'EXPIRED', 'worker.maintenance', 'EFFECTIVE_UNTIL_REACHED')`,
       [uuidv7(), r.id],
     );
+    // outbox: the affected account's apps re-fetch their state (ids and status only)
+    await pool.query(
+      `insert into platform.outbox_events (id, type, aggregate_type, aggregate_id, account_id, payload, status)
+       select $1, 'restriction.changed.v1', 'profile.restriction', r.id, coalesce(r.account_id, p.account_id), '{"status":"EXPIRED"}'::jsonb, 'PENDING'
+         from profile.restrictions r left join compliance.driver_profiles p on p.id = r.driver_profile_id where r.id = $2`,
+      [uuidv7(), r.id],
+    );
   }
+  // Review-case leases that lapsed go back to the queue (escalated cases stay with the seniors).
+  const leases = await pool.query(
+    `update compliance.review_cases set status = case when escalated then 'ESCALATED' else 'OPEN' end, assigned_staff_id = null, lease_expires_at = null,
+            version = version + 1
+      where status = 'CLAIMED' and lease_expires_at <= now()`,
+  );
   const drafts = await pool.query(
     `update compliance.driver_applications set state = 'EXPIRED_DRAFT', updated_at = now(), version = version + 1
       where state in ('DRAFT', 'CONSENTED', 'DOCUMENTS_PENDING') and updated_at < now() - ($1::int * interval '1 day')`,
@@ -68,6 +82,7 @@ export async function purgeOnce(
   );
   return {
     restrictionsExpired: restrictions.rowCount ?? 0,
+    reviewLeasesExpired: leases.rowCount ?? 0,
     draftsExpired: drafts.rowCount ?? 0,
     idempotency: idempotency.rowCount ?? 0,
     challenges: challenges.rowCount ?? 0,

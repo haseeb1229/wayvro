@@ -26,6 +26,9 @@ import { StaffAdminService } from './staff/staff-admin.service.js';
 import { StaffAuthService } from './staff/staff-auth.service.js';
 import { StaffWebAuthn } from './staff/webauthn.js';
 import { IdempotencyStore } from './platform/idempotency.js';
+import { AppealsService } from './review/appeals.service.js';
+import { MonitoringService } from './review/monitoring.service.js';
+import { ReviewService } from './review/review.service.js';
 import { EvidenceViewService } from './vault/evidence-view.service.js';
 import { EvidenceService, EvidenceSummary } from './vault/evidence.service.js';
 
@@ -72,7 +75,8 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     config.DATABASE_VAULT_URL !== undefined && options.providers.has('objectStorage')
       ? createDatabase(config.DATABASE_VAULT_URL, { maxConnections: 5, applicationName: 'wayvro-api-vault' })
       : null;
-  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config, vaultDb ? new EvidenceSummary(vaultDb.pool) : null);
+  const evidenceSummary = vaultDb ? new EvidenceSummary(vaultDb.pool) : null;
+  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config, evidenceSummary);
   const evidence = vaultDb
     ? {
         evidence: new EvidenceService(vaultDb.pool, options.providers.get('objectStorage'), onboarding, idempotency, config),
@@ -97,6 +101,11 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     },
     compliance: { onboarding, admin: new ComplianceAdminService(db.pool, idempotency, config) },
     evidence,
+    review: {
+      review: new ReviewService(db.pool, cipher, idempotency, evidenceSummary, config),
+      appeals: new AppealsService(db.pool, cipher, idempotency, config.IDEMPOTENCY_TTL_SECONDS),
+      monitoring: new MonitoringService(db.pool),
+    },
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {

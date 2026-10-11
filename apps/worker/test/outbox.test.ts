@@ -42,6 +42,8 @@ class MemoryProcessedStore implements ProcessedEventStore {
 const event = (n: number, attempts = 0): OutboxEvent => ({
   eventId: `evt-${String(n)}`,
   type: 'platform.probe.v1',
+  aggregateType: 'platform.probe',
+  accountId: null,
   aggregateId: `agg-${String(n)}`,
   payload: { n },
   attempts,

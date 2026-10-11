@@ -103,7 +103,7 @@ export interface Eligibility {
 
 const today = (now: Date): string => now.toISOString().slice(0, 10);
 
-/** Whole years between a YYYY-MM-DD date of birth and `now` (UTC calendar). @internal */
+/** Whole years between a YYYY-MM-DD date of birth and `now` (UTC calendar). */
 export function ageOn(dateOfBirth: string, now: Date): number {
   const [y, m, d] = dateOfBirth.split('-').map(Number) as [number, number, number];
   let age = now.getUTCFullYear() - y;

@@ -28,6 +28,8 @@ const workerEnvSchema = serviceEnvSchema
     WAYVRO_BUILD_VERSION: z.string().min(1).default('dev'),
     JOB_POLL_INTERVAL_MS: int(500, 50, 60_000),
     JOB_LEASE_MS: int(60_000, 1000, 3_600_000),
+    /** Idle poll of the transactional-outbox relay (a non-empty batch re-polls immediately). */
+    OUTBOX_POLL_INTERVAL_MS: int(1000, 50, 60_000),
     /** Only audit rows older than this are sealed (in-flight transactions are bounded by statement timeouts). */
     AUDIT_SEAL_LAG_SECONDS: int(60, 0, 3600),
     AUDIT_SEAL_BATCH_SIZE: int(1000, 1, 100_000),

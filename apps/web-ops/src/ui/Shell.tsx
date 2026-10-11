@@ -73,6 +73,21 @@ export function Shell({ me, initiallyLocked, children }: { readonly me: StaffMe;
                 <Link href="/audit">{STRINGS.nav.audit}</Link>
               </li>
             ) : null}
+            {can('kyc.queue.view') ? (
+              <li>
+                <Link href="/review">{STRINGS.nav.review}</Link>
+              </li>
+            ) : null}
+            {can('appeal.view') ? (
+              <li>
+                <Link href="/appeals">{STRINGS.nav.appeals}</Link>
+              </li>
+            ) : null}
+            {can('compliance.expiry_roster.view') ? (
+              <li>
+                <Link href="/expiry">{STRINGS.nav.expiry}</Link>
+              </li>
+            ) : null}
             {can('compliance.requirement_set.view') ? (
               <li>
                 <Link href="/compliance">{STRINGS.nav.compliance}</Link>

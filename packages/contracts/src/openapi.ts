@@ -5,6 +5,7 @@ import { HEALTH_ROUTES, type RouteContract } from './health.js';
 import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
 import { ONBOARDING_ROUTES } from './compliance.js';
 import { EVIDENCE_ROUTES } from './evidence.js';
+import { REVIEW_ROUTES } from './review.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { IDENTITY_ROUTES } from './routes.js';
 import { STAFF_ROUTES } from './staff.js';
@@ -17,6 +18,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...ONBOARDING_ROUTES,
   ...COMPLIANCE_ADMIN_ROUTES,
   ...EVIDENCE_ROUTES,
+  ...REVIEW_ROUTES,
 ];
 
 const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> = { public: [], session: [{ sessionBearer: [] }], staff: [{ staffBearer: [] }] };

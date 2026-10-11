@@ -43,12 +43,53 @@ export type StaffPermission =
   | 'legal.age_policy.draft'
   | 'legal.age_policy.approve'
   // evidence vault (P2.6): one-time evidence views with a recorded reason (case-claim scoping arrives with review cases, P2.7)
-  | 'vault.evidence.view';
+  | 'vault.evidence.view'
+  // manual review, appeals and monitoring (P2.7)
+  | 'kyc.queue.view'
+  | 'kyc.case.claim'
+  | 'kyc.case.view_masked'
+  | 'kyc.decision.needs_info'
+  | 'kyc.decision.reject'
+  | 'kyc.decision.approve'
+  | 'kyc.decision.require_in_person'
+  | 'kyc.decision.second_approve'
+  | 'appeal.view'
+  | 'appeal.decide'
+  | 'compliance.expiry_roster.view'
+  | 'audit.evidence_access.view';
 
 /** Role → permissions (the ✓ cells of the matrix). Step-up and maker-checker are attributes of the ROUTE. @internal */
 export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermission[]>> = {
-  KYC_REVIEWER: ['breakglass.activate', 'vault.evidence.view'],
-  KYC_SENIOR_REVIEWER: ['breakglass.activate', 'restriction.view', 'restriction.create', 'restriction.lift', 'vault.evidence.view'],
+  KYC_REVIEWER: [
+    'breakglass.activate',
+    'vault.evidence.view',
+    'kyc.queue.view',
+    'kyc.case.claim',
+    'kyc.case.view_masked',
+    'kyc.decision.needs_info',
+    'kyc.decision.reject',
+    'kyc.decision.approve',
+    'kyc.decision.require_in_person',
+    'compliance.expiry_roster.view',
+  ],
+  KYC_SENIOR_REVIEWER: [
+    'breakglass.activate',
+    'restriction.view',
+    'restriction.create',
+    'restriction.lift',
+    'vault.evidence.view',
+    'kyc.queue.view',
+    'kyc.case.claim',
+    'kyc.case.view_masked',
+    'kyc.decision.needs_info',
+    'kyc.decision.reject',
+    'kyc.decision.approve',
+    'kyc.decision.require_in_person',
+    'compliance.expiry_roster.view',
+    'kyc.decision.second_approve',
+    'appeal.view',
+    'appeal.decide',
+  ],
   COMPLIANCE_ADMIN: [
     'breakglass.activate',
     'compliance.requirement_set.view',
@@ -56,6 +97,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermissi
     'compliance.requirement_set.approve',
     'legal.age_policy.draft',
     'legal.age_policy.approve',
+    'compliance.expiry_roster.view',
   ],
   TRUST_SAFETY_AGENT: [
     'breakglass.activate',
@@ -64,6 +106,9 @@ export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermissi
     'restriction.create_account',
     'restriction.lift',
     'vault.evidence.view',
+    'appeal.view',
+    'appeal.decide',
+    'compliance.expiry_roster.view',
   ],
   SUPPORT_AGENT: [],
   STAFF_ADMIN: [
@@ -78,7 +123,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermissi
     'breakglass.activate',
     'breakglass.review',
   ],
-  AUDITOR: ['audit.events.view', 'audit.seals.verify', 'breakglass.review'],
+  AUDITOR: ['audit.events.view', 'audit.seals.verify', 'breakglass.review', 'audit.evidence_access.view'],
 };
 
 /** Roles whose grant needs a second STAFF_ADMIN's approval (matrix §3); every other grant is active immediately. */

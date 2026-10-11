@@ -1,7 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Query, Req, Res } from '@nestjs/common';
 import {
   ApplicationIdParamSchema,
   EmptyRequestSchema,
+  EvidenceAccessLogQuerySchema,
+  EvidenceAccessLogSchema,
   EvidenceListSchema,
   EvidenceUploadRequestSchema,
   EvidenceUploadSlotSchema,
@@ -97,6 +99,12 @@ export class EvidenceViewController {
     const view = await configured(this.services).views.issue(staffOf(req), input);
     void reply.status(201);
     return EvidenceViewSchema.parse(view);
+  }
+
+  @Get('/v1/admin/evidence-access-log')
+  @StaffSession({ permission: 'audit.evidence_access.view' })
+  async accessLog(@Query() query: unknown): Promise<z.infer<typeof EvidenceAccessLogSchema>> {
+    return EvidenceAccessLogSchema.parse(await configured(this.services).views.accessLog(parse(EvidenceAccessLogQuerySchema, query)));
   }
 
   @Get('/v1/admin/evidence-views/:token/content')

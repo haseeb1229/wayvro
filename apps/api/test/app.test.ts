@@ -94,6 +94,7 @@ async function boot(checks: ReadinessCheck[] = [check('database', true), check('
     staff,
     compliance,
     evidence: null,
+    review: {} as never,
     extraControllers: extra,
   });
   await app.getHttpAdapter().getInstance().ready();

@@ -14,7 +14,8 @@ The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for 
 | P2.3 | `b35ad83` | mobile account slice in the ONE app (ADR-043); built in parallel by a delegated agent inside `apps/wayvro-mobile` only, reviewed and gated here |
 
 | CI fixes | `d49a2ae`, `86bd13a` | osv runtime exception (decode-uri-component, expires 2026-12-31); Android job builds the workspace packages the app imports. **CI run 38097638550 on `86bd13a`: all five jobs green** (quality, integration, security, Android, web E2E) |
-| P2.6 | (this commit) | evidence vault, upload pipeline, isolated sanitiser, ClamAV, staff evidence views (ADR-041) |
+| P2.6 | `c42c2eb` | evidence vault, upload pipeline, isolated sanitiser, ClamAV, staff evidence views (ADR-041). **CI run 38101743619: all five jobs green** |
+| P2.7 | (this commit) | manual review, decisions, second approvals, appeals, expiry monitoring, outbox relay + first consumer, reviewer UI |
 
 Intermediate checkpoint commits are not individually CI-verified. CI runs on the pushed HEAD.
 
@@ -195,3 +196,42 @@ Intermediate checkpoint commits are not individually CI-verified. CI runs on the
 - real KYC evidence (never in Phase 2);
 - the DPIA itself (EG-10, prepared inputs only);
 - an independent assessment of the sanitiser boundary (EG-17).
+
+## P2.7 — Manual review, decisions, appeals and expiry monitoring
+
+**IDs:** H02, K05, K04 (manual), K07, D03, D04, V13 (appeals), H08 (privileged confirmation), W07 (reason-for-access viewer, paginated scoped rosters — no export), R02–R06/R46 (checklist items), A15 (reviewer DOB/licence check).
+
+| Area | Implementation |
+|---|---|
+| Migration | `0006_review_appeals`:<br>• `compliance.review_cases` (explicit subject FKs + CHECK per kind; one open case per application; claim ⇔ lease);<br>• append-only `review_decisions` (checklist jsonb + schema version, reason codes, human identity assessment required for APPROVE);<br>• `review_second_approvals` (composite FK binds the decider; approver ≠ decider);<br>• `review_decision_evidence`;<br>• `profile.appeals` (exactly one subject, encrypted statement, one open appeal per subject) + `appeal_evidence`;<br>• `service_capabilities.granted_by_decision_id` (NOT VALID CHECK: every new grant names its decision);<br>• `platform.outbox_events` + `platform.processed_events`;<br>• column-level grants (vault reads only case-assignment facts) |
+| Review | queue (city-scoped, cursor-paginated, escalations visible to seniors only), claim = 30-minute renewable lease, release, masked case view. The claims are shown for comparison: name, DOB, CNIC last 4. The case view also shows the age check against the APPROVED policy only, evidence metadata (images only through the view flow), signals, decisions and the appeal statement |
+| Decisions | APPROVE / NEEDS_INFO / REJECT / ESCALATE / REQUIRE_IN_PERSON:<br>• rules: claim + step-up + decision-specific permission + code-defined reason catalogue + checklist v1 (APPROVE needs every item CONFIRMED/N.A. and `CONFIRMED_BY_REVIEWER`) + evidence relied on (must be the application's ACCEPTED evidence);<br>• **duplicate signals:** a KYC reviewer cannot approve; a senior must clear every open signal, and a different senior second-approves (DB-enforced);<br>• **APPROVE effects (one transaction):** driver profile from the confirmed claims (re-encrypted under profile field contexts), documents VALID (claimed dates → confirmed), affiliations ACTIVE, capabilities GRANTED by the decision, signals cleared, outbox `driver.application.decided.v1` + `driver.approved.v1`;<br>• NEEDS_INFO → itemised reasons → resubmission → RESUBMISSION case |
+| Appeals | `POST/GET /v1/account/appeals` (restricted-ok). Decision appeals are decided by a KYC senior who is neither the original decider nor the second approver; restriction appeals by T&S who is not the creator; conflict-of-interest blocked. OVERTURNED → APPEAL case (fresh human review) or restriction LIFTED (+ event); UPHELD → REJECTED_FINAL |
+| Evidence views | case-claim scoping closed (P2.6 deferral): KYC reviewer only on a case they hold, senior in scope, T&S only where an open duplicate signal involves the application; break-glass bypasses but is tagged |
+| Monitoring | expiry roster (`compliance.expiry_roster.view`, scoped, masked, paginated, no download); auditor evidence-access log (`audit.evidence_access.view`) |
+| Worker | `driver-application.intake`: SUBMITTED → AUTO_CHECK_PENDING → MANUAL_REVIEW + case; signals raise priority only, never a decision. Also:<br>• `compliance.document-expiry` (daily; a mandatory document expiring moves the profile to EXPIRED);<br>• review-lease expiry;<br>• restriction expiry emits `restriction.changed.v1`;<br>• **outbox relay started** with its first consumer `account-state-hint.v1` (idempotent per event, dead-letter after the attempt budget, alerted). This removes the Phase 1 knip production exception |
+| Realtime | subscribes to the internal hint channel and emits `account.state-changed.v1` (no data; `resync: fetch-snapshot`) to that account's own sockets, locally per gateway (no duplicate fan-out) |
+| web-ops | review queue, case view, reason-for-access dialog. The one-time image is fetched once as a blob and drawn on a canvas with the watermark burned in (no `<img>` URL, no download control; screenshots are stated as not preventable). Also: decision form (catalogue + checklist + identity assessment + evidence relied on + signal outcomes), second approval, appeals, expiry roster, auditor access-log table, permission-scoped navigation |
+
+**Deviations (recorded for review):**
+- **Approval with open signals:** this is an APPROVE awaiting a second approver: the case moves to ESCALATED (visible to seniors) rather than a separate status.
+- **In-person routing:** REQUIRE_IN_PERSON keeps the case OPEN with `in_person_required` (the operations process is EG-20).
+- **Restriction appeals:** a restriction appeal OVERTURNED by T&S lifts even a SAFETY/FRAUD restriction without a further maker-checker step, because the appeal decider is by construction a different person from the creator.
+- **Restriction CHECK:** no change to `profile.restrictions` was needed.
+
+**Evidence:**
+
+| Suite | Result |
+|---|---|
+| `packages/db/test/review-appeals.integration.test.ts` | 7 PASS |
+| `apps/api/test/review.integration.test.ts` (queue/claims/leases/scoped evidence views; catalogue/checklist/identity/evidence validation; NEEDS_INFO → resubmission; APPROVE effects + SEC-SELFIE invariant; duplicate signals + maker-checker; decision and restriction appeals; roster; access log) | 7 PASS |
+| `apps/api/test/review-rejections.integration.test.ts` (refusal paths, cursors, routing) | 5 PASS |
+| AUTHZ-MATRIX | now covers every new admin route × 7 roles; the harness runs with the vault so evidence routes answer for real |
+| `apps/worker/test/review.integration.test.ts` (intake, leases, expiry, restriction event, relay → Valkey hint once, redelivery deduplicated, dead letter) | 3 PASS |
+| `apps/realtime/test/fanout.integration.test.ts` (hint reaches only that account, exactly once across gateways; malformed dropped) | PASS |
+| web-ops Playwright reviewer journey (enrol, scoped nav, claim, masked case, reason dialog → one-time canvas view with watermark, replay 410, NEEDS_INFO decision, case leaves queue; axe) | 4 PASS; whole web E2E 22/22 |
+
+**Not run / external:**
+- real reviewers and the in-person centre (EG-20);
+- two-reviewer calibration sampling (operations process, proposal only);
+- push notifications for decisions (Phase 4; the realtime hint covers connected apps).

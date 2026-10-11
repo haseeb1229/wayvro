@@ -225,7 +225,14 @@ describe('maintenance, scheduling and composition', () => {
     const base = { DATABASE_URL: database.url, REDIS_URL: 'redis://127.0.0.1:26379' };
     const local = loadWorkerConfig({ ...base, WAYVRO_ENV: 'test', WAYVRO_LOCAL_KEY_SEED: 'synthetic-worker-seed-0000000000000000' });
     const { runner } = composeWorker(local, worker, log, bindProviders('test', {}));
-    expect(runner.types).toEqual(['audit.seal', 'audit.verify-seals', 'maintenance.purge', 'crypto.key-rotation']);
+    expect(runner.types).toEqual([
+      'audit.seal',
+      'audit.verify-seals',
+      'maintenance.purge',
+      'crypto.key-rotation',
+      'driver-application.intake',
+      'compliance.document-expiry',
+    ]);
     // When a delivery adapter is bound (a real one after EG-01), the worker also claims otp.deliver jobs.
     const withAdapter = composeWorker(local, worker, log, bindProviders('test', { otpDelivery: { send: () => Promise.resolve({ providerMessageId: 'x' }) } }));
     expect(withAdapter.runner.types).toContain('otp.deliver');

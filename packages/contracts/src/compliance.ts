@@ -188,6 +188,25 @@ export const DriverApplicationSchema = z
     pendingPolicies: z.array(z.string()),
     createdAt: IsoDateTime,
     submittedAt: IsoDateTime.nullable(),
+    /**
+     * P2.7 (additive): the latest effective human decision (reason codes for NEEDS_INFO/REJECT, whether it can be
+     * appealed) and whether an in-person verification was requested. Never the reviewer's identity.
+     */
+    review: z
+      .object({
+        latestDecision: z
+          .object({
+            decisionId: z.uuid(),
+            decision: z.enum(['APPROVE', 'NEEDS_INFO', 'REJECT', 'REQUIRE_IN_PERSON']),
+            reasonCodes: z.array(z.string()),
+            decidedAt: IsoDateTime,
+            appealable: z.boolean(),
+          })
+          .nullable(),
+        inPersonRequired: z.boolean(),
+        openAppealId: z.uuid().nullable(),
+      })
+      .optional(),
   })
   .meta({ id: 'DriverApplication' });
 export type DriverApplication = z.infer<typeof DriverApplicationSchema>;

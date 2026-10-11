@@ -4,7 +4,8 @@
  * any response or non-vault table; the API role cannot read vault.*), slot rules (selfie camera-only, challenge only for
  * a selfie, kind must belong to the document type, consent first, foreign ids 404), size mismatch, expiry, discard,
  * per-account slot rate, accessible capture challenges, submission (itemised missing evidence, pinned set), and staff
- * evidence views (permission + step-up + city scope + conflict, one-time token, no-store stream, replay 410, integrity
+ * evidence views (permission + step-up + city scope + conflict + case scope [senior reviewers here; claimed-case scoping
+ * for KYC reviewers is covered by review.integration.test.ts], one-time token, no-store stream, replay 410, integrity
  * failure, append-only access log). The worker pipeline (scan/sanitise/encrypt) is covered by apps/worker tests; here
  * processed evidence is SIMULATED by sealing synthetic bytes exactly as the worker does. Synthetic data only.
  */
@@ -360,7 +361,7 @@ describe('staff evidence views (H02, W07, K11)', () => {
     );
     const image = syntheticJpeg(1024);
     await simulateProcessed(s.uploadId, image);
-    const reviewer = await kit.staffWithRole(admins, 'KYC_REVIEWER', 'Reviewer One');
+    const reviewer = await kit.staffWithRole(admins, 'KYC_SENIOR_REVIEWER', 'Reviewer One');
     const auditor = await kit.staffWithRole(admins, 'AUDITOR', 'Auditor One');
     const body = { evidenceId: s.uploadId, reasonCode: 'CASE_REVIEW' };
     // the enrolment assertion counts as a step-up for 5 minutes: age it so the step-up rule is exercised
@@ -391,7 +392,7 @@ describe('staff evidence views (H02, W07, K11)', () => {
   });
 
   it('another city, a conflict of interest, unprocessed evidence and a tampered object are refused', async () => {
-    const reviewer = await kit.staffWithRole(admins, 'KYC_REVIEWER', 'Reviewer Two');
+    const reviewer = await kit.staffWithRole(admins, 'KYC_SENIOR_REVIEWER', 'Reviewer Two');
     const a = await applicant();
     await consent(a);
     const s = EvidenceUploadSlotSchema.parse(

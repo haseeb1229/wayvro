@@ -16,11 +16,17 @@ import { AUDIT_SEAL_JOB, AUDIT_VERIFY_JOB, auditJobs } from './audit-seal.js';
 import type { WorkerConfig } from './config.js';
 import { MAINTENANCE_PURGE_JOB, maintenanceJob } from './maintenance.js';
 import { RecurringScheduler } from './scheduler.js';
+import { accountStateHintConsumer, type HintPublisher } from './outbox/account-state-hint.js';
+import { LocalDispatcher, PgOutboxSource, PgProcessedEventStore } from './outbox/pg-outbox.js';
+import { OutboxRelay } from './outbox/relay.js';
+import { DOCUMENT_EXPIRY_JOB, applicationIntakeJob, documentExpiryJob } from './review/review-jobs.js';
 import { EVIDENCE_ORPHANS_JOB, evidenceOrphansJob, evidenceProcessJob } from './vault/evidence-jobs.js';
 
 export interface WorkerRuntime {
   readonly runner: JobRunner;
   readonly scheduler: RecurringScheduler;
+  /** Transactional-outbox relay with its first consumer (account-state hints); null without a hint publisher. */
+  readonly relay: OutboxRelay | null;
   readonly rotation: RotationDeps;
 }
 
@@ -29,7 +35,14 @@ export interface WorkerRuntime {
  * when the vault pool, object storage, the malware scanner and the isolated sanitiser are ALL bound; otherwise uploads
  * stay UPLOADED (never clean) until they are.
  */
-export function composeWorker(config: WorkerConfig, pool: pg.Pool, log: Logger, providers: ProviderRegistry, vaultPool: pg.Pool | null = null): WorkerRuntime {
+export function composeWorker(
+  config: WorkerConfig,
+  pool: pg.Pool,
+  log: Logger,
+  providers: ProviderRegistry,
+  vaultPool: pg.Pool | null = null,
+  hints: HintPublisher | null = null,
+): WorkerRuntime {
   // Staging/production refuse until a KMS-backed key provider exists (EG-05).
   const ring = loadKeyRing(config.WAYVRO_ENV, config);
   const cipher = new FieldCipher(ring);
@@ -43,12 +56,15 @@ export function composeWorker(config: WorkerConfig, pool: pg.Pool, log: Logger, 
       batchSize: 5000,
     }),
     keyRotationJob(rotation),
+    applicationIntakeJob(pool),
+    documentExpiryJob(pool, log),
   ];
   if (providers.has('otpDelivery')) definitions.push(otpDeliveryJob({ db: pool, cipher, port: providers.get('otpDelivery') }));
   const recurring = [
     { type: AUDIT_SEAL_JOB, everySeconds: 60 },
     { type: AUDIT_VERIFY_JOB, everySeconds: 3600 },
     { type: MAINTENANCE_PURGE_JOB, everySeconds: 600 },
+    { type: DOCUMENT_EXPIRY_JOB, everySeconds: 86_400 },
   ];
   if (vaultPool && providers.has('objectStorage')) {
     const storage = providers.get('objectStorage');
@@ -62,5 +78,11 @@ export function composeWorker(config: WorkerConfig, pool: pg.Pool, log: Logger, 
   }
   const runner = new JobRunner(pool, definitions, { workerId: `worker-${String(process.pid)}`, leaseMs: config.JOB_LEASE_MS, batchSize: 10, log });
   const scheduler = new RecurringScheduler(pool, recurring);
-  return { runner, scheduler, rotation };
+  const relay = hints
+    ? new OutboxRelay(new PgOutboxSource(pool), new LocalDispatcher([accountStateHintConsumer(new PgProcessedEventStore(pool), hints)]), {
+        batchSize: 100,
+        maxAttempts: 10,
+      })
+    : null;
+  return { runner, scheduler, rotation, relay };
 }

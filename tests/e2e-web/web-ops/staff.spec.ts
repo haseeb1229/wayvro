@@ -4,36 +4,9 @@
  * SameSite=Strict; never readable by JavaScript), BFF allowlist and Origin check, environment banner, idle lock +
  * WebAuthn unlock, permission-scoped navigation, invitation flow, and axe (no serious/critical violations).
  */
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { AxeBuilder } from '@axe-core/playwright';
 import pg from 'pg';
-import { expect, test, type BrowserContext, type CDPSession, type Page } from '@playwright/test';
-
-const ROOT = join(import.meta.dirname, '..', '..', '..');
-const stack = (): { databaseUrl: string; invitations: string[] } =>
-  JSON.parse(readFileSync(join(ROOT, 'build-logs', 'e2e-ops.json'), 'utf8')) as { databaseUrl: string; invitations: string[] };
-
-async function expectAccessible(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.help}`)).toEqual([]);
-}
-
-async function virtualAuthenticator(page: Page): Promise<CDPSession> {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('WebAuthn.enable');
-  await cdp.send('WebAuthn.addVirtualAuthenticator', {
-    options: {
-      protocol: 'ctap2',
-      transport: 'internal',
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
-  return cdp;
-}
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expectAccessible, stack, virtualAuthenticator } from './helpers.js';
 
 test.describe.serial('staff sign-in and shell', () => {
   let page: Page;
@@ -102,7 +75,11 @@ test.describe.serial('staff sign-in and shell', () => {
     const client = new pg.Client({ connectionString: stack().databaseUrl });
     await client.connect();
     try {
-      await client.query(`update staff.sessions set last_activity_at = now() - interval '20 minutes' where status = 'ACTIVE'`);
+      // only this spec's admin: other specs (the reviewer journey) may run in parallel
+      await client.query(
+        `update staff.sessions set last_activity_at = now() - interval '20 minutes'
+          where status = 'ACTIVE' and staff_id in (select id from staff.staff_accounts where work_email = 'e2e.admin.one@example.org')`,
+      );
     } finally {
       await client.end();
     }

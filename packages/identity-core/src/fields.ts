@@ -20,6 +20,8 @@ export const ENCRYPTED_FIELDS = {
   profileDob: { field: 'compliance.driver_profiles.verified_date_of_birth_envelope', fieldSchemaVersion: 1, keyClass: 'identity_dates' },
   vehicleRegistrationNo: { field: 'compliance.vehicles.registration_no_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
   documentNumber: { field: 'compliance.compliance_documents.number_envelope', fieldSchemaVersion: 1, keyClass: 'identity_numbers' },
+  /** appellant's free-text statement (P2.7) */
+  appealStatement: { field: 'profile.appeals.statement_envelope', fieldSchemaVersion: 1, keyClass: 'appeal_statements' },
 } as const;
 
 export type EncryptedField = (typeof ENCRYPTED_FIELDS)[keyof typeof ENCRYPTED_FIELDS];

@@ -14,11 +14,12 @@ import { CAPTURE_CHALLENGE_CODES, type DriverApplication, type DriverCompliance,
 import type { FieldCipher, KeyedHasher } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, fieldContext } from '@wayvro/identity-core';
 import { WayvroError } from '@wayvro/observability';
-import { appendAudit, sqlState, uuidv7, type Queryable } from '@wayvro/server-runtime';
+import { appendAudit, enqueueJob, sqlState, uuidv7, type Queryable } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import { currentAgePolicy } from '../legal/age-policy.js';
 import { consentStatuses, requiredActionsFor } from '../legal/consent.service.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome } from '../platform/idempotency.js';
+import { emitEvent } from '../platform/outbox.js';
 import { EDITABLE_APPLICATION_STATES, canTransition, type ApplicationState } from './application-state.js';
 import { evaluateEarningEligibility, inForce, type DocumentFact, type RequirementItemFact } from './eligibility.js';
 import { canonicalCnic, canonicalDocumentNumber, normalisePlate, plausibleBirthDate } from './normalise.js';
@@ -34,8 +35,19 @@ export interface OnboardingPolicy {
  * What submission needs from the evidence vault (implemented by the vault module, which owns its own database role):
  * user-safe evidence states per application. The compliance module never reads vault tables.
  */
+export interface EvidenceState {
+  readonly evidenceId: string;
+  readonly documentId: string;
+  readonly kind: string;
+  /** user-safe status (ACCEPTED, PROCESSING, …) */
+  readonly status: string;
+  readonly captureSource: string;
+  readonly pixelWidth: number | null;
+  readonly pixelHeight: number | null;
+}
+
 export interface EvidenceSummaryPort {
-  evidenceStates(applicationId: string): Promise<ReadonlyArray<{ readonly documentId: string; readonly kind: string; readonly status: string }>>;
+  evidenceStates(applicationId: string): Promise<ReadonlyArray<EvidenceState>>;
 }
 
 interface CaptureChallenge {
@@ -207,6 +219,45 @@ export class OnboardingService {
       pendingPolicies: pending,
       createdAt: app.created_at.toISOString(),
       submittedAt: app.submitted_at?.toISOString() ?? null,
+      review: await this.reviewSection(q, app),
+    };
+  }
+
+  /** The latest EFFECTIVE human decision (pending second approvals and escalations excluded), in-person flag, open appeal. */
+  private async reviewSection(q: Queryable, app: AppRow): Promise<NonNullable<DriverApplication['review']>> {
+    const decision = (
+      await q.query<{ id: string; decision: 'APPROVE' | 'NEEDS_INFO' | 'REJECT' | 'REQUIRE_IN_PERSON'; reason_codes: string[]; decided_at: Date }>(
+        `select d.id, d.decision, d.reason_codes, d.decided_at
+           from compliance.review_decisions d join compliance.review_cases c on c.id = d.review_case_id
+           left join compliance.review_second_approvals s on s.review_decision_id = d.id
+          where c.driver_application_id = $1 and d.decision <> 'ESCALATE' and (not d.requires_second_approval or s.outcome = 'APPROVED')
+          order by d.decided_at desc, d.id desc limit 1`,
+        [app.id],
+      )
+    ).rows[0];
+    const inPerson = await q.query(
+      `select 1 from compliance.review_cases where driver_application_id = $1 and in_person_required and status in ('OPEN', 'CLAIMED', 'ESCALATED')`,
+      [app.id],
+    );
+    const appeal = (
+      await q.query<{ id: string }>(
+        `select ap.id from profile.appeals ap join compliance.review_decisions d on d.id = ap.review_decision_id join compliance.review_cases c on c.id = d.review_case_id
+          where c.driver_application_id = $1 and ap.status in ('SUBMITTED', 'UNDER_REVIEW') limit 1`,
+        [app.id],
+      )
+    ).rows[0];
+    return {
+      latestDecision: decision
+        ? {
+            decisionId: decision.id,
+            decision: decision.decision,
+            reasonCodes: decision.reason_codes,
+            decidedAt: decision.decided_at.toISOString(),
+            appealable: decision.decision === 'REJECT' && app.state === 'REJECTED',
+          }
+        : null,
+      inPersonRequired: (inPerson.rowCount ?? 0) > 0,
+      openAppealId: appeal?.id ?? null,
     };
   }
 
@@ -987,6 +1038,14 @@ export class OnboardingService {
         `update compliance.driver_applications set state = 'SUBMITTED', requirement_set_id = $2, submitted_at = now(), version = version + 1, updated_at = now() where id = $1`,
         [id, set.id],
       );
+      // intake (worker): SUBMITTED → AUTO_CHECK_PENDING → MANUAL_REVIEW + a human review case; nothing decides automatically
+      await enqueueJob(tx, { type: 'driver-application.intake', payload: { applicationId: id }, maxAttempts: 8 });
+      await emitEvent(tx, {
+        type: 'driver.application.submitted.v1',
+        aggregateType: 'compliance.driver_application',
+        aggregateId: id,
+        accountId: principal.accountId,
+      });
       await appendAudit(tx, {
         actor: { type: 'ACCOUNT', id: principal.accountId },
         action: 'DRIVER_APPLICATION_SUBMITTED',

@@ -65,6 +65,31 @@ export {
 } from './legal.js';
 export { API_ROUTES, buildOpenApiDocument } from './openapi.js';
 export {
+  APPEAL_OUTCOME_REASONS,
+  AccountAppealListSchema,
+  AccountAppealSchema,
+  AdminAppealListSchema,
+  AppealCreateRequestSchema,
+  AppealDecisionRequestSchema,
+  AppealDecisionResultSchema,
+  AppealQuerySchema,
+  CHECKLIST_ITEMS_V1,
+  EvidenceAccessLogQuerySchema,
+  EvidenceAccessLogSchema,
+  ExpiryRosterQuerySchema,
+  ExpiryRosterSchema,
+  IDENTITY_MATCH_ASSESSMENTS,
+  REVIEW_DECISIONS,
+  REVIEW_REASON_CATALOGUE,
+  REVIEW_ROUTES,
+  ReviewCaseDetailSchema,
+  ReviewCaseListSchema,
+  ReviewCaseQuerySchema,
+  ReviewDecisionRequestSchema,
+  ReviewDecisionResultSchema,
+  SecondApprovalRequestSchema,
+} from './review.js';
+export {
   CAPTURE_CHALLENGE_CODES,
   CAPTURE_SOURCE_VALUES,
   CaptureChallengeDeclineRequestSchema,
@@ -159,10 +184,12 @@ export {
   type StaffMe,
 } from './staff.js';
 export {
+  AccountStateChangedSchema,
   REALTIME_EVENTS,
   REALTIME_PROTOCOL_VERSION,
   RealtimeEventEnvelopeSchema,
   SessionHelloSchema,
+  type AccountStateChanged,
   type RealtimeEventEnvelope,
   type SessionHello,
 } from './realtime.js';

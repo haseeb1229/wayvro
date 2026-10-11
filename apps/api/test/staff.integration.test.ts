@@ -21,7 +21,8 @@ let h: Harness;
 const log = createLogger({ service: 'api', env: 'test', level: 'fatal' });
 
 beforeAll(async () => {
-  h = await startApi({ env: { STAFF_ASSERTIONS_PER_IP_PER_10_MIN: '100000', STAFF_ASSERTIONS_PER_STAFF_PER_10_MIN: '100000' } });
+  // vault on: every admin route (incl. evidence views and the access log) answers for real, so authorisation is judged by its outcome
+  h = await startApi({ env: { STAFF_ASSERTIONS_PER_IP_PER_10_MIN: '100000', STAFF_ASSERTIONS_PER_STAFF_PER_10_MIN: '100000' }, vault: true });
 });
 afterAll(async () => {
   await h.close();

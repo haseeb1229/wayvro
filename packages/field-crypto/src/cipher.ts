@@ -29,6 +29,8 @@ export const KEY_CLASSES = {
   documentLookup: 'document_lookup',
   /** key-encryption key wrapping the per-object evidence data keys (ADR-041 §2.4; KMS custody in production, EG-05) */
   evidenceKek: 'evidence_kek',
+  /** appellants' free-text statements (PII-classified; P2.7) */
+  appealStatements: 'appeal_statements',
 } as const;
 export type KeyClass = (typeof KEY_CLASSES)[keyof typeof KEY_CLASSES];
 
