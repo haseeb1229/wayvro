@@ -75,6 +75,8 @@ New lockfile entries pulled in by these packages: barcode-detector 3.2.2, zxing-
 
 **P2.8 not verified (NOT RUN):** no device or emulator: camera and permission prompts, the Photo Picker, the PUT upload, file deletion, lazy route loading at runtime, RTL, dynamic type and screen readers; no iOS build.
 
+**Phase-2 closure emulator smoke (2026-10-11, API 35 x86_64 emulator, dev-client debug build):** PASS for one package, synthetic OTP sign-in against the local API, lazy Driver/Partner chunks, no CAMERA prompt before the capture screen, explicit prompt on it, usable denied path, Photo Picker without any media permission, return to rider mode and logout state wipe. Still NOT RUN: real capture/upload, file deletion, RTL, screen readers, dynamic type, physical low-end devices, iOS (`docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §"Phase-2 closure").
+
 ## Consequences / reversal
 - Navigation can move back to plain React Navigation by replacing the thin route files; the feature screens do not import the router.
 - If a later screen needs gestures or animation, the exclusion is removed in that change, with a size measurement.

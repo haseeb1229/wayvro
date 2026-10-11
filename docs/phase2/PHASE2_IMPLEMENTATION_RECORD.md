@@ -445,3 +445,22 @@ EG-01..EG-23 all remain open. External debt stays deferred, unchanged: productio
 | Artifact isolation (`--negative-controls`) | 39/39 PASS |
 | gitleaks (staged, per commit) / osv-scanner (lockfile unchanged; existing documented exceptions only) | no leaks / no issues |
 | Android dev-client debug APK (`scripts/android-build.mjs debug`, JDK 17.0.20.1, `WAYVRO_DEV_LOCAL_API=1`) | BUILD SUCCESSFUL (package `dev.wayvro.app`; the debug-only manifest adds `SYSTEM_ALERT_WINDOW` for the developer overlay — the release AAB permission gate runs in CI) |
+| CI on `d95022b` (run 38152306729) | all five jobs green |
+
+**Android emulator smoke (closure, 2026-10-11).** Disposable AVD in a scratch AVD home (API 35 google_apis x86_64, WHPX; image SHA-1 checked against Google's repository manifest), the dev-client debug APK above, Metro, and the local API runner (recording OTP sink; vault pool through a temporary LOGIN member of `wayvro_vault`, dropped afterwards). Synthetic number only. Emulator, API, Metro and the role were removed after the run.
+
+| Check | Result |
+|---|---|
+| Install + launch; exactly one Wayvro package (`dev.wayvro.app`) | PASS |
+| Local API reached (`10.0.2.2:4000`); synthetic OTP sign-in (code from the local inbox) | PASS. The first send answered 503: the OTP rate limiter's 250 ms Valkey timeout expired under the machine's load and issuance **failed closed** as designed; the retry answered 202 |
+| Policy acceptance, age declaration, account home, signed-in devices | PASS |
+| Earn entry from rider home; Driver/Partner code lazily loaded | PASS. Metro built separate chunks only on navigation (`DriverHubScreen`, `DocumentsScreen`, `DocumentScreen`, `CaptureScreen`) |
+| No CAMERA prompt before capture | PASS. `CAMERA: granted=false` with no prompt through sign-in, account, Earn, explanation, policies, consent, checklist and the selfie claim |
+| Explicit CAMERA prompt on the capture screen | PASS. In-app explanation first, then the OS dialog after "Allow camera" |
+| Denied path usable | PASS. "Don't allow" → `granted=false (USER_SET)`; the screen explains, offers "Allow camera" again and the in-person note; navigation intact |
+| Photo picker needs no media permission | PASS. "Choose a photo" opened the system Photo Picker ("This app can only access the photos you select"); the app holds no READ_MEDIA/STORAGE permission; cancel returns cleanly |
+| Per-district item offered (closure R46) | PASS for visibility (Route permit listed and claimable). The district picker itself was **NOT RUN** on the device (it needs a vehicle first); covered by unit and API tests |
+| Return to rider mode | PASS ("Back to your account"; the home now shows the Driver/Partner entry) |
+| Logout wipes state | PASS. Confirmation dialog → server session `REVOKED / USER_LOGOUT`; SecureStore keeps only the installation id (device identity by design), the session key is gone; Back stays on sign-in |
+
+**NOT RUN on the emulator:** a real camera capture and upload (emulated camera, not exercised), picking an actual photo, the upload queue and file deletion, the sanitiser/worker path, the district picker, RTL/Urdu rendering, TalkBack, dynamic type, low-end physical hardware and iOS.
