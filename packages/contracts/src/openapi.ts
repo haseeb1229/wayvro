@@ -11,6 +11,7 @@ import { LEGAL_ROUTES } from './legal.js';
 import { OIDC_ROUTES } from './oidc.js';
 import { IDENTITY_ROUTES } from './routes.js';
 import { STAFF_ROUTES } from './staff.js';
+import { SUPPORT_ROUTES } from './support.js';
 
 export const API_ROUTES: readonly RouteContract[] = [
   ...HEALTH_ROUTES,
@@ -23,6 +24,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...COMPLIANCE_ADMIN_ROUTES,
   ...EVIDENCE_ROUTES,
   ...REVIEW_ROUTES,
+  ...SUPPORT_ROUTES,
 ];
 
 const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> = { public: [], session: [{ sessionBearer: [] }], staff: [{ staffBearer: [] }] };

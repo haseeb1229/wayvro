@@ -11,6 +11,15 @@ export interface OpsStack {
   readonly invitations: string[];
   readonly reviewerInvitation: string;
   readonly caseId: string;
+  /** ../seed-support.mjs: synthetic support journey (staff invitations, a rider with sessions, a driver-KYC recovery). */
+  readonly support: {
+    readonly supportInvitation: string;
+    readonly auditorInvitation: string;
+    readonly riderPhone: string;
+    readonly riderAccountId: string;
+    readonly driverAccountId: string;
+    readonly recoveryId: string;
+  };
 }
 
 export const stack = (): OpsStack => JSON.parse(readFileSync(join(ROOT, 'build-logs', 'e2e-ops.json'), 'utf8')) as OpsStack;

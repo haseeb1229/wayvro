@@ -240,3 +240,14 @@ export {
   OidcSessionRequestSchema,
   OidcSignInNonceRequestSchema,
 } from './oidc.js';
+export {
+  AccountSummaryRequestSchema,
+  AccountSupportSummarySchema,
+  RecoveryAssistanceRequestSchema,
+  RecoveryAssistanceSchema,
+  SUPPORT_ACCESS_REASONS,
+  SUPPORT_ROUTES,
+  SupportSessionRevocationRequestSchema,
+  SupportSessionRevocationResultSchema,
+  type AccountSupportSummary,
+} from './support.js';

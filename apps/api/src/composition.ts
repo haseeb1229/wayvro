@@ -26,6 +26,7 @@ import { OnboardingService } from './compliance/onboarding.service.js';
 import { ConsentService } from './legal/consent.service.js';
 import { preparePolicyRegistry } from './legal/policy-registry.js';
 import { OversightService } from './staff/oversight.service.js';
+import { SupportService } from './support/support.service.js';
 import { StaffAdminService } from './staff/staff-admin.service.js';
 import { StaffAuthService } from './staff/staff-auth.service.js';
 import { StaffWebAuthn } from './staff/webauthn.js';
@@ -118,6 +119,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     },
     compliance: { onboarding, admin: new ComplianceAdminService(db.pool, idempotency, config) },
     evidence,
+    support: new SupportService(db.pool, lookup, idempotency, config),
     review: {
       review,
       appeals: new AppealsService(db.pool, cipher, idempotency, config.IDEMPOTENCY_TTL_SECONDS),

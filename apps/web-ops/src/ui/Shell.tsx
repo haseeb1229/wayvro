@@ -98,6 +98,11 @@ export function Shell({ me, initiallyLocked, children }: { readonly me: StaffMe;
                 <Link href="/restrictions">{STRINGS.nav.restrictions}</Link>
               </li>
             ) : null}
+            {can('account.summary.view_masked') ? (
+              <li>
+                <Link href="/support">{STRINGS.nav.support}</Link>
+              </li>
+            ) : null}
             {can('breakglass.activate') || can('breakglass.review') ? (
               <li>
                 <Link href="/break-glass">{STRINGS.nav.breakGlass}</Link>

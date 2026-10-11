@@ -31,6 +31,8 @@ import type { StaffAdminService } from './staff/staff-admin.service.js';
 import type { StaffAuthService } from './staff/staff-auth.service.js';
 import type { StaffSessionPolicy } from './staff/staff-session.js';
 import { OversightController, StaffAdminController, StaffAuthController } from './staff/staff.controller.js';
+import { SupportController } from './support/support.controller.js';
+import type { SupportService } from './support/support.service.js';
 import { AccountAppealsController, ReviewController, type ReviewServices } from './review/review.controller.js';
 import { EvidenceController, EvidenceViewController, type EvidenceServices } from './vault/vault.controller.js';
 import {
@@ -38,6 +40,7 @@ import {
   ACCOUNT_SERVICE,
   DELETION_SERVICE,
   OIDC_SERVICE,
+  SUPPORT_SERVICE,
   RECOVERY_REVIEW_SERVICE,
   COMPLIANCE_ADMIN_SERVICE,
   CONSENT_SERVICE,
@@ -87,6 +90,8 @@ interface IdentityServices {
 }
 
 export interface AppDependencies {
+  /** Phase-2 closure: support / Trust & Safety account tools (masked summary, on-behalf revocation, recovery assistance). */
+  readonly support: SupportService;
   readonly info: ServiceInfo;
   readonly readinessChecks: readonly ReadinessCheck[];
   readonly log: Logger;
@@ -133,6 +138,7 @@ export const API_CONTROLLERS: readonly Type[] = [
   EvidenceViewController,
   ReviewController,
   AccountAppealsController,
+  SupportController,
 ];
 
 @Module({})
@@ -152,6 +158,7 @@ class ApiModule {
         { provide: RECOVERY_REVIEW_SERVICE, useValue: deps.identity.recoveryReviews },
         { provide: DELETION_SERVICE, useValue: deps.identity.deletion },
         { provide: OIDC_SERVICE, useValue: deps.identity.oidc },
+        { provide: SUPPORT_SERVICE, useValue: deps.support },
         { provide: LEGAL_DB, useValue: deps.identity.legalStore },
         { provide: STAFF_AUTH_SERVICE, useValue: deps.staff.auth },
         { provide: STAFF_ADMIN_SERVICE, useValue: deps.staff.admin },

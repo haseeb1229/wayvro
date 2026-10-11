@@ -168,6 +168,8 @@ export const SECURITY_EVENT_TYPES = [
   'SIGN_IN_OIDC',
   'OIDC_LINKED',
   'OIDC_UNLINKED',
+  // Phase-2 closure (additive): support revoked sessions on the account's behalf
+  'SESSIONS_REVOKED_BY_SUPPORT',
 ] as const;
 export const SecurityEventListSchema = z
   .object({ events: z.array(z.object({ id: z.uuid(), type: z.enum(SECURITY_EVENT_TYPES), occurredAt: IsoDateTime })) })

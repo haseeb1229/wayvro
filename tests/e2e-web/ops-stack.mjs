@@ -11,6 +11,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { seedReview } from './seed-review.mjs';
+import { seedSupport } from './seed-support.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const requireFromDb = createRequire(join(ROOT, 'packages/db/package.json'));
@@ -68,6 +69,7 @@ const s3 = {
   areas: { quarantine: { bucket: 'wayvro-local', prefix: `${S3_PREFIX}quarantine/` }, vault: { bucket: 'wayvro-local', prefix: `${S3_PREFIX}vault/` } },
 };
 const review = await seedReview({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED, s3 });
+const support = await seedSupport({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED });
 await pool.end();
 mkdirSync(join(ROOT, 'build-logs'), { recursive: true });
 writeFileSync(
@@ -77,6 +79,7 @@ writeFileSync(
     invitations: issued.map((i) => i.invitationToken),
     reviewerInvitation: review.reviewerInvitation,
     caseId: review.caseId,
+    support,
   }),
 );
 

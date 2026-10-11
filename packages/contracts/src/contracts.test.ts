@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   API_ROUTES,
+  AccountSummaryRequestSchema,
+  AppealCreateRequestSchema,
+  SupportSessionRevocationRequestSchema,
   AccountRecoveryRequestSchema,
   OidcProofSchema,
   OidcSessionRequestSchema,
@@ -234,5 +237,30 @@ describe('P2.9/P2.10 account-security request schemas', () => {
     };
     expect(OidcSessionRequestSchema.safeParse(session).success).toBe(true);
     expect(OidcSessionRequestSchema.safeParse({ ...session, accountId: oidc.nonceId }).success).toBe(false);
+  });
+});
+
+describe('Phase-2 closure request schemas', () => {
+  const id = '0190f0a0-0000-7000-8000-000000000001';
+  it('a support summary names exactly one subject and always a reason', () => {
+    expect(AccountSummaryRequestSchema.safeParse({ phone: '+923001234567', reasonCode: 'SAFETY_REPORT' }).success).toBe(true);
+    expect(AccountSummaryRequestSchema.safeParse({ accountId: id, reasonCode: 'RECOVERY_ASSISTANCE' }).success).toBe(true);
+    expect(AccountSummaryRequestSchema.safeParse({ phone: '+923001234567', accountId: id, reasonCode: 'SAFETY_REPORT' }).success).toBe(false);
+    expect(AccountSummaryRequestSchema.safeParse({ reasonCode: 'SAFETY_REPORT' }).success).toBe(false);
+    expect(AccountSummaryRequestSchema.safeParse({ accountId: id }).success).toBe(false);
+    expect(AccountSummaryRequestSchema.safeParse({ accountId: id, reasonCode: 'CURIOSITY' }).success).toBe(false);
+  });
+  it('an on-behalf revocation names a session for ONE and only for ONE', () => {
+    expect(SupportSessionRevocationRequestSchema.safeParse({ scope: 'ONE', sessionId: id, reasonCode: 'FRAUD_INVESTIGATION' }).success).toBe(true);
+    expect(SupportSessionRevocationRequestSchema.safeParse({ scope: 'ALL', reasonCode: 'FRAUD_INVESTIGATION' }).success).toBe(true);
+    expect(SupportSessionRevocationRequestSchema.safeParse({ scope: 'ONE', reasonCode: 'FRAUD_INVESTIGATION' }).success).toBe(false);
+    expect(SupportSessionRevocationRequestSchema.safeParse({ scope: 'ALL', sessionId: id, reasonCode: 'FRAUD_INVESTIGATION' }).success).toBe(false);
+  });
+  it('an appeal names exactly one subject (a review decision, incl. a rejected renewal, or a restriction)', () => {
+    const statement = 'A synthetic appeal statement.';
+    expect(AppealCreateRequestSchema.safeParse({ reviewDecisionId: id, statement }).success).toBe(true);
+    expect(AppealCreateRequestSchema.safeParse({ restrictionId: id, statement }).success).toBe(true);
+    expect(AppealCreateRequestSchema.safeParse({ reviewDecisionId: id, restrictionId: id, statement }).success).toBe(false);
+    expect(AppealCreateRequestSchema.safeParse({ statement }).success).toBe(false);
   });
 });

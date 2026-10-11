@@ -214,6 +214,7 @@ const app = await createApp({
   compliance: { onboarding: {}, admin: {} },
   evidence: null,
   review: { review: {}, appeals: {}, monitoring: {} },
+  support: {},
 });
 const served = [...routeManifest(app)];
 const expected = new Set(API_ROUTES.map((r) => r.method + ' ' + r.path.replace(/\\{(\\w+)\\}/g, ':$1')));

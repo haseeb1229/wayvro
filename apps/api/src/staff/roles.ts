@@ -56,7 +56,12 @@ export type StaffPermission =
   | 'appeal.view'
   | 'appeal.decide'
   | 'compliance.expiry_roster.view'
-  | 'audit.evidence_access.view';
+  | 'audit.evidence_access.view'
+  // support capabilities (Phase-2 closure; staff matrix §4): masked summary, on-behalf session revocation, recovery
+  // assistance (opens/attaches a human review, never decides it)
+  | 'account.summary.view_masked'
+  | 'account.sessions.revoke_on_behalf'
+  | 'account.recovery_case.open';
 
 /** Role → permissions (the ✓ cells of the matrix). Step-up and maker-checker are attributes of the ROUTE. @internal */
 export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermission[]>> = {
@@ -100,6 +105,9 @@ export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermissi
     'compliance.expiry_roster.view',
   ],
   TRUST_SAFETY_AGENT: [
+    'account.summary.view_masked',
+    'account.sessions.revoke_on_behalf',
+    'account.recovery_case.open',
     'breakglass.activate',
     'restriction.view',
     'restriction.create',
@@ -110,7 +118,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<StaffRole, readonly StaffPermissi
     'appeal.decide',
     'compliance.expiry_roster.view',
   ],
-  SUPPORT_AGENT: [],
+  SUPPORT_AGENT: ['account.summary.view_masked', 'account.sessions.revoke_on_behalf', 'account.recovery_case.open'],
   STAFF_ADMIN: [
     'staff.invite',
     'staff.view_roster',
