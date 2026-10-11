@@ -31,6 +31,7 @@ export async function purgeOnce(
   restrictionsExpired: number;
   draftsExpired: number;
   reviewLeasesExpired: number;
+  oidcNonces: number;
 }> {
   const idempotency = await pool.query(
     `delete from platform.idempotency_records where ctid in (select ctid from platform.idempotency_records where expires_at <= now() limit $1)`,
@@ -39,6 +40,11 @@ export async function purgeOnce(
   const challenges = await pool.query(
     `delete from identity.otp_challenges where ctid in (select ctid from identity.otp_challenges where created_at < now() - ($1::int * interval '1 day') limit $2)`,
     [policy.otpChallengeDays, policy.batchSize],
+  );
+  // OIDC nonces live 5 minutes; spent or expired rows have no further use after a day (P2.10)
+  const oidcNonces = await pool.query(
+    `delete from identity.oidc_nonces where id in (select id from identity.oidc_nonces where created_at < now() - interval '1 day' limit $1)`,
+    [policy.batchSize],
   );
   const jobs = await pool.query(
     `delete from platform.jobs where ctid in (select ctid from platform.jobs where status = 'SUCCEEDED' and finished_at < now() - ($1::int * interval '1 day') limit $2)`,
@@ -86,6 +92,7 @@ export async function purgeOnce(
     draftsExpired: drafts.rowCount ?? 0,
     idempotency: idempotency.rowCount ?? 0,
     challenges: challenges.rowCount ?? 0,
+    oidcNonces: oidcNonces.rowCount ?? 0,
     jobs: jobs.rowCount ?? 0,
     staffChallenges: staffChallenges.rowCount ?? 0,
     invitationsExpired: invitations.rowCount ?? 0,

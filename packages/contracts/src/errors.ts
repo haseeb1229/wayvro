@@ -35,6 +35,9 @@ export const ERROR_CODES = [
   'WAYVRO_E_GONE',
   // P2.9 (additive): the session must complete the dormant-number review (or recovery) before anything else
   'WAYVRO_E_RECOVERY_REQUIRED',
+  // P2.10 (additive): generic OIDC outcomes (never reveal which account an identity belongs to)
+  'WAYVRO_E_OIDC_NOT_LINKED',
+  'WAYVRO_E_OIDC_LINK_CONFLICT',
 ] as const;
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);

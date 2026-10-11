@@ -33,9 +33,11 @@ export class AccountService {
       created_at: Date;
       rider_profile_id: string;
       step_up_until: Date | null;
+      phone_step_up: boolean;
     }>(
       `select a.id, a.status, a.display_name, a.preferred_locale, a.created_at, rp.id rider_profile_id,
-              (select s.step_up_at + interval '10 minutes' from identity.sessions s where s.id = $2 and s.step_up_at > now() - interval '10 minutes') step_up_until
+              (select s.step_up_at + interval '10 minutes' from identity.sessions s where s.id = $2 and s.step_up_at > now() - interval '10 minutes') step_up_until,
+              exists (select 1 from identity.sessions s where s.id = $2 and s.phone_step_up_required and s.step_up_at is null) phone_step_up
          from identity.accounts a join profile.rider_profiles rp on rp.account_id = a.id
         where a.id = $1 and a.status in ('ACTIVE', 'DELETION_PENDING')`,
       [principal.accountId, principal.sessionId],
@@ -57,7 +59,7 @@ export class AccountService {
         stepUpExpiresAt: row.step_up_until?.toISOString() ?? null,
       },
       riderProfile: { id: row.rider_profile_id, status: 'ACTIVE' },
-      requiredActions: await requiredActionsFor(this.db, principal.accountId),
+      requiredActions: [...(row.phone_step_up ? (['PHONE_STEP_UP'] as const) : []), ...(await requiredActionsFor(this.db, principal.accountId))],
       driver: await driverSection(this.db, principal.accountId, this.onboardingAvailable),
       restrictions: (await restrictionsForAccount(this.db, principal.accountId)).filter((r) => inForce(r, new Date())).map(accountView),
     };

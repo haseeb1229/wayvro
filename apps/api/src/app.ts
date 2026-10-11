@@ -18,6 +18,8 @@ import { AccountSecurityController } from './identity/account-security.controlle
 import type { AccountSecurityService } from './identity/account-security.service.js';
 import { AccountController } from './identity/account.controller.js';
 import type { DeletionService } from './identity/deletion.service.js';
+import { OidcController } from './identity/oidc.controller.js';
+import type { OidcService } from './identity/oidc.service.js';
 import type { RecoveryReviewService } from './identity/recovery-review.service.js';
 import { AuthController } from './identity/auth.controller.js';
 import type { OtpService } from './identity/otp.service.js';
@@ -35,6 +37,7 @@ import {
   ACCOUNT_SECURITY_SERVICE,
   ACCOUNT_SERVICE,
   DELETION_SERVICE,
+  OIDC_SERVICE,
   RECOVERY_REVIEW_SERVICE,
   COMPLIANCE_ADMIN_SERVICE,
   CONSENT_SERVICE,
@@ -75,6 +78,8 @@ interface IdentityServices {
   readonly security: AccountSecurityService;
   readonly recoveryReviews: RecoveryReviewService;
   readonly deletion: DeletionService;
+  /** P2.10: Google/Apple OIDC linking (flag-gated). */
+  readonly oidc: OidcService;
   /** Connection used for read-only policy-registry queries (current age-eligibility policy). */
   readonly legalStore: Queryable;
   /** Connection used by the policy guard to verify bearer access tokens against the session table. */
@@ -117,6 +122,7 @@ export const API_CONTROLLERS: readonly Type[] = [
   AuthController,
   AccountController,
   AccountSecurityController,
+  OidcController,
   LegalController,
   StaffAuthController,
   StaffAdminController,
@@ -145,6 +151,7 @@ class ApiModule {
         { provide: ACCOUNT_SECURITY_SERVICE, useValue: deps.identity.security },
         { provide: RECOVERY_REVIEW_SERVICE, useValue: deps.identity.recoveryReviews },
         { provide: DELETION_SERVICE, useValue: deps.identity.deletion },
+        { provide: OIDC_SERVICE, useValue: deps.identity.oidc },
         { provide: LEGAL_DB, useValue: deps.identity.legalStore },
         { provide: STAFF_AUTH_SERVICE, useValue: deps.staff.auth },
         { provide: STAFF_ADMIN_SERVICE, useValue: deps.staff.admin },

@@ -12,6 +12,7 @@
     "build:local": "turbo run build:local",
     "typecheck": "turbo run typecheck",
     "lint": "eslint . --max-warnings=0",
+    "lint:files": "eslint --max-warnings=0",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "test:integration": "turbo run test:integration --concurrency=1",

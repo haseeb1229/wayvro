@@ -28,6 +28,8 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_CONFLICT: { status: 409, message: 'This request conflicts with the current state. Please refresh and try again.' },
   WAYVRO_E_GONE: { status: 410, message: 'This link was already used or has expired.' },
   WAYVRO_E_RECOVERY_REQUIRED: { status: 403, message: 'Please confirm whether this is your account before continuing.' },
+  WAYVRO_E_OIDC_NOT_LINKED: { status: 401, message: 'Sign in with your phone number, then link this account in Settings.' },
+  WAYVRO_E_OIDC_LINK_CONFLICT: { status: 409, message: 'This sign-in method cannot be linked to your account.' },
 };
 
 export class WayvroError extends Error {

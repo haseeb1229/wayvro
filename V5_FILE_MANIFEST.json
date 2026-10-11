@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 104,
+  "file_count_excluding_manifest": 105,
   "files": [
     {
       "path": ".gitattributes",
@@ -245,6 +245,11 @@
       "sha256": "4feb202974270d601fbff643fba2cdd57d8701b19dfec8ed9c3434adea855714"
     },
     {
+      "path": "docs/adr/ADR-040-oidc-verification-with-jose.md",
+      "bytes": 4321,
+      "sha256": "8924996ac736eebabb487a8d38bd277e355e3fbf69ab35ea17c9bdfdfe6a48e2"
+    },
+    {
       "path": "docs/adr/ADR-041-evidence-vault-and-image-sanitiser.md",
       "bytes": 12050,
       "sha256": "06fc946fcbd0dd6c0a85a19f7dd1e028ec4affb54143876554dac236242c7309"
@@ -271,8 +276,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4552,
-      "sha256": "90cee9a35f9bb87661effc268fb787796ec9e3e38c836c3db8f03c5f1a8c7a55"
+      "bytes": 4813,
+      "sha256": "41e2bbb9590b44f214badbf0d250c774a532260f2392e3f0157eac7cdd9d8691"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -461,8 +466,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_DOMAIN_AND_DATA_MODEL.md",
-      "bytes": 42602,
-      "sha256": "28f03651364bad01852cbd2b76634fdc164efa62056a919c9f7a7ccd770a29b9"
+      "bytes": 42992,
+      "sha256": "c04f17f993ac878127f4effadb515030dcc1e457b0d726b3f0c2b2143925ad16"
     },
     {
       "path": "docs/phase2/PHASE2_DPIA_INPUT_PACK.md",
@@ -481,8 +486,8 @@
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md",
-      "bytes": 52467,
-      "sha256": "b713e44346462d981cdfd3b59a8ed7829ae209bac678e0c2c2cec69d52ae1de6"
+      "bytes": 58641,
+      "sha256": "1a5b5eefda495cf82c45c7c53d908202934cab12f09ed2e91ab69a6b61fdd4d5"
     },
     {
       "path": "docs/phase2/PHASE2_IMPLEMENTATION_SEQUENCE.md",

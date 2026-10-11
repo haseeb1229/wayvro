@@ -18,7 +18,7 @@ import { failure, success, type IdempotencyStore, type IdempotentResult } from '
 import { releasePhone, revokeSessions } from '@wayvro/identity-core';
 import { currentPhone } from './account-security.service.js';
 import { createSystemRestriction } from './risk-policy.js';
-import { RESTRICTING_REVIEW_STATES } from './review-restriction.js';
+import { RESTRICTING_REVIEW_STATES } from './session-gates.js';
 import { securityEvent, type SessionService } from './session.service.js';
 
 type ReviewStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED_OWNER' | 'RESOLVED_NEW_ACCOUNT' | 'DENIED';

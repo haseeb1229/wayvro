@@ -83,6 +83,19 @@ const identityPolicySchema = z.object({
   IDEMPOTENCY_SESSION_RESPONSE_TTL_SECONDS: int(600, 60, 86_400),
 });
 
+const oidcAudiences = z
+  .string()
+  .default('')
+  .transform((v) =>
+    Object.freeze(
+      v
+        .split(',')
+        .map((a) => a.trim())
+        .filter((a) => a !== ''),
+    ),
+  )
+  .refine((list) => list.every((a) => /^[A-Za-z0-9._-]{3,200}$/.test(a)), { message: 'comma-separated client IDs' });
+
 const apiEnvSchema = serviceEnvSchema
   .extend(databaseEnvSchema.shape)
   .extend(redisEnvSchema.shape)
@@ -122,6 +135,12 @@ const apiEnvSchema = serviceEnvSchema
       .refine((list) => list.length > 0 && list.every((o) => /^https?:\/\/[a-z0-9.-]+(:\d{1,5})?$/.test(o)), {
         message: 'comma-separated origins (scheme://host[:port])',
       }),
+    /**
+     * OIDC (P2.10, ADR-040): the client IDs an ID token's `aud` must name, comma-separated, per provider. Empty = that
+     * provider is unavailable (503) even where its flag is ON. Real client IDs arrive with activation (EG-06/EG-07).
+     */
+    OIDC_GOOGLE_AUDIENCES: oidcAudiences,
+    OIDC_APPLE_AUDIENCES: oidcAudiences,
     /** Namespace for rate-limit keys when several environments or test runs share one Valkey. */
     RATE_LIMIT_KEY_PREFIX: z
       .string()

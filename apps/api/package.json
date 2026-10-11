@@ -35,6 +35,7 @@
     "@wayvro/server-runtime": "workspace:*",
     "@wayvro/vault-adapters": "workspace:*",
     "fastify": "5.12.5",
+    "jose": "6.2.12",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.6.5"

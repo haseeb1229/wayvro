@@ -20,7 +20,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@wayvro/provider-interfaces": "workspace:*"
+    "@wayvro/provider-interfaces": "workspace:*",
+    "jose": "6.2.12"
   },
   "devDependencies": {
     "@types/node": "24.19.1",

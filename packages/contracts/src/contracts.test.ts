@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   API_ROUTES,
+  AccountRecoveryRequestSchema,
+  OidcProofSchema,
+  OidcSessionRequestSchema,
   AgeDeclarationRequestSchema,
   AgePolicyDraftRequestSchema,
   StaffInvitationRequestSchema,
@@ -206,5 +209,30 @@ describe('staff and compliance-admin request schemas', () => {
   it('normalises staff invitation e-mail addresses to lower case', () => {
     const parsed = StaffInvitationRequestSchema.parse({ displayName: 'Synthetic Reviewer', workEmail: 'Reviewer@Example.TEST' });
     expect(parsed.workEmail).toBe('reviewer@example.test');
+  });
+});
+
+describe('P2.9/P2.10 account-security request schemas', () => {
+  const oidc = { provider: 'GOOGLE', idToken: 'aaa.bbb.ccc', nonceId: '0190b000-0000-7000-8000-000000000001' };
+  it('LINKED_OIDC recovery carries a token and only it does', () => {
+    expect(AccountRecoveryRequestSchema.safeParse({ proof: 'LINKED_OIDC', previousPhone: '03001234567', oidc }).success).toBe(true);
+    expect(AccountRecoveryRequestSchema.safeParse({ proof: 'LINKED_OIDC', previousPhone: '03001234567' }).success).toBe(false);
+    expect(AccountRecoveryRequestSchema.safeParse({ proof: 'DRIVER_KYC', previousPhone: '03001234567', oidc }).success).toBe(false);
+    expect(AccountRecoveryRequestSchema.safeParse({ proof: 'DRIVER_KYC', previousPhone: '03001234567' }).success).toBe(true);
+  });
+
+  it('OIDC requests accept only compact JWS tokens and strict bodies', () => {
+    expect(OidcProofSchema.safeParse(oidc).success).toBe(true);
+    expect(OidcProofSchema.safeParse({ ...oidc, idToken: 'not a token' }).success).toBe(false);
+    expect(OidcProofSchema.safeParse({ ...oidc, email: 'x@example.test' }).success).toBe(false);
+    const session = {
+      provider: 'APPLE',
+      idToken: 'aaa.bbb.ccc',
+      nonceId: oidc.nonceId,
+      installationId: 'inst-0123456789abcdef',
+      device: { platform: 'IOS', appVersion: '1.0.0' },
+    };
+    expect(OidcSessionRequestSchema.safeParse(session).success).toBe(true);
+    expect(OidcSessionRequestSchema.safeParse({ ...session, accountId: oidc.nonceId }).success).toBe(false);
   });
 });

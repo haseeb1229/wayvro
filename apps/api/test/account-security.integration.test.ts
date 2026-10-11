@@ -195,7 +195,8 @@ describe('lost-phone recovery — strong proof only (SEC-RECOVERY)', () => {
     const rider = await signIn(h);
     const caller = await signIn(h); // the new number: a clean new account
     const recover = (body: Record<string, unknown>) => h.inject(post('/v1/account-recoveries', body, bearer(caller.accessToken)));
-    expect((await recover({ proof: 'LINKED_OIDC', previousPhone: d.s.phone })).statusCode).toBe(404); // P2.10
+    // P2.10: LINKED_OIDC needs a fresh token of the linked identity (covered in oidc.integration.test.ts)
+    expect((await recover({ proof: 'LINKED_OIDC', previousPhone: d.s.phone })).statusCode).toBe(400);
     const riderAttempt = await recover({ proof: 'DRIVER_KYC', previousPhone: rider.phone });
     const driverAttempt = await recover({ proof: 'DRIVER_KYC', previousPhone: d.s.phone });
     expect([riderAttempt.statusCode, driverAttempt.statusCode]).toEqual([202, 202]);

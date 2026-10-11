@@ -164,6 +164,10 @@ export const SECURITY_EVENT_TYPES = [
   'DORMANT_NUMBER_RELEASED',
   'DELETION_REQUESTED',
   'DELETION_CANCELLED',
+  // P2.10 (additive)
+  'SIGN_IN_OIDC',
+  'OIDC_LINKED',
+  'OIDC_UNLINKED',
 ] as const;
 export const SecurityEventListSchema = z
   .object({ events: z.array(z.object({ id: z.uuid(), type: z.enum(SECURITY_EVENT_TYPES), occurredAt: IsoDateTime })) })

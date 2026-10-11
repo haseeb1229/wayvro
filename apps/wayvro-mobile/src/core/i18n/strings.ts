@@ -119,8 +119,7 @@ const en = {
   'age.changed': 'The age policy was updated. Please review it again.',
 
   'required.title': 'One more step is needed',
-  'required.phoneStepUp':
-    "Wayvro needs to re-confirm your phone number. This step isn't available in this version of the app yet. Please sign out and try again later.",
+  'required.phoneStepUp': 'You signed in on a new phone. To keep your account safe, confirm it with a code sent to your phone number.',
 
   'home.title': 'Your account',
   'home.greeting': 'Hello, {name}',
@@ -198,6 +197,9 @@ const en = {
   'security.event.DORMANT_NUMBER_RELEASED': 'Phone number released from an unused account',
   'security.event.DELETION_REQUESTED': 'Account deletion requested',
   'security.event.DELETION_CANCELLED': 'Account deletion cancelled',
+  'security.event.SIGN_IN_OIDC': 'Signed in with Google or Apple',
+  'security.event.OIDC_LINKED': 'Google or Apple sign-in linked',
+  'security.event.OIDC_UNLINKED': 'Google or Apple sign-in removed',
   'restriction.appeal': 'Appeal',
   'accountSecurity.title': 'Phone number and account',
   'accountSecurity.body': 'Change your number, move an older account to this number, or delete your account.',
@@ -419,8 +421,7 @@ const ur: Catalogue = {
   'age.changed': 'عمر کی پالیسی تبدیل ہو گئی ہے۔ براہِ کرم اسے دوبارہ دیکھیں۔',
 
   'required.title': 'ایک اور مرحلہ باقی ہے',
-  'required.phoneStepUp':
-    'وے ورو کو آپ کے فون نمبر کی دوبارہ تصدیق درکار ہے۔ یہ مرحلہ ابھی ایپ کے اس ورژن میں دستیاب نہیں۔ براہِ کرم سائن آؤٹ کریں اور بعد میں دوبارہ کوشش کریں۔',
+  'required.phoneStepUp': 'آپ نے نئے فون پر سائن اِن کیا ہے۔ اپنے اکاؤنٹ کی حفاظت کے لیے اپنے فون نمبر پر بھیجے گئے کوڈ سے تصدیق کریں۔',
 
   'home.title': 'آپ کا اکاؤنٹ',
   'home.greeting': 'السلام علیکم، {name}',
@@ -498,6 +499,9 @@ const ur: Catalogue = {
   'security.event.DORMANT_NUMBER_RELEASED': 'غیر استعمال شدہ اکاؤنٹ سے فون نمبر الگ کیا گیا',
   'security.event.DELETION_REQUESTED': 'اکاؤنٹ حذف کرنے کی درخواست',
   'security.event.DELETION_CANCELLED': 'اکاؤنٹ حذف کرنا منسوخ',
+  'security.event.SIGN_IN_OIDC': 'Google یا Apple کے ذریعے سائن اِن',
+  'security.event.OIDC_LINKED': 'Google یا Apple سائن اِن منسلک کیا گیا',
+  'security.event.OIDC_UNLINKED': 'Google یا Apple سائن اِن ہٹا دیا گیا',
   'restriction.appeal': 'اپیل کریں',
   'accountSecurity.title': 'فون نمبر اور اکاؤنٹ',
   'accountSecurity.body': 'اپنا نمبر تبدیل کریں، پرانا اکاؤنٹ اس نمبر پر منتقل کرائیں، یا اپنا اکاؤنٹ حذف کریں۔',
@@ -722,8 +726,7 @@ const urLatn: Catalogue = {
   'age.changed': 'Umar ki policy tabdeel ho gayi hai. Baraah-e-karam ise dobara dekhein.',
 
   'required.title': 'Aik aur marhala baqi hai',
-  'required.phoneStepUp':
-    'Wayvro ko aap ke phone number ki dobara tasdeeq darkaar hai. Yeh marhala abhi app ke is version mein dastiyab nahin. Baraah-e-karam sign out karein aur baad mein dobara koshish karein.',
+  'required.phoneStepUp': 'Aap ne naye phone par sign in kiya hai. Apne account ki hifazat ke liye apne phone number par bheje gaye code se tasdeeq karein.',
 
   'home.title': 'Aap ka account',
   'home.greeting': 'Assalam-o-alaikum, {name}',
@@ -801,6 +804,9 @@ const urLatn: Catalogue = {
   'security.event.DORMANT_NUMBER_RELEASED': 'Ghair istemal shuda account se phone number alag kiya gaya',
   'security.event.DELETION_REQUESTED': 'Account delete karne ki darkhwast',
   'security.event.DELETION_CANCELLED': 'Account delete karna mansookh',
+  'security.event.SIGN_IN_OIDC': 'Google ya Apple se sign in',
+  'security.event.OIDC_LINKED': 'Google ya Apple sign-in link kiya gaya',
+  'security.event.OIDC_UNLINKED': 'Google ya Apple sign-in hata diya gaya',
   'restriction.appeal': 'Appeal karein',
   'accountSecurity.title': 'Phone number aur account',
   'accountSecurity.body': 'Apna number tabdeel karein, purana account is number par muntaqil karayein, ya apna account delete karein.',

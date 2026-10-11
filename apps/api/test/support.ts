@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
 import { runMigrations } from '@wayvro/db';
 import { otpDeliveryJob } from '@wayvro/identity-core';
 import { createLogger } from '@wayvro/observability';
-import { bindProviders } from '@wayvro/provider-interfaces';
+import { bindProviders, type OidcKeysPort } from '@wayvro/provider-interfaces';
 import { RecordingOtpDelivery } from '@wayvro/provider-test-doubles';
 import { JobRunner, createRequestPathRedis } from '@wayvro/server-runtime';
 import { captureLogs, createRestrictedLogin, createTestDatabase, type LogCapture } from '@wayvro/test-support';
@@ -48,6 +48,8 @@ export interface HarnessOptions {
   readonly otpDelivery?: boolean;
   /** true = evidence vault on: a wayvro_vault login + the REAL S3 adapter on the local SeaweedFS (per-run prefixes). */
   readonly vault?: boolean;
+  /** P2.10: the local OIDC issuer bound as the provider key source (its client IDs go into OIDC_*_AUDIENCES). */
+  readonly oidc?: OidcKeysPort;
 }
 
 export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
@@ -87,7 +89,11 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
   const logs = captureLogs();
   const log = createLogger({ service: 'api', env: 'test', level: 'info', destination: logs.stream });
   const sink = new RecordingOtpDelivery();
-  const providers = bindProviders('test', { ...(options.otpDelivery === false ? {} : { otpDelivery: sink }), ...(storage ? { objectStorage: storage } : {}) });
+  const providers = bindProviders('test', {
+    ...(options.otpDelivery === false ? {} : { otpDelivery: sink }),
+    ...(storage ? { objectStorage: storage } : {}),
+    ...(options.oidc ? { oidcKeys: options.oidc } : {}),
+  });
   const runtime = await composeApi(config, log, { providers });
   await runtime.app.getHttpAdapter().getInstance().ready();
   const owner = new pg.Pool({ connectionString: database.url, max: 3 });

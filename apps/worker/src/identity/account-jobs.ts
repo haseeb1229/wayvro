@@ -74,7 +74,7 @@ async function completeOne(tx: pg.PoolClient, deps: { cipher: FieldCipher; looku
   const r = (
     await tx.query<{ id: string; account_id: string; requested_by_account_id: string; new_phone_envelope: Buffer | null }>(
       `select id, account_id, requested_by_account_id, new_phone_envelope from identity.phone_change_requests
-        where kind = 'RECOVERY_DRIVER_KYC' and status = 'COOLDOWN' and cooldown_until <= now()
+        where kind in ('RECOVERY_DRIVER_KYC', 'RECOVERY_OIDC_PROOF') and status = 'COOLDOWN' and cooldown_until <= now()
         order by cooldown_until limit 1 for update skip locked`,
     )
   ).rows[0];
@@ -243,6 +243,11 @@ async function pseudonymise(tx: pg.PoolClient, requestId: string, accountId: str
       where c.status in ('OPEN', 'CLAIMED', 'ESCALATED')
         and (c.driver_application_id in (select id from compliance.driver_applications where account_id = $1)
           or c.driver_profile_id in (select id from compliance.driver_profiles where account_id = $1))`,
+    [accountId],
+  );
+  // linked Google/Apple identities: unlinked and their provider subject erased (provider token revocation: P2.A3)
+  await tx.query(
+    `update identity.oidc_identities set status = 'UNLINKED', unlinked_at = coalesce(unlinked_at, now()), subject = null, version = version + 1 where account_id = $1`,
     [accountId],
   );
   await tx.query(`update profile.appeals set status = 'WITHDRAWN', version = version + 1 where account_id = $1 and status in ('SUBMITTED', 'UNDER_REVIEW')`, [

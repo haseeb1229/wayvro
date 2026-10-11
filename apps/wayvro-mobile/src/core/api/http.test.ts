@@ -82,6 +82,9 @@ describe('http send', () => {
       [403, 'WAYVRO_E_POLICY_ACCEPTANCE_REQUIRED', 'required-action'],
       [403, 'WAYVRO_E_AGE_DECLARATION_REQUIRED', 'required-action'],
       [404, 'WAYVRO_E_FEATURE_DISABLED', 'feature-disabled'],
+      // P2.10: an OIDC 401 is not an expired session (the user is offered the phone instead)
+      [401, 'WAYVRO_E_OIDC_NOT_LINKED', 'validation'],
+      [409, 'WAYVRO_E_OIDC_LINK_CONFLICT', 'conflict'],
     ];
     for (const [status, code, kind] of cases) {
       const error = errorFromResponse(status, errorBody(code, { retryAfterSeconds: 7 }));

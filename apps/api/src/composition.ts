@@ -17,6 +17,7 @@ import { AccountSecurityService } from './identity/account-security.service.js';
 import { AccountService } from './identity/account.service.js';
 import { DeletionService } from './identity/deletion.service.js';
 import { OtpAbuseControls } from './identity/otp-abuse.js';
+import { OidcService } from './identity/oidc.service.js';
 import { OtpService } from './identity/otp.service.js';
 import { RecoveryReviewService } from './identity/recovery-review.service.js';
 import { SessionService } from './identity/session.service.js';
@@ -72,7 +73,16 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     deliveryAvailable: options.providers.has('otpDelivery'),
   });
   const sessions = new SessionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, policy: config });
-  const security = new AccountSecurityService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, otp, limiter, policy: config });
+  // OIDC (P2.10): flag-gated per provider; without a bound key source (production until P2.A2/P2.A3) every route answers 503
+  const oidc = new OidcService({
+    db: db.pool,
+    idempotency,
+    abuse,
+    sessions,
+    keys: options.providers.has('oidcKeys') ? options.providers.get('oidcKeys') : null,
+    policy: config,
+  });
+  const security = new AccountSecurityService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, otp, limiter, oidc, policy: config });
   const recoveryReviews = new RecoveryReviewService(db.pool, cipher, idempotency, sessions, config);
   const deletion = new DeletionService({ db: db.pool, cipher, hasher, lookup, idempotency, abuse, otp, limiter, policy: config });
   // Evidence vault (ADR-041): a SEPARATE pool authenticated as a member of wayvro_vault, handed only to src/vault/**.
@@ -99,7 +109,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     readinessChecks: [databaseCheck(db), redisProbe],
     log,
     trustProxy: config.TRUST_PROXY,
-    identity: { otp, sessions, accounts, consents, security, recoveryReviews, deletion, legalStore: db.pool, sessionStore: db.pool },
+    identity: { otp, sessions, accounts, consents, security, recoveryReviews, deletion, oidc, legalStore: db.pool, sessionStore: db.pool },
     staff: {
       auth: new StaffAuthService(db.pool, new StaffWebAuthn(config), idempotency, limiter, hasher, config),
       admin: new StaffAdminService(db.pool, idempotency, config),

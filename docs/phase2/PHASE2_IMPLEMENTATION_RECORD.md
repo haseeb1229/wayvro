@@ -17,7 +17,9 @@ The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for 
 | P2.6 | `c42c2eb` | evidence vault, upload pipeline, isolated sanitiser, ClamAV, staff evidence views (ADR-041). **CI run 38101743619: all five jobs green** |
 | P2.7 | `4dd5a39` | manual review, decisions, second approvals, appeals, expiry monitoring, outbox relay + first consumer, reviewer UI. **CI run 38124807942: all five jobs green** |
 | P2.8 | `de2e578` | Driver/Partner onboarding in the ONE app (camera, controlled import, upload queue, checklist, status, compliance view), document renewal end to end, evidence discard crypto-shredding fix. **CI run 38132775729: all five jobs green** |
-| P2.9 | (this commit) | step-up, phone change, "this wasn't me", lost-phone recovery (strong proof only), dormant-number review, driver risk holds + re-verification, account deletion (app + web), incident playbooks |
+| P2.9 | `04defa6` | step-up, phone change, "this wasn't me", lost-phone recovery (strong proof only), dormant-number review, driver risk holds + re-verification, account deletion (app + web), incident playbooks |
+| CI fixes | `0e3b9a9` | CI run 38137835484 on `04defa6`: ESLint ran out of heap on the runner (lint step heap raised; rules unchanged) and a P2.6 sanitiser test caught a real cleanup race (bounded reaper added) |
+| P2.10 | (this commit) | Google/Apple OIDC linking: jose verifier, nonces, linked sign-in with PHONE_STEP_UP, link/unlink, linked-identity recovery, flags ON only in the test environment |
 
 Intermediate checkpoint commits are not individually CI-verified. CI runs on the pushed HEAD.
 
@@ -343,3 +345,44 @@ Built here: migration 0007, the API, the worker jobs and the docs. Delegated age
 - The web deletion page's code step, 429 and confirmation have not run against a live API in E2E (covered by the API tests).
 - The real SMS channel (EG-01); operator recycling data and SIM-swap signals (EG-22); the in-person identity process (EG-20); retention periods and lawful bases (EG-16); breach steps (U09).
 - The playbooks have not been rehearsed (Phase 7).
+
+## P2.10 — Google/Apple OIDC linking (flag-gated)
+
+**IDs:** K15 (Google), K16 (Apple), S13 (link collisions, no merge), A05 (recovery with a linked identity). Production stays EXTERNAL_GATED: EG-06/EG-07, activation P2.A2/P2.A3.
+
+| Area | Implementation |
+|---|---|
+| Migration | `0008_oidc`:<br>• `identity.oidc_nonces` (SHA-256 only; sign-in nonces bound to an installation, link/recovery nonces to a session; 5 min);<br>• `identity.oidc_identities` (provider + opaque subject only; one LINKED owner per subject, one LINKED identity per account and provider; subject erasable once UNLINKED);<br>• session assurance `OIDC` + `phone_step_up_required`;<br>• phone-change kind `RECOVERY_OIDC_PROOF` with its proof column (cooldown-only states);<br>• OIDC security events;<br>• least-privilege grants |
+| Verifier | `jose` 6.2.12 (ADR-040): RS256 only, provider JWKS through the new `OidcKeysPort`, issuer, configured client IDs (`OIDC_*_AUDIENCES`), 60 s skew, token age ≤ 10 min, required claims, and a nonce match (Google raw, Apple SHA-256 hex; constant-time). A nonce is spent by every attempt |
+| Sign-in | `POST /v1/auth/oidc-nonces` → `POST /v1/auth/oidc-sessions`. Only for a LINKED identity; never account creation; one generic 401. An installation that never signed in with a phone OTP gets `PHONE_STEP_UP`: the guard answers `WAYVRO_E_STEP_UP_REQUIRED` on every non-restricted route until the session steps up |
+| Link / unlink | `POST /v1/account/oidc-nonces` (LINK/RECOVERY), `GET/POST /v1/account/oidc-links`, `DELETE …/{id}`. Fresh phone step-up required. A subject linked elsewhere → generic 409 `WAYVRO_E_OIDC_LINK_CONFLICT`, audited as a T&S signal; one identity per provider and account |
+| Recovery | `proof: LINKED_OIDC` + a RECOVERY-nonce token of the new number's session: when the identity is linked to the account that owns the lost number, the request goes straight to the 72 h COOLDOWN with notices, and the worker completes it. An invalid token → 400; any mismatch → `RECEIVED`, nothing opened |
+| Worker | recovery completion covers both recovery kinds; deletion unlinks identities and erases their subject; maintenance purges nonces older than a day |
+| Flags | `platform.auth-oidc-google` / `platform.auth-oidc-apple`: ON only in the automated `test` environment (local issuer double), OFF in local/staging/production. No key source or client IDs → 503 |
+| Test double | `LocalOidcIssuer` (provider-test-doubles, dev-only, MOCK brand): RS256 keys published as JWKS; mints tokens incl. forged-key, wrong-issuer/audience and expired variants |
+| Mobile | `PHONE_STEP_UP` now uses the step-up panel (the "not available" screen is gone); error codes mapped (an OIDC 401 is not an expired session); OIDC security events labelled. No native Google/Apple SDK (activation) |
+
+**Deviations / decisions (recorded for review):**
+- **No e-mail, relay flag or name stored** (data model §3.1 lists `email_envelope`, `email_verified_at_link`, `is_private_relay`). With the e-mail channel deferred (Q-03) there is no purpose for them. The columns are additive later if a purpose is approved.
+- **No `CONFLICT_HOLD`/`REVOKED` identity states:** nothing produces them yet (Apple server-to-server revocation is P2.A3).
+- **Flags ON in the `test` environment only**, so the verifier is exercised end to end against the local issuer; the default stays OFF everywhere a person could use it.
+- **`PHONE_STEP_UP` scope:** every non-restricted route, not only "account-changing or driver-sensitive" ones — a stricter reading of founder Q-02.
+
+**Not built (stated):** the production JWKS fetch adapter, native SDKs, Apple relay e-mail / S2S notifications / token revocation (P2.A2/P2.A3); real-provider tests (EG-06/EG-07).
+
+**Evidence (local gates on the P2.10 tree):**
+
+| Suite | Result |
+|---|---|
+| `apps/api/test/oidc.integration.test.ts` (no account creation; step-up to link; PHONE_STEP_UP on an unknown installation incl. guard refusal until stepped up; generic link conflict + audit; one identity per provider; unlink; forged key, wrong issuer/audience, expired, foreign-installation nonce, replay, raw Apple nonce, a failed attempt spends the nonce; linked-identity recovery → COOLDOWN, mismatch → RECEIVED, forged → 400; 503 without a key source) | 5 PASS |
+| API integration suite (all files, coverage thresholds) | 166 PASS (statements 91.2 %, branches 81.0 %) |
+| `packages/db/test/oidc.integration.test.ts` (nonce bindings, identity uniqueness, subject erasure, OIDC assurance + step-up flag, OIDC-proof recovery kind, grants) | 5 PASS; db suite 73 PASS |
+| Worker (`account-jobs`: OIDC-proof recovery completion; deletion unlinks and erases subjects) | 38 PASS |
+| `provider-test-doubles` (`LocalOidcIssuer` verified with `jose` against its own JWKS; forged/foreign/time variants) | PASS |
+| Integration gate (fresh DB, migrate twice — second run 0 applied, all integration suites, boot smoke) | PASS |
+| Quality gate | PASS. format, build, lint, typecheck, depcruise, knip, syncpack and flags in one run; unit tests, coverage, openapi, phase0 coverage and manifest re-run with turbo concurrency 2. Unrelated builds of another project on this machine made two cold-start socket/Nest tests exceed 5 s under full parallelism; both pass alone, and CI is the authority |
+| Mobile: typecheck, unit tests, ESLint, Prettier | PASS; 31 files, 235 tests |
+| Artifact isolation (`--negative-controls`) | 39/39 PASS. NC2 now lints only the planted probe: the whole-repo lint exhausted the CI runner's heap, CI run 38138514460 |
+| Web E2E (web-public + web-ops) | 29/29 PASS |
+
+**Not run / external:** real Google/Apple tokens and keys (EG-06/EG-07); the native SDKs and the production JWKS adapter (P2.A2/P2.A3); device runs.

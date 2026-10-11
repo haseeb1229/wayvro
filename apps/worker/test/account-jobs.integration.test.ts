@@ -123,7 +123,44 @@ async function recovery(target: string, requester: { id: string; phone: string }
   return id;
 }
 
+/** A linked identity of `accountId` (P2.10). */
+async function linkedIdentity(accountId: string): Promise<string> {
+  const id = randomUUID();
+  await owner.query(`insert into identity.oidc_identities (id, account_id, provider, subject, status) values ($1, $2, 'GOOGLE', $3, 'LINKED')`, [
+    id,
+    accountId,
+    `sub-${randomUUID()}`,
+  ]);
+  return id;
+}
+
 describe(RECOVERY_COMPLETION_JOB, () => {
+  it('a recovery proven by a linked identity (P2.10) completes the same way after its cooldown', async () => {
+    const recovered = await account();
+    const requester = await account();
+    const proof = await linkedIdentity(recovered.id);
+    const id = randomUUID();
+    const digest = lookup.activeDigest(requester.phone);
+    await owner.query(
+      `insert into identity.phone_change_requests (id, account_id, kind, new_phone_envelope, new_phone_last4, new_phone_lookup_version, new_phone_lookup_hash, status,
+                                                   requested_by_account_id, proof_oidc_identity_id, cooldown_until, expires_at, created_at)
+       values ($1, $2, 'RECOVERY_OIDC_PROOF', $3, $4, $5, $6, 'COOLDOWN', $7, $8, now() - interval '1 minute', now() + interval '30 days', now() - interval '4 days')`,
+      [
+        id,
+        recovered.id,
+        cipher.encrypt('contact', requester.phone, fieldContext(ENCRYPTED_FIELDS.phoneChangePhone, id)),
+        requester.phone.slice(-4),
+        digest.version,
+        digest.digest,
+        requester.id,
+        proof,
+      ],
+    );
+    await recoveryCompletionJob({ pool: worker, cipher, lookup, log }).handler(job(RECOVERY_COMPLETION_JOB));
+    expect((await owner.query<{ status: string }>(`select status from identity.phone_change_requests where id = $1`, [id])).rows[0]?.status).toBe('COMPLETED');
+    expect(await ownerOf(requester.phone)).toBe(recovered.id);
+  });
+
   it('after the cooldown the number moves to the recovered account; both accounts are signed out everywhere', async () => {
     const recovered = await account();
     const requester = await account();
@@ -234,7 +271,15 @@ describe(DELETION_PROCESSING_JOB, () => {
     const id = await request(a.id, true);
     const later = await request(waiting.id, false);
     const ev = await evidence(a.id);
+    const linked = await linkedIdentity(a.id);
     await deletionProcessingJob(deps()).handler(job(DELETION_PROCESSING_JOB));
+    // linked Google/Apple identities are unlinked and their provider subject erased
+    expect(
+      (await owner.query<{ status: string; subject: string | null }>(`select status, subject from identity.oidc_identities where id = $1`, [linked])).rows[0],
+    ).toEqual({
+      status: 'UNLINKED',
+      subject: null,
+    });
     expect((await owner.query<{ status: string }>(`select status from identity.account_deletion_requests where id = $1`, [id])).rows[0]?.status).toBe(
       'COMPLETED',
     );

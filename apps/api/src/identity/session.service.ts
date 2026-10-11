@@ -55,7 +55,10 @@ type SecurityEventType =
   | 'RECOVERY_COMPLETED'
   | 'DORMANT_NUMBER_RELEASED'
   | 'DELETION_REQUESTED'
-  | 'DELETION_CANCELLED';
+  | 'DELETION_CANCELLED'
+  | 'SIGN_IN_OIDC'
+  | 'OIDC_LINKED'
+  | 'OIDC_UNLINKED';
 
 export async function securityEvent(
   tx: Queryable,
@@ -199,6 +202,42 @@ export class SessionService {
     return { ...tokens, isNewAccount: true, requiredActions: await requiredActionsFor(tx, accountId) };
   }
 
+  /**
+   * OIDC sign-in of a LINKED identity (P2.10; auth design §7): a session with assurance OIDC on the given installation.
+   * An installation unknown to the account must step up on the phone first (founder Q-02): `PHONE_STEP_UP`.
+   */
+  async signInLinked(
+    tx: pg.PoolClient,
+    accountId: string,
+    device: { installation: Buffer; platform: 'ANDROID' | 'IOS'; appVersion: string },
+  ): Promise<SessionCreated> {
+    const d = await tx.query<{ id: string; inserted: boolean; known: boolean }>(
+      `insert into identity.account_devices (id, account_id, installation_hash, platform, app_version, first_verified_at, last_seen_at, trust_state)
+       values ($1, $2, $3, $4, $5, now(), now(), 'NEW')
+       on conflict (account_id, installation_hash) do update set platform = excluded.platform, app_version = excluded.app_version, last_seen_at = now()
+       returning id, (xmax = 0) inserted,
+                 exists (select 1 from identity.sessions s where s.device_id = account_devices.id and s.assurance = 'OTP') known`,
+      [uuidv7(), accountId, device.installation, device.platform, device.appVersion],
+    );
+    const row = d.rows[0];
+    if (!row) throw new Error('device upsert returned no row');
+    // an installation is known only once it has signed in with a phone OTP on this account; OIDC alone never counts
+    const stepUp = !row.known;
+    const tokens = await this.openSession(tx, accountId, row.id, device.appVersion, { phoneStepUpRequired: stepUp });
+    await tx.query(`update identity.accounts set last_active_at = now() where id = $1`, [accountId]);
+    await securityEvent(tx, accountId, 'SIGN_IN_OIDC', tokens.sessionId, row.id);
+    await appendAudit(tx, {
+      actor: { type: 'ACCOUNT', id: accountId },
+      action: 'SESSION_CREATED',
+      objectType: 'identity.session',
+      objectId: tokens.sessionId,
+      outcome: 'SUCCESS',
+      reasonCode: 'OIDC',
+    });
+    const actions = await requiredActionsFor(tx, accountId);
+    return { ...tokens, isNewAccount: false, requiredActions: stepUp ? ['PHONE_STEP_UP', ...actions] : actions };
+  }
+
   /** Current owner of the phone, or a new account; concurrent creators converge on the database's single winner. */
   private async resolveAccount(tx: pg.PoolClient, e164: PakistanMobileE164, locale: string): Promise<{ accountId: string; isNew: boolean }> {
     const owner = await this.deps.lookup.currentOwner(tx, e164);
@@ -239,16 +278,34 @@ export class SessionService {
     return row !== undefined && row.dormant && !row.known;
   }
 
-  private async openSession(tx: pg.PoolClient, accountId: string, deviceId: string, appVersion: string): Promise<SessionTokens> {
+  private async openSession(
+    tx: pg.PoolClient,
+    accountId: string,
+    deviceId: string,
+    appVersion: string,
+    oidc: { phoneStepUpRequired: boolean } | null = null,
+  ): Promise<SessionTokens> {
     const p = this.deps.policy;
     const sessionId = uuidv7();
     const access = newOpaqueToken('access');
     const refresh = newOpaqueToken('refresh');
     const s = await tx.query<{ access_expires_at: Date }>(
-      `insert into identity.sessions (id, account_id, device_id, status, assurance, access_token_hash, access_expires_at, idle_expires_at, absolute_expires_at, app_version)
-       values ($1, $2, $3, 'ACTIVE', 'OTP', $4, now() + ($5::int * interval '1 second'), now() + ($6::int * interval '1 second'), now() + ($7::int * interval '1 second'), $8)
+      `insert into identity.sessions (id, account_id, device_id, status, assurance, access_token_hash, access_expires_at, idle_expires_at, absolute_expires_at, app_version,
+                                     phone_step_up_required)
+       values ($1, $2, $3, 'ACTIVE', $9, $4, now() + ($5::int * interval '1 second'), now() + ($6::int * interval '1 second'), now() + ($7::int * interval '1 second'), $8, $10)
        returning access_expires_at`,
-      [sessionId, accountId, deviceId, hashToken(access), p.SESSION_ACCESS_TTL_SECONDS, p.SESSION_IDLE_TTL_SECONDS, p.SESSION_ABSOLUTE_TTL_SECONDS, appVersion],
+      [
+        sessionId,
+        accountId,
+        deviceId,
+        hashToken(access),
+        p.SESSION_ACCESS_TTL_SECONDS,
+        p.SESSION_IDLE_TTL_SECONDS,
+        p.SESSION_ABSOLUTE_TTL_SECONDS,
+        appVersion,
+        oidc ? 'OIDC' : 'OTP',
+        oidc?.phoneStepUpRequired ?? false,
+      ],
     );
     const rt = await tx.query<{ expires_at: Date }>(
       `insert into identity.refresh_tokens (id, session_id, token_hash, issued_at, expires_at)

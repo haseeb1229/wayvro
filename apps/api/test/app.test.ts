@@ -65,6 +65,7 @@ const identity: IdentityServices = {
   security: {} as IdentityServices['security'],
   recoveryReviews: {} as IdentityServices['recoveryReviews'],
   deletion: {} as IdentityServices['deletion'],
+  oidc: {} as IdentityServices['oidc'],
   legalStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as IdentityServices['legalStore'],
   // No session row ever matches: every bearer token is unknown.
   sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as IdentityServices['sessionStore'],

@@ -5,6 +5,8 @@ export {
   type ImageSanitiserPort,
   type MalwareScannerPort,
   type ObjectStoragePort,
+  type OidcKeysPort,
+  type OidcProvider,
   type OtpDeliveryPort,
   type ProviderKind,
   type ProviderPorts,

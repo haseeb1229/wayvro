@@ -154,6 +154,8 @@ describe('migration lifecycle (every migration)', () => {
       'identity.deletion_request_blockers',
       'identity.deletion_retention_exceptions',
       'identity.dormant_number_reviews',
+      'identity.oidc_identities',
+      'identity.oidc_nonces',
       'identity.otp_challenges',
       'identity.phone_change_requests',
       'identity.phone_lookup_index',

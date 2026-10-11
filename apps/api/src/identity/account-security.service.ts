@@ -25,8 +25,10 @@ import { failure, success, type IdempotencyStore, type IdempotentResult, type Ou
 import { emitEvent } from '../platform/outbox.js';
 import type { OtpAbuseControls } from './otp-abuse.js';
 import { consumeChallenge } from './otp-verify.js';
+import type { OidcService } from './oidc.service.js';
 import type { OtpService } from './otp.service.js';
 import { applyDriverRiskHold } from './risk-policy.js';
+import { stepUpFresh } from './session-gates.js';
 import { securityEvent } from './session.service.js';
 
 const STEP_UP_SECONDS = 600;
@@ -34,6 +36,8 @@ const NEW_DEVICE_COOLDOWN_HOURS = 24;
 const PHONE_CHANGE_TTL_MINUTES = 15;
 const RECOVERY_REQUEST_TTL_DAYS = 30;
 const RECOVERY_ATTEMPTS_PER_DAY = 3;
+/** "Cancel if this wasn't you" window of a recovery proven by a linked identity (auth design §6.4). */
+const RECOVERY_COOLDOWN_HOURS = 72;
 
 interface AccountSecurityPolicy {
   readonly IDEMPOTENCY_TTL_SECONDS: number;
@@ -48,13 +52,14 @@ export interface AccountSecurityDependencies {
   readonly abuse: OtpAbuseControls;
   readonly otp: OtpService;
   readonly limiter: RateLimiter;
+  readonly oidc: OidcService;
   readonly policy: AccountSecurityPolicy;
 }
 
 interface RequestRow {
   id: string;
   account_id: string;
-  kind: 'SELF_SERVICE' | 'RECOVERY_DRIVER_KYC';
+  kind: 'SELF_SERVICE' | 'RECOVERY_DRIVER_KYC' | 'RECOVERY_OIDC_PROOF';
   status: 'CURRENT_PHONE_VERIFIED' | 'MANUAL_REVIEW' | 'COOLDOWN' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' | 'DENIED';
   new_phone_envelope: Buffer | null;
   new_phone_last4: string | null;
@@ -76,15 +81,6 @@ function phoneChangeView(r: RequestRow) {
     cooldownUntil: r.cooldown_until?.toISOString() ?? null,
     createdAt: r.created_at.toISOString(),
   };
-}
-
-/** True when the session completed a step-up within the last 10 minutes (database time). */
-export async function stepUpFresh(q: Queryable, sessionId: string): Promise<boolean> {
-  const r = await q.query(`select 1 from identity.sessions where id = $1 and step_up_at > now() - ($2::int * interval '1 second')`, [
-    sessionId,
-    STEP_UP_SECONDS,
-  ]);
-  return (r.rowCount ?? 0) > 0;
 }
 
 /** The account's current verified phone (E.164) and its row id. */
@@ -340,25 +336,100 @@ export class AccountSecurityService {
   }
 
   // ── lost-phone recovery (strong proof only) ────────────────────────────────────────────────────────────────
-  async recover(principal: Principal, input: { proof: 'LINKED_OIDC' | 'DRIVER_KYC'; previousPhone: string }, key: string): Promise<IdempotentResult> {
+  async recover(
+    principal: Principal,
+    input: {
+      proof: 'LINKED_OIDC' | 'DRIVER_KYC';
+      previousPhone: string;
+      oidc?: { provider: 'GOOGLE' | 'APPLE'; idToken: string; nonceId: string } | undefined;
+    },
+    key: string,
+  ): Promise<IdempotentResult> {
     const n = normalisePakistanMobile(input.previousPhone);
     if (!n.ok) throw new WayvroError('WAYVRO_E_VALIDATION');
-    // P2.10 adds the linked-OIDC proof; until then that path does not exist.
-    if (input.proof === 'LINKED_OIDC') throw new WayvroError('WAYVRO_E_FEATURE_DISABLED');
+    const oidc = input.proof === 'LINKED_OIDC' ? input.oidc : undefined;
+    if (input.proof === 'LINKED_OIDC') {
+      if (!oidc) throw new WayvroError('WAYVRO_E_VALIDATION');
+      this.deps.oidc.assertAvailable(oidc.provider);
+    }
     await this.admitRecovery(principal.accountId);
     const previous = n.e164;
-    return this.run(principal, 'account-recoveries.create', key, { proof: input.proof, previousPhone: previous }, async (tx) => {
-      const outcome = await this.openDriverRecovery(tx, principal.accountId, previous);
-      await appendAudit(tx, {
-        actor: { type: 'ACCOUNT', id: principal.accountId },
-        action: 'ACCOUNT_RECOVERY_REQUESTED',
-        objectType: 'identity.account',
-        objectId: principal.accountId,
-        outcome: outcome === 'OPENED' ? 'SUCCESS' : 'DENIED',
-        reasonCode: outcome,
-      });
-      return success(202, { status: 'RECEIVED' });
-    });
+    return this.run(
+      principal,
+      'account-recoveries.create',
+      key,
+      { proof: input.proof, previousPhone: previous, nonceId: oidc?.nonceId ?? null },
+      async (tx) => {
+        let outcome: string;
+        if (oidc) {
+          const proof = await this.deps.oidc.recoveryProof(tx, principal, oidc);
+          // an invalid or replayed token is the caller's own mistake (400); a valid one never reveals whose identity it is
+          if (proof === null) return failure('WAYVRO_E_VALIDATION');
+          outcome = await this.openOidcRecovery(tx, principal.accountId, previous, proof.identity);
+        } else {
+          outcome = await this.openDriverRecovery(tx, principal.accountId, previous);
+        }
+        await appendAudit(tx, {
+          actor: { type: 'ACCOUNT', id: principal.accountId },
+          action: 'ACCOUNT_RECOVERY_REQUESTED',
+          objectType: 'identity.account',
+          objectId: principal.accountId,
+          outcome: outcome === 'OPENED' ? 'SUCCESS' : 'DENIED',
+          reasonCode: outcome,
+        });
+        return success(202, { status: 'RECEIVED' });
+      },
+    );
+  }
+
+  /**
+   * LINKED_OIDC (auth design §6.4): the fresh token proves the identity linked to the account that owns the lost
+   * number; both proofs must name the same account. Straight to the 72 h cooldown with notices to every session of
+   * that account ("cancel if this wasn't you"); the worker completes it. Everything else is recorded, never shown.
+   */
+  private async openOidcRecovery(
+    tx: pg.PoolClient,
+    callerId: string,
+    previous: PakistanMobileE164,
+    proof: { id: string; accountId: string } | null,
+  ): Promise<'OPENED' | 'CALLER_NOT_CLEAN' | 'NO_MATCHING_ACCOUNT' | 'ALREADY_OPEN'> {
+    const caller = await currentPhone(tx, this.deps.cipher, callerId);
+    const own = await tx.query(`select 1 from compliance.driver_applications where account_id = $1`, [callerId]);
+    if (!caller || (own.rowCount ?? 0) > 0) return 'CALLER_NOT_CLEAN';
+    const owner = await this.deps.lookup.currentOwner(tx, previous);
+    const active = owner
+      ? ((await tx.query(`select 1 from identity.accounts where id = $1 and status = 'ACTIVE'`, [owner.accountId])).rowCount ?? 0) > 0
+      : false;
+    if (!proof || !owner || !active || owner.accountId !== proof.accountId || owner.accountId === callerId) return 'NO_MATCHING_ACCOUNT';
+    const id = uuidv7();
+    const lookup = this.deps.lookup.activeDigest(caller.e164);
+    await tx.query('savepoint oidc_recovery');
+    try {
+      await tx.query(
+        `insert into identity.phone_change_requests (id, account_id, kind, new_phone_envelope, new_phone_last4, new_phone_lookup_version, new_phone_lookup_hash,
+                                                     status, requested_by_account_id, proof_oidc_identity_id, cooldown_until, expires_at)
+         values ($1, $2, 'RECOVERY_OIDC_PROOF', $3, $4, $5, $6, 'COOLDOWN', $7, $8, now() + ($9::int * interval '1 hour'), now() + ($10::int * interval '1 day'))`,
+        [
+          id,
+          owner.accountId,
+          this.deps.cipher.encrypt('contact', caller.e164, fieldContext(ENCRYPTED_FIELDS.phoneChangePhone, id)),
+          caller.e164.slice(-4),
+          lookup.version,
+          lookup.digest,
+          callerId,
+          proof.id,
+          RECOVERY_COOLDOWN_HOURS,
+          RECOVERY_REQUEST_TTL_DAYS,
+        ],
+      );
+    } catch (e) {
+      if (sqlState(e) !== '23505') throw e;
+      await tx.query('rollback to savepoint oidc_recovery');
+      return 'ALREADY_OPEN';
+    }
+    await securityEvent(tx, owner.accountId, 'RECOVERY_REQUESTED', null);
+    await emitEvent(tx, { type: 'account.recovery.requested.v1', aggregateType: 'identity.phone_change_request', aggregateId: id, accountId: owner.accountId });
+    return 'OPENED';
   }
 
   private async admitRecovery(accountId: string): Promise<void> {

@@ -209,7 +209,7 @@ const app = await createApp({
   readinessChecks: [],
   log: silent,
   trustProxy: false,
-  identity: { otp: {}, sessions: {}, accounts: {}, consents: {}, security: {}, recoveryReviews: {}, deletion: {}, legalStore: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
+  identity: { otp: {}, sessions: {}, accounts: {}, consents: {}, security: {}, recoveryReviews: {}, deletion: {}, oidc: {}, legalStore: {}, sessionStore: { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } },
   staff: { auth: {}, admin: {}, oversight: {}, policy: {} },
   compliance: { onboarding: {}, admin: {} },
   evidence: null,
@@ -234,7 +234,9 @@ function negativeControls() {
       dc.status !== 0 && /no-production-to-test-doubles/.test(dc.stdout + dc.stderr),
       'dependency-cruiser rejects a production import of the doubles',
     );
-    const lint = spawnSync('pnpm', ['run', 'lint'], { cwd: ROOT, encoding: 'utf8', shell });
+    // Only the planted probe is linted (same config and rules as `pnpm lint`): the control proves the rule rejects the
+    // import; re-linting the whole monorepo here exhausted the runner's heap (P2.9 CI) without adding evidence.
+    const lint = spawnSync('pnpm', ['run', 'lint:files', relative(ROOT, probe)], { cwd: ROOT, encoding: 'utf8', shell });
     record('NC2', 'api', lint.status !== 0 && /provider-test-doubles/.test(lint.stdout + lint.stderr), 'ESLint rejects a production import of the doubles');
     // Knip production + strict: only `dependencies` count for production code, so a dev-only package is "unlisted".
     // The probe must be reachable from a production entry, so it is imported from the API composition for this check.

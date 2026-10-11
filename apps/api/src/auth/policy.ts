@@ -17,7 +17,7 @@ import { WayvroError } from '@wayvro/observability';
 import { appendAudit, type Queryable } from '@wayvro/server-runtime';
 import type { FastifyRequest } from 'fastify';
 import { accountRestrictionsInForce } from '../compliance/restrictions.js';
-import { sessionUnderReview } from '../identity/review-restriction.js';
+import { sessionGates } from '../identity/session-gates.js';
 import type { StaffPermission } from '../staff/roles.js';
 import { resolveStaffPrincipal, stepUpFresh, type StaffPrincipal, type StaffSessionPolicy } from '../staff/staff-session.js';
 
@@ -119,8 +119,11 @@ export class PolicyGuard implements CanActivate {
     if (!session) throw new WayvroError('WAYVRO_E_UNAUTHENTICATED');
     // Coarse "last used" for the session list (at most one write per session every 5 minutes).
     await this.db.query(`update identity.sessions set last_used_at = now() where id = $1 and last_used_at < now() - interval '5 minutes'`, [session.sessionId]);
-    if (!policy.recoveryReviewOk && (await sessionUnderReview(this.db, session.sessionId))) throw new WayvroError('WAYVRO_E_RECOVERY_REQUIRED');
+    const gates = await sessionGates(this.db, session.sessionId);
+    if (!policy.recoveryReviewOk && gates.underReview) throw new WayvroError('WAYVRO_E_RECOVERY_REQUIRED');
     if (!policy.restrictedOk) {
+      // founder Q-02: an OIDC session on an installation without a phone OTP steps up before anything else
+      if (gates.phoneStepUpPending) throw new WayvroError('WAYVRO_E_STEP_UP_REQUIRED', { details: { requiredActions: ['PHONE_STEP_UP'] } });
       if (session.accountStatus === 'DELETION_PENDING')
         throw new WayvroError('WAYVRO_E_ACCOUNT_RESTRICTED', { details: { reasonCodes: ['DELETION_PENDING'] } });
       const restrictions = await accountRestrictionsInForce(this.db, session.accountId, new Date());

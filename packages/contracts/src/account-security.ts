@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { ErrorEnvelopeSchema } from './errors.js';
 import type { RouteContract } from './health.js';
 import { InstallationIdSchema, LocaleSchema, OtpChallengeSchema, SessionCreatedSchema } from './identity.js';
+import { OidcProofSchema } from './oidc.js';
 
 const IsoDateTime = z.iso.datetime({ offset: true });
 const Code = z.string().regex(/^\d{6}$/);
@@ -22,8 +23,8 @@ export const StepUpVerificationRequestSchema = z.strictObject({ code: Code }).me
 export const StepUpSchema = z.object({ stepUpExpiresAt: IsoDateTime }).meta({ id: 'StepUp' });
 
 // ── phone change and recovery requests ─────────────────────────────────────────────────────────────────────────
-/** Kinds and states in use (the OIDC-proof recovery of P2.10 adds its kind and states additively). */
-export const PHONE_CHANGE_KINDS = ['SELF_SERVICE', 'RECOVERY_DRIVER_KYC'] as const;
+/** Kinds in use; RECOVERY_OIDC_PROOF (P2.10) goes straight to the cooldown after the proof. */
+export const PHONE_CHANGE_KINDS = ['SELF_SERVICE', 'RECOVERY_DRIVER_KYC', 'RECOVERY_OIDC_PROOF'] as const;
 export const PHONE_CHANGE_STATUSES = ['CURRENT_PHONE_VERIFIED', 'MANUAL_REVIEW', 'COOLDOWN', 'COMPLETED', 'CANCELLED', 'EXPIRED', 'DENIED'] as const;
 export const PhoneChangeRequestSchema = z.strictObject({ newPhone: Phone, locale: LocaleSchema }).meta({ id: 'PhoneChangeRequest' });
 export const PhoneChangeSchema = z
@@ -44,9 +45,13 @@ export const PhoneChangeVerificationRequestSchema = z.strictObject({ challengeId
 export const CurrentPhoneChangeSchema = z.object({ phoneChange: PhoneChangeSchema.nullable() }).meta({ id: 'CurrentPhoneChange' });
 export const PhoneChangeParamSchema = z.strictObject({ id: z.uuid() });
 
-/** Lost-phone recovery from the session of the NEW number. LINKED_OIDC arrives with P2.10 (flag off until then). */
+/**
+ * Lost-phone recovery from the session of the NEW number. LINKED_OIDC (P2.10, flag-gated) carries a fresh ID token of
+ * the identity linked to the previous account, with a RECOVERY nonce of this session; DRIVER_KYC carries no token.
+ */
 export const AccountRecoveryRequestSchema = z
-  .strictObject({ proof: z.enum(['LINKED_OIDC', 'DRIVER_KYC']), previousPhone: Phone })
+  .strictObject({ proof: z.enum(['LINKED_OIDC', 'DRIVER_KYC']), previousPhone: Phone, oidc: OidcProofSchema.optional() })
+  .refine((v) => (v.proof === 'LINKED_OIDC') === (v.oidc !== undefined), { message: 'oidc is required for LINKED_OIDC and only for it' })
   .meta({ id: 'AccountRecoveryRequest' });
 /** Always RECEIVED: the response never reveals whether the previous number belongs to an account or what kind. */
 export const AccountRecoveryReceiptSchema = z.object({ status: z.literal('RECEIVED') }).meta({ id: 'AccountRecoveryReceipt' });
@@ -158,7 +163,7 @@ export const ACCOUNT_SECURITY_ROUTES = [
     summary: 'Lost-phone recovery of a previous account with strong proof only (always answers RECEIVED).',
     auth: 'session',
     request: AccountRecoveryRequestSchema,
-    responses: { 202: AccountRecoveryReceiptSchema, 400: E, 401: E, 404: E, 429: E },
+    responses: { 202: AccountRecoveryReceiptSchema, 400: E, 401: E, 404: E, 429: E, 503: E },
   },
   {
     operationId: 'getCurrentRecoveryReview',

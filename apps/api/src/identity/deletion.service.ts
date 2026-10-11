@@ -15,7 +15,7 @@ import type pg from 'pg';
 import type { Principal } from '../auth/policy.js';
 import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome } from '../platform/idempotency.js';
 import { emitEvent } from '../platform/outbox.js';
-import { stepUpFresh } from './account-security.service.js';
+import { stepUpFresh } from './session-gates.js';
 import type { OtpAbuseControls } from './otp-abuse.js';
 import { consumeChallenge } from './otp-verify.js';
 import { installationHash, type OtpService } from './otp.service.js';

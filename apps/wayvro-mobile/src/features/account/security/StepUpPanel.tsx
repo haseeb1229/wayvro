@@ -33,7 +33,8 @@ export function GuardedActionPanel({ action, showFailure = true }: { readonly ac
   return null;
 }
 
-function StepUpPanel({ onVerified, onCancel }: { readonly onVerified: () => void; readonly onCancel: () => void }) {
+/** The step-up itself; `onCancel` is omitted where the step-up is required before anything else (PHONE_STEP_UP). */
+export function StepUpPanel({ onVerified, onCancel }: { readonly onVerified: () => void; readonly onCancel?: () => void }) {
   const { t } = useI18n();
   const { clock } = useServices();
   const api = useAccountSecurityApi();
@@ -144,7 +145,7 @@ function StepUpPanel({ onVerified, onCancel }: { readonly onVerified: () => void
           />
         </>
       )}
-      <Button variant="secondary" label={t('common.cancel')} onPress={onCancel} />
+      {onCancel ? <Button variant="secondary" label={t('common.cancel')} onPress={onCancel} /> : null}
     </View>
   );
 }

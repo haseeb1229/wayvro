@@ -77,13 +77,25 @@ export interface PushNotificationPort {
   send(input: { deviceToken: string; title: string; body: string; data: Readonly<Record<string, string>> }): Promise<{ accepted: boolean }>;
 }
 
+export type OidcProvider = 'GOOGLE' | 'APPLE';
+
+/**
+ * Signing keys of an OIDC provider as a JSON Web Key Set (P2.10, ADR-040). The server verifies ID tokens itself
+ * (`jose`); this port only supplies the provider's published public keys. The production adapter (HTTPS fetch of the
+ * provider JWKS with bounded caching) arrives with activation P2.A2/P2.A3 (EG-06/EG-07); unbound ⇒ OIDC answers 503.
+ */
+export interface OidcKeysPort {
+  keySet(provider: OidcProvider): Promise<{ readonly keys: ReadonlyArray<Readonly<Record<string, unknown>>> }>;
+}
+
 export interface ProviderPorts {
   readonly objectStorage: ObjectStoragePort;
   readonly malwareScanner: MalwareScannerPort;
   readonly imageSanitiser: ImageSanitiserPort;
   readonly otpDelivery: OtpDeliveryPort;
   readonly pushNotification: PushNotificationPort;
+  readonly oidcKeys: OidcKeysPort;
 }
 
 export type ProviderKind = keyof ProviderPorts;
-export const PROVIDER_KINDS: readonly ProviderKind[] = ['objectStorage', 'malwareScanner', 'imageSanitiser', 'otpDelivery', 'pushNotification'];
+export const PROVIDER_KINDS: readonly ProviderKind[] = ['objectStorage', 'malwareScanner', 'imageSanitiser', 'otpDelivery', 'pushNotification', 'oidcKeys'];

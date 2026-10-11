@@ -227,3 +227,16 @@ export {
   type DeletionRequest,
   type PhoneChange,
 } from './account-security.js';
+export {
+  OIDC_PROVIDERS,
+  OIDC_ROUTES,
+  OidcAccountNonceRequestSchema,
+  OidcLinkListSchema,
+  OidcLinkParamSchema,
+  OidcLinkSchema,
+  OidcNonceSchema,
+  OidcProofSchema,
+  OidcProviderSchema,
+  OidcSessionRequestSchema,
+  OidcSignInNonceRequestSchema,
+} from './oidc.js';

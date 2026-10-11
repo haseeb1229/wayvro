@@ -44,6 +44,26 @@ export const FLAG_REGISTRY: readonly FlagDefinition[] = [
     defaults: { local: false, test: false, staging: false, production: false },
     expiresOn: '2027-06-30',
   },
+  {
+    key: 'platform.auth-oidc-google',
+    owner: 'founder',
+    purpose:
+      'Google sign-in as an OPTIONAL linked convenience (never account creation; phone stays the credential). ON only in the automated test environment, where a local JWKS fixture signs the tokens; OFF in local/staging/production until a Google client and the activation tests clear (EG-06, P2.A2).',
+    requirementIds: ['K15', 'S13'],
+    enforcement: 'server',
+    defaults: { local: false, test: true, staging: false, production: false },
+    expiresOn: '2027-06-30',
+  },
+  {
+    key: 'platform.auth-oidc-apple',
+    owner: 'founder',
+    purpose:
+      'Sign in with Apple as an OPTIONAL linked convenience (never account creation; phone stays the credential). ON only in the automated test environment with the local JWKS fixture; OFF in local/staging/production until the Apple Developer setup and the activation tests clear (EG-07, P2.A3).',
+    requirementIds: ['K16', 'S13'],
+    enforcement: 'server',
+    defaults: { local: false, test: true, staging: false, production: false },
+    expiresOn: '2027-06-30',
+  },
 ];
 
 /** Server-side flag evaluation (registered default for the environment). Unknown keys are OFF. */

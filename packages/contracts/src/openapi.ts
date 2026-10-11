@@ -8,6 +8,7 @@ import { ONBOARDING_ROUTES } from './compliance.js';
 import { EVIDENCE_ROUTES } from './evidence.js';
 import { REVIEW_ROUTES } from './review.js';
 import { LEGAL_ROUTES } from './legal.js';
+import { OIDC_ROUTES } from './oidc.js';
 import { IDENTITY_ROUTES } from './routes.js';
 import { STAFF_ROUTES } from './staff.js';
 
@@ -15,6 +16,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...HEALTH_ROUTES,
   ...IDENTITY_ROUTES,
   ...ACCOUNT_SECURITY_ROUTES,
+  ...OIDC_ROUTES,
   ...LEGAL_ROUTES,
   ...STAFF_ROUTES,
   ...ONBOARDING_ROUTES,
