@@ -150,6 +150,30 @@ export const DocumentClaimRequestSchema = z
   })
   .meta({ id: 'DocumentClaimRequest' });
 
+/** P2.8: renewal of a driver's document (claims only; evidence via upload slots; a human reviewer decides). */
+export const DocumentParamSchema = z.strictObject({ documentId: z.uuid() });
+export const DocumentRenewalRequestSchema = z
+  .strictObject({
+    number: z.string().trim().min(2).max(40).optional(),
+    licenceClass: z
+      .string()
+      .regex(/^[A-Z0-9-]{1,12}$/)
+      .optional(),
+    issuedOn: IsoDate.optional(),
+    expiresOn: IsoDate,
+  })
+  .meta({ id: 'DocumentRenewalRequest' });
+export const DocumentRenewalSchema = z
+  .object({
+    renewalDocumentId: z.uuid(),
+    applicationId: z.uuid(),
+    renews: z.uuid(),
+    documentType: DocumentTypeCode,
+    evidenceKinds: z.array(z.string()),
+    status: z.enum(['DRAFT', 'IN_REVIEW', 'APPROVED', 'REJECTED']),
+  })
+  .meta({ id: 'DocumentRenewal' });
+
 const VehicleViewSchema = z.object({
   id: z.uuid(),
   plateDisplay: z.string(),
@@ -227,6 +251,9 @@ export const RequirementChecklistSchema = z
         claimed: z.boolean(),
         evidenceKinds: z.array(z.string()),
         licenceClassesAllowed: z.array(z.string()),
+        /** P2.8 (additive): which claim fields the document type has (the server refuses the others). */
+        hasNumber: z.boolean(),
+        hasExpiry: z.boolean(),
       }),
     ),
   })
@@ -238,7 +265,22 @@ export const DriverComplianceSchema = z
     eligibility: z.array(
       z.object({ vehicleId: z.uuid().nullable(), cityCode: CityCode, serviceCategory: CategoryCode, eligible: z.boolean(), blockers: z.array(BlockerSchema) }),
     ),
-    documents: z.array(DocumentViewSchema.extend({ expiresOn: IsoDate.nullable(), renewalDue: z.boolean() })),
+    documents: z.array(
+      DocumentViewSchema.extend({
+        expiresOn: IsoDate.nullable(),
+        renewalDue: z.boolean(),
+        /** P2.8 (additive): which claim fields the document type has (a renewal offers the same). */
+        hasNumber: z.boolean(),
+        hasExpiry: z.boolean(),
+        /** P2.8 (additive): the renewal in progress for this document, if any, with the evidence kinds it needs. */
+        renewal: z
+          .object({ renewalDocumentId: z.uuid(), status: z.enum(['DRAFT', 'IN_REVIEW', 'APPROVED', 'REJECTED']), evidenceKinds: z.array(z.string()) })
+          .nullable()
+          .optional(),
+      }),
+    ),
+    /** P2.8 (additive): the verified application (evidence upload slots for renewals use it). */
+    applicationId: z.uuid().optional(),
     restrictions: z.array(AccountRestrictionSchema),
   })
   .meta({ id: 'DriverCompliance' });
@@ -342,5 +384,25 @@ export const ONBOARDING_ROUTES = [
     summary: 'Driver compliance: live earning eligibility with every blocker, documents and renewals, restrictions.',
     auth: 'session',
     responses: { 200: DriverComplianceSchema, 401: E, 404: E },
+  },
+  {
+    operationId: 'startDocumentRenewal',
+    method: 'POST',
+    path: '/v1/driver/documents/{documentId}/renewals',
+    summary: 'Start renewing a VALID or EXPIRED document: new claims (dates/number); evidence follows via upload slots of the application.',
+    auth: 'session',
+    params: DocumentParamSchema,
+    request: DocumentRenewalRequestSchema,
+    responses: { 201: DocumentRenewalSchema, 400: E, 401: E, 403: E, 404: E, 409: E },
+  },
+  {
+    operationId: 'submitDocumentRenewal',
+    method: 'POST',
+    path: '/v1/driver/documents/{documentId}/renewal-submission',
+    summary: 'Submit a renewal once its evidence is ACCEPTED; a human reviewer decides it (DOCUMENT_RENEWAL case).',
+    auth: 'session',
+    params: DocumentParamSchema,
+    request: EmptyBody,
+    responses: { 200: DocumentRenewalSchema, 401: E, 403: E, 404: E, 409: E },
   },
 ] as const satisfies readonly RouteContract[];

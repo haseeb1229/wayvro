@@ -1,12 +1,12 @@
-# ADR-043 — Mobile platform additions for the ONE Wayvro app (P2.3 account slice)
+# ADR-043 — Mobile platform additions for the ONE Wayvro app (P2.3 account slice, P2.8 capture)
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED on P2.3 evidence** (P2.3 packages). The P2.8 capture packages are recorded when they are installed. Pending founder/ChatGPT review of the full Phase 2 branch |
+| Status | **ACCEPTED on P2.3 and P2.8 build evidence** (device behaviour NOT RUN, see below). The CAMERA allowlist entry awaits founder review (CLAUDE.md §9). Pending founder/ChatGPT review of the full Phase 2 branch |
 | Date | 2026-10-11 |
 | Supersedes | `docs/phase2/PHASE2_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-043 (proposal; founder Q-13 approved Expo Router + TanStack Query) |
-| Requirements | Q01 (token storage), A02/A03/A05 (sign-in, sessions), A04/K09 (consent), A15 (age declaration UI), A11 (security activity), V13 (rider-facing restriction notice) |
-| Evidence | `apps/wayvro-mobile/src/**` (18 test files, 124 tests); Android release AAB through `scripts/android-build.mjs release` (16 KB, ABI and permission gates); `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §P2.3 |
+| Requirements | Q01 (token storage, capture cleanup), A02/A03/A05 (sign-in, sessions), A04/K09 (consent), A15 (age declaration UI), A11 (security activity), V13 (rider-facing restriction notice); P2.8: V01, V03, D01–D04 (UI), K02/K03 (capture), K05/K14 (explanations, appeals, corrections) |
+| Evidence | `apps/wayvro-mobile/src/**` (P2.3: 18 test files, 124 tests; P2.8: 28 files, 211 tests); Android release AAB through `scripts/android-build.mjs release` (16 KB, ABI and permission gates); `docs/phase2/PHASE2_IMPLEMENTATION_RECORD.md` §P2.3 and §P2.8 |
 
 ## Decision
 All versions were chosen at install against the Expo SDK 57 `bundledNativeModules` floors. None is a beta or canary.
@@ -52,6 +52,28 @@ expo-router 57.0.25 pins query-string 7.1.3 → decode-uri-component 0.2.2, whic
 - The fixed 0.5.0 is ESM-only, and an override would break query-string 7.
 - It is accepted as a time-boxed runtime exception in `osv-scanner.toml` (expires 2026-12-31), because no URL scheme or deep link exists, so no external input reaches the parser.
 - **Gate:** before any deep link is wired, upgrade expo-router/query-string or bound URL length.
+
+## P2.8 addendum — Driver/Partner capture (K02/K03/V03/Q01)
+Versions re-checked at install (ADR-030): stable, MIT, not deprecated, published 2026-09-11 to 09-29.
+
+| Package | Version | Why |
+|---|---|---|
+| `expo-camera` | 57.0.6 | in-app document photos and the one selfie for MANUAL review (front camera only; no liveness, no face matching) |
+| `expo-image-picker` | 57.0.20 | controlled document import through the Android system Photo Picker (no media permission); never for the selfie |
+| `expo-file-system` | 57.0.7 | already present transitively, now declared: one private cache folder for captures, the direct PUT to the signed URL, deletion after server confirmation |
+
+New lockfile entries pulled in by these packages: barcode-detector 3.2.2, zxing-wasm 3.1.3, @types/emscripten 1.41.6, expo-image-loader 57.0.1, tagged-tag 1.0.0, type-fest 5.10.0 (MIT or MIT/CC0). A static check of the release JS bundle finds no zxing or barcode-detector code (web-only paths).
+
+**Configuration decisions:**
+- **Barcode scanning compiled out.** The prebuilt expo-camera AAR always links ML Kit barcode scanning and the Play services code scanner, so `barcodeScannerEnabled: false` alone had no effect (first release AAB: 40,158,411 bytes). `expo.autolinking.android.buildFromSource: ["expo-camera"]` compiles it from source so the flag applies; the final AAB has no ML Kit, barcode or code-scanner entries. Cost: a longer native build.
+- **No microphone:** `microphonePermission: false`, `recordAudioAndroid: false`; RECORD_AUDIO stays blocked.
+- **expo-image-picker keeps `cameraPermission` as a text, not `false`:** `false` makes the plugin block `android.permission.CAMERA` and delete the iOS usage string, which would break expo-camera. The picker's own camera launcher is never called.
+- **Permission allowlist:** `android.permission.CAMERA` moved from forbidden to allowed with requirement IDs K02/K03/V03, requested just in time on the capture screen only. READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED and ACCESS_MEDIA_LOCATION are added to `blockedPermissions` and to the forbidden list. Founder review of this allowlist change is still required (CLAUDE.md §9).
+- **Lazy loading:** every driver screen is a dynamic import; camera, picker and file-system code is imported only under `src/features/driver/` (enforced by the architecture test).
+
+**P2.8 measurements (release build, this machine):** AAB 34,845,150 bytes (+3,161,250, +10.0% vs P2.3); download arm64-v8a 25,467,632–25,651,727 and armeabi-v7a 24,725,524–24,909,619 bytes (about +3.12 MB each); JS bundle 3,321,764 bytes (+285,672); 16 KB PASS (20/20 64-bit libraries, zipalign PASS on both splits); ABIs arm64-v8a + armeabi-v7a; permissions exactly CAMERA, INTERNET and the AndroidX dynamic-receiver permission.
+
+**P2.8 not verified (NOT RUN):** no device or emulator: camera and permission prompts, the Photo Picker, the PUT upload, file deletion, lazy route loading at runtime, RTL, dynamic type and screen readers; no iOS build.
 
 ## Consequences / reversal
 - Navigation can move back to plain React Navigation by replacing the thin route files; the feature screens do not import the router.

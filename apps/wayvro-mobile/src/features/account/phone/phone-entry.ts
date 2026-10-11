@@ -1,4 +1,5 @@
 import { toApiError } from '../../../core/api/errors';
+import { toAsciiDigits } from '../../../core/input/digits';
 import { errorView, type UiErrorView } from '../../../core/ui/view-state';
 
 /**
@@ -7,13 +8,6 @@ import { errorView, type UiErrorView } from '../../../core/ui/view-state';
  * Extended Arabic-Indic (Urdu keyboard) digits are converted to ASCII before sending.
  */
 const MAX_INPUT_LENGTH = 40;
-
-export function toAsciiDigits(input: string): string {
-  return input.replace(/[٠-٩۰-۹]/g, (d) => {
-    const code = d.charCodeAt(0);
-    return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
-  });
-}
 
 /** Removes the separators people type (spaces, dashes, dots, brackets). @internal exported for unit tests */
 export function cleanPhoneInput(raw: string): string {

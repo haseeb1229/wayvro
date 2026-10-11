@@ -62,4 +62,6 @@ export const QUERY_KEYS = {
   policies: (locale: 'en' | 'ur') => ['legal', 'policies', locale] as const,
   policyDocument: (policyKey: string, version: number, locale: 'en' | 'ur') => ['legal', 'policy', policyKey, version, locale] as const,
   agePolicy: ['legal', 'age-policy'] as const,
+  /** Driver/Partner application (P2.8); shared so the driver-policy acceptance can refresh it. */
+  driverApplication: ['driver', 'application'] as const,
 };

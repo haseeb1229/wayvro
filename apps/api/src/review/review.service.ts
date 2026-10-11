@@ -19,7 +19,7 @@ import { canTransition, type ApplicationState } from '../compliance/application-
 import { ageOn } from '../compliance/eligibility.js';
 import type { EvidenceSummaryPort } from '../compliance/onboarding.service.js';
 import { currentAgePolicy } from '../legal/age-policy.js';
-import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome } from '../platform/idempotency.js';
+import { failure, success, type IdempotencyStore, type IdempotentResult, type Outcome, type Refusal } from '../platform/idempotency.js';
 import { emitEvent } from '../platform/outbox.js';
 import type { StaffPermission } from '../staff/roles.js';
 import { citiesFor, hasRole, type StaffPrincipal } from '../staff/staff-session.js';
@@ -39,6 +39,8 @@ interface CaseRow {
   kind: 'INITIAL_APPLICATION' | 'RESUBMISSION' | 'APPEAL' | 'DOCUMENT_RENEWAL';
   status: 'OPEN' | 'CLAIMED' | 'ESCALATED' | 'DECIDED' | 'CANCELLED';
   driver_application_id: string | null;
+  driver_profile_id: string | null;
+  compliance_document_id: string | null;
   appeal_id: string | null;
   city_code: string;
   priority: number;
@@ -49,7 +51,17 @@ interface CaseRow {
   created_at: Date;
   version: number;
 }
-const CASE_COLUMNS = `id, kind, status, driver_application_id, appeal_id, city_code, priority, assigned_staff_id, lease_expires_at, escalated,
+interface RenewalSubject {
+  id: string;
+  status: string;
+  supersedes_id: string;
+  document_type_code: string;
+  profile_id: string;
+  account_id: string;
+  application_id: string;
+  application_state: ApplicationState;
+}
+const CASE_COLUMNS = `id, kind, status, driver_application_id, driver_profile_id, compliance_document_id, appeal_id, city_code, priority, assigned_staff_id, lease_expires_at, escalated,
   in_person_required, created_at, version`;
 
 export interface ReviewPolicy {
@@ -131,7 +143,9 @@ export class ReviewService {
       `select ${CASE_COLUMNS.split(',')
         .map((c) => `c.${c.trim()}`)
         .join(', ')},
-              (select count(*) from compliance.duplicate_signals s where s.subject_application_id = c.driver_application_id and s.status = 'OPEN') open_signals
+              (select count(*) from compliance.duplicate_signals s
+                where s.status = 'OPEN' and (s.subject_application_id = c.driver_application_id or s.subject_document_id = c.compliance_document_id
+                  or s.subject_document_id in (select d.id from compliance.compliance_documents d where d.driver_application_id = c.driver_application_id and d.status <> 'SUPERSEDED'))) open_signals
          from compliance.review_cases c
         where c.status in ('OPEN', 'CLAIMED', 'ESCALATED')
           and ($1::text[] is null or c.city_code = any($1::text[]))
@@ -177,6 +191,43 @@ export class ReviewService {
     return r.rows[0] ?? null;
   }
 
+  /** The application behind a case: its own, or the verified driver's application for a document renewal. */
+  private async applicationOf(q: Queryable, c: CaseRow): Promise<string | null> {
+    if (c.driver_application_id !== null) return c.driver_application_id;
+    if (c.driver_profile_id === null) return null;
+    return (
+      (await q.query<{ application_id: string }>(`select application_id from compliance.driver_profiles where id = $1`, [c.driver_profile_id])).rows[0]
+        ?.application_id ?? null
+    );
+  }
+
+  /** Evidence case scoping (CaseClaimPort): a live lease of `staffId` on an open case concerning the application. */
+  async holdsLiveClaim(staffId: string, applicationId: string): Promise<boolean> {
+    const r = await this.db.query(
+      `select 1 from compliance.review_cases c left join compliance.driver_profiles p on p.id = c.driver_profile_id
+        where (c.driver_application_id = $1 or p.application_id = $1) and c.status = 'CLAIMED' and c.assigned_staff_id = $2 and c.lease_expires_at > now()`,
+      [applicationId, staffId],
+    );
+    return (r.rowCount ?? 0) > 0;
+  }
+
+  /**
+   * Duplicate signals that concern a case: those of the application and its live documents, or — for a renewal — those
+   * of the renewed document's new number.
+   */
+  private async caseSignals(q: Queryable, c: CaseRow, applicationId: string, openOnly: boolean) {
+    const r = await q.query<{ id: string; signal: string; status: string; created_at: Date }>(
+      `select s.id, s.signal, s.status, s.created_at from compliance.duplicate_signals s
+        where ($3::boolean = false or s.status = 'OPEN')
+          and (case when $2::uuid is not null then s.subject_document_id = $2
+                    else (s.subject_application_id = $1 or s.subject_document_id in (
+                            select d.id from compliance.compliance_documents d where d.driver_application_id = $1 and d.status <> 'SUPERSEDED')) end)
+        order by s.created_at`,
+      [applicationId, c.kind === 'DOCUMENT_RENEWAL' ? c.compliance_document_id : null, openOnly],
+    );
+    return r.rows;
+  }
+
   private async accountOf(q: Queryable, applicationId: string | null): Promise<string | null> {
     if (applicationId === null) return null;
     return (
@@ -194,7 +245,7 @@ export class ReviewService {
         await this.deny(tx, staff, id, 'CITY_SCOPE');
         return failure('WAYVRO_E_FORBIDDEN');
       }
-      if (staff.consumerAccountId !== null && staff.consumerAccountId === (await this.accountOf(tx, c.driver_application_id))) {
+      if (staff.consumerAccountId !== null && staff.consumerAccountId === (await this.accountOf(tx, await this.applicationOf(tx, c)))) {
         await this.deny(tx, staff, id, 'CONFLICT_OF_INTEREST');
         return failure('WAYVRO_E_FORBIDDEN');
       }
@@ -270,8 +321,8 @@ export class ReviewService {
 
   private async detailIn(q: Queryable, staff: StaffPrincipal, id: string): Promise<unknown> {
     const c = await this.loadCase(q, id);
-    if (!c?.driver_application_id) throw new WayvroError('WAYVRO_E_NOT_FOUND');
-    const appId = c.driver_application_id;
+    const appId = c ? await this.applicationOf(q, c) : null;
+    if (!c || appId === null) throw new WayvroError('WAYVRO_E_NOT_FOUND');
     const app = (
       await q.query<{
         id: string;
@@ -347,10 +398,7 @@ export class ReviewService {
         [appId],
       )
     ).rows[0];
-    const signals = await q.query<{ id: string; signal: string; status: string; created_at: Date }>(
-      `select id, signal, status, created_at from compliance.duplicate_signals where subject_application_id = $1 order by created_at`,
-      [appId],
-    );
+    const signals = await this.caseSignals(q, c, appId, false);
     const decisions = await q.query<{
       id: string;
       decision: Decision;
@@ -363,7 +411,8 @@ export class ReviewService {
       `select d.id, d.decision, d.reason_codes, d.decided_at, d.decided_by_staff_id, d.requires_second_approval, s.outcome
          from compliance.review_decisions d join compliance.review_cases c on c.id = d.review_case_id
          left join compliance.review_second_approvals s on s.review_decision_id = d.id
-        where c.driver_application_id = $1 order by d.decided_at`,
+        where c.driver_application_id = $1 or c.driver_profile_id in (select p.id from compliance.driver_profiles p where p.application_id = $1)
+        order by d.decided_at`,
       [appId],
     );
     const appeal = c.appeal_id
@@ -385,6 +434,7 @@ export class ReviewService {
       escalated: c.escalated,
       inPersonRequired: c.in_person_required,
       leaseExpiresAt: c.lease_expires_at?.toISOString() ?? null,
+      subjectDocumentId: c.compliance_document_id,
       application: {
         id: app.id,
         state: app.state,
@@ -423,7 +473,7 @@ export class ReviewService {
         pixelHeight: e.pixelHeight,
       })),
       captureChallenge: challenge ? { challengeCode: challenge.challenge_code, status: challenge.status } : null,
-      duplicateSignals: signals.rows.map((s) => ({ id: s.id, signal: s.signal, status: s.status, createdAt: s.created_at.toISOString() })),
+      duplicateSignals: signals.map((s) => ({ id: s.id, signal: s.signal, status: s.status, createdAt: s.created_at.toISOString() })),
       decisions: decisions.rows.map((d) => ({
         id: d.id,
         decision: d.decision,
@@ -462,7 +512,7 @@ export class ReviewService {
     if (evidence === null) throw new WayvroError('WAYVRO_E_DEPENDENCY_UNAVAILABLE');
     return this.run(staff, 'review.decide', key, { caseId, ...input }, async (tx) => {
       const c = await this.loadCase(tx, caseId, true);
-      if (!c?.driver_application_id) return failure('WAYVRO_E_NOT_FOUND');
+      if (!c) return failure('WAYVRO_E_NOT_FOUND');
       if (!staff.permissions.has(DECISION_PERMISSION[input.decision])) {
         await this.deny(tx, staff, caseId, 'DECISION_NOT_PERMITTED');
         return failure('WAYVRO_E_FORBIDDEN');
@@ -473,6 +523,8 @@ export class ReviewService {
       }
       const leaseLive = c.status === 'CLAIMED' && c.assigned_staff_id === staff.staffId && (c.lease_expires_at?.getTime() ?? 0) > Date.now();
       if (!leaseLive || c.version !== input.expectedVersion) return failure('WAYVRO_E_CONFLICT');
+      if (c.kind === 'DOCUMENT_RENEWAL') return this.decideRenewal(tx, staff, c, input, evidence);
+      if (!c.driver_application_id) return failure('WAYVRO_E_NOT_FOUND');
       const app = (
         await tx.query<{
           id: string;
@@ -495,81 +547,23 @@ export class ReviewService {
       const available = new Set((await evidence.evidenceStates(app.id)).filter((e) => e.status === 'ACCEPTED').map((e) => e.evidenceId));
       const invalid = this.validate(input, available);
       if (invalid) return failure(invalid);
-      const openSignals = (
-        await tx.query<{ id: string }>(`select id from compliance.duplicate_signals where subject_application_id = $1 and status = 'OPEN'`, [app.id])
-      ).rows.map((r) => r.id);
-      const resolutions = new Map((input.signalResolutions ?? []).map((r) => [r.signalId, r.outcome]));
-      if ([...resolutions.keys()].some((s) => !openSignals.includes(s))) return failure('WAYVRO_E_VALIDATION');
-      let requiresSecond = false;
-      if (input.decision === 'APPROVE') {
-        if (app.legal_name_envelope === null || app.date_of_birth_envelope === null || app.cnic_envelope === null)
-          return failure('WAYVRO_E_CONFLICT', { reasonCodes: ['CLAIMS_INCOMPLETE'] });
-        if (openSignals.length > 0) {
-          // matrix: a KYC reviewer approves only without open duplicate signals; a senior must clear each and a second
-          // senior must approve
-          if (!hasRole(staff, 'KYC_SENIOR_REVIEWER') || !openSignals.every((s) => resolutions.get(s) === 'CLEARED')) {
-            await this.deny(tx, staff, caseId, 'OPEN_DUPLICATE_SIGNALS');
-            return failure('WAYVRO_E_FORBIDDEN');
-          }
-          requiresSecond = true;
-        }
-      }
-      const decisionId = uuidv7();
-      await tx.query(
-        `insert into compliance.review_decisions (id, review_case_id, decision, reason_codes, checklist, checklist_schema_version, identity_match_assessment,
-                                                  requires_second_approval, decided_by_staff_id, staff_session_id, break_glass_grant_id)
-         values ($1, $2, $3, $4, $5, 1, $6, $7, $8, $9, $10)`,
-        [
-          decisionId,
-          caseId,
-          input.decision,
-          [...input.reasonCodes],
-          JSON.stringify(input.checklist.items),
-          input.identityMatch ?? null,
-          requiresSecond,
-          staff.staffId,
-          staff.sessionId,
-          staff.breakGlassId,
-        ],
-      );
-      for (const e of new Set(input.evidenceIds)) {
-        await tx.query(`insert into compliance.review_decision_evidence (review_decision_id, evidence_object_id) values ($1, $2)`, [decisionId, e]);
-      }
-      if (input.decision === 'REJECT') {
-        for (const [signalId, outcome] of resolutions) {
-          await tx.query(
-            `update compliance.duplicate_signals set status = $2, resolved_at = now(), resolved_by_staff_id = $3 where id = $1 and status = 'OPEN'`,
-            [signalId, outcome, staff.staffId],
-          );
-        }
-      }
+      if (input.decision === 'APPROVE' && (app.legal_name_envelope === null || app.date_of_birth_envelope === null || app.cnic_envelope === null))
+        return failure('WAYVRO_E_CONFLICT', { reasonCodes: ['CLAIMS_INCOMPLETE'] });
+      const signals = await this.signalGate(tx, staff, c, app.id, input);
+      if (signals.kind === 'error') return signals;
+      const { requiresSecond, resolutions } = signals;
+      const decisionId = await this.recordDecision(tx, staff, caseId, input, requiresSecond);
+      if (input.decision === 'REJECT') await this.resolveSignals(tx, staff, resolutions);
       let caseStatus: 'OPEN' | 'ESCALATED' | 'DECIDED' = 'DECIDED';
       let appState: ApplicationState = app.state;
       switch (input.decision) {
         case 'ESCALATE':
-          caseStatus = 'ESCALATED';
-          await tx.query(
-            `update compliance.review_cases set status = 'ESCALATED', escalated = true, assigned_staff_id = null, lease_expires_at = null, priority = least(priority + 1, 9), version = version + 1 where id = $1`,
-            [caseId],
-          );
-          break;
         case 'REQUIRE_IN_PERSON':
-          caseStatus = 'OPEN';
-          await tx.query(
-            `update compliance.review_cases set status = 'OPEN', in_person_required = true, assigned_staff_id = null, lease_expires_at = null, version = version + 1 where id = $1`,
-            [caseId],
-          );
+          caseStatus = await this.requeue(tx, caseId, input.decision);
           break;
         case 'APPROVE':
-          if (requiresSecond) {
-            caseStatus = 'ESCALATED';
-            await tx.query(
-              `update compliance.review_cases set status = 'ESCALATED', escalated = true, assigned_staff_id = null, lease_expires_at = null, version = version + 1 where id = $1`,
-              [caseId],
-            );
-          } else {
-            appState = await this.finaliseApproval(tx, staff, c, app, decisionId, resolutions);
-          }
+          if (requiresSecond) caseStatus = await this.requeue(tx, caseId, 'AWAIT_SECOND_APPROVAL');
+          else appState = await this.finaliseApproval(tx, staff, c, app, decisionId, resolutions);
           break;
         default: {
           appState = input.decision === 'NEEDS_INFO' ? 'NEEDS_INFO' : 'REJECTED';
@@ -578,10 +572,7 @@ export class ReviewService {
             app.id,
             appState,
           ]);
-          await tx.query(
-            `update compliance.review_cases set status = 'DECIDED', decided_at = now(), assigned_staff_id = null, lease_expires_at = null, version = version + 1 where id = $1`,
-            [caseId],
-          );
+          await this.closeCase(tx, caseId);
         }
       }
       if (input.decision !== 'ESCALATE' && !requiresSecond) {
@@ -593,16 +584,203 @@ export class ReviewService {
           payload: { decision: input.decision, reasonCodes: [...input.reasonCodes] },
         });
       }
-      await appendAudit(tx, {
-        actor: { type: 'STAFF', id: staff.staffId },
-        action: staff.breakGlassId ? 'REVIEW_DECISION_RECORDED_BREAK_GLASS' : 'REVIEW_DECISION_RECORDED',
-        objectType: 'compliance.review_case',
-        objectId: caseId,
-        outcome: 'SUCCESS',
-        reasonCode: input.decision,
-      });
+      await this.auditDecision(tx, staff, caseId, input.decision);
       return success(201, { decisionId, caseStatus, applicationState: appState, pendingSecondApproval: requiresSecond });
     });
+  }
+
+  /**
+   * Open duplicate signals of the case (matrix): a KYC reviewer approves only without them; a senior must clear each and
+   * a SECOND senior must approve. Resolutions are accepted only for open signals of this case, on APPROVE/REJECT.
+   */
+  private async signalGate(
+    tx: pg.PoolClient,
+    staff: StaffPrincipal,
+    c: CaseRow,
+    applicationId: string,
+    input: DecisionInput,
+  ): Promise<{ readonly kind: 'gate'; readonly requiresSecond: boolean; readonly resolutions: ReadonlyMap<string, 'CLEARED' | 'CONFIRMED_FRAUD'> } | Refusal> {
+    const openSignals = (await this.caseSignals(tx, c, applicationId, true)).map((r) => r.id);
+    const resolutions = new Map((input.signalResolutions ?? []).map((r) => [r.signalId, r.outcome]));
+    if ([...resolutions.keys()].some((s) => !openSignals.includes(s))) return failure('WAYVRO_E_VALIDATION');
+    if (input.decision !== 'APPROVE' || openSignals.length === 0) return { kind: 'gate', requiresSecond: false, resolutions };
+    if (!hasRole(staff, 'KYC_SENIOR_REVIEWER') || !openSignals.every((s) => resolutions.get(s) === 'CLEARED')) {
+      await this.deny(tx, staff, c.id, 'OPEN_DUPLICATE_SIGNALS');
+      return failure('WAYVRO_E_FORBIDDEN');
+    }
+    return { kind: 'gate', requiresSecond: true, resolutions };
+  }
+
+  private async recordDecision(tx: pg.PoolClient, staff: StaffPrincipal, caseId: string, input: DecisionInput, requiresSecond: boolean): Promise<string> {
+    const decisionId = uuidv7();
+    await tx.query(
+      `insert into compliance.review_decisions (id, review_case_id, decision, reason_codes, checklist, checklist_schema_version, identity_match_assessment,
+                                                requires_second_approval, decided_by_staff_id, staff_session_id, break_glass_grant_id)
+       values ($1, $2, $3, $4, $5, 1, $6, $7, $8, $9, $10)`,
+      [
+        decisionId,
+        caseId,
+        input.decision,
+        [...input.reasonCodes],
+        JSON.stringify(input.checklist.items),
+        input.identityMatch ?? null,
+        requiresSecond,
+        staff.staffId,
+        staff.sessionId,
+        staff.breakGlassId,
+      ],
+    );
+    for (const e of new Set(input.evidenceIds)) {
+      await tx.query(`insert into compliance.review_decision_evidence (review_decision_id, evidence_object_id) values ($1, $2)`, [decisionId, e]);
+    }
+    return decisionId;
+  }
+
+  private async resolveSignals(tx: pg.PoolClient, staff: StaffPrincipal, resolutions: ReadonlyMap<string, 'CLEARED' | 'CONFIRMED_FRAUD'>): Promise<void> {
+    for (const [signalId, outcome] of resolutions) {
+      await tx.query(`update compliance.duplicate_signals set status = $2, resolved_at = now(), resolved_by_staff_id = $3 where id = $1 and status = 'OPEN'`, [
+        signalId,
+        outcome,
+        staff.staffId,
+      ]);
+    }
+  }
+
+  /** Back to the queue without a final decision: escalated (also while awaiting a second approver) or in-person. */
+  private async requeue(tx: pg.PoolClient, caseId: string, why: 'ESCALATE' | 'REQUIRE_IN_PERSON' | 'AWAIT_SECOND_APPROVAL'): Promise<'OPEN' | 'ESCALATED'> {
+    if (why === 'REQUIRE_IN_PERSON') {
+      await tx.query(
+        `update compliance.review_cases set status = 'OPEN', in_person_required = true, assigned_staff_id = null, lease_expires_at = null, version = version + 1 where id = $1`,
+        [caseId],
+      );
+      return 'OPEN';
+    }
+    await tx.query(
+      `update compliance.review_cases set status = 'ESCALATED', escalated = true, assigned_staff_id = null, lease_expires_at = null,
+              priority = case when $2 then least(priority + 1, 9) else priority end, version = version + 1 where id = $1`,
+      [caseId, why === 'ESCALATE'],
+    );
+    return 'ESCALATED';
+  }
+
+  private async closeCase(tx: pg.PoolClient, caseId: string): Promise<void> {
+    await tx.query(
+      `update compliance.review_cases set status = 'DECIDED', decided_at = now(), assigned_staff_id = null, lease_expires_at = null, version = version + 1 where id = $1`,
+      [caseId],
+    );
+  }
+
+  private async auditDecision(tx: pg.PoolClient, staff: StaffPrincipal, caseId: string, decision: Decision): Promise<void> {
+    await appendAudit(tx, {
+      actor: { type: 'STAFF', id: staff.staffId },
+      action: staff.breakGlassId ? 'REVIEW_DECISION_RECORDED_BREAK_GLASS' : 'REVIEW_DECISION_RECORDED',
+      objectType: 'compliance.review_case',
+      objectId: caseId,
+      outcome: 'SUCCESS',
+      reasonCode: decision,
+    });
+  }
+
+  /** The renewal document of a DOCUMENT_RENEWAL case with its driver (document and profile locked). */
+  private async renewalSubject(tx: pg.PoolClient, c: CaseRow): Promise<RenewalSubject | null> {
+    const r = await tx.query<RenewalSubject>(
+      `select d.id, d.status, d.supersedes_id, d.document_type_code, p.id profile_id, p.account_id, p.application_id, a.state application_state
+         from compliance.compliance_documents d
+         join compliance.driver_profiles p on p.id = $2
+         join compliance.driver_applications a on a.id = p.application_id
+        where d.id = $1 and d.driver_application_id = p.application_id and d.supersedes_id is not null
+        for no key update of d, p`,
+      [c.compliance_document_id, c.driver_profile_id],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  /**
+   * DOCUMENT_RENEWAL (D03/R02–R06): APPROVE makes the renewal VALID with the reviewer-confirmed dates and supersedes the
+   * renewed document; NEEDS_INFO and REJECT close the renewal as REJECTED (the driver starts a new one; the renewed
+   * document is untouched). The decision must rely on evidence of the renewal itself. The application is not touched.
+   */
+  private async decideRenewal(tx: pg.PoolClient, staff: StaffPrincipal, c: CaseRow, input: DecisionInput, evidence: EvidenceSummaryPort): Promise<Outcome> {
+    const subject = await this.renewalSubject(tx, c);
+    if (!subject) return failure('WAYVRO_E_NOT_FOUND');
+    if (staff.consumerAccountId !== null && staff.consumerAccountId === subject.account_id) {
+      await this.deny(tx, staff, c.id, 'CONFLICT_OF_INTEREST');
+      return failure('WAYVRO_E_FORBIDDEN');
+    }
+    if (subject.status !== 'SUBMITTED') return failure('WAYVRO_E_CONFLICT');
+    const accepted = (await evidence.evidenceStates(subject.application_id)).filter((e) => e.status === 'ACCEPTED');
+    const invalid = this.validate(input, new Set(accepted.map((e) => e.evidenceId)));
+    if (invalid) return failure(invalid);
+    const renewalEvidence = new Set(accepted.filter((e) => e.documentId === subject.id).map((e) => e.evidenceId));
+    if (input.decision === 'APPROVE' && !input.evidenceIds.some((e) => renewalEvidence.has(e))) return failure('WAYVRO_E_VALIDATION');
+    const signals = await this.signalGate(tx, staff, c, subject.application_id, input);
+    if (signals.kind === 'error') return signals;
+    const { requiresSecond, resolutions } = signals;
+    const decisionId = await this.recordDecision(tx, staff, c.id, input, requiresSecond);
+    if (input.decision === 'REJECT') await this.resolveSignals(tx, staff, resolutions);
+    let caseStatus: 'OPEN' | 'ESCALATED' | 'DECIDED' = 'DECIDED';
+    switch (input.decision) {
+      case 'ESCALATE':
+      case 'REQUIRE_IN_PERSON':
+        caseStatus = await this.requeue(tx, c.id, input.decision);
+        break;
+      case 'APPROVE':
+        if (requiresSecond) caseStatus = await this.requeue(tx, c.id, 'AWAIT_SECOND_APPROVAL');
+        else await this.finaliseRenewal(tx, staff, c, subject, resolutions);
+        break;
+      default:
+        await tx.query(`update compliance.compliance_documents set status = 'REJECTED', version = version + 1 where id = $1`, [subject.id]);
+        await this.closeCase(tx, c.id);
+    }
+    if (input.decision !== 'ESCALATE' && !requiresSecond) await this.emitRenewalDecided(tx, subject, input.decision, input.reasonCodes);
+    await this.auditDecision(tx, staff, c.id, input.decision);
+    return success(201, { decisionId, caseStatus, applicationState: subject.application_state, pendingSecondApproval: requiresSecond });
+  }
+
+  private async emitRenewalDecided(tx: pg.PoolClient, subject: RenewalSubject, decision: Decision, reasonCodes: readonly string[]): Promise<void> {
+    await emitEvent(tx, {
+      type: 'driver.document.decided.v1',
+      aggregateType: 'compliance.compliance_document',
+      aggregateId: subject.id,
+      accountId: subject.account_id,
+      payload: { decision, documentType: subject.document_type_code, reasonCodes: [...reasonCodes] },
+    });
+  }
+
+  /**
+   * Renewal approved: the new document becomes VALID (claimed dates become confirmed values) and the renewed one
+   * SUPERSEDED; a driver held EXPIRED returns to ACTIVE_ELIGIBLE (VERIFIED without a granted capability) once no
+   * mandatory document of the pinned requirement set is still expired. Capabilities are untouched.
+   */
+  private async finaliseRenewal(
+    tx: pg.PoolClient,
+    staff: StaffPrincipal,
+    c: CaseRow,
+    subject: RenewalSubject,
+    resolutions: ReadonlyMap<string, 'CLEARED' | 'CONFIRMED_FRAUD'>,
+  ): Promise<void> {
+    await tx.query(`update compliance.compliance_documents set status = 'SUPERSEDED', version = version + 1 where id = $1 and status in ('VALID', 'EXPIRED')`, [
+      subject.supersedes_id,
+    ]);
+    await tx.query(
+      `update compliance.compliance_documents set status = 'VALID', issued_on = claimed_issued_on, expires_on = claimed_expires_on, version = version + 1 where id = $1`,
+      [subject.id],
+    );
+    await this.resolveSignals(tx, staff, resolutions);
+    await tx.query(
+      `update compliance.driver_profiles p
+          set state = case when exists (select 1 from compliance.service_capabilities s where s.driver_profile_id = p.id and s.status = 'GRANTED')
+                           then 'ACTIVE_ELIGIBLE' else 'VERIFIED' end,
+              version = version + 1
+        where p.id = $1 and p.state = 'EXPIRED'
+          and not exists (
+            select 1 from compliance.compliance_documents d
+              join compliance.driver_applications a on a.id = d.driver_application_id
+              join compliance.requirement_set_items i on i.requirement_set_id = a.requirement_set_id and i.document_type_code = d.document_type_code
+             where a.id = p.application_id and d.status = 'EXPIRED' and i.mandatory)`,
+      [subject.profile_id],
+    );
+    await this.closeCase(tx, c.id);
   }
 
   async secondApproval(staff: StaffPrincipal, decisionId: string, outcome: 'APPROVED' | 'REJECTED', key: string): Promise<IdempotentResult> {
@@ -617,49 +795,24 @@ export class ReviewService {
       if (!d) return failure('WAYVRO_E_NOT_FOUND');
       if (!d.requires_second_approval || d.done) return failure('WAYVRO_E_CONFLICT');
       const c = await this.loadCase(tx, d.review_case_id, true);
-      if (!c?.driver_application_id) return failure('WAYVRO_E_NOT_FOUND');
+      if (!c) return failure('WAYVRO_E_NOT_FOUND');
       if (d.decided_by_staff_id === staff.staffId || !this.inScope(staff, 'kyc.decision.second_approve', c.city_code)) {
         await this.deny(tx, staff, c.id, d.decided_by_staff_id === staff.staffId ? 'MAKER_CHECKER' : 'CITY_SCOPE');
         return failure('WAYVRO_E_FORBIDDEN');
       }
-      const app = (
-        await tx.query<{
-          id: string;
-          account_id: string;
-          state: ApplicationState;
-          legal_name_envelope: Buffer | null;
-          date_of_birth_envelope: Buffer | null;
-          cnic_envelope: Buffer | null;
-        }>(
-          `select id, account_id, state, legal_name_envelope, date_of_birth_envelope, cnic_envelope from compliance.driver_applications where id = $1 for no key update`,
-          [c.driver_application_id],
-        )
-      ).rows[0];
-      if (!app || app.state !== 'MANUAL_REVIEW') return failure('WAYVRO_E_CONFLICT');
-      if (staff.consumerAccountId !== null && staff.consumerAccountId === app.account_id) {
-        await this.deny(tx, staff, c.id, 'CONFLICT_OF_INTEREST');
-        return failure('WAYVRO_E_FORBIDDEN');
-      }
-      await tx.query(
-        `insert into compliance.review_second_approvals (review_decision_id, decided_by_staff_id, approver_staff_id, approver_session_id, outcome) values ($1, $2, $3, $4, $5)`,
-        [decisionId, d.decided_by_staff_id, staff.staffId, staff.sessionId, outcome],
-      );
-      let appState: ApplicationState = app.state;
-      let caseStatus: 'OPEN' | 'DECIDED' = 'OPEN';
-      if (outcome === 'APPROVED') {
-        const open = await tx.query<{ id: string }>(`select id from compliance.duplicate_signals where subject_application_id = $1 and status = 'OPEN'`, [
-          app.id,
-        ]);
-        appState = await this.finaliseApproval(tx, staff, c, app, decisionId, new Map(open.rows.map((r) => [r.id, 'CLEARED' as const])));
-        caseStatus = 'DECIDED';
-        await emitEvent(tx, {
-          type: 'driver.application.decided.v1',
-          aggregateType: 'compliance.driver_application',
-          aggregateId: app.id,
-          accountId: app.account_id,
-          payload: { decision: 'APPROVE', reasonCodes: ['ALL_CHECKS_CONFIRMED'] },
-        });
-      } else {
+      // recorded after the per-kind checks (a failure outcome commits) and before the approval takes effect
+      const record = async (): Promise<void> => {
+        await tx.query(
+          `insert into compliance.review_second_approvals (review_decision_id, decided_by_staff_id, approver_staff_id, approver_session_id, outcome) values ($1, $2, $3, $4, $5)`,
+          [decisionId, d.decided_by_staff_id, staff.staffId, staff.sessionId, outcome],
+        );
+      };
+      const result =
+        c.kind === 'DOCUMENT_RENEWAL'
+          ? await this.secondApproveRenewal(tx, staff, c, outcome, record)
+          : await this.secondApproveApplication(tx, staff, c, decisionId, outcome, record);
+      if (result.kind === 'error') return result;
+      if (outcome === 'REJECTED') {
         // the approval does not take effect: the case goes back to the queue for a fresh review
         await tx.query(
           `update compliance.review_cases set status = 'OPEN', assigned_staff_id = null, lease_expires_at = null, version = version + 1 where id = $1`,
@@ -674,8 +827,75 @@ export class ReviewService {
         outcome: 'SUCCESS',
         reasonCode: outcome,
       });
-      return success(200, { decisionId, caseStatus, applicationState: appState, pendingSecondApproval: false });
+      return success(200, {
+        decisionId,
+        caseStatus: outcome === 'APPROVED' ? 'DECIDED' : 'OPEN',
+        applicationState: result.applicationState,
+        pendingSecondApproval: false,
+      });
     });
+  }
+
+  private async secondApproveApplication(
+    tx: pg.PoolClient,
+    staff: StaffPrincipal,
+    c: CaseRow,
+    decisionId: string,
+    outcome: 'APPROVED' | 'REJECTED',
+    record: () => Promise<void>,
+  ): Promise<{ readonly kind: 'ok'; readonly applicationState: ApplicationState } | Refusal> {
+    const app = (
+      await tx.query<{
+        id: string;
+        account_id: string;
+        state: ApplicationState;
+        legal_name_envelope: Buffer | null;
+        date_of_birth_envelope: Buffer | null;
+        cnic_envelope: Buffer | null;
+      }>(
+        `select id, account_id, state, legal_name_envelope, date_of_birth_envelope, cnic_envelope from compliance.driver_applications where id = $1 for no key update`,
+        [c.driver_application_id],
+      )
+    ).rows[0];
+    if (!app || app.state !== 'MANUAL_REVIEW') return failure('WAYVRO_E_CONFLICT');
+    if (staff.consumerAccountId !== null && staff.consumerAccountId === app.account_id) {
+      await this.deny(tx, staff, c.id, 'CONFLICT_OF_INTEREST');
+      return failure('WAYVRO_E_FORBIDDEN');
+    }
+    await record();
+    if (outcome === 'REJECTED') return { kind: 'ok', applicationState: app.state };
+    const open = await this.caseSignals(tx, c, app.id, true);
+    const state = await this.finaliseApproval(tx, staff, c, app, decisionId, new Map(open.map((r) => [r.id, 'CLEARED' as const])));
+    await emitEvent(tx, {
+      type: 'driver.application.decided.v1',
+      aggregateType: 'compliance.driver_application',
+      aggregateId: app.id,
+      accountId: app.account_id,
+      payload: { decision: 'APPROVE', reasonCodes: ['ALL_CHECKS_CONFIRMED'] },
+    });
+    return { kind: 'ok', applicationState: state };
+  }
+
+  private async secondApproveRenewal(
+    tx: pg.PoolClient,
+    staff: StaffPrincipal,
+    c: CaseRow,
+    outcome: 'APPROVED' | 'REJECTED',
+    record: () => Promise<void>,
+  ): Promise<{ readonly kind: 'ok'; readonly applicationState: string } | Refusal> {
+    const subject = await this.renewalSubject(tx, c);
+    if (!subject || subject.status !== 'SUBMITTED') return failure('WAYVRO_E_CONFLICT');
+    if (staff.consumerAccountId !== null && staff.consumerAccountId === subject.account_id) {
+      await this.deny(tx, staff, c.id, 'CONFLICT_OF_INTEREST');
+      return failure('WAYVRO_E_FORBIDDEN');
+    }
+    await record();
+    if (outcome === 'APPROVED') {
+      const open = await this.caseSignals(tx, c, subject.application_id, true);
+      await this.finaliseRenewal(tx, staff, c, subject, new Map(open.map((r) => [r.id, 'CLEARED' as const])));
+      await this.emitRenewalDecided(tx, subject, 'APPROVE', ['ALL_CHECKS_CONFIRMED']);
+    }
+    return { kind: 'ok', applicationState: subject.application_state };
   }
 
   /**

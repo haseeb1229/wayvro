@@ -55,6 +55,12 @@ export async function createAppServices(baseUrl: string, appVersion: string | un
   session.onWipe(() => {
     signInFlow.reset();
   });
+  // P2.8 (Q01): Driver/Partner evidence photos still on the phone and the upload queue metadata. The module is loaded
+  // only when a wipe runs, so riders never evaluate the Driver/Partner code at start-up.
+  session.onWipe(async () => {
+    const { wipeEvidence } = await import('../../features/driver/upload/runner-registry');
+    await wipeEvidence(store);
+  });
   await session.load();
 
   const client = createWayvroClient({ http, session, intents, installationId, device: deviceInfo(appVersion), fingerprint: sha256Hex });

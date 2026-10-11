@@ -15,7 +15,8 @@ The P2.1 record (`PHASE2_P2_1_IMPLEMENTATION_RECORD.md`) remains the record for 
 
 | CI fixes | `d49a2ae`, `86bd13a` | osv runtime exception (decode-uri-component, expires 2026-12-31); Android job builds the workspace packages the app imports. **CI run 38097638550 on `86bd13a`: all five jobs green** (quality, integration, security, Android, web E2E) |
 | P2.6 | `c42c2eb` | evidence vault, upload pipeline, isolated sanitiser, ClamAV, staff evidence views (ADR-041). **CI run 38101743619: all five jobs green** |
-| P2.7 | (this commit) | manual review, decisions, second approvals, appeals, expiry monitoring, outbox relay + first consumer, reviewer UI |
+| P2.7 | `4dd5a39` | manual review, decisions, second approvals, appeals, expiry monitoring, outbox relay + first consumer, reviewer UI. **CI run 38124807942: all five jobs green** |
+| P2.8 | (this commit) | Driver/Partner onboarding in the ONE app (camera, controlled import, upload queue, checklist, status, compliance view), document renewal end to end, evidence discard crypto-shredding fix |
 
 Intermediate checkpoint commits are not individually CI-verified. CI runs on the pushed HEAD.
 
@@ -235,3 +236,54 @@ Intermediate checkpoint commits are not individually CI-verified. CI runs on the
 - real reviewers and the in-person centre (EG-20);
 - two-reviewer calibration sampling (operations process, proposal only);
 - push notifications for decisions (Phase 4; the realtime hint covers connected apps).
+
+## P2.8 — Driver/Partner onboarding in the ONE app, and document renewal
+
+**IDs:** V03, V01, D01–D04 (UI), K02/K03 (capture), K05/K14 (explanations, dispute, correction), Q01 (capture cleanup); renewal end to end for D03/R02–R06 (backend completing P2.7's DOCUMENT_RENEWAL case kind).
+
+The mobile slice was built in parallel by a delegated agent inside `apps/wayvro-mobile/**` and `infra/ci/android/permission-allowlist.json` only, then reviewed and gated here. The renewal backend, the contract additions and the reviewer UI change were built here.
+
+| Area | Implementation |
+|---|---|
+| Entry and lazy loading | "Earn with Wayvro" only when the server reports `onboardingAvailable`; a verified driver always sees the Driver/Partner entry. Every driver screen is a dynamic import; camera, picker and file-system code lives only under `src/features/driver/` (architecture test). Core reaches the driver module only through a dynamic import in the sign-out wipe |
+| Flow | K14 explanation first → DRIVER_PARTNER_AGREEMENT and BIOMETRIC_KYC_NOTICE through the existing policy screen (driver scope) → consent → claims (name, CNIC format check on device only, DOB, vehicle, document claims; `expectedVersion` + intent-based idempotency keys) → checklist (placeholder set labelled) → submission (refusals listed item by item) → status screens for every application state and decision, appeal form, in-person-pending status |
+| Capture | camera permission only after the user taps "Allow camera" on the capture screen; selfie front camera only, no import; optional accessible challenge with neutral "I can't do this one" / "None of these work for me"; camera denied → documents through the system Photo Picker (no media permission), selfie → in-person explanation (marked not available yet). Type checked from the first bytes (JPEG/PNG), > 10 MB refused; no on-device re-encode (no image-manipulation dependency) |
+| Upload queue | pure state machine, bounded retry/backoff and processing polls; signed URL in memory only (after a restart the item asks the server before requesting a new slot); queue metadata — never bytes or URLs — in secure storage; direct PUT with exactly the signed headers and no auth header; one private cache folder, files deleted on server confirmation, discard, application close/withdrawal, sign-out/expiry and by an orphan sweep at start |
+| Compliance view | blockers in plain words, documents with expiry and renewal state, restrictions with appeal where allowed |
+| Renewal (backend) | `POST /v1/driver/documents/{documentId}/renewals` creates a NEW document row (`supersedes_id` → the renewed one) for a VALID or EXPIRED expiring document of a verified driver; one open renewal per document; new numbers are indexed and raise DOCUMENT_NUMBER_MATCH signals. Evidence goes through the normal upload slots of the verified application. `POST …/{renewalDocumentId}/renewal-submission` requires every evidence kind ACCEPTED (409 `MISSING_EVIDENCE_<KIND>` / `EVIDENCE_PROCESSING`) and opens a `DOCUMENT_RENEWAL` case. The compliance view attaches the renewal (`DRAFT`/`IN_REVIEW`/`REJECTED` + evidence kinds) to the document it renews |
+| Renewal (review) | the case resolves its application through the driver profile; APPROVE must rely on evidence of the renewal itself and makes it VALID with the reviewer-confirmed dates, the renewed document SUPERSEDED, and an EXPIRED profile ACTIVE_ELIGIBLE (VERIFIED without a granted capability) once no mandatory document is still expired. NEEDS_INFO/REJECT close the renewal as REJECTED and leave the renewed document untouched; a new renewal may follow. Duplicate signals on the new number follow the senior + second-approver rule. Outbox `driver.document.decided.v1`. web-ops marks the document under review |
+| Evidence views | KYC-reviewer case scoping now asks the review module (`holdsLiveClaim`, every case kind including renewals) instead of a vault-pool query, so no grant change was needed |
+| Contracts (additive) | `DocumentRenewalRequest`/`DocumentRenewal`, two routes; `ReviewCaseDetail.subjectDocumentId`; `RequirementChecklist.items[].hasNumber/hasExpiry`; `DriverCompliance.applicationId`, `documents[].hasNumber/hasExpiry/renewal`. The app derives claim fields from these (the only presentational exception: the CNIC number lives in "Your details"); it no longer mirrors the server's document catalogue |
+| Copy | about 360 driver strings in en, ur and ur-Latn with identical keys (Urdu pending native review). Tests forbid NADRA, liveness, biometric, KYC, "verified identity", "approved automatically", gender and age-like numbers |
+| Dependencies / Android | expo-camera 57.0.6, expo-image-picker 57.0.20, expo-file-system 57.0.7 (declared); barcode scanning compiled out; CAMERA allowlisted (K02/K03/V03), media permissions blocked and forbidden — details and measurements in ADR-043 §P2.8 |
+
+**Fixes and changes to earlier checkpoints (found here):**
+- **Evidence discard of an ACCEPTED object returned 500 (P2.6 bug):** the `AVAILABLE ⇔ sealed facts` CHECK made it impossible. A discard now also destroys the wrapped DEK (crypto-shredding), so the object is unreadable even before its storage deletion. Regression test in `renewal.integration.test.ts`.
+- **Duplicate signals per case (P2.7 behaviour change):** a case's signals now include DOCUMENT_NUMBER_MATCH signals on the application's live documents (and, for a renewal, on the renewed number), not only application-level signals. An approval with such a signal now needs the senior + second-approver path; before, it was ignored.
+- `failure()` is typed as a `Refusal` (subtype of `Outcome`) so helpers can return a refusal or their own result; no behaviour change.
+
+**Deviations / limitations (recorded for review):**
+- **Renewal rejections are not appealable** (the appeal route resolves decisions through applications); the driver starts a new renewal. The app offers no appeal for them.
+- **Restriction appeals in the app** are reachable from the Driver/Partner screens only; the rider home still says appeals can't be submitted in this version (accurate there). A rider-side entry is an open item for P2.9 hardening (V13).
+- **Per-district documents** (optional ROUTE_PERMIT) cannot be claimed from the app: no district list in the contract yet.
+- **Unused vault grant:** `wayvro_vault` still has SELECT on review-case assignment columns that no code reads any more; to be revoked in migration 0007 (P2.9).
+- **CAMERA allowlist change** needs founder review (CLAUDE.md §9).
+
+**Evidence (local gates on the P2.8 tree):**
+
+| Suite | Result |
+|---|---|
+| `apps/api/test/renewal.integration.test.ts` (start/validation/one open renewal; evidence required; discard of an ACCEPTED object crypto-shredded; submission → DOCUMENT_RENEWAL case; reviewer evidence view through the claimed renewal case; APPROVE needs renewal evidence, supersedes, lifts EXPIRED; REJECT → restart; duplicate number → senior + second approver) | 4 PASS |
+| API integration suite (all files, coverage thresholds) | 17 files, 144 PASS |
+| Integration gate (throwaway DB, migrate twice — second run 0 applied, every package's integration suite, boot smoke) | PASS |
+| Quality gate (format, build, lint, typecheck, depcruise, knip, syncpack, flags, unit tests, coverage, openapi check, phase0 coverage, manifest) | PASS (openapi check after staging the regenerated spec; manifest after regeneration) |
+| Mobile: typecheck, unit tests, ESLint `--max-warnings=0`, Prettier, depcruise, knip | PASS; 28 files, 211 tests (P2.3: 18 files, 124) |
+| Android release build (`scripts/android-build.mjs release`, delegated agent) | BUILD SUCCESSFUL; 16 KB PASS, ABIs arm64-v8a + armeabi-v7a, permission gate PASS (CAMERA, INTERNET, AndroidX dynamic receiver). Run before the final field-hint follow-up (JS only, no native change); CI rebuilds it |
+| Artifact isolation (`--negative-controls`) | 39/39 PASS |
+| Web E2E (web-public + web-ops, `WAYVRO_E2E_OPS=1`) | 22/22 PASS |
+| gitleaks (history + staged changes) / osv-scanner | no leaks / no issues (documented exceptions only) |
+
+**Not run / external:**
+- **No device or emulator:** camera and permission prompts, the Photo Picker, the PUT upload, file deletion, lazy route loading at runtime, RTL, dynamic type, screen readers — all NOT RUN; no iOS build; no cross-mode regression on a device.
+- No end-to-end run of the app against the real API and vault.
+- Urdu and Roman-Urdu copy pending native review; real reviewers and the in-person route (EG-20).

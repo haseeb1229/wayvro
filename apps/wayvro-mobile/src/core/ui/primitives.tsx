@@ -117,7 +117,7 @@ export function TextField(
     readonly onChangeText: (value: string) => void;
     readonly hint?: string;
     readonly error?: string | null;
-  } & Pick<TextInputProps, 'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus'>,
+  } & Pick<TextInputProps, 'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline'>,
 ) {
   const dir = useDirection();
   const { label, hint, error, value, onChangeText, ...inputProps } = props;
@@ -131,7 +131,14 @@ export function TextField(
         onChangeText={onChangeText}
         accessibilityLabel={label}
         accessibilityHint={describedBy === '' ? undefined : describedBy}
-        style={[styles.input, dir.text, error ? styles.inputError : undefined, props.editable === false ? styles.inputDisabled : undefined]}
+        style={[
+          styles.input,
+          dir.text,
+          props.multiline === true ? styles.inputMultiline : undefined,
+          error ? styles.inputError : undefined,
+          props.editable === false ? styles.inputDisabled : undefined,
+        ]}
+        textAlignVertical={props.multiline === true ? 'top' : 'center'}
         placeholderTextColor={colors.textMuted}
       />
       {hint === undefined ? null : <Text style={[styles.caption, styles.muted, dir.text]}>{hint}</Text>}
@@ -287,6 +294,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.background,
   },
+  inputMultiline: { minHeight: MIN_TOUCH_TARGET * 3, paddingVertical: spacing.sm, fontSize: 16 },
   inputError: { borderColor: colors.danger },
   inputDisabled: { backgroundColor: colors.surface, color: colors.textMuted },
   errorText: { color: colors.danger },

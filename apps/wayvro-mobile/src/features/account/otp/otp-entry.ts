@@ -1,7 +1,7 @@
 import type { OtpChallenge } from '@wayvro/contracts';
 import { toApiError } from '../../../core/api/errors';
 import { errorView, type UiErrorView } from '../../../core/ui/view-state';
-import { toAsciiDigits } from '../phone/phone-entry';
+import { toAsciiDigits } from '../../../core/input/digits';
 
 /**
  * OTP entry (A02/A03 UI). Countdowns use the server's timestamps corrected by the server-clock offset observed on API

@@ -147,6 +147,8 @@ export const STRINGS = {
     dob: 'Date of birth',
     ageCheck: 'Age check',
     placeholderSet: 'PLACEHOLDER requirement set — not the Punjab legal matrix (EG-03/EG-04)',
+    renewalSubject: 'Renewal under review — compare with the document it renews',
+    renewalMarker: 'renewal under review',
     documents: 'Documents',
     vehicles: 'Vehicles',
     evidence: 'Evidence (shown one at a time, for a recorded reason)',

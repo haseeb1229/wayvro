@@ -6,7 +6,7 @@ import { CATALOGUE } from '../../core/i18n/strings';
 import { accountState, IDS, policyList } from '../../__mocks__/fixtures';
 import { viewStateFromQuery } from '../../core/ui/view-state';
 import { legalListModel } from './legal/legal';
-import { homeModel } from './home/home';
+import { driverEntry, homeModel } from './home/home';
 import { riderRestrictionNotices } from './home/restrictions';
 import { buildProfileUpdate, draftFrom } from './profile/profile-edit';
 import { securityEventsModel } from './security/security-activity';
@@ -176,5 +176,26 @@ describe('restriction messaging (V13)', () => {
 
   it('has copy for every reason class in every locale', () => {
     for (const reasonClass of REASON_CLASS_VALUES) for (const locale of LOCALES) expect(CATALOGUE[locale][`restriction.class.${reasonClass}`]).toBeTruthy();
+  });
+});
+
+describe('home — Driver/Partner entry (P2.8, one app)', () => {
+  const driver = (overrides: Partial<AccountState['driver']>): AccountState['driver'] => ({
+    application: null,
+    profile: null,
+    onboardingAvailable: false,
+    ...overrides,
+  });
+
+  it('offers "Earn with Wayvro" only when the server says onboarding is available', () => {
+    expect(driverEntry(driver({}))).toBeNull();
+    expect(driverEntry(driver({ onboardingAvailable: true }))).toBe('apply');
+    expect(driverEntry(driver({ onboardingAvailable: true, application: { id: IDS.account, state: 'DRAFT' } }))).toBe('driver');
+    expect(driverEntry(driver({ application: { id: IDS.account, state: 'DRAFT' } }))).toBeNull();
+  });
+
+  it('a verified driver always reaches the Driver/Partner area', () => {
+    expect(driverEntry(driver({ profile: { id: IDS.account, state: 'VERIFIED' } }))).toBe('driver');
+    expect(homeModel(accountState()).driverEntry).toBeNull();
   });
 });

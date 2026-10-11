@@ -6,7 +6,12 @@
 import { uuidv7, type Queryable } from '@wayvro/server-runtime';
 
 type OutboxEventType =
-  'driver.application.submitted.v1' | 'driver.application.decided.v1' | 'driver.approved.v1' | 'restriction.changed.v1' | 'appeal.decided.v1';
+  | 'driver.application.submitted.v1'
+  | 'driver.application.decided.v1'
+  | 'driver.approved.v1'
+  | 'driver.document.decided.v1'
+  | 'restriction.changed.v1'
+  | 'appeal.decided.v1';
 
 export interface OutboxEventInput {
   readonly type: OutboxEventType;

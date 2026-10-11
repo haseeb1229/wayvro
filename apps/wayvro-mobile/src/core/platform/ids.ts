@@ -6,7 +6,7 @@ export type RandomBytes = (byteCount: number) => Uint8Array;
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
-/** RFC 4648 §5 base64url without padding. @internal exported for unit tests */
+/** RFC 4648 §5 base64url without padding. */
 export function base64Url(bytes: Uint8Array): string {
   let out = '';
   let i = 0;

@@ -481,6 +481,7 @@ export function ReviewCase({ caseId, viewer, canSecondApprove }: { readonly case
         </p>
       ) : null}
       {c.requirementSet?.isPlaceholder ? <p role="note">{R.placeholderSet}</p> : null}
+      {c.subjectDocumentId ? <p role="note">{R.renewalSubject}</p> : null}
       <h3>{R.claims}</h3>
       <dl>
         <dt>{R.legalName}</dt>
@@ -500,6 +501,7 @@ export function ReviewCase({ caseId, viewer, canSecondApprove }: { readonly case
             {d.numberLast4 ? ` · …${d.numberLast4}` : ''}
             {d.licenceClass ? ` · ${d.licenceClass}` : ''}
             {d.claimedExpiresOn ? ` · ${d.claimedExpiresOn}` : ''}
+            {d.id === c.subjectDocumentId ? <strong>{` · ${R.renewalMarker}`}</strong> : null}
           </li>
         ))}
       </ul>

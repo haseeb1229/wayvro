@@ -94,6 +94,8 @@ export const ReviewCaseDetailSchema = z
     escalated: z.boolean(),
     inPersonRequired: z.boolean(),
     leaseExpiresAt: IsoDateTime.nullable(),
+    /** DOCUMENT_RENEWAL: the renewal document under review (listed in `documents` beside the document it renews). */
+    subjectDocumentId: z.uuid().nullable(),
     application: z.object({
       id: z.uuid(),
       state: z.string(),

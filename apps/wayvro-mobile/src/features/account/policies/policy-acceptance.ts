@@ -4,8 +4,9 @@ import { errorView, type UiErrorView } from '../../../core/ui/view-state';
 
 /**
  * Policy acceptance (A04 consent UI, ACCEPT_POLICIES). Shows exactly the policies the SERVER says need acceptance for
- * account use (`requiredFor` ⊇ ACCOUNT and `acceptanceRequired`); driver policies are not shown in P2.3. Each
- * acceptance is bound to the exact version and content hash of the text the user could open.
+ * the requested scope (`requiredFor` ⊇ scope and `acceptanceRequired`): ACCOUNT policies for account use, and — in the
+ * Driver/Partner application flow only (P2.8, K14) — the DRIVER_APPLICATION policies. Each acceptance is bound to the
+ * exact version and content hash of the text the user could open.
  */
 
 type PolicySummary = PolicyList['policies'][number];
@@ -31,7 +32,11 @@ export interface PolicyAcceptanceModel {
   readonly canAccept: boolean;
 }
 
+export type PolicyScope = 'ACCOUNT' | 'DRIVER_APPLICATION';
+
 export interface PolicyAcceptanceInput {
+  /** Which policies to collect (default ACCOUNT); driver policies are never shown in the account flow. */
+  readonly scope?: PolicyScope;
   readonly consents: ConsentStatusList;
   /** Policy list in the UI's policy locale. */
   readonly localized: PolicyList;
@@ -49,7 +54,7 @@ export function policyAcceptanceModel(input: PolicyAcceptanceInput): PolicyAccep
   const items: PolicyItem[] = [];
   const syncing: PolicyKey[] = [];
   for (const status of input.consents.policies) {
-    if (!status.requiredFor.includes('ACCOUNT') || !status.acceptanceRequired) continue;
+    if (!status.requiredFor.includes(input.scope ?? 'ACCOUNT') || !status.acceptanceRequired) continue;
     const localized = find(input.localized, status.policyKey, status.currentVersion);
     const summary = localized ?? find(input.english, status.policyKey, status.currentVersion);
     if (!summary) {

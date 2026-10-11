@@ -144,3 +144,18 @@ describe('policy acceptance', () => {
     expect(acceptanceError(result)).toMatchObject({ refetch: true, partial: false, view: { messageKey: 'policies.changed' } });
   });
 });
+
+describe('policy acceptance — Driver/Partner scope (P2.8, K14)', () => {
+  it('collects only DRIVER_APPLICATION policies in the driver flow', () => {
+    const model = policyAcceptanceModel({
+      scope: 'DRIVER_APPLICATION',
+      consents: consentStatuses(['TERMS']),
+      localized: policyList('en'),
+      english: policyList('en'),
+      uiIsEnglish: true,
+      acceptedNow: new Set(),
+    });
+    expect(model.items.map((i) => i.policyKey)).toEqual(['DRIVER_PARTNER_AGREEMENT']);
+    expect(model.canAccept).toBe(true);
+  });
+});

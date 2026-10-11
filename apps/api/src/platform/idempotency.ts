@@ -56,7 +56,9 @@ function requestHash(operation: string, payload: unknown): Buffer {
 }
 
 export const success = (status: number, body: unknown): Outcome => ({ kind: 'success', status, body });
-export const failure = (code: ErrorCode, details?: ErrorDetails): Outcome => ({ kind: 'error', code, details });
+/** A refusal; typed narrowly so helpers can return `Refusal | their own result`. */
+export type Refusal = Extract<Outcome, { kind: 'error' }>;
+export const failure = (code: ErrorCode, details?: ErrorDetails): Refusal => ({ kind: 'error', code, details });
 
 export class IdempotencyStore {
   constructor(

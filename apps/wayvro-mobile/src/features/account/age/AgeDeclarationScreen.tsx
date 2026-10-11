@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useI18n } from '../../../core/i18n/I18nProvider';
+import { deviceTodayIso } from '../../../core/input/digits';
 import type { StringKey } from '../../../core/i18n/strings';
 import { QUERY_KEYS } from '../../../core/query/query-client';
 import { useServices } from '../../../core/services/ServicesProvider';
@@ -12,12 +13,6 @@ import { spacing } from '../../../core/ui/tokens';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { SignOutButton } from '../home/SignOutButton';
 import { ageDeclarationError, ageFormModel, buildAgeDeclaration, type AgeForm } from './age-declaration';
-
-/** Device-local calendar date (UX validation only; the server re-validates on its own clock). */
-function todayIso(): string {
-  const d = new Date();
-  return `${String(d.getFullYear()).padStart(4, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 export function AgeDeclarationScreen() {
   const { client } = useServices();
@@ -59,7 +54,7 @@ export function AgeDeclarationScreen() {
   const form: AgeForm = view.data;
   const failure = declare.isError ? ageDeclarationError(declare.error, form.mode) : null;
   const submit = () => {
-    const built = buildAgeDeclaration(form, { affirmed, dob: { day, month, year } }, todayIso());
+    const built = buildAgeDeclaration(form, { affirmed, dob: { day, month, year } }, deviceTodayIso());
     if (!built.ok) {
       setFormError(built.errorKey);
       return;

@@ -11,15 +11,34 @@ import { Banner, Body, Button, ErrorBanner, Heading, LinkRow, PlaceholderBadge, 
 import { spacing } from '../../../core/ui/tokens';
 import { combineQueries, viewStateFromQuery } from '../../../core/ui/view-state';
 import { SignOutButton } from '../home/SignOutButton';
-import { acceptanceError, acceptPending, policyAcceptanceModel, type AcceptanceResult } from './policy-acceptance';
+import { acceptanceError, acceptPending, policyAcceptanceModel, type AcceptanceResult, type PolicyScope } from './policy-acceptance';
 
+/** Account policies (ACCEPT_POLICIES required action). */
 export function PolicyAcceptanceScreen() {
+  return <PolicyAcceptance scope="ACCOUNT" />;
+}
+
+/**
+ * Driver/Partner policies (DRIVER_PARTNER_AGREEMENT, BIOMETRIC_KYC_NOTICE) inside the application flow (P2.8, K14). Not
+ * accepting them only stops the application; Rider mode is unaffected, so the user can always go back.
+ */
+export function DriverPolicyAcceptanceScreen() {
+  return <PolicyAcceptance scope="DRIVER_APPLICATION" />;
+}
+
+function PolicyAcceptance({ scope }: { readonly scope: PolicyScope }) {
   const { client } = useServices();
   const { t, locale } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
   const policyLocale = policyLocaleFor(locale);
   const [acceptedNow, setAcceptedNow] = useState<ReadonlySet<PolicyKey>>(new Set());
+  const driver = scope === 'DRIVER_APPLICATION';
+  const title = t(driver ? 'policies.driverTitle' : 'policies.title');
+  const backToApplication = () => {
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.driverApplication });
+    router.replace('/earn');
+  };
 
   const consents = useQuery({ queryKey: QUERY_KEYS.consents, queryFn: () => client.consents() });
   const localized = useQuery({ queryKey: QUERY_KEYS.policies(policyLocale), queryFn: () => client.policies(policyLocale) });
@@ -27,7 +46,7 @@ export function PolicyAcceptanceScreen() {
   const lists = combineQueries(localized, english);
   const view = viewStateFromQuery(
     combineQueries(consents, lists),
-    ([c, [l, e]]) => policyAcceptanceModel({ consents: c, localized: l, english: e, uiIsEnglish: locale === 'en', acceptedNow }),
+    ([c, [l, e]]) => policyAcceptanceModel({ scope, consents: c, localized: l, english: e, uiIsEnglish: locale === 'en', acceptedNow }),
     (m) => m.items.length === 0 && m.syncing.length === 0,
   );
 
@@ -48,6 +67,7 @@ export function PolicyAcceptanceScreen() {
       }
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.consents });
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.accountState });
+      if (driver && failure === null) backToApplication();
     },
   });
   const failure = accept.data ? acceptanceError(accept.data) : null;
@@ -55,7 +75,7 @@ export function PolicyAcceptanceScreen() {
   if (view.kind !== 'ready') {
     return (
       <Screen scroll={false}>
-        <Stack.Screen options={{ title: t('policies.title') }} />
+        <Stack.Screen options={{ title }} />
         <StateView
           state={view}
           emptyKey="policies.empty"
@@ -67,7 +87,8 @@ export function PolicyAcceptanceScreen() {
           <Button
             label={t('common.continue')}
             onPress={() => {
-              void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.accountState });
+              if (driver) backToApplication();
+              else void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.accountState });
             }}
           />
         ) : null}
@@ -78,9 +99,9 @@ export function PolicyAcceptanceScreen() {
   const model = view.data;
   return (
     <Screen>
-      <Stack.Screen options={{ title: t('policies.title') }} />
-      <Title>{t('policies.title')}</Title>
-      <Body>{t('policies.body')}</Body>
+      <Stack.Screen options={{ title }} />
+      <Title>{title}</Title>
+      <Body>{t(driver ? 'policies.driverBody' : 'policies.body')}</Body>
       {view.stale ? <Banner tone="warning" text={t('common.staleData')} /> : null}
       {model.items.map((item) => (
         <View key={item.policyKey} style={styles.item}>
@@ -112,8 +133,18 @@ export function PolicyAcceptanceScreen() {
           accept.mutate(model.items);
         }}
       />
-      <Body muted>{t('policies.declineHint')}</Body>
-      <SignOutButton />
+      <Body muted>{t(driver ? 'policies.driverDeclineHint' : 'policies.declineHint')}</Body>
+      {driver ? (
+        <Button
+          variant="secondary"
+          label={t('common.notNow')}
+          onPress={() => {
+            router.replace('/home');
+          }}
+        />
+      ) : (
+        <SignOutButton />
+      )}
     </Screen>
   );
 }

@@ -18,6 +18,7 @@ const en = {
   'common.retry': 'Try again',
   'common.continue': 'Continue',
   'common.cancel': 'Cancel',
+  'common.notNow': 'Not now',
   'common.loading': 'Loading…',
   'common.saving': 'Saving…',
   'common.signOut': 'Sign out',
@@ -95,6 +96,9 @@ const en = {
   'policies.syncing': 'The latest version of this policy is still loading.',
   'policies.empty': 'There is nothing to accept right now.',
   'policies.declineHint': "Wayvro can't be used without accepting these policies. If you don't want to accept, you can sign out.",
+  'policies.driverTitle': 'Driver/Partner policies',
+  'policies.driverBody': 'To apply as a Driver/Partner, please read and accept these policies. They cover how your application and documents are handled.',
+  'policies.driverDeclineHint': "If you don't accept, your application can't continue. Booking rides as a rider is not affected.",
 
   'legal.title': 'Legal and policies',
   'legal.empty': 'No policies are available right now.',
@@ -126,6 +130,10 @@ const en = {
   'home.greetingNoName': 'Hello',
   'home.memberSince': 'Member since {date}',
   'home.ridesComing': "Booking rides isn't available in this version yet.",
+  'home.earn': 'Earn with Wayvro',
+  'home.earnHint': 'Apply to drive with Wayvro in this same app',
+  'home.driverArea': 'Driver/Partner',
+  'home.driverAreaHint': 'Your application, documents and renewals',
   'home.signOutConfirmTitle': 'Sign out?',
   'home.signOutConfirmBody': "You'll need a new SMS code to sign in again.",
 
@@ -192,6 +200,7 @@ const ur: Catalogue = {
   'common.retry': 'دوبارہ کوشش کریں',
   'common.continue': 'جاری رکھیں',
   'common.cancel': 'منسوخ کریں',
+  'common.notNow': 'ابھی نہیں',
   'common.loading': 'لوڈ ہو رہا ہے…',
   'common.saving': 'محفوظ کیا جا رہا ہے…',
   'common.signOut': 'سائن آؤٹ کریں',
@@ -269,6 +278,10 @@ const ur: Catalogue = {
   'policies.syncing': 'اس پالیسی کا تازہ ترین ورژن ابھی لوڈ ہو رہا ہے۔',
   'policies.empty': 'اس وقت قبول کرنے کے لیے کچھ نہیں۔',
   'policies.declineHint': 'ان پالیسیوں کو قبول کیے بغیر وے ورو استعمال نہیں ہو سکتا۔ اگر آپ قبول نہیں کرنا چاہتے تو سائن آؤٹ کر سکتے ہیں۔',
+  'policies.driverTitle': 'ڈرائیور/پارٹنر پالیسیاں',
+  'policies.driverBody':
+    'ڈرائیور/پارٹنر کے طور پر درخواست دینے کے لیے یہ پالیسیاں پڑھ کر قبول کریں۔ ان میں بتایا گیا ہے کہ آپ کی درخواست اور دستاویزات کو کیسے سنبھالا جاتا ہے۔',
+  'policies.driverDeclineHint': 'اگر آپ قبول نہیں کرتے تو آپ کی درخواست آگے نہیں بڑھ سکتی۔ بطور سوار سواری بک کرنے پر کوئی اثر نہیں پڑتا۔',
 
   'legal.title': 'قانونی معلومات اور پالیسیاں',
   'legal.empty': 'اس وقت کوئی پالیسی دستیاب نہیں۔',
@@ -299,6 +312,10 @@ const ur: Catalogue = {
   'home.greetingNoName': 'السلام علیکم',
   'home.memberSince': '{date} سے رکن',
   'home.ridesComing': 'سواری بک کرنے کی سہولت ابھی اس ورژن میں دستیاب نہیں۔',
+  'home.earn': 'وے ورو کے ساتھ کمائیں',
+  'home.earnHint': 'اسی ایپ میں وے ورو کے ساتھ ڈرائیو کرنے کی درخواست دیں',
+  'home.driverArea': 'ڈرائیور/پارٹنر',
+  'home.driverAreaHint': 'آپ کی درخواست، دستاویزات اور تجدید',
   'home.signOutConfirmTitle': 'سائن آؤٹ کریں؟',
   'home.signOutConfirmBody': 'دوبارہ سائن اِن کے لیے آپ کو نیا ایس ایم ایس کوڈ درکار ہوگا۔',
 
@@ -362,6 +379,7 @@ const urLatn: Catalogue = {
   'common.retry': 'Dobara koshish karein',
   'common.continue': 'Jari rakhein',
   'common.cancel': 'Mansookh karein',
+  'common.notNow': 'Abhi nahin',
   'common.loading': 'Load ho raha hai…',
   'common.saving': 'Mehfooz kiya ja raha hai…',
   'common.signOut': 'Sign out karein',
@@ -441,6 +459,11 @@ const urLatn: Catalogue = {
   'policies.syncing': 'Is policy ka taza tareen version abhi load ho raha hai.',
   'policies.empty': 'Is waqt qabool karne ke liye kuch nahin.',
   'policies.declineHint': 'In policies ko qabool kiye baghair Wayvro istemal nahin ho sakta. Agar aap qabool nahin karna chahte to sign out kar sakte hain.',
+  'policies.driverTitle': 'Driver/Partner policies',
+  'policies.driverBody':
+    'Driver/Partner ke taur par darkhwast dene ke liye yeh policies parh kar qabool karein. In mein bataya gaya hai ke aap ki darkhwast aur dastavezaat ko kaise sambhala jata hai.',
+  'policies.driverDeclineHint':
+    'Agar aap qabool nahin karte to aap ki darkhwast aage nahin barh sakti. Bataur sawar sawari book karne par koi asar nahin parta.',
 
   'legal.title': 'Qanooni maloomat aur policies',
   'legal.empty': 'Is waqt koi policy dastiyab nahin.',
@@ -472,6 +495,10 @@ const urLatn: Catalogue = {
   'home.greetingNoName': 'Assalam-o-alaikum',
   'home.memberSince': '{date} se rukn',
   'home.ridesComing': 'Sawari book karne ki sahulat abhi is version mein dastiyab nahin.',
+  'home.earn': 'Wayvro ke saath kamayein',
+  'home.earnHint': 'Isi app mein Wayvro ke saath drive karne ki darkhwast dein',
+  'home.driverArea': 'Driver/Partner',
+  'home.driverAreaHint': 'Aap ki darkhwast, dastavezaat aur tajdeed',
   'home.signOutConfirmTitle': 'Sign out karein?',
   'home.signOutConfirmBody': 'Dobara sign in ke liye aap ko naya SMS code darkaar ho ga.',
 

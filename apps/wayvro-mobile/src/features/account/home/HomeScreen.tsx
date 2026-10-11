@@ -40,6 +40,15 @@ export function HomeScreen() {
       {view.stale ? <Banner tone="warning" text={t('common.staleData')} /> : null}
       <RestrictionNotices items={home.restrictions} />
       <Banner tone="info" text={t('home.ridesComing')} />
+      {home.driverEntry === null ? null : (
+        <LinkRow
+          label={t(home.driverEntry === 'apply' ? 'home.earn' : 'home.driverArea')}
+          detail={t(home.driverEntry === 'apply' ? 'home.earnHint' : 'home.driverAreaHint')}
+          onPress={() => {
+            router.push('/earn');
+          }}
+        />
+      )}
       <LinkRow
         label={t('profile.title')}
         onPress={() => {

@@ -656,33 +656,7 @@ export class OnboardingService {
           previous.rows[0]?.id ?? null,
         ],
       );
-      let signals = 0;
-      if (number !== null) {
-        const lookupValue = `${input.documentType}:${number}`;
-        const active = this.hasher.active('document_lookup', lookupValue);
-        await tx.query(`insert into compliance.document_number_lookup_index (compliance_document_id, lookup_key_version, lookup_hash) values ($1, $2, $3)`, [
-          docId,
-          active.version,
-          active.digest,
-        ]);
-        const live = this.hasher.live('document_lookup', lookupValue);
-        const matches = await tx.query<{ id: string }>(
-          `select d.id from compliance.document_number_lookup_index l
-             join compliance.compliance_documents d on d.id = l.compliance_document_id
-             left join compliance.driver_applications a on a.id = d.driver_application_id
-             left join compliance.driver_profiles p on p.id = d.driver_profile_id
-            where (l.lookup_key_version, l.lookup_hash) in (select * from unnest($1::smallint[], $2::bytea[]))
-              and d.id <> $3 and coalesce(a.account_id, p.account_id) is distinct from $4 and d.status <> 'SUPERSEDED'`,
-          [live.map((d) => d.version), live.map((d) => d.digest), docId, principal.accountId],
-        );
-        for (const m of matches.rows) {
-          const r = await tx.query(
-            `insert into compliance.duplicate_signals (id, signal, subject_document_id, matched_document_id, status) values ($1, 'DOCUMENT_NUMBER_MATCH', $2, $3, 'OPEN') on conflict do nothing`,
-            [uuidv7(), docId, m.id],
-          );
-          signals += r.rowCount ?? 0;
-        }
-      }
+      const signals = number === null ? 0 : await this.indexDocumentNumber(tx, principal.accountId, docId, input.documentType, number);
       await appendAudit(tx, {
         actor: { type: 'ACCOUNT', id: principal.accountId },
         action: 'DRIVER_DOCUMENT_CLAIMED',
@@ -692,6 +666,194 @@ export class OnboardingService {
         reasonCode: signals > 0 ? 'DUPLICATE_SIGNAL_RAISED' : input.documentType,
       });
       return success(201, { documentId: docId });
+    });
+  }
+
+  /**
+   * Document-number lookup (ACTIVE key) + DOCUMENT_NUMBER_MATCH signals against other accounts' live documents —
+   * signals for human review, never rejections (K07). Returns the number of new signals.
+   */
+  private async indexDocumentNumber(tx: pg.PoolClient, accountId: string, docId: string, documentType: string, number: string): Promise<number> {
+    const lookupValue = `${documentType}:${number}`;
+    const active = this.hasher.active('document_lookup', lookupValue);
+    await tx.query(`insert into compliance.document_number_lookup_index (compliance_document_id, lookup_key_version, lookup_hash) values ($1, $2, $3)`, [
+      docId,
+      active.version,
+      active.digest,
+    ]);
+    const live = this.hasher.live('document_lookup', lookupValue);
+    const matches = await tx.query<{ id: string }>(
+      `select d.id from compliance.document_number_lookup_index l
+         join compliance.compliance_documents d on d.id = l.compliance_document_id
+         left join compliance.driver_applications a on a.id = d.driver_application_id
+         left join compliance.driver_profiles p on p.id = d.driver_profile_id
+        where (l.lookup_key_version, l.lookup_hash) in (select * from unnest($1::smallint[], $2::bytea[]))
+          and d.id <> $3 and coalesce(a.account_id, p.account_id) is distinct from $4 and d.status <> 'SUPERSEDED'`,
+      [live.map((d) => d.version), live.map((d) => d.digest), docId, accountId],
+    );
+    let signals = 0;
+    for (const m of matches.rows) {
+      const r = await tx.query(
+        `insert into compliance.duplicate_signals (id, signal, subject_document_id, matched_document_id, status) values ($1, 'DOCUMENT_NUMBER_MATCH', $2, $3, 'OPEN') on conflict do nothing`,
+        [uuidv7(), docId, m.id],
+      );
+      signals += r.rowCount ?? 0;
+    }
+    return signals;
+  }
+
+  /** The caller's verified driver profile with its application (renewals, compliance view). */
+  private async profileOf(q: Queryable, accountId: string): Promise<{ id: string; state: string; application_id: string; city_code: string } | null> {
+    const r = await q.query<{ id: string; state: string; application_id: string; city_code: string }>(
+      `select p.id, p.state, p.application_id, a.city_code from compliance.driver_profiles p join compliance.driver_applications a on a.id = p.application_id where p.account_id = $1`,
+      [accountId],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  private async renewalView(q: Queryable, renewalId: string): Promise<Outcome> {
+    const d = (
+      await q.query<{
+        id: string;
+        driver_application_id: string;
+        supersedes_id: string;
+        document_type_code: string;
+        status: string;
+        evidence_kinds: string[];
+        open_case: boolean;
+      }>(
+        `select d.id, d.driver_application_id, d.supersedes_id, d.document_type_code, d.status, t.evidence_kinds,
+                exists (select 1 from compliance.review_cases c where c.compliance_document_id = d.id and c.status in ('OPEN', 'CLAIMED', 'ESCALATED')) open_case
+           from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code where d.id = $1`,
+        [renewalId],
+      )
+    ).rows[0];
+    if (!d) throw new Error('renewal vanished');
+    const status = d.status === 'VALID' ? 'APPROVED' : d.status === 'REJECTED' ? 'REJECTED' : d.open_case ? 'IN_REVIEW' : 'DRAFT';
+    return success(200, {
+      renewalDocumentId: d.id,
+      applicationId: d.driver_application_id,
+      renews: d.supersedes_id,
+      documentType: d.document_type_code,
+      evidenceKinds: d.evidence_kinds,
+      status,
+    });
+  }
+
+  /**
+   * Renewal of a VALID or EXPIRED expiring document of a verified driver (D03/R02–R06): new claims on a new document row
+   * that supersedes the old one only when a reviewer approves it; evidence follows through the application's upload
+   * slots; one open renewal per document.
+   */
+  async startRenewal(
+    principal: Principal,
+    documentId: string,
+    input: { number?: string | undefined; licenceClass?: string | undefined; issuedOn?: string | undefined; expiresOn: string },
+    key: string,
+  ): Promise<IdempotentResult> {
+    return this.run(principal, 'driver.document-renewal', key, { documentId, ...input }, async (tx) => {
+      const profile = await this.profileOf(tx, principal.accountId);
+      if (!profile) return failure('WAYVRO_E_NOT_FOUND');
+      const old = (
+        await tx.query<{
+          id: string;
+          document_type_code: string;
+          subject: string;
+          vehicle_id: string | null;
+          district_code: string | null;
+          status: string;
+          has_expiry: boolean;
+          has_number: boolean;
+        }>(
+          `select d.id, d.document_type_code, d.subject, d.vehicle_id, d.district_code, d.status, t.has_expiry, t.has_number
+             from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
+            where d.id = $1 and d.driver_application_id = $2 for no key update of d`,
+          [documentId, profile.application_id],
+        )
+      ).rows[0];
+      if (!old) return failure('WAYVRO_E_NOT_FOUND');
+      if (!old.has_expiry || (old.status !== 'VALID' && old.status !== 'EXPIRED')) return failure('WAYVRO_E_CONFLICT');
+      if (input.number !== undefined && !old.has_number) return failure('WAYVRO_E_VALIDATION');
+      if (input.expiresOn <= new Date().toISOString().slice(0, 10)) return failure('WAYVRO_E_VALIDATION');
+      const open = await tx.query(`select 1 from compliance.compliance_documents where supersedes_id = $1 and status in ('SUBMITTED', 'UNDER_REVIEW')`, [
+        documentId,
+      ]);
+      if ((open.rowCount ?? 0) > 0) return failure('WAYVRO_E_CONFLICT');
+      const id = uuidv7();
+      const number = input.number === undefined ? null : canonicalDocumentNumber(input.number);
+      if (number !== null && number.length < 2) return failure('WAYVRO_E_VALIDATION');
+      await tx.query(
+        `insert into compliance.compliance_documents (id, document_type_code, subject, driver_application_id, vehicle_id, district_code, number_envelope, number_last4,
+                                                     licence_class, claimed_issued_on, claimed_expires_on, status, supersedes_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'SUBMITTED', $12)`,
+        [
+          id,
+          old.document_type_code,
+          old.subject,
+          profile.application_id,
+          old.vehicle_id,
+          old.district_code,
+          number === null ? null : this.cipher.encrypt('identity_numbers', number, fieldContext(ENCRYPTED_FIELDS.documentNumber, id)),
+          number === null ? null : number.slice(-4),
+          input.licenceClass ?? null,
+          input.issuedOn ?? null,
+          input.expiresOn,
+          documentId,
+        ],
+      );
+      if (number !== null) await this.indexDocumentNumber(tx, principal.accountId, id, old.document_type_code, number);
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_DOCUMENT_RENEWAL_STARTED',
+        objectType: 'compliance.compliance_document',
+        objectId: id,
+        outcome: 'SUCCESS',
+        reasonCode: old.document_type_code,
+      });
+      const view = await this.renewalView(tx, id);
+      return view.kind === 'success' ? success(201, view.body) : view;
+    });
+  }
+
+  /** Submits a renewal for human review once every evidence kind of its type is ACCEPTED (DOCUMENT_RENEWAL case). */
+  async submitRenewal(principal: Principal, renewalId: string, key: string): Promise<IdempotentResult> {
+    const evidence = this.evidence;
+    if (evidence === null) throw new WayvroError('WAYVRO_E_DEPENDENCY_UNAVAILABLE');
+    return this.run(principal, 'driver.document-renewal-submission', key, { renewalId }, async (tx) => {
+      const profile = await this.profileOf(tx, principal.accountId);
+      if (!profile) return failure('WAYVRO_E_NOT_FOUND');
+      const doc = (
+        await tx.query<{ id: string; status: string; supersedes_id: string | null; evidence_kinds: string[] }>(
+          `select d.id, d.status, d.supersedes_id, t.evidence_kinds from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
+            where d.id = $1 and d.driver_application_id = $2 for no key update of d`,
+          [renewalId, profile.application_id],
+        )
+      ).rows[0];
+      if (!doc?.supersedes_id) return failure('WAYVRO_E_NOT_FOUND');
+      if (doc.status !== 'SUBMITTED') return failure('WAYVRO_E_CONFLICT');
+      const states = (await evidence.evidenceStates(profile.application_id)).filter((e) => e.documentId === renewalId);
+      const missing = doc.evidence_kinds.filter((k) => !states.some((s) => s.kind === k && s.status === 'ACCEPTED')).map((k) => `MISSING_EVIDENCE_${k}`);
+      if (states.some((s) => s.status === 'PROCESSING')) missing.push('EVIDENCE_PROCESSING');
+      if (missing.length > 0) return failure('WAYVRO_E_CONFLICT', { reasonCodes: missing });
+      await tx.query('savepoint renewal_case');
+      try {
+        await tx.query(
+          `insert into compliance.review_cases (id, kind, driver_profile_id, compliance_document_id, city_code, priority, status) values ($1, 'DOCUMENT_RENEWAL', $2, $3, $4, 1, 'OPEN')`,
+          [uuidv7(), profile.id, renewalId, profile.city_code],
+        );
+      } catch (e) {
+        if (sqlState(e) !== '23505') throw e;
+        await tx.query('rollback to savepoint renewal_case');
+        return failure('WAYVRO_E_CONFLICT');
+      }
+      await appendAudit(tx, {
+        actor: { type: 'ACCOUNT', id: principal.accountId },
+        action: 'DRIVER_DOCUMENT_RENEWAL_SUBMITTED',
+        objectType: 'compliance.compliance_document',
+        objectId: renewalId,
+        outcome: 'SUCCESS',
+      });
+      return this.renewalView(tx, renewalId);
     });
   }
 
@@ -717,8 +879,11 @@ export class OnboardingService {
       evidence_kinds: string[];
       applies_to_ownership_types: string[];
       licence_classes_allowed: string[];
+      has_number: boolean;
+      has_expiry: boolean;
     }>(
-      `select i.document_type_code, i.mandatory, t.subject, t.per_district, t.evidence_kinds, i.applies_to_ownership_types, i.licence_classes_allowed
+      `select i.document_type_code, i.mandatory, t.subject, t.per_district, t.evidence_kinds, i.applies_to_ownership_types, i.licence_classes_allowed,
+              t.has_number, t.has_expiry
          from compliance.requirement_set_items i join compliance.document_types t on t.code = i.document_type_code
         where i.requirement_set_id = $1 order by i.mandatory desc, i.document_type_code`,
       [set.id],
@@ -737,6 +902,8 @@ export class OnboardingService {
         claimed: view.documents.some((d) => d.documentType === i.document_type_code),
         evidenceKinds: i.evidence_kinds,
         licenceClassesAllowed: i.licence_classes_allowed,
+        hasNumber: i.has_number,
+        hasExpiry: i.has_expiry,
       })),
     };
   }
@@ -774,13 +941,25 @@ export class OnboardingService {
       claimed_expires_on: string | null;
       expires_on: string | null;
       status: DocumentFact['status'];
+      supersedes_id: string | null;
+      open_case: boolean;
+      has_number: boolean;
+      has_expiry: boolean;
+      evidence_kinds: string[];
     }>(
-      `select id, document_type_code, vehicle_id, district_code, number_last4, licence_class, to_char(claimed_expires_on, 'YYYY-MM-DD') claimed_expires_on,
-              to_char(expires_on, 'YYYY-MM-DD') expires_on, status
-         from compliance.compliance_documents
-        where (driver_profile_id = $1 or driver_application_id = $2 or vehicle_id = any($3::uuid[])) and status <> 'SUPERSEDED'`,
+      `select d.id, d.document_type_code, d.vehicle_id, d.district_code, d.number_last4, d.licence_class, to_char(d.claimed_expires_on, 'YYYY-MM-DD') claimed_expires_on,
+              to_char(d.expires_on, 'YYYY-MM-DD') expires_on, d.status, d.supersedes_id, t.has_number, t.has_expiry, t.evidence_kinds,
+              exists (select 1 from compliance.review_cases c where c.compliance_document_id = d.id and c.status in ('OPEN', 'CLAIMED', 'ESCALATED')) open_case
+         from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
+        where (d.driver_profile_id = $1 or d.driver_application_id = $2 or d.vehicle_id = any($3::uuid[])) and d.status <> 'SUPERSEDED'
+        order by d.created_at`,
       [profile.id, profile.application_id, vehicles.rows.map((v) => v.id)],
     );
+    // renewals in progress (or rejected) attach to the document they renew; they are not documents of their own yet
+    const isRenewal = (d: (typeof docs.rows)[number]) =>
+      d.supersedes_id !== null && (d.status === 'SUBMITTED' || d.status === 'UNDER_REVIEW' || d.status === 'REJECTED');
+    const renewals = new Map(docs.rows.filter(isRenewal).map((d) => [d.supersedes_id, d]));
+    const current = docs.rows.filter((d) => !isRenewal(d));
     const capabilities = await this.db.query<{ id: string; vehicle_id: string; service_category: string; city_code: string; status: 'GRANTED' | 'REVOKED' }>(
       `select id, vehicle_id, service_category, city_code, status from compliance.service_capabilities where driver_profile_id = $1`,
       [profile.id],
@@ -840,7 +1019,7 @@ export class OnboardingService {
               })),
             }
           : null,
-        documents: docs.rows.map((d) => ({
+        documents: current.map((d) => ({
           type: d.document_type_code,
           status: d.status,
           expiresOn: d.expires_on,
@@ -862,7 +1041,8 @@ export class OnboardingService {
     return {
       profile: { id: profile.id, state: profile.state },
       eligibility,
-      documents: docs.rows.map((d) => ({
+      applicationId: profile.application_id,
+      documents: current.map((d) => ({
         id: d.id,
         documentType: d.document_type_code,
         vehicleId: d.vehicle_id,
@@ -873,6 +1053,14 @@ export class OnboardingService {
         status: d.status,
         expiresOn: d.expires_on,
         renewalDue: d.status === 'VALID' && d.expires_on !== null && d.expires_on <= soon,
+        hasNumber: d.has_number,
+        hasExpiry: d.has_expiry,
+        renewal: (() => {
+          const r = renewals.get(d.id);
+          if (!r) return null;
+          const status = r.status === 'REJECTED' ? ('REJECTED' as const) : r.open_case ? ('IN_REVIEW' as const) : ('DRAFT' as const);
+          return { renewalDocumentId: r.id, status, evidenceKinds: r.evidence_kinds };
+        })(),
       })),
       restrictions: restrictions.filter((r) => inForce(r, now)).map(accountView),
     };
@@ -897,14 +1085,18 @@ export class OnboardingService {
   ): Promise<{ readonly failure: ErrorCode } | { readonly failure: null; readonly cityCode: string }> {
     const app = await this.loadApplication(tx, accountId, applicationId, true);
     if (!app) return { failure: 'WAYVRO_E_NOT_FOUND' };
-    if (!EDITABLE_APPLICATION_STATES.has(app.state) || app.state === 'DRAFT') return { failure: 'WAYVRO_E_CONFLICT' };
     const doc = (
-      await tx.query<{ evidence_kinds: string[] }>(
-        `select t.evidence_kinds from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
+      await tx.query<{ evidence_kinds: string[]; supersedes_id: string | null; open_case: boolean }>(
+        `select t.evidence_kinds, d.supersedes_id,
+                exists (select 1 from compliance.review_cases c where c.compliance_document_id = d.id and c.status in ('OPEN', 'CLAIMED', 'ESCALATED')) open_case
+           from compliance.compliance_documents d join compliance.document_types t on t.code = d.document_type_code
           where d.id = $1 and d.driver_application_id = $2 and d.status = 'SUBMITTED'`,
         [documentId, applicationId],
       )
     ).rows[0];
+    // a verified driver uploads evidence only for a renewal that is not yet under review (P2.8)
+    const renewal = app.state === 'VERIFIED' && doc !== undefined && doc.supersedes_id !== null && !doc.open_case;
+    if (!renewal && (!EDITABLE_APPLICATION_STATES.has(app.state) || app.state === 'DRAFT')) return { failure: 'WAYVRO_E_CONFLICT' };
     if (!doc) return { failure: 'WAYVRO_E_NOT_FOUND' };
     if (!doc.evidence_kinds.includes(kind)) return { failure: 'WAYVRO_E_VALIDATION' };
     if (canTransition(app.state, 'DOCUMENTS_PENDING', 'APPLICANT')) {
@@ -913,6 +1105,21 @@ export class OnboardingService {
       ]);
     }
     return { failure: null, cityCode: app.city_code };
+  }
+
+  /** Whether the owner may still discard evidence of this document: the application is editable, or it is an open renewal. */
+  async evidenceEditable(accountId: string, applicationId: string, documentId: string): Promise<boolean> {
+    const r = await this.db.query<{ state: ApplicationState; supersedes_id: string | null; status: string; open_case: boolean }>(
+      `select a.state, d.supersedes_id, d.status,
+              exists (select 1 from compliance.review_cases c where c.compliance_document_id = d.id and c.status in ('OPEN', 'CLAIMED', 'ESCALATED')) open_case
+         from compliance.driver_applications a join compliance.compliance_documents d on d.driver_application_id = a.id
+        where a.id = $1 and a.account_id = $2 and d.id = $3`,
+      [applicationId, accountId, documentId],
+    );
+    const row = r.rows[0];
+    if (!row) return false;
+    if (row.state === 'VERIFIED') return row.supersedes_id !== null && row.status === 'SUBMITTED' && !row.open_case;
+    return EDITABLE_APPLICATION_STATES.has(row.state) && row.state !== 'DRAFT';
   }
 
   private async issueChallengeIn(tx: pg.PoolClient, applicationId: string, exclude: ReadonlySet<string>): Promise<CaptureChallenge | null> {

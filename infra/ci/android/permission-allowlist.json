@@ -1,6 +1,6 @@
 {
   "$comment": "Q49/GR-10 Android manifest permission allowlist for the release AAB of the ONE public Wayvro app. A permission not listed here fails CI. Adding one requires a requirement ID, a just-in-time request design and founder review (CLAUDE.md §9). `${applicationId}` is substituted by the checker.",
-  "phase": "Phase 1 shell (no rider/driver features yet)",
+  "phase": "Phase 2 (P2.8): account slice + Driver/Partner onboarding capture in the one app",
   "allowed": [
     {
       "name": "android.permission.INTERNET",
@@ -9,6 +9,11 @@
     {
       "name": "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
       "justification": "Signature-level permission AndroidX core declares for non-exported dynamic broadcast receivers on API < 33. Grants nothing to other apps."
+    },
+    {
+      "name": "android.permission.CAMERA",
+      "justification": "P2.8 Driver/Partner onboarding only: document photos and one selfie for MANUAL review (no liveness, no face matching). Requested just in time on the capture screen after an in-app explanation, never at start-up and never for rider-only users; denial falls back to the system Photo Picker for documents (no media permission) or the in-person explanation for the selfie.",
+      "requirementIds": ["K02", "K03", "V03"]
     }
   ],
   "forbidden": [
@@ -23,11 +28,14 @@
     { "name": "android.permission.FOREGROUND_SERVICE_LOCATION", "reason": "Driver-only location foreground service; gated behind SP-01." },
     { "name": "android.permission.ACCESS_FINE_LOCATION", "reason": "Requested just in time by a later rider/driver feature, not by the shell." },
     { "name": "android.permission.ACCESS_COARSE_LOCATION", "reason": "Requested just in time by a later feature, not by the shell." },
-    { "name": "android.permission.CAMERA", "reason": "KYC/evidence capture only, Phase 2+, behind its own gate." },
     { "name": "android.permission.RECORD_AUDIO", "reason": "No audio feature is approved (ADR-021 open)." },
     { "name": "android.permission.SYSTEM_ALERT_WINDOW", "reason": "Development-only overlay; must never reach a release build." },
     { "name": "android.permission.READ_EXTERNAL_STORAGE", "reason": "Not needed; scoped storage/photo picker only when a feature requires it." },
     { "name": "android.permission.WRITE_EXTERNAL_STORAGE", "reason": "Not needed." },
+    { "name": "android.permission.READ_MEDIA_IMAGES", "reason": "P2.8 imports use the system Photo Picker, which needs no media permission." },
+    { "name": "android.permission.READ_MEDIA_VIDEO", "reason": "No video feature." },
+    { "name": "android.permission.READ_MEDIA_VISUAL_USER_SELECTED", "reason": "System Photo Picker only; no partial media-library access." },
+    { "name": "android.permission.ACCESS_MEDIA_LOCATION", "reason": "Photo location metadata is never read." },
     { "name": "android.permission.READ_CONTACTS", "reason": "No contacts feature approved." },
     { "name": "android.permission.READ_PHONE_STATE", "reason": "Not needed; device identifiers are not collected." },
     { "name": "android.permission.POST_NOTIFICATIONS", "reason": "Requested just in time when notifications ship (Phase 4+), not by the shell." }

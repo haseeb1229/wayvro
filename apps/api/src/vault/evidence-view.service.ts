@@ -39,6 +39,11 @@ async function accessLog(
   );
 }
 
+/** Review-case claims, answered by the review module (every case kind, including document renewals of a verified driver). */
+interface CaseClaimPort {
+  holdsLiveClaim(staffId: string, applicationId: string): Promise<boolean>;
+}
+
 export class EvidenceViewService {
   constructor(
     private readonly vault: pg.Pool,
@@ -46,6 +51,7 @@ export class EvidenceViewService {
     private readonly cipher: FieldCipher,
     private readonly env: WayvroEnv,
     private readonly log: Logger,
+    private readonly claims: CaseClaimPort,
   ) {}
 
   private async deny(staff: StaffPrincipal, evidenceId: string, reasonCode: string): Promise<never> {
@@ -67,13 +73,7 @@ export class EvidenceViewService {
    */
   private async caseAllows(staff: StaffPrincipal, applicationId: string): Promise<boolean> {
     if (hasRole(staff, 'KYC_SENIOR_REVIEWER')) return true;
-    if (hasRole(staff, 'KYC_REVIEWER')) {
-      const held = await this.vault.query(
-        `select 1 from compliance.review_cases where driver_application_id = $1 and status = 'CLAIMED' and assigned_staff_id = $2 and lease_expires_at > now()`,
-        [applicationId, staff.staffId],
-      );
-      if ((held.rowCount ?? 0) > 0) return true;
-    }
+    if (hasRole(staff, 'KYC_REVIEWER') && (await this.claims.holdsLiveClaim(staff.staffId, applicationId))) return true;
     if (hasRole(staff, 'TRUST_SAFETY_AGENT')) {
       const signal = await this.vault.query(
         `select 1 from compliance.duplicate_signals where status = 'OPEN' and (subject_application_id = $1 or matched_application_id = $1)`,

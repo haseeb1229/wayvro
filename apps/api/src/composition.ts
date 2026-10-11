@@ -77,10 +77,11 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       : null;
   const evidenceSummary = vaultDb ? new EvidenceSummary(vaultDb.pool) : null;
   const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config, evidenceSummary);
+  const review = new ReviewService(db.pool, cipher, idempotency, evidenceSummary, config);
   const evidence = vaultDb
     ? {
         evidence: new EvidenceService(vaultDb.pool, options.providers.get('objectStorage'), onboarding, idempotency, config),
-        views: new EvidenceViewService(vaultDb.pool, options.providers.get('objectStorage'), cipher, config.WAYVRO_ENV, log),
+        views: new EvidenceViewService(vaultDb.pool, options.providers.get('objectStorage'), cipher, config.WAYVRO_ENV, log, review),
       }
     : null;
   const accounts = new AccountService(db.pool, idempotency, config, onboarding.available);
@@ -102,7 +103,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     compliance: { onboarding, admin: new ComplianceAdminService(db.pool, idempotency, config) },
     evidence,
     review: {
-      review: new ReviewService(db.pool, cipher, idempotency, evidenceSummary, config),
+      review,
       appeals: new AppealsService(db.pool, cipher, idempotency, config.IDEMPOTENCY_TTL_SECONDS),
       monitoring: new MonitoringService(db.pool),
     },

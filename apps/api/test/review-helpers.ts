@@ -24,6 +24,29 @@ export function reviewKit(h: Harness, kit: ReturnType<typeof staffKit>) {
   const jpeg = () => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), randomBytes(252)]);
   const allConfirmed = { schemaVersion: 1, items: Object.fromEntries(CHECKLIST_ITEMS_V1.map((i) => [i, 'CONFIRMED'])) };
 
+  /** Requests an upload slot and seals the object exactly as the worker would (AVAILABLE = ACCEPTED). */
+  async function acceptedEvidence(accessToken: string, appId: string, documentId: string, kind: string): Promise<string> {
+    const res = await h.inject(
+      post(
+        `/v1/driver-onboarding/applications/${appId}/evidence-uploads`,
+        { documentId, kind, captureSource: 'IN_APP_CAMERA', byteSize: 256, mime: 'image/jpeg' },
+        bearer(accessToken),
+      ),
+    );
+    expect(res.statusCode, res.body).toBe(201);
+    const slot = EvidenceUploadSlotSchema.parse(res.json());
+    const image = jpeg();
+    const sealed = sealEvidence(h.runtime.cipher, slot.uploadId, image);
+    const vaultKey = `v/${randomBytes(16).toString('hex')}`;
+    await h.storage?.putObject({ area: 'vault', key: vaultKey, body: sealed.content, contentType: 'application/octet-stream' });
+    await h.owner.query(
+      `update vault.evidence_objects set status = 'AVAILABLE', uploaded_at = now(), processed_at = now(), source_byte_size = 256, source_sha256 = $2, canonical_sha256 = $2,
+              canonical_format = 'JPEG', canonical_byte_size = 256, pixel_width = 640, pixel_height = 480, wrapped_dek = $3, content_envelope_version = 1, vault_key = $4 where id = $1`,
+      [slot.uploadId, sha256(image), sealed.wrappedDek, vaultKey],
+    );
+    return slot.uploadId;
+  }
+
   /** A consumer with a complete, submitted application (evidence processed as the worker would). */
   async function submittedApplication(opts: { cnic?: string; plate?: string } = {}): Promise<Ready> {
     const s = await signIn(h);
@@ -85,27 +108,7 @@ export function reviewKit(h: Harness, kit: ReturnType<typeof staffKit>) {
       [licence, 'LICENCE_BACK'],
       [registration, 'DOCUMENT_PAGE'],
     ] as const) {
-      const slot = EvidenceUploadSlotSchema.parse(
-        (
-          await h.inject(
-            post(
-              `/v1/driver-onboarding/applications/${app.id}/evidence-uploads`,
-              { documentId, kind, captureSource: 'IN_APP_CAMERA', byteSize: 256, mime: 'image/jpeg' },
-              t,
-            ),
-          )
-        ).json(),
-      );
-      const image = jpeg();
-      const sealed = sealEvidence(h.runtime.cipher, slot.uploadId, image);
-      const vaultKey = `v/${randomBytes(16).toString('hex')}`;
-      await h.storage?.putObject({ area: 'vault', key: vaultKey, body: sealed.content, contentType: 'application/octet-stream' });
-      await h.owner.query(
-        `update vault.evidence_objects set status = 'AVAILABLE', uploaded_at = now(), processed_at = now(), source_byte_size = 256, source_sha256 = $2, canonical_sha256 = $2,
-                canonical_format = 'JPEG', canonical_byte_size = 256, pixel_width = 640, pixel_height = 480, wrapped_dek = $3, content_envelope_version = 1, vault_key = $4 where id = $1`,
-        [slot.uploadId, sha256(image), sealed.wrappedDek, vaultKey],
-      );
-      evidenceIds.push(slot.uploadId);
+      evidenceIds.push(await acceptedEvidence(s.accessToken, app.id, documentId, kind));
     }
     const version = (await get('/v1/driver-onboarding/applications/current', t)).json<{ version: number }>().version;
     const submitted = await h.inject(post(`/v1/driver-onboarding/applications/${app.id}/submission`, { expectedVersion: version }, t));
@@ -136,5 +139,22 @@ export function reviewKit(h: Harness, kit: ReturnType<typeof staffKit>) {
   };
   const decide = (s: Staff, caseId: string, body: Record<string, unknown>) => kit.privileged(s, `/v1/admin/review-cases/${caseId}/decisions`, body);
 
-  return { get, allConfirmed, submittedApplication, intake, claim, decide };
+  /** A verified driver: submitted, taken in and approved by `reviewer` (no duplicate signals). */
+  async function approvedDriver(reviewer: Staff): Promise<Ready> {
+    const a = await submittedApplication();
+    const caseId = await intake(a.appId);
+    const c = await claim(reviewer, caseId);
+    const res = await decide(reviewer, caseId, {
+      expectedVersion: c.version,
+      decision: 'APPROVE',
+      reasonCodes: ['ALL_CHECKS_CONFIRMED'],
+      checklist: allConfirmed,
+      identityMatch: 'CONFIRMED_BY_REVIEWER',
+      evidenceIds: a.evidenceIds,
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    return a;
+  }
+
+  return { get, allConfirmed, acceptedEvidence, submittedApplication, intake, claim, decide, approvedDriver };
 }

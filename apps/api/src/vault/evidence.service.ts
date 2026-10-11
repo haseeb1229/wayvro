@@ -54,7 +54,6 @@ interface EvidenceRow {
 
 const COLUMNS = `id, owner_account_id, driver_application_id, compliance_document_id, kind, capture_source, status, rejection_reason, quarantine_key,
   vault_key, declared_byte_size, declared_mime, slot_expires_at, created_at`;
-const EDITABLE = new Set(['CONSENTED', 'DOCUMENTS_PENDING', 'NEEDS_INFO']);
 
 /** Internal pipeline state → what the applicant can act on (never the scanner's signature name). */
 function publicStatus(row: Pick<EvidenceRow, 'status' | 'rejection_reason'>): Pick<EvidenceUploadStatus, 'status' | 'rejectionReason'> {
@@ -267,11 +266,11 @@ export class EvidenceService {
         withTransaction(this.vault, async (vtx) => {
           const row = await this.ownRow(vtx, principal.accountId, uploadId, true);
           if (!row) return failure('WAYVRO_E_NOT_FOUND');
-          const app = (await vtx.query<{ state: string }>(`select state from compliance.driver_applications where id = $1`, [row.driver_application_id]))
-            .rows[0];
-          if (!app || !EDITABLE.has(app.state)) return failure('WAYVRO_E_CONFLICT');
+          if (!(await this.onboarding.evidenceEditable(principal.accountId, row.driver_application_id, row.compliance_document_id)))
+            return failure('WAYVRO_E_CONFLICT');
           if (row.status !== 'DISCARDED') {
-            await vtx.query(`update vault.evidence_objects set status = 'DISCARDED', version = version + 1 where id = $1`, [uploadId]);
+            // the wrapped DEK is destroyed with the discard (crypto-shredding): the sealed object is unreadable even before its deletion
+            await vtx.query(`update vault.evidence_objects set status = 'DISCARDED', wrapped_dek = null, version = version + 1 where id = $1`, [uploadId]);
             await appendAudit(vtx, {
               actor: { type: 'ACCOUNT', id: principal.accountId },
               action: 'EVIDENCE_DISCARDED',

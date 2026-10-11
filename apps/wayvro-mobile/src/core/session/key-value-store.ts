@@ -1,6 +1,7 @@
 /**
  * Minimal async key/value port over OS secure storage (Q01). Every persisted item of the app — session tokens, the
- * installation id, idempotency intents and the pre-sign-in language choice — goes through this port; the only
+ * installation id, idempotency intents, the pre-sign-in language choice and the evidence upload queue metadata — goes
+ * through this port; the only
  * implementation in the app is `secure-token-store.ts` (expo-secure-store). There is no plain/AsyncStorage fallback.
  */
 export interface KeyValueStore {
@@ -15,4 +16,6 @@ export const STORAGE_KEYS = {
   installationId: 'wayvro.installation-id.v1',
   idempotencyIntents: 'wayvro.idempotency-intents.v1',
   uiLocale: 'wayvro.ui-locale.v1',
+  /** P2.8 evidence upload queue: metadata only (ids, local file name, size, state) — never image bytes. */
+  evidenceQueue: 'wayvro.evidence-queue.v1',
 } as const;

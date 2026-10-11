@@ -61,7 +61,9 @@ export interface WayvroClientDeps {
   readonly fingerprint: (canonical: string) => Promise<string>;
 }
 
-type Spec<T> = Omit<RequestSpec<T>, 'accessToken' | 'idempotencyKey' | 'retry'>;
+/** A request as feature modules describe it (the client adds the token, idempotency key and retry policy). */
+export type ApiSpec<T> = Omit<RequestSpec<T>, 'accessToken' | 'idempotencyKey' | 'retry'>;
+type Spec<T> = ApiSpec<T>;
 
 export function createWayvroClient(deps: WayvroClientDeps) {
   const { http, session, intents, installationId } = deps;
@@ -226,6 +228,16 @@ export function createWayvroClient(deps: WayvroClientDeps) {
     declareAge: async (request: AgeDeclarationRequest): Promise<AgeDeclarationRecorded> =>
       (await mutate('age-declaration', { method: 'POST', path: '/v1/account/age-declarations', body: request, schema: AgeDeclarationRecordedSchema }, true))
         .data,
+
+    /**
+     * Authenticated transport for lazily loaded feature modules (P2.8 Driver/Partner flows): the same bearer, refresh,
+     * response validation and per-intent idempotency rules as the calls above, without the account slice having to
+     * know feature endpoints.
+     */
+    session: {
+      read: <T>(spec: ApiSpec<T>): Promise<T> => read(spec, true),
+      mutate: async <T>(intent: string, spec: ApiSpec<T>): Promise<T> => (await mutate(intent, spec, true)).data,
+    },
   };
 }
 

@@ -14,6 +14,9 @@ import {
   DecisionRequestSchema,
   DocumentClaimRequestSchema,
   DocumentClaimedSchema,
+  DocumentParamSchema,
+  DocumentRenewalRequestSchema,
+  DocumentRenewalSchema,
   DriverApplicationSchema,
   DriverComplianceSchema,
   EmptyRequestSchema,
@@ -215,6 +218,36 @@ export class OnboardingController {
     const { id } = idParam(ApplicationIdParamSchema, params);
     parse(EmptyRequestSchema, body);
     return render(reply, await this.onboarding.withdraw(principalOf(req), id, idempotencyKey(req)), DriverApplicationSchema);
+  }
+
+  @Post('/v1/driver/documents/:documentId/renewals')
+  @ConsumerSession()
+  async startRenewal(
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: Reply,
+  ): Promise<z.infer<typeof DocumentRenewalSchema> | undefined> {
+    const { documentId } = idParam(DocumentParamSchema, params);
+    return render(
+      reply,
+      await this.onboarding.startRenewal(principalOf(req), documentId, parse(DocumentRenewalRequestSchema, body), idempotencyKey(req)),
+      DocumentRenewalSchema,
+    );
+  }
+
+  @Post('/v1/driver/documents/:documentId/renewal-submission')
+  @HttpCode(200)
+  @ConsumerSession()
+  async submitRenewal(
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: Reply,
+  ): Promise<z.infer<typeof DocumentRenewalSchema> | undefined> {
+    const { documentId } = idParam(DocumentParamSchema, params);
+    parse(EmptyRequestSchema, body ?? {});
+    return render(reply, await this.onboarding.submitRenewal(principalOf(req), documentId, idempotencyKey(req)), DocumentRenewalSchema);
   }
 
   @Get('/v1/driver/compliance')
