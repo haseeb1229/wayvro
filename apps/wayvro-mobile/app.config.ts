@@ -13,7 +13,15 @@ const env = (globalThis as { process?: { env?: Record<string, string | undefined
 const APP_ID = env['WAYVRO_APP_ID'] ?? 'dev.wayvro.app';
 
 /**
- * Expo and its modules add these by default. None is justified by the Phase 1 shell, so they are removed from the
+ * API origin (P2.3). There is deliberately NO default: a build without WAYVRO_API_URL shows a "service not configured"
+ * state instead of guessing a production URL. WAYVRO_DEV_LOCAL_API=1 lets a DEVELOPMENT build (`__DEV__`) fall back to
+ * the Android-emulator loopback of the local API runner; release builds ignore it (src/core/config/api-config.ts).
+ */
+const API_URL = env['WAYVRO_API_URL']?.trim() ?? '';
+const DEV_LOCAL_API = env['WAYVRO_DEV_LOCAL_API'] === '1';
+
+/**
+ * Expo and its modules add these by default. None is justified by the shell or the P2.3 account slice, so they are removed from the
  * merged manifest; CI then verifies the release AAB against infra/ci/android/permission-allowlist.json. Later
  * features request permissions just in time and add them to the allowlist with a requirement ID (CLAUDE.md §9).
  */
@@ -28,6 +36,10 @@ const BLOCKED_ANDROID_PERMISSIONS = [
   'android.permission.ACCESS_BACKGROUND_LOCATION',
   'android.permission.FOREGROUND_SERVICE_LOCATION',
   'android.permission.RECORD_AUDIO',
+  // Contributed by androidx.biometric (an expo-secure-store dependency). The app never calls secure-store with
+  // `requireAuthentication`, so no biometric prompt exists; a biometric unlock would need its own reviewed decision.
+  'android.permission.USE_BIOMETRIC',
+  'android.permission.USE_FINGERPRINT',
 ];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
@@ -39,6 +51,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // No over-the-air updates in Phase 1 (ADR-031 is PROPOSED: JS-only, signed, staged — never permissions/native).
   updates: { enabled: false },
   platforms: ['android', 'ios'],
+  // No URL scheme yet: deep links arrive with a reviewed link plan once the identifiers are cleared (docs/28 §15).
+  plugins: ['expo-router'],
+  extra: { wayvroApi: { ...(API_URL === '' ? {} : { baseUrl: API_URL }), devLocalApi: DEV_LOCAL_API } },
   android: {
     package: APP_ID,
     blockedPermissions: BLOCKED_ANDROID_PERMISSIONS,

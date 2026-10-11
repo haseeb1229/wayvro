@@ -1,0 +1,331 @@
+import type { ReactNode } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useI18n } from '../i18n/I18nProvider';
+import type { StringKey } from '../i18n/strings';
+import { colors, MIN_TOUCH_TARGET, spacing, typography } from './tokens';
+import type { UiErrorView } from './view-state';
+
+/**
+ * Reusable presentation primitives (tokens only, no business rules). Direction-aware: Urdu renders right-to-left via
+ * text alignment/writing direction and mirrored rows, without forcing a global RTL restart.
+ */
+
+function useDirection() {
+  const { rtl } = useI18n();
+  return {
+    rtl,
+    text: rtl ? styles.textRtl : styles.textLtr,
+    row: rtl ? styles.rowRtl : styles.rowLtr,
+  };
+}
+
+export function Screen({ children, scroll = true }: { readonly children: ReactNode; readonly scroll?: boolean }) {
+  return (
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+      {scroll ? (
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={[styles.content, styles.fill]}>{children}</View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+export function Title({ children }: { readonly children: string }) {
+  const dir = useDirection();
+  return (
+    <Text style={[styles.title, dir.text]} accessibilityRole="header">
+      {children}
+    </Text>
+  );
+}
+
+export function Heading({ children }: { readonly children: string }) {
+  const dir = useDirection();
+  return (
+    <Text style={[styles.heading, dir.text]} accessibilityRole="header">
+      {children}
+    </Text>
+  );
+}
+
+export function Body({ children, muted = false }: { readonly children: string; readonly muted?: boolean }) {
+  const dir = useDirection();
+  return <Text style={[styles.body, muted ? styles.muted : undefined, dir.text]}>{children}</Text>;
+}
+
+type ButtonVariant = 'primary' | 'secondary' | 'danger';
+
+export function Button(props: {
+  readonly label: string;
+  readonly onPress: () => void;
+  readonly variant?: ButtonVariant;
+  readonly disabled?: boolean;
+  readonly busy?: boolean;
+  readonly busyLabel?: string;
+}) {
+  const { variant = 'primary', disabled = false, busy = false } = props;
+  const inactive = disabled || busy;
+  const label = busy && props.busyLabel !== undefined ? props.busyLabel : props.label;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inactive, busy }}
+      disabled={inactive}
+      onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.button,
+        variant === 'primary' ? styles.buttonPrimary : variant === 'danger' ? styles.buttonDanger : styles.buttonSecondary,
+        inactive ? styles.buttonDisabled : undefined,
+        pressed && !inactive ? styles.pressed : undefined,
+      ]}
+    >
+      {busy ? <ActivityIndicator color={variant === 'secondary' ? colors.primary : colors.onPrimary} /> : null}
+      <Text style={[styles.buttonText, variant === 'secondary' ? styles.buttonTextSecondary : styles.buttonTextOnFill]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function LinkRow({ label, onPress, detail }: { readonly label: string; readonly onPress: () => void; readonly detail?: string }) {
+  const dir = useDirection();
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={detail === undefined ? label : `${label}. ${detail}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.linkRow, dir.row, pressed ? styles.pressed : undefined]}
+    >
+      <View style={styles.fill}>
+        <Text style={[styles.body, dir.text]}>{label}</Text>
+        {detail === undefined ? null : <Text style={[styles.caption, styles.muted, dir.text]}>{detail}</Text>}
+      </View>
+      <Text style={styles.chevron} importantForAccessibility="no">
+        {dir.rtl ? '‹' : '›'}
+      </Text>
+    </Pressable>
+  );
+}
+
+export function TextField(
+  props: {
+    readonly label: string;
+    readonly value: string;
+    readonly onChangeText: (value: string) => void;
+    readonly hint?: string;
+    readonly error?: string | null;
+  } & Pick<TextInputProps, 'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus'>,
+) {
+  const dir = useDirection();
+  const { label, hint, error, value, onChangeText, ...inputProps } = props;
+  const describedBy = [hint, error ?? undefined].filter((s): s is string => s !== undefined).join('. ');
+  return (
+    <View style={styles.field}>
+      <Text style={[styles.label, dir.text]}>{label}</Text>
+      <TextInput
+        {...inputProps}
+        value={value}
+        onChangeText={onChangeText}
+        accessibilityLabel={label}
+        accessibilityHint={describedBy === '' ? undefined : describedBy}
+        style={[styles.input, dir.text, error ? styles.inputError : undefined, props.editable === false ? styles.inputDisabled : undefined]}
+        placeholderTextColor={colors.textMuted}
+      />
+      {hint === undefined ? null : <Text style={[styles.caption, styles.muted, dir.text]}>{hint}</Text>}
+      {error ? (
+        <Text style={[styles.caption, styles.errorText, dir.text]} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function Checkbox({ label, checked, onChange }: { readonly label: string; readonly checked: boolean; readonly onChange: (next: boolean) => void }) {
+  const dir = useDirection();
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{ checked }}
+      onPress={() => {
+        onChange(!checked);
+      }}
+      style={[styles.choiceRow, dir.row]}
+    >
+      <View style={[styles.box, checked ? styles.boxChecked : undefined]}>{checked ? <Text style={styles.boxMark}>✓</Text> : null}</View>
+      <Text style={[styles.body, styles.fill, dir.text]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function RadioGroup<V extends string>(props: {
+  readonly label: string;
+  readonly options: readonly { readonly value: V; readonly label: string }[];
+  readonly value: V;
+  readonly onChange: (value: V) => void;
+  readonly disabled?: boolean;
+}) {
+  const dir = useDirection();
+  return (
+    <View accessibilityRole="radiogroup" accessibilityLabel={props.label} style={styles.field}>
+      <Text style={[styles.label, dir.text]}>{props.label}</Text>
+      {props.options.map((option) => {
+        const selected = option.value === props.value;
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole="radio"
+            accessibilityLabel={option.label}
+            accessibilityState={{ checked: selected, disabled: props.disabled === true }}
+            disabled={props.disabled}
+            onPress={() => {
+              props.onChange(option.value);
+            }}
+            style={[styles.choiceRow, dir.row]}
+          >
+            <View style={[styles.radio, selected ? styles.radioSelected : undefined]} />
+            <Text style={[styles.body, styles.fill, dir.text]}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function Banner({ tone, text }: { readonly tone: 'info' | 'warning' | 'error'; readonly text: string }) {
+  const dir = useDirection();
+  return (
+    <View
+      style={[styles.banner, tone === 'info' ? styles.bannerInfo : tone === 'warning' ? styles.bannerWarning : styles.bannerError]}
+      accessibilityRole={tone === 'error' ? 'alert' : 'text'}
+      accessibilityLiveRegion="polite"
+    >
+      <Text style={[styles.body, tone === 'info' ? styles.infoText : tone === 'warning' ? styles.warningText : styles.errorText, dir.text]}>{text}</Text>
+    </View>
+  );
+}
+
+/** Visible label for texts that are not counsel-approved (`PLACEHOLDER_NOT_FOR_PRODUCTION`). */
+export function PlaceholderBadge() {
+  const { t } = useI18n();
+  return <Banner tone="warning" text={t('common.placeholderNotice')} />;
+}
+
+/** Note shown in Urdu/Roman-Urdu while translations await native review. */
+export function TranslationPendingNote() {
+  const { t, pendingReview } = useI18n();
+  return pendingReview ? <Body muted>{t('common.translationPending')}</Body> : null;
+}
+
+export function ErrorBanner({ error }: { readonly error: UiErrorView }) {
+  const { t } = useI18n();
+  return <Banner tone="error" text={t(error.messageKey, error.params)} />;
+}
+
+/**
+ * Full-screen loading / error / empty states. Retryable errors offer "Try again"; a session-expired error needs no button
+ * because the session layer has already signed out and the account gate redirects to sign-in.
+ */
+export function StateView(props: {
+  readonly state: { readonly kind: 'loading' } | { readonly kind: 'error'; readonly error: UiErrorView } | { readonly kind: 'empty' };
+  readonly onRetry: () => void;
+  readonly emptyKey: StringKey;
+}) {
+  const { t } = useI18n();
+  const { state } = props;
+  if (state.kind === 'loading') {
+    return (
+      <View style={styles.centered} accessibilityLabel={t('common.loading')} accessibilityLiveRegion="polite">
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Body muted>{t('common.loading')}</Body>
+      </View>
+    );
+  }
+  if (state.kind === 'empty') {
+    return (
+      <View style={styles.centered}>
+        <Body muted>{t(props.emptyKey)}</Body>
+      </View>
+    );
+  }
+  const { error } = state;
+  return (
+    <View style={styles.centered}>
+      <ErrorBanner error={error} />
+      {error.action === 'retry' ? <Button label={t('common.retry')} onPress={props.onRetry} /> : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg, gap: spacing.md },
+  fill: { flex: 1 },
+  centered: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.xl },
+  textLtr: { textAlign: 'left', writingDirection: 'ltr' },
+  textRtl: { textAlign: 'right', writingDirection: 'rtl' },
+  rowLtr: { flexDirection: 'row' },
+  rowRtl: { flexDirection: 'row-reverse' },
+  title: { ...typography.title, color: colors.text },
+  heading: { ...typography.heading, color: colors.text },
+  body: { ...typography.body, color: colors.text, lineHeight: 24 },
+  caption: { ...typography.caption, color: colors.text, lineHeight: 20 },
+  muted: { color: colors.textMuted },
+  label: { ...typography.caption, fontWeight: '600', color: colors.text },
+  field: { gap: spacing.xs },
+  input: {
+    minHeight: MIN_TOUCH_TARGET,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    fontSize: 18,
+    color: colors.text,
+    backgroundColor: colors.background,
+  },
+  inputError: { borderColor: colors.danger },
+  inputDisabled: { backgroundColor: colors.surface, color: colors.textMuted },
+  errorText: { color: colors.danger },
+  button: {
+    minHeight: MIN_TOUCH_TARGET,
+    borderRadius: 8,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  buttonPrimary: { backgroundColor: colors.primary },
+  buttonDanger: { backgroundColor: colors.danger },
+  buttonSecondary: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.primary },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: { ...typography.body, fontWeight: '600' },
+  buttonTextOnFill: { color: colors.onPrimary },
+  buttonTextSecondary: { color: colors.primary },
+  pressed: { opacity: 0.8 },
+  linkRow: {
+    minHeight: MIN_TOUCH_TARGET + 8,
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  chevron: { fontSize: 24, color: colors.textMuted },
+  choiceRow: { minHeight: MIN_TOUCH_TARGET, alignItems: 'center', gap: spacing.md },
+  box: { width: 28, height: 28, borderRadius: 6, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  boxChecked: { backgroundColor: colors.primary },
+  boxMark: { color: colors.onPrimary, fontSize: 18, fontWeight: '700' },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.primary },
+  radioSelected: { backgroundColor: colors.primary },
+  banner: { borderRadius: 8, padding: spacing.md },
+  bannerInfo: { backgroundColor: colors.infoBackground },
+  bannerWarning: { backgroundColor: colors.warningBackground },
+  bannerError: { backgroundColor: colors.errorBackground },
+  infoText: { color: colors.infoText },
+  warningText: { color: colors.warningText },
+});
