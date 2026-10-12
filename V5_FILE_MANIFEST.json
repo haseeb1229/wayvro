@@ -566,8 +566,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 7895,
-      "sha256": "1df304d4392888365aa6b40b17bc519f1279c1c6045fd7d073a0ba2a7f7ec069"
+      "bytes": 9077,
+      "sha256": "8d8304a4def1b2b511fcc5cd4c4fcf4645fac314cab17297b4c639717b8f3bb8"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -606,8 +606,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 26068,
-      "sha256": "faf0beffd3c489243df38ff274dee16cf949eba8c1f2dd1cadbc4154a8483b32"
+      "bytes": 30234,
+      "sha256": "a3d042055610b5840295883e2ee7d094ff7ec885140c56720fdcb1d27aff95e4"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",

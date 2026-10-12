@@ -5,7 +5,7 @@
  */
 const CLIENT_APPS = '^apps/(wayvro-mobile|web-public|web-ops)/';
 const SERVER_ONLY_WORKSPACE =
-  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|image-sanitiser)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|image-sanitiser)/)';
+  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|geo-adapters|image-sanitiser)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|geo-adapters|image-sanitiser)/)';
 // Development/test-only workspace packages (ADR-045): never reachable from production source.
 const DEV_ONLY_WORKSPACE = '(^packages/(provider-test-doubles|test-support)/|node_modules/@wayvro/(provider-test-doubles|test-support)/)';
 const SERVER_ONLY_NPM = 'node_modules/(pg|pg-pool|ioredis|drizzle-orm|fastify|@nestjs/[^/]+|socket\\.io|pino|@opentelemetry/[^/]+|@aws-sdk/[^/]+|sharp)/';
@@ -51,6 +51,21 @@ module.exports = {
         'ADR-041: only the API app module and composition root wire the evidence vault; no other module imports src/vault/** (the vault owns its own wayvro_vault pool).',
       from: { path: '^apps/api/src/', pathNot: ['^apps/api/src/vault/', '^apps/api/src/(app|composition)\\.ts$'] },
       to: { path: '^apps/api/src/vault/' },
+    },
+    {
+      name: 'geo-adapters-composition-only',
+      severity: 'error',
+      comment:
+        'Phase 3 architecture §4 (E06/ADR-006): API modules depend on the vendor-neutral geo ports; only the API composition root/entry binds real geo adapters, and the worker never calls a geo provider.',
+      from: { path: '^apps/(api|worker)/src/', pathNot: '^apps/api/src/(composition|main)\\.ts$' },
+      to: { path: '(^packages/geo-adapters/|node_modules/@wayvro/geo-adapters/)' },
+    },
+    {
+      name: 'geo-bench-dev-only',
+      severity: 'error',
+      comment: 'The SP-04 benchmark harness (tools/geo-bench) is a dev-only tool: no app or package imports it (ADR-045 artefact isolation).',
+      from: { path: '^(apps|packages)/' },
+      to: { path: '(^tools/geo-bench/|node_modules/@wayvro/geo-bench/)' },
     },
     {
       name: 'sanitiser-only-in-its-container',

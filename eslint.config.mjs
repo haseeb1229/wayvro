@@ -20,6 +20,9 @@ const SERVER_ONLY_PACKAGES = [
   '@wayvro/field-crypto',
   '@wayvro/identity-core',
   '@wayvro/vault-adapters',
+  // Phase 3 P3.2: candidate geo adapters (server keys, provider terms) and the dev-only SP-04 harness.
+  '@wayvro/geo-adapters',
+  '@wayvro/geo-bench',
   '@wayvro/image-sanitiser',
 ];
 // Development/test-only packages (ADR-045): production source of any app/package must never import them.

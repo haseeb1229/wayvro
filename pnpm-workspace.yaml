@@ -3,6 +3,8 @@
 packages:
   - apps/*
   - packages/*
+  # Dev-only tools (never a dependency of a deployable app): tools/geo-bench is the SP-04 benchmark harness (P3.2).
+  - tools/*
 
 # Flat (hoisted) node_modules: React Native native builds on Windows exceed CMake's 250-character object-path limit
 # under pnpm's isolated .pnpm/<name>@<version>_<hash>/ layout (SP-AND evidence, ADR-034/ADR-036). Phantom-dependency

@@ -143,3 +143,27 @@ The check is a guard against silent drift; approval itself remains a human (foun
 | P3.10 | regenerate from the actual release AAB (dependency tree, autolinked modules, manifest, network capture of a scripted rider/driver session); store-disclosure drafts updated | NOT RUN |
 
 Open items: runtime network capture of the current release build (never done); exact Play Data safety categories for the chosen renderer SDK; Maestro CLI analytics behaviour; Transistorsoft licence-check/telemetry endpoints (only if CONDITIONAL activates); Mapbox Commercial Application License applicability (FA-19, only if S2 is a freeze candidate); Expo-module required-reason APIs on iOS; vendor DPAs and subprocessor lists (EG-11/EG-12, counsel).
+
+## 10. Server geo candidates (P3.2)
+
+Added at P3.2 (2026-10-13) with the server-only candidate adapters `packages/geo-adapters` (README + SOURCES.md there)
+and the dev-only SP-04 harness `tools/geo-bench`. **Status of every row: CANDIDATE-NOT-BOUND** — no composition root
+binds any of them, no provider account or key exists (FA-06), no call has been made (SP-04 NOT RUN). These are
+server-side subprocessor candidates (rule 5): nothing ships in the mobile app or web surfaces. Data sent is the exact
+request surface asserted by the adapter privacy test (no account id, phone, name or installation id is ever sent).
+
+| Provider / SKU (adapter) | Bundle | Data sent by the Wayvro server | Retention by Wayvro (terms-derived maximum; gateway uses min with config) | Vendor-side handling | Status |
+|---|---|---|---|---|---|
+| Google Places API (New) Autocomplete (`GooglePlacesAutocompleteAdapter`) | S1 | query text, language, region `pk`, session token, coarse 2-dp bias cell, API key (header); Wayvro server IP | predictions not cached (TTL 0) | Google Maps Platform terms; vendor logging/retention NF (EG-11/EG-12) | CANDIDATE-NOT-BOUND |
+| Google Place Details (New) Essentials (`GoogleGeocodingAdapter.resolve`) | S1 | provider place id, session token, language, region, API key (header) | coordinates ≤ 30 days shared temporary cache (P3.7 item: address components) | as above | CANDIDATE-NOT-BOUND |
+| Google Geocoding API v3 forward / reverse (`GoogleGeocodingAdapter.geocode`, `GoogleReverseGeocodingAdapter`) | S1 | query text + `country:PK` / point at 5 dp, language, API key (query parameter — outbound URLs never logged) | ≤ 30 days shared temporary cache | as above | CANDIDATE-NOT-BOUND |
+| Google Routes API computeRoutes (`GoogleRoutesAdapter`) | S1 | origin/destination points (as given by the gateway, ≤ 6 dp; gateway rounds to 4 dp), DRIVE, optional future departure time, API key (header) | TTL 0; geometry not stored (counsel/terms at P3.7) | as above | CANDIDATE-NOT-BOUND |
+| Mapbox Search Box `/suggest` + `/retrieve` (`MapboxSearchBoxAutocompleteAdapter`, `MapboxGeocodingAdapter.resolve`) | S2 | query text, `country=pk`, language (none for Urdu script), session token, coarse bias cell as `proximity`, Mapbox id, access token (query parameter) | TTL 0 ("temporary use only") | Mapbox terms; Commercial Application License applicability FA-19 (blocks any S2 freeze) | CANDIDATE-NOT-BOUND |
+| Mapbox Geocoding v6 temporary forward / reverse (`MapboxGeocodingAdapter.geocode`, `MapboxReverseGeocodingAdapter`) | S2 | query text / point at 5 dp, `country=pk`, `permanent=false`, language, access token | TTL 0 (must not be cached; Mapbox map only) | as above | CANDIDATE-NOT-BOUND |
+| Mapbox Directions v5 `mapbox/driving` (`MapboxDirectionsAdapter`) | S2 | origin/destination points, access token | TTL 0; geometry not stored | as above | CANDIDATE-NOT-BOUND |
+| Photon (self-hosted) `/api`, `/reverse` (`Photon*Adapter`) | S3 | query text / point at 5 dp, Pakistan bbox, optional bias cell — to a Wayvro-operated host only | autocomplete ≤ 24 h, geocode/reverse ≤ 7 days | Wayvro infrastructure (no third party); public instance refused | CANDIDATE-NOT-BOUND |
+| Nominatim (self-hosted) `/reverse`, `/lookup` (`NominatimReverseGeocodingAdapter`, `PhotonGeocodingAdapter.resolve`) | S3 | point at 5 dp / OSM reference — to a Wayvro-operated host only | ≤ 7 days | Wayvro infrastructure; public server refused (usage policy) | CANDIDATE-NOT-BOUND |
+| OSRM / Valhalla (self-hosted) (`OsrmRoutingAdapter`, `ValhallaRoutingAdapter`) | S3 | origin/destination points — to a Wayvro-operated host only | ≤ 10 min; geometry storable (ODbL, attribution) | Wayvro infrastructure | CANDIDATE-NOT-BOUND |
+| SP-04 harness `tools/geo-bench` | dev-only | the same requests as above, from the founder's machine with evaluation keys (FA-06) | raw responses only in git-ignored `tools/geo-bench/.local/`, deleted ≤ 30 days; only aggregated metrics committed | evaluation accounts revoked after SP-04 | DEV-ONLY (never in a deployable artefact) |
+
+Re-generated at P3.7 with the chosen bundle (rows of non-chosen candidates removed).

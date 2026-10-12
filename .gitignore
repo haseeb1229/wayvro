@@ -43,6 +43,9 @@ GoogleService-Info.plist
 credentials.json
 
 # Local data, dumps and evidence that may contain PII
+# SP-04 geo benchmark: raw provider responses, working capture CSV, GPX, run records, blind keys and the usage ledger
+# (vendor terms + founder privacy; only aggregated metrics may ever be committed — tools/geo-bench/README.md).
+tools/geo-bench/.local/
 *.dump
 *.sql.gz
 *.backup

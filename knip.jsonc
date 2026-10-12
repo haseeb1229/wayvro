@@ -30,5 +30,9 @@
     // The sanitiser's production entry is its container command (infra/sanitiser/Dockerfile → dist/cli.js), ADR-041.
     "packages/image-sanitiser": { "entry": ["src/index.ts!", "src/cli.ts!"], "project": ["src/**/*.ts!"] },
     "packages/vault-adapters": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
+    // Phase 3 P3.2 candidate geo adapters; scripts/live-check.mjs is the founder-run real-provider smoke (not production).
+    "packages/geo-adapters": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts", "scripts/**/*.mjs"] },
+    // Dev-only SP-04 harness CLI (its own entry; never a dependency of a deployable app — depcruise geo-bench-dev-only).
+    "tools/geo-bench": { "entry": ["src/cli.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
   },
 }
