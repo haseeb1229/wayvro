@@ -1,5 +1,5 @@
 # PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL — SP-02 low-end Android startup, size, memory, jank and data protocol (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-07 APPROVED, FA-17 APPROVED IN PRINCIPLE; FA-04 open); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 SP-02 result today: **NOT RUN** (`docs/phase0/PHASE0_ADR_BACKLOG.md` §E). Release startup time and memory have never been measured on any device (ADR-043 "Not verified"). The only existing numbers are build-time sizes from ADR-043 (§5.3).
 
@@ -10,7 +10,7 @@ SP-02 proves or disproves that Rider-mode users on a representative low-end Andr
 |---|---|
 | ADR-003 mobile stack freeze (with SP-01) | startup/memory/size PASS or FAIL on the reference device |
 | future ADR-046 map rendering client architecture | per-candidate renderer cost (size, memory, jank, startup delta) for the size-constrained choice (F-P3-06) |
-| future ADR-050 Phase-3 performance budgets | first measured values against the PROPOSED budgets (FA-07) |
+| future ADR-050 Phase-3 performance budgets | first measured values against the FA-07-approved pre-measurement budgets |
 | **V11** | startup/memory/size budgets; driver modules not evaluated at rider startup (F-P3-07) |
 | **Q26** | mobile cold/warm start, map interaction, data usage, battery (rider, informational) |
 | **Q27** | low-end device + constrained memory/storage/network as first-class targets |
@@ -23,10 +23,10 @@ SP-02 proves or disproves that Rider-mode users on a representative low-end Andr
 - Not iOS.
 - Not a reason to add test hooks to the shipped app: release-safe signals only (§6, F-P3-07).
 
-## 3. Budgets under test (copied from the Phase-3 budget set; PROPOSED, FA-07; fixed before R1)
-These numbers are frozen for SP-02 at the moment the founder approves FA-07 and **before the first measurement**. They are not adjusted after seeing results; a change needs founder approval and the future ADR-050 update.
+## 3. Budgets under test (copied from the Phase-3 budget set; APPROVED pre-measurement, FA-07; fixed before R1)
+These numbers were frozen for SP-02 by the FA-07 approval (founder/ChatGPT plan review, 2026-10-12), **before the first measurement**. They are not adjusted after seeing results to obtain a PASS; a change needs explicit evidence, founder approval and a reviewed update of the future ADR-050 file. The 30.0 MB arm64-v8a / 29.0 MB armeabi-v7a download budget stays the initial hard target.
 
-| ID | Metric | Budget (PROPOSED) |
+| ID | Metric | Budget (FA-07 approved) |
 |---|---|---|
 | PB-01 | Cold start to Rider home interactive (signed in, cached session) | p50 ≤ 2.5 s, p90 ≤ 4.0 s |
 | PB-02 | Cold start to sign-in screen (signed out) | p50 ≤ 2.0 s |
@@ -84,16 +84,16 @@ Only the chosen renderer is merged. Candidate builds exist only to produce numbe
 | JS bundle | 3,321,764 B |
 | Device startup / memory | **NOT RUN** |
 
-### 5.4 SP02-D1 — API reachability for signed-in measurements (founder action FA-17)
+### 5.4 SP02-D1 — API reachability for signed-in measurements (FA-17 APPROVED IN PRINCIPLE 2026-10-12)
 The release app accepts only an `https` API origin outside `__DEV__` (`apps/wayvro-mobile/src/core/config/api-config.ts`), and a build without `WAYVRO_API_URL` (the CI artefact) shows "service not configured". Signed-in Rider home (PB-01, PB-07, PB-09, PB-11, PB-12) therefore needs an HTTPS endpoint with a publicly trusted certificate that reaches a synthetic API. Options:
 
 | Option | Description | Trade-off |
 |---|---|---|
-| D1-A | founder-approved **temporary HTTPS tunnel** to the local API runner (synthetic data, synthetic numbers, torn down after each session); a local release AAB built with `WAYVRO_API_URL` set to the tunnel origin | real internet path (representative latency); a new external service → founder approval; tunnel hostnames may change per session → rebuild |
+| D1-A | **ephemeral, vetted HTTPS tunnel** to the minimum local synthetic API (synthetic data and numbers only, no real customer data, torn down after each session; tunnel service terms/security verified before use; no URL/token committed); a local release AAB built with `WAYVRO_API_URL` set to the tunnel origin | real internet path (representative latency); approved in principle by FA-17 for SP-01/SP-02 only; tunnel hostnames may change per session → rebuild |
 | D1-B | wait for a staging-class host | no new service; PB-01 and data budgets stay **NOT RUN** until then → blocks ADR-003/ADR-050 freeze |
 | D1-C | special measurement build that allows cleartext/LAN | **rejected**: it would be a test hook in a release-config build (F-P3-07) and changes network security behaviour |
 
-Recommendation: D1-A for R1b/R2, decided by the founder as **FA-17** (`docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md`: a founder-approved temporary HTTPS-reachable synthetic API endpoint, e.g. a tunnel to the local API with synthetic data only, or a staging host). Without FA-17 the signed-in measurements (PB-01, PB-07, PB-09, PB-11, PB-12) are reported **NOT RUN**. Independent of D1, every round also measures the **unmodified CI artefact** (signed out / unconfigured screen) as a control.
+Decision: D1-A for R1b/R2 — **FA-17 APPROVED IN PRINCIPLE 2026-10-12 for SP-01/SP-02 only** (`docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §8a); a later staging host (D1-B) remains acceptable. If no acceptable free temporary tunnel option exists, the signed-in measurements (PB-01, PB-07, PB-09, PB-11, PB-12) stay **BLOCKED** rather than weakening TLS (D1-C stays rejected; never a cleartext release build). Independent of D1, every round also measures the **unmodified CI artefact** (signed out / unconfigured screen) as a control.
 
 ## 6. Release-safe instrumentation Phase 3 must add (implementation detail to verify in P3.5)
 ### 6.1 "Rider home interactive" marker (TTI)
@@ -104,7 +104,7 @@ Recommendation: D1-A for R1b/R2, decided by the founder as **FA-17** (`docs/phas
 ### 6.2 Driver-module evaluation check (F-P3-07)
 Metro release builds are one Hermes bundle; `import()` defers **evaluation**, not download. "Lazy driver modules" is therefore checked as evaluation:
 - **Static (CI, every PR):** the existing architecture test (`apps/wayvro-mobile/src/architecture.test.ts`) already requires driver feature imports to go through `lazyScreen(`; Phase 3 extends it to the new `/drive/*` route directory (including `drive/_layout.tsx`) and mode controller, and adds a dependency-cruiser rule that no static import path from the app root or rider graph reaches `src/features/driver/**`.
-- **Runtime (instrumented build, never shipped):** a separate build profile adds, at bundle time, a marker call at the top of each driver feature module (dev/CI-only transform). It runs on the emulator nightly (SP-08 tier) and once per round on the reference device. Result = number of driver feature modules evaluated before the fully-drawn marker (PB-06 expects 0) and total modules evaluated (informational). The ART-ISO artefact-isolation script (`scripts/artifact-isolation.mjs`) is extended so the release bundle is proven free of the marker.
+- **Runtime (instrumented build, never shipped):** a separate build profile adds, at bundle time, a marker call at the top of each driver feature module (dev/CI-only transform). It runs on the emulator in the SP-08 full matrix (manual `workflow_dispatch`, FA-16) and once per round on the reference device. Result = number of driver feature modules evaluated before the fully-drawn marker (PB-06 expects 0) and total modules evaluated (informational). The ART-ISO artefact-isolation script (`scripts/artifact-isolation.mjs`) is extended so the release bundle is proven free of the marker.
 
 ## 7. Session control (before every measurement set)
 | Step | Who | Command / action |
@@ -238,7 +238,7 @@ Repeat 6×, discard first.
 - A metric is **PASS** only when measured on the **reference device** in the stated profile and every stated statistic is within budget; otherwise **FAIL**. No device → **BLOCKED**; not yet measured → **NOT RUN**. Alternate-device results are informational.
 - SP-02 overall PASS = PB-01…PB-07, PB-09, PB-12 (Lite) PASS at R1b **and** all PB-01…PB-14 PASS at R2.
 - **Regression rule (R2 vs R1b and every later release round):** any startup p50 increase > 15 % or any PSS p90 increase > 15 % at the same screen requires a written analysis even when within budget; any single change adding > 1.5 MB download (PB-04) requires written justification before merge; any budget breach is FAIL and blocks the freeze checkpoint until fixed or until the founder approves a budget change via the future ADR-050 update.
-- Renderer selection (ADR-046): a candidate whose measured per-ABI download delta exceeds the remaining headroom after the other Phase-3 additions (`docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md` §4) fails PB-04 unless the founder approves a budget change.
+- Renderer selection (ADR-046): a candidate whose measured per-ABI download delta exceeds the remaining headroom after the other Phase-3 additions (`docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md` §4) fails PB-04. If every admissible renderer exceeds the 30.0 MB / 29.0 MB target, the budget is **not** silently raised: the evidence and a bounded founder decision (recorded as an ADR-050 amendment) come before the provider/renderer freeze.
 - Failure path (backlog): module restructuring / dependency reduction first → ADR-003 review if the RN/Expo stack itself cannot meet PB-01/PB-07.
 
 ## 13. Evidence to commit
@@ -250,7 +250,7 @@ Repeat 6×, discard first.
 | Step | Who | Time |
 |---|---|---|
 | Device setup (developer options, USB debugging, RSA prompt) — shared with SP-01 §8.2 if the same unit | F + C | 20–30 min |
-| SP02-D1 decision (FA-17: tunnel/staging or wait) | F | — |
+| SP02-D1 session (FA-17 approved in principle: founder opens and tears down the vetted tunnel per session) | F | per session |
 | R1a: install CI artefact, M-01 (unconfigured/signed-out), M-04 at first screen; laptop: M-05/M-06/static M-07 | F (presence) + C | ~1 h |
 | R1b: sign in (synthetic number), M-01 N0+N2, M-02, M-03, M-04, M-07 runtime, M-10 Lite/standard, M-12, M-13, M-14, M-15 | F + C | ~3–3.5 h |
 | R2 (chosen renderer): R1b set + M-08, M-09 (N1, needs a 4G location), M-10 cold/warm tiles, M-11 | F + C | ~3–4 h |
@@ -260,7 +260,8 @@ Repeat 6×, discard first.
 Founder physical steps: plug/unplug, tapping through scripted flows where adb cannot (sign-in, pin moves, multi-app pressure), switching Wi-Fi/SIM profiles, setting the download rate limit. The Claude Code session runs every command, collects numbers and writes the aggregate.
 
 ## 15. Open points recorded for review
-- SP02-D1 (API reachability) — founder action FA-17; without D1-A or a staging host, PB-01, PB-07, PB-09, PB-11 and PB-12 stay NOT RUN.
+- SP02-D1 (API reachability) — FA-17 APPROVED IN PRINCIPLE (2026-10-12); if no acceptable free tunnel option exists and no staging host exists, PB-01, PB-07, PB-09, PB-11 and PB-12 stay BLOCKED.
+- FA-04 (reference low-end device) remains a genuine founder action; if it is missing by P3.10, the device budgets and the renderer freeze are BLOCKED-EXTERNAL / PARTIAL and Phase 3 is not merged as complete without this evidence.
 - The fully-drawn marker mechanism (§6.1) and the instrumented-build transform (§6.2) are implementation details to verify in P3.5; both must pass ART-ISO.
 - On-device throttling availability (N2) varies by OEM; the router fallback may be needed.
 - gfxinfo coverage of map surfaces is renderer-dependent (M-08 caveat).

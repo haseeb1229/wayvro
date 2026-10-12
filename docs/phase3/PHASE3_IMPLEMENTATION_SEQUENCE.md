@@ -1,6 +1,6 @@
 # PHASE3_IMPLEMENTATION_SEQUENCE — Internal checkpoints for one full Phase-3 run (PROPOSED)
 
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (decisions in `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1a); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 ## 1. Shape of the run
 
@@ -10,7 +10,7 @@ The founder wants **one** implementation authorisation for the whole macro Phase
 - freeze decisions that need **real-world evidence** (SP-01, SP-02, SP-04) sit at fixed points and cannot be taken early;
 - the founder's external work (devices, field drives, provider accounts, reviewers) can run **in parallel** with engineering from the first day.
 
-Proposed implementation branch: `phase-3/maps-quotes-unified-ux` (matches the CI push trigger `phase-*/**`). One final PR to `main` after the closure report and founder/ChatGPT review — never an automatic merge.
+Proposed implementation branch: `phase-3/maps-quotes-unified-ux` (matches the CI push trigger `phase-*/**`). One final PR to `main` after the closure report and founder/ChatGPT review — never an automatic merge. There is **no separate per-checkpoint PR** (including P3.5) and **no routine founder approval** between checkpoints: the plan-review decisions of 2026-10-12 (FA-01, FA-02, FA-07, FA-10, FA-11, FA-12, FA-16, FA-17, FA-18) are already recorded, so the run proceeds through P3.0–P3.10 automatically.
 
 ### 1.1 Stop rules inside the single run
 
@@ -18,8 +18,10 @@ Proposed implementation branch: `phase-3/maps-quotes-unified-ux` (matches the CI
 |---|---|
 | A checkpoint's own gates fail | Fix inside the checkpoint; never weaken a test, skip a gate or add an exception to make CI green (CLAUDE.md §7/§8). |
 | External evidence needed for a **freeze** is missing (SP-01 devices, SP-02 device, SP-04 field data, provider accounts) | Mark the freeze step **BLOCKED-EXTERNAL**, record exactly what is missing, and continue with checkpoints that do not depend on it. Never freeze on desk data, emulator data or guesses. |
-| A founder approval needed to change the **shipped binary** is missing (FA-02 location permissions) | Build everything that does not need the permission (manual search/pin works without location); keep the permission out of the manifest; mark the sub-step BLOCKED-EXTERNAL. |
-| An SP result is FAIL | Execute the documented fallback path (SP-01: Transistorsoft only with FA-08 approval → ADR-003 Flutter evaluation; SP-02: module restructuring / renderer change; SP-04: next-best provider per SKU). Record FAIL honestly; never re-run until green without a cause. |
+| Rider foreground location (FA-02 **APPROVED 2026-10-12**) | Implement the approved delta only: COARSE + FINE declared, requested just in time when the rider chooses "use current location", approximate accepted, manual search/pin always usable, denial/revocation recovery UI, Driver readiness reads state only. Anything beyond it (background location, location FGS, `POST_NOTIFICATIONS`, `USE_FULL_SCREEN_INTENT`, microphone, contacts, broad media/storage) stays forbidden in the release app; background-location experiments live only in the separate SP-01 spike build. |
+| Required **real-world evidence** still missing at P3.10 (SP-01 real devices, SP-02 low-end device, SP-04 Lahore field, FA-09 native Urdu/Roman-Urdu review) | Complete all safe engineering work; classify the affected IDs/freezes honestly as **BLOCKED-EXTERNAL** / **PARTIAL**; never guess or freeze a provider or background-location architecture; do **not** declare Phase 3 complete or merge it as complete until the closure evidence is supplied. This is not a new macro phase — the same run resumes closure when the evidence arrives. |
+| Paid spend (FA-08) or Mapbox commercial licence (FA-19) unresolved | No paid spend is pre-approved; a Transistorsoft licence or paid map/geo use needs a specific founder decision after evidence. An S2 (Mapbox) bundle cannot be frozen for pilot/production while FA-19 is unresolved; implementation and SP-04 evaluation continue. |
+| An SP result is FAIL | Execute the documented fallback path (SP-01: Transistorsoft only with FA-08 approval → ADR-003 Flutter evaluation; SP-02: module restructuring / renderer change; SP-04: next-best provider per SKU). Record FAIL honestly; never re-run until green without a cause. Budgets and thresholds are the FA-07 pre-measurement values and are never tuned after seeing measurements; an unresolved SP-04 CRITICAL route invalidity makes a bundle ineligible for freeze (route-critical hard gate). |
 | Main CI goes red for an external/transient reason | Re-run once through GitHub; if it fails again, stop and diagnose (same rule as the Phase-3 kickoff). |
 | Scope pressure toward Phase 4 (dispatch, offers, presence, ride requests) | Refuse. Phase 3 ends at a priced, expiring quote and a mode-aware shell. |
 
@@ -33,12 +35,12 @@ Every checkpoint commit records in `docs/phase3/` (a Phase-3 implementation reco
 
 | Item | Detail |
 |---|---|
-| F-P3-01 | Remove the dev-client generated URL scheme (`exp+wayvro`) from **release** builds (evaluate `expo-dev-client` `addGeneratedScheme: false` vs excluding the dev client from the release variant; choose by evidence in the release manifest). Extend the Android release gate from a permission allowlist to an **exported-components and intent-filter allowlist** (fails on any VIEW/BROWSABLE filter or scheme not approved). Correct ADR-043 ("no URL scheme" wording is now true again) and the `osv-scanner.toml` decode-uri-component reason text in the same change. |
-| osv expiry | The decode-uri-component runtime exception expires 2026-12-31; if the run can pass that date, either remove the reachability (upgrade path for expo-router/query-string within the Expo SDK 57 line, if one exists) or renew it with a fresh, truthful justification after F-P3-01 — never a silent date bump. The intent router caps URL length before any parsing. |
+| F-P3-01 | Ensure the `expo-dev-client` generated `exp+<slug>` scheme exists **only in development builds**: use the documented `addGeneratedScheme` config-plugin option **variant-conditionally** (enabled for the development variant, disabled for release), so release builds never expose `exp+wayvro` while developer dev-client functionality (launcher, deep-link into the dev server) is preserved. Extend the Android release gate from a permission allowlist to an **exported-components and intent-filter allowlist**: CI verifies the release AAB's intent filters and schemes and fails on any VIEW/BROWSABLE filter or scheme not approved. Intentional deep links stay **disabled** while the decode-uri-component exception is open. Correct ADR-043 ("no URL scheme" wording is now true again) and the `osv-scanner.toml` decode-uri-component reason text in the same change. |
+| osv expiry | The decode-uri-component runtime exception expires 2026-12-31 and is **not extended casually**; if the run can pass that date, either remove the reachability (upgrade path for expo-router/query-string within the Expo SDK 57 line, if one exists) or renew it only with a fresh, truthful reachability justification after F-P3-01 in a reviewed change — never a silent date bump. The intent router caps URL length before any parsing. |
 | F-P3-09 | Enable the `oasdiff` breaking-change gate in the Quality job against the merged Phase-2 OpenAPI baseline (ADR-027 deferral closed). |
 | F-P3-02 | Already fixed before planning by the workflow-only PR #6 (exact-key Gradle dependency cache, explicit main-only save, disk evidence; `docs/phase3/PHASE3_PLAN.md` §6). P3.0 only confirms the Android job stays green with that evidence; any recurrence is diagnosed, never worked around. |
 | Record | Create the Phase-3 implementation record; add new error codes skeleton only when first used (no dead exports — Knip). |
-| Gates | Full local gate set + CI on the branch; release AAB manifest shows no external scheme. |
+| Gates | Full local gate set + CI on the branch; release AAB manifest shows no external scheme (no `exp+wayvro`); a development build still exposes the dev-client scheme. |
 | IDs | V08 (prerequisite), U05 (manifest hygiene), V10 (gate) |
 
 ### P3.1 — Catalog: service products, zones, eligibility rules
@@ -47,9 +49,9 @@ Every checkpoint commit records in `docs/phase3/` (a Phase-3 implementation reco
 |---|---|
 | Migration | `0010_catalog_products_zones` (expand-only): `catalog.service_products`, `catalog.city_service_products`, `catalog.vehicle_eligibility_rules`, `catalog.zone_sets`, `catalog.zones` (hand-written PostGIS SQL, GiST), `catalog.service_hours`, `catalog.pickup_points`, `catalog.districts.geom` (nullable). Guard triggers for lifecycle and immutability; grants. Detail: `docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md`. |
 | Domain | Pure, server-only evaluators in `apps/api` (authoritative server code, not the client-importable `packages/domain`): zone policy (service area / exclusion / pickup-restricted / airport precinct), service hours (Asia/Karachi, server time), vehicle eligibility rules. |
-| API | Staff maker-checker routes (draft → submit → approve → activate → retire) for zone sets, eligibility rules, product city status; consumer read routes for service products and service-area summary. Staff permissions + role mapping (FA-10); `0010_catalog_products_zones` widens the DB CHECK on `staff.role_assignments.role` (migration 0003) in a conditional section only if FA-10 approves PRICING_MANAGER / CATALOG_MANAGER / RELEASE_MANAGER. |
+| API | Staff maker-checker routes (draft → submit → approve → activate → retire) for zone sets, eligibility rules, product city status; consumer read routes for service products and service-area summary. Staff permissions + role mapping (FA-10 **APPROVED**: dedicated least-privilege PRICING_MANAGER / CATALOG_MANAGER / RELEASE_MANAGER; COMPLIANCE_ADMIN/STAFF_ADMIN are not overloaded). `0010_catalog_products_zones` **must** widen the DB CHECK on `staff.role_assignments.role` (migration 0003) expand-safely: drop and re-add the CHECK with the superset of values in one migration, no data change, tested from every previous prefix. Real maker-checker needs distinct human actors before exposure; synthetic test staff are allowed in development. |
 | web-ops | Catalog pages (zone-set upload as GeoJSON with validation preview, product status, eligibility rules) behind permissions. |
-| Seed | Local/test-only synthetic Lahore seed script (`is_synthetic = true`); production refuses synthetic activation. |
+| Seed | Local/test-only synthetic Lahore seed script (`is_synthetic = true`; FA-12 DECIDED: synthetic zones/boundaries only, no unreviewed real boundary import); production refuses synthetic activation. FA-11 APPROVED: BIKE/RICKSHAW MODELLED + DISABLED_LEGAL_GATE; ECONOMY CONFIGURED/ENABLED only in local/test synthetic configuration. |
 | Tests | Migration clean + every-previous-prefix + live-row upgrade; restricted-role grants; geometry validity/SRID; zone boundary/hole/multipolygon/exclusion precedence; lifecycle triggers (BIKE/RICKSHAW cannot become ENABLED without legal basis); API authz/maker≠checker; audit rows. |
 | IDs | E08, H10, R28 (+ B04 seats/luggage metadata) |
 
@@ -96,8 +98,8 @@ Every checkpoint commit records in `docs/phase3/` (a Phase-3 implementation reco
 |---|---|
 | Shell | `src/core/mode` ModeController (persisted preference = hint only; additive `AccountState.modes` from server), rider routes under the URL segment `/ride/*` (eager) and driver routes under `/drive/*` (lazy), `/home` kept as the shared account hub, existing `earn/*` kept, new `src/platform/` (maps, location) PROPOSED, restoration precedence, intent router (no external scheme), back-stack rules. |
 | Rider | Home, where-to search (autocomplete via API), pin selection **text-first** (no renderer yet), route summary + quote options + fare breakdown, expiry/requote, outage/stale/outside-area/outside-hours states, Lite mode. "Request ride" not present (Phase 4). |
-| Location | Rider foreground location through `src/platform/location` **only if FA-02 approved**: manifest/allowlist delta (COARSE + FINE when-in-use), expo-location with background/FGS disabled, architecture-test changes. Without FA-02 the flow is search + manual pin only and the sub-step is BLOCKED-EXTERNAL. |
-| E2E | Maestro scaffolding + SP-08 PR tier (accounts A, C, D, E core flows; Maestro phase ≤ 15 min) on the emulator in CI. |
+| Location | Rider foreground location through `src/platform/location` (FA-02 **APPROVED 2026-10-12**): manifest/allowlist delta (COARSE + FINE when-in-use), requested just in time only on "use current location", approximate accepted, manual search/pin always usable, denial/revocation recovery UI, expo-location with background/FGS disabled, architecture-test changes; Driver readiness reads the permission state only. Background location, location FGS, `POST_NOTIFICATIONS`, `USE_FULL_SCREEN_INTENT`, microphone, contacts and broad media/storage remain forbidden in the release app. |
+| E2E | Maestro scaffolding + SP-08 PR tier (accounts A, C, D, E core flows; Maestro phase ≤ 15 min, FA-16 APPROVED) on the emulator in CI. |
 | Tests | Pure-logic vitest for ModeController, intent router, restoration, view-state adapters; Maestro flows; release AAB gates (permissions, intent filters, 16 KB, size). |
 | IDs | V08, V05, A07, U05, L08, B02 (client), B03/B04/B06 (display), V10 |
 
@@ -105,8 +107,8 @@ Every checkpoint commit records in `docs/phase3/` (a Phase-3 implementation reco
 
 | Item | Detail |
 |---|---|
-| SP-02 R1 | Measure the P3.5 release AAB (no map renderer) on the reference low-end device per `docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md`. Needs FA-04; signed-in measurements also need FA-17 (HTTPS synthetic endpoint), otherwise NOT RUN. |
-| SP-01 | Build the spike under `tests/spikes/` (not the release app) and run the device matrix per `docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md`; rider-hygiene checks on the real release AAB (runtime part needs FA-17, otherwise NOT RUN). Needs FA-03; the optional push-wake case needs FA-18. |
+| SP-02 R1 | Measure the P3.5 release AAB (no map renderer) on the reference low-end device per `docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md`. Needs FA-04 (genuine founder action); signed-in measurements use the FA-17 ephemeral vetted HTTPS tunnel (APPROVED IN PRINCIPLE; synthetic data only, torn down after each session) — if no acceptable free option exists they stay BLOCKED (TLS never weakened). |
+| SP-01 | Build the spike under `tests/spikes/` (a separate non-release build — the only place background-location experiments are allowed) and run the device matrix per `docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md`; rider-hygiene checks on the real release AAB (runtime part uses the FA-17 tunnel, otherwise BLOCKED). Needs FA-03 (genuine founder action). FA-18 is DEFERRED to Phase 4, so the TC-22 push-wake portion is NOT RUN in Phase 3. |
 | Freeze | ADR-029 (background-location SDK) and ADR-003 (mobile stack) move from OPEN-SPIKE to ACCEPTED-ON-EVIDENCE **only** with passing device evidence on the required OEM classes; otherwise BLOCKED-EXTERNAL or the documented fallback. |
 | IDs | V05, V11, Q26, Q27, A07 |
 
@@ -114,8 +116,8 @@ Every checkpoint commit records in `docs/phase3/` (a Phase-3 implementation reco
 
 | Item | Detail |
 |---|---|
-| SP-04 | Analyse ≥50 founder field cases with the harness; compare candidates per SKU against the founder-approved thresholds (FA-07). |
-| Freeze | Write the ADR-006 file (provider per SKU, ACCEPTED-ON-EVIDENCE) and ADR-046 (map renderer) together — only with evidence; any paid tier only with FA-08. Renderer and geo SKUs are chosen as one **licence-coherent bundle** (CON-P3-16: Google geo content may not be used with a non-Google map; Mapbox geocoding only with a Mapbox map), so the two ADRs cannot be frozen independently. |
+| SP-04 | Analyse ≥50 founder field cases with the harness; compare candidates per SKU against the FA-07 thresholds (APPROVED 2026-10-12 as pre-measurement values) including the **route-critical hard gate**: an unresolved CRITICAL route invalidity (wrong-way on a one-way, private/inaccessible segment used as normal routing, prohibited/closed passage, unsafe/impossible manoeuvre, systematic severe defect) makes a bundle ineligible for freeze until cleared by ground-truth correction, evidence-backed provider/config/map-data correction plus re-run, or a founder-signed product mitigation proving the route is never presented/used. |
+| Freeze | Write the ADR-006 file (provider per SKU, ACCEPTED-ON-EVIDENCE) and ADR-046 (map renderer) together — only with evidence; no paid spend is pre-approved (any paid tier needs a specific FA-08 decision); an S2 (Mapbox) bundle needs FA-19 written Mapbox commercial/legal confirmation before a pilot/production freeze. If every admissible renderer exceeds the 30.0 MB arm64-v8a / 29.0 MB armeabi-v7a download budget, the budget is not silently raised: report evidence and get a bounded founder decision before the freeze. Renderer and geo SKUs are chosen as one **licence-coherent bundle** (CON-P3-16: Google geo content may not be used with a non-Google map; Mapbox geocoding only with a Mapbox map), so the two ADRs cannot be frozen independently. |
 | Adapters | Production adapter(s) for the chosen SKUs in `packages/geo-adapters`, contract suite, budgets configured, provider-console quotas confirmed by the founder. |
 | Mobile | Map renderer behind `src/platform/maps` (one adapter file imports the vendor SDK), map pin + route polyline, accessibility text alternative, tile cache cap; SP-02 R2 re-measure with the map. |
 | Inventory | U04 SDK/privacy inventory updated with the actual chosen SDK(s). |
@@ -137,17 +139,17 @@ Every checkpoint commit records in `docs/phase3/` (a Phase-3 implementation reco
 | Strings | All new rider/driver/release-control strings in en / ur / ur-Latn (typed catalogues), pending native review flag; no machine-translation-only safety/legal text. |
 | Search | Roman-Urdu normalisation + founder-curated landmark aliases (`geo.landmark_aliases`). |
 | A11y | TalkBack labels/focus order, dynamic type to 200 %, 48 dp targets, contrast AA, reduced motion, live regions for price/expiry changes, map text alternatives, RTL layouts for quote/fare screens. |
-| External | Native-review package exported for FA-09; device a11y pass on at least one physical Android (FA-14 optional). |
+| External | Native-review package exported for FA-09 (native human review required before Phase-3 exit; AI copy alone never satisfies P18/A06/K19); device a11y pass on at least one physical Android (FA-14 optional). |
 | IDs | A06, A08, P18, K19 |
 
 ### P3.10 — Cross-mode regression, budgets and closure
 
 | Item | Detail |
 |---|---|
-| SP-08 | Scheduled full matrix (accounts A–G, two API levels) at the cadence approved in FA-16 (private repository: Actions minutes are finite) + PR tier; runtime budgets and minutes measured. |
+| SP-08 | Full cross-mode matrix (accounts A–G, two API levels) on the **manual `workflow_dispatch`** workflow (FA-16 APPROVED; mandatory at Phase-3 final closure; no nightly/scheduled full matrix while the repository is private) + PR tier; runtime budgets and Actions minutes measured. |
 | Budgets | Performance budget table filled with measured values (device-only metrics need SP-02 evidence). |
 | Inventory | U04 final; permission/intent-filter reports; size report. |
-| Closure | Requirement reconciliation for all 29 IDs (ENGINEERING_SATISFIED / PARTIAL_EXTERNAL_GATED / BLOCKED), CI evidence on the final SHA, handoff report per CLAUDE.md §17, PR opened for review (not merged). |
+| Closure | Requirement reconciliation for all 29 IDs (ENGINEERING_SATISFIED / PARTIAL_EXTERNAL_GATED / BLOCKED), CI evidence on the final SHA, handoff report per CLAUDE.md §17, PR opened for review (not merged). If SP-01/SP-02/SP-04 real-world evidence or the FA-09 native review is still missing, the affected IDs/freezes are BLOCKED-EXTERNAL / PARTIAL and Phase 3 is **not** merged as complete until that closure evidence is supplied (§1.1). |
 | IDs | V10, V11, Q26, Q27, U04, all |
 
 ## 3. Dependency graph (engineering order)
@@ -160,7 +162,7 @@ P3.0 ─► P3.1 ─► P3.2 ─► P3.3 ─► P3.4 ─► P3.5 ─► P3.8 ─
                                            P3.7 ─► SP-02 R2
 ```
 
-P3.6 and P3.7 depend on external evidence. If that evidence arrives late, P3.8–P3.9 proceed and P3.7 runs when the data exists; P3.10 closure lists anything still BLOCKED-EXTERNAL.
+P3.6 and P3.7 depend on external evidence. If that evidence arrives late, P3.8–P3.9 proceed and P3.7 runs when the data exists; P3.10 closure lists anything still BLOCKED-EXTERNAL / PARTIAL, and Phase 3 is not declared complete until that evidence exists (§1.1).
 
 ## 4. Exit-gate mapping (docs/12 Phase 3 gate)
 

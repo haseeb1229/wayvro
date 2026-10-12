@@ -1,5 +1,5 @@
 # PHASE3_GEO_PROVIDER_EVALUATION — Geo provider evaluation per SKU, licence-coherent bundles and SP-04 scoring (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (targeted fixes applied, `docs/phase3/PHASE3_PLAN.md` §11); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 ## 0. Purpose, scope and authority
 
@@ -63,7 +63,7 @@ Evaluation dimensions applied to each SKU: accuracy, coverage/failure behaviour,
 | Vendor | Product | Price / free (conf.) | Terms / cache (conf.) | Lahore (Roman-Urdu) |
 |---|---|---|---|---|
 | Google | Places Autocomplete + Place Details | Autocomplete Requests 10K free then USD 2.83/1K; Autocomplete Session Usage unlimited, no charge; Place Details Essentials USD 5/1K (Essentials 10K free) (V, pricing page above). Exact session-termination billing semantics NF — verify | predictions TTL 0 unless terms allow; `place_id` storable indefinitely; must not be displayed on a non-Google map (V) | NF — SP-04 |
-| Mapbox | Search Box API, or Geocoding (temporary) with autocomplete | Search Box 25K free then USD 1.70/1K (V; billing unit session vs request NF); temporary geocoding 100K free then USD 0.75/1K (V) | temporary geocoding results must not be cached and may be used only with a Mapbox map (V, https://docs.mapbox.com/api/search/geocoding/, seen 2026-10-12); Search Box map-coupling terms NF | NF |
+| Mapbox | Search Box API, or Geocoding (temporary) with autocomplete | Search Box has two billing models that must not be conflated (V, https://www.mapbox.com/pricing, accessed 2026-10-12, page undated): **sessions** (/suggest + /retrieve; a session = up to 50 /suggest + 1 /retrieve, expiring after 2 min of inactivity) — standard 2,500 free then USD 11.50/1K (introductory preview pricing: 500 free then USD 3.00/1K, not assumed to remain available); **requests** (/category and /reverse only) — standard 25,000 free then USD 1.70/1K (preview: 50,000 free then USD 1.00/1K); temporary geocoding 100K free then USD 0.75/1K (V) | temporary geocoding results must not be cached and may be used only with a Mapbox map (V, https://docs.mapbox.com/api/search/geocoding/, seen 2026-10-12); Search Box map-coupling terms NF | NF |
 | Open stack | Photon (Apache-2.0, 1.3.0, 2026-08-07; V) self-hosted | infra only | own data; ODbL attribution | NF; POI completeness is the known risk (R5) |
 | Open stack | Nominatim public server | — | **autocomplete prohibited**, 1 req/s, systematic reverse prohibited (V) | **Excluded**; self-hosted Nominatim (GPL-3.0, v5.3.2) possible but not built for type-ahead |
 | TomTom | Search | 2.5K search/month free (V); paid NF | map coupling NF | NF |
@@ -140,6 +140,8 @@ CONTRACTUAL = a term, policy or licence obligation that the API/SDK does not its
 | Google: no in-app navigation substantially similar to the Google Maps app | CONTRACTUAL | https://cloud.google.com/maps-platform/terms (§3.2.3(d)(iv)) |
 | Google free caps per SKU/month and per-API quotas | TECHNICAL (billing/quota enforced by the platform) | https://developers.google.com/maps/billing-and-pricing/pricing (page "Last updated 2026-10-08") |
 | Mapbox temporary geocoding results must not be cached and may only be used with a Mapbox map; permanent geocoding is a separate paid SKU | CONTRACTUAL | https://docs.mapbox.com/api/search/geocoding/ |
+| Mapbox **Commercial Application License** "for vehicle, B2B, and internal business applications": required "for vehicle usage (including ground, aerial, manned and unmanned vehicles)" and for "applications primarily intended for use within vehicles or use in any vehicle system or component thereof"; it "consists of an annual subscription and, where applicable, a per-user or seat-based component" | CONTRACTUAL; **applicability to Wayvro Rider/Driver use = EXTERNAL — Mapbox commercial/legal confirmation (FA-19)**; not decided by this plan; no fee assumed | https://www.mapbox.com/pricing (Licensing section; accessed 2026-10-12; page undated) |
+| Mapbox Search Box billed by **sessions** (/suggest + /retrieve) or by **requests** (/category, /reverse), each with introductory preview and standard pricing | TECHNICAL/commercial billing semantics (the billing mode decides cost; preview pricing is not assumed to persist) | https://www.mapbox.com/pricing (accessed 2026-10-12) |
 | Mapbox Directions limited to 300 requests/min by default | TECHNICAL (API rate limit; higher limit on request) | https://docs.mapbox.com/api/navigation/directions/ |
 | Mapbox mobile SDK telemetry must be user-opt-out-able in the app | CONTRACTUAL obligation, implemented through an SDK setting | https://docs.mapbox.com/api/search/geocoding/ and https://www.mapbox.com/pricing (as summarised in the 2026-10-12 research; exact clause to re-cite at P3.7) |
 | expo-maps renders Apple Maps on iOS (Google Maps on Android) | TECHNICAL (SDK property; makes it incompatible with the CONTRACTUAL Google-map-only rule on iOS) | https://docs.expo.dev/versions/latest/sdk/maps/ |
@@ -180,7 +182,9 @@ Lite mode (L08, text-first, no tiles) does not remove the coupling: Lite is a mo
 | A4 | Autocomplete keystroke requests are not billed separately when a session ends in a place resolution (Google session model; V that session usage is no-charge, NF exact semantics) — abandoned sessions shown as sensitivity | pricing page |
 | A5 | MAU (Mapbox) at pilot ≤ 25,000 | ESTIMATE; unknown until pilot |
 | A6 | No cache benefit assumed (worst case); cache effects in §7.5 | conservative |
-| A7 | List prices at the first volume tier only; volume discounts NF | facts file |
+| A7 | List prices at the first volume tier only unless a tiered calculation is shown; volume discounts NF | facts file |
+| A8 | **Google** is modelled two ways: pay-as-you-go (PAYG, per-SKU free caps) and **subscription** (Starter USD 100 / 50,000, Essentials USD 275 / 100,000, Pro USD 1,200 / 250,000 combined calls per month; one combined limit for all included SKUs; no-cost SKUs such as Maps SDK do not count; calls above the limit are billed at standard PAYG prices and are not blocked; change or cancel anytime; not available to India-PAYG customers). Starter includes only Geocoding and Dynamic Maps; Essentials includes Geocoding, Autocomplete, Place Details Essentials, Compute Routes Essentials, Route Matrix Essentials, Maps SDK; Pro adds the Pro SKUs incl. Routes Pro; Navigation SDK is in no plan. Whether per-SKU PAYG free caps still apply alongside a subscription is **NF** (modelled both ways). | https://mapsplatform.google.com/pricing/ and https://developers.google.com/maps/billing-and-pricing/subscriptions ("Last updated 2026-10-08"), accessed 2026-10-12 |
+| A9 | **Mapbox Search Box** autocomplete is billed by **sessions** (one session per place resolution); request billing applies only to /category and /reverse. The planning figure uses **standard** pricing; introductory preview pricing is shown as a lower bound only and is not assumed available at pilot or production. Any Commercial Application License cost (FA-19) is **not** included and is unknown. | https://www.mapbox.com/pricing, accessed 2026-10-12 |
 
 Monthly billable calls at pilot: resolutions 2 × 15,000 = **30,000**; reverse 2 × 15,000 = **30,000**; routes 4 × 15,000 = **60,000**; total 120,000 = 8 × 15,000. At scale: ×10.
 
@@ -190,10 +194,14 @@ Monthly billable calls at pilot: resolutions 2 × 15,000 = **30,000**; reverse 2
 |---|---|---|
 | S1 Google (Essentials routes) | Maps SDK mobile: 0 · Place Details: (30,000 − 10,000) × 5/1,000 = 100 · Geocoding (reverse): (30,000 − 10,000) × 5/1,000 = 100 · Routes Essentials: (60,000 − 10,000) × 5/1,000 = 250 | **≈ 450** |
 | S1 Google (routes need Pro tier) | as above but routes (60,000 − 5,000) × 10/1,000 = 550 | **≈ 750** |
-| S1 sensitivity: abandoned search sessions | e.g. 1 abandoned session/trip × 4 requests = 60,000 Autocomplete Requests: (60,000 − 10,000) × 2.83/1,000 = 141.50 | +0 to ≈ 142 |
-| S2 Mapbox (Search Box billed per session) | Maps SDK: MAU ≤ 25,000 → 0 · Search Box: (30,000 − 25,000) × 1.70/1,000 = 8.50 · reverse (temporary geocoding): 30,000 ≤ 100,000 free → 0 · Directions: 60,000 ≤ 100,000 → 0 | **≈ 9** |
-| S2 variant (Search Box billed per request, 4 requests/session) | (120,000 − 25,000) × 1.70/1,000 = 161.50 | ≈ 162 |
-| S2 variant (autocomplete via temporary geocoding) | autocomplete 120,000 + reverse 30,000 = 150,000 temporary geocodes: (150,000 − 100,000) × 0.75/1,000 = 37.50 | ≈ 38 |
+| S1 sensitivity: abandoned search sessions | e.g. 1 abandoned session/trip × 4 requests = 60,000 Autocomplete Requests: (60,000 − 10,000) × 2.83/1,000 = 141.50 (PAYG) | +0 to ≈ 142 |
+| S1 Google — **subscription Starter** (USD 100, 50,000; Geocoding + Dynamic Maps only) | reverse Geocoding 30,000 inside the plan; Place Details 100 + Routes Essentials 250 stay PAYG | **≈ 450** (no saving vs PAYG) |
+| S1 Google — **subscription Essentials** (USD 275, 100,000 combined; Essentials routes suffice) | Place Details 30,000 + Geocoding 30,000 + Compute Routes Essentials 60,000 = 120,000 combined → 20,000 over the limit at standard PAYG prices: 0 (if per-SKU free caps still apply — NF) to 20,000 × 5/1,000 = 100 | **≈ 275–375** |
+| S1 subscription sensitivity: abandoned search sessions | 60,000 Autocomplete Requests count against the combined pool → + up to 60,000 × 2.83/1,000 ≈ 170 over the limit | +0 to ≈ 170 |
+| S1 Google — routes need the Pro tier | Essentials subscription for Place Details + Geocoding (60,000 ≤ 100,000) 275 + Routes Pro PAYG (60,000 − 5,000) × 10/1,000 = 550 → ≈ 825; or **subscription Pro** (USD 1,200, 250,000 combined incl. Routes Pro) → ≈ 1,200; PAYG-only ≈ 750 (row above) | **≈ 750–1,200** |
+| S2 Mapbox — Search Box **sessions, standard pricing** (planning figure) | MAU ≤ 25,000 → 0 · sessions (30,000 − 2,500) × 11.50/1,000 = 316.25 · reverse via temporary geocoding 30,000 ≤ 100,000 → 0 (or Search Box /reverse requests, standard: (30,000 − 25,000) × 1.70/1,000 = 8.50) · Directions 60,000 ≤ 100,000 → 0 | **≈ 316–325** + Commercial Application License (FA-19, unknown) |
+| S2 lower bound — Search Box sessions, **introductory preview** pricing (not assumed available) | (30,000 − 500) × 3.00/1,000 = 88.50 | ≈ 89 + licence (unknown) |
+| S2 variant — autocomplete via **temporary geocoding** (request-billed) | autocomplete 120,000 + reverse 30,000 = 150,000 temporary geocodes: (150,000 − 100,000) × 0.75/1,000 = 37.50 | ≈ 38 + licence (unknown) |
 | S3 Open | OSRM + Photon on the pilot VPS already in the Phase-0 stack (CPX32 SIN ≈ USD 58 + 12 backups, R5 2026-10-09, not re-verified) → marginal 0; or a dedicated geo VPS (Hetzner EU CX33 €8.49 / CX43 €15.99, R5, not re-verified) + tiles on R2 (USD 0–5) | **≈ 0–25** (+ operations time, §13) |
 | S4 Mixed | TomTom/HERE paid prices NF; TomTom free search 2,500/month is far below 30,000 resolutions | **NF** — vendor quote needed |
 | S4c | Place Details 100 + Geocoding 100 + routes on own OSRM 0 | ≈ 200 (+ terms NF) |
@@ -206,8 +214,8 @@ The Phase-0 pilot stack totals **≈ USD 250–300/month with maps at USD 0** (c
 
 | Bundle | Pilot geo ESTIMATE | Fits FD-14 without FA-08? |
 |---|---|---|
-| S1 | ≈ 450–892 | **No** — requires FA-08 paid-spend approval and an evidence-based quality need (CON-P3-04) |
-| S2 | ≈ 9–162 (unit-dependent) | Lower variants plausibly within rounding of the envelope; the per-request variant does not — verify the billing unit |
+| S1 | ≈ 275–1,200 (+0 to ≈ 170 abandoned-session sensitivity), depending on PAYG vs subscription and Essentials vs Pro routes; lowest modelled ≈ 275–375 (Essentials subscription, Essentials routes) | **Not without FA-08** — every modelled variant exceeds the ≈ USD 0 geo headroom; no model alone declares Google affordable or unaffordable (CON-P3-04) |
+| S2 | ≈ 38–325 by explicit billing mode (standard Search Box sessions ≈ 316–325; preview ≈ 89; temporary-geocoding autocomplete ≈ 38) **plus an unknown Commercial Application License cost if applicable** | **Not determinable** until the billing mode is fixed and FA-19 (Mapbox commercial/legal confirmation) is answered; no pilot/production S2 freeze before that |
 | S3 | ≈ 0–25 + ops time | Yes (if the shared VPS has capacity — measure in SP-04 geo-bench profile) |
 | S4 / S4c | NF / ≈ 200 | S4 unknown; S4c no |
 
@@ -217,12 +225,13 @@ FD-14 is a provisional planning envelope, not a purchase authorisation and not a
 
 | Bundle | Arithmetic (ESTIMATE, first-tier list prices; volume tiers NF) | USD/month |
 |---|---|---|
-| S1 Google (Essentials) | Place Details (300,000 − 10,000) × 5/1,000 = 1,450 · Geocoding (300,000 − 10,000) × 5/1,000 = 1,450 · Routes (600,000 − 10,000) × 5/1,000 = 2,950 | **≈ 5,850** (Pro routes: routes (600,000 − 5,000) × 10/1,000 = 5,950 → ≈ 8,850) |
-| S2 Mapbox | MAU example 60,000: (60,000 − 25,000) × 4/1,000 = 140 · Search Box per session (300,000 − 25,000) × 1.70/1,000 = 467.50 · temporary reverse (300,000 − 100,000) × 0.75/1,000 = 150 · Directions (600,000 − 100,000) × 2/1,000 = 1,000 | **≈ 1,760** (MAU formula: (MAU − 25,000) × 4/1,000) |
+| S1 Google (Essentials, PAYG) | Place Details (300,000 − 10,000) × 5/1,000 = 1,450 · Geocoding (300,000 − 10,000) × 5/1,000 = 1,450 · Routes (600,000 − 10,000) × 5/1,000 = 2,950 | **≈ 5,850** (Pro routes: routes (600,000 − 5,000) × 10/1,000 = 5,950 → ≈ 8,850) |
+| S1 Google (subscription) | Essentials USD 275 covers 100,000 of 1,200,000 calls; 1,100,000 over the limit at standard PAYG first-tier prices ≈ 5,500 → ≈ 5,775; Pro USD 1,200 covers 250,000; 950,000 over ≈ 4,750 (Essentials-priced) → ≈ 5,950 | **≈ 5,775–5,950** — subscriptions do not materially change the scale estimate at list prices; volume discounts / Enterprise pricing NF (sales) |
+| S2 Mapbox (standard pricing) | MAU example 60,000: (60,000 − 25,000) × 4/1,000 = 140 · Search Box sessions 300,000, tiered: 97,500 × 11.50 + 100,000 × 10.00 + 100,000 × 8.40 (per 1,000) = 2,961.25 · temporary reverse (300,000 − 100,000) × 0.75/1,000 = 150 · Directions tiered: 400,000 × 2.00 + 100,000 × 1.60 (per 1,000) = 960 | **≈ 4,211** + licence (FA-19); preview session pricing (99,500 × 3.00 + 200,000 × 2.75 per 1,000 = 848.50) → ≈ 2,099; temporary-geocoding autocomplete variant (1,500,000 temporary geocodes, tiered = 825) → ≈ 1,925 |
 | S3 Open | dedicated geo instance(s), ≥ 2 for availability (R5 Hetzner range €16–49 each, not re-verified) + tile storage/ops | **≈ 40–110** + operations time |
 | S4 | NF | NF |
 
-Phase-0 R5 scale estimates were Google ≈ USD 4,460–4,500 and Mapbox ≈ USD 950; the differences come from the call split (A3) and are within the uncertainty of an unmeasured call mix. SP-04 does not measure production call mix; the pilot's own usage rollups (`geo.provider_usage`) will.
+Phase-0 R5 scale estimates were Google ≈ USD 4,460–4,500 and Mapbox ≈ USD 950; the differences come from the call split (A3), the corrected Search Box session pricing (A9, plan-review closure 2026-10-12: the earlier draft wrongly applied the request-row allowance and rate to sessions) and are within the uncertainty of an unmeasured call mix. SP-04 does not measure production call mix; the pilot's own usage rollups (`geo.provider_usage`) will.
 
 ### 7.5 Levers that change the estimate
 
@@ -285,16 +294,16 @@ Additional rules: geo route logs use route templates only (no query strings); au
 7. dependency-cruiser / eslint-plugin-boundaries rules (ADR-027) forbid `apps/*` domain/feature code importing `packages/geo-adapters`; only composition roots bind adapters (ADR-045 pattern; unbound routing port in production ⇒ quote refused, never invented values).
 8. Price tables per adapter (micro-USD per call, dated, with source URL) are configuration, used only for usage metering — never for user-facing pricing.
 
-## 12. SP-04 scoring rubric (PROPOSED for founder approval, FA-07)
+## 12. SP-04 scoring rubric (APPROVED 2026-10-12 as pre-measurement values, FA-07)
 
 ### 12.1 Hard gates (a bundle failing any gate is not eligible, whatever its score)
 
 | Gate | Rule | Evidence |
 |---|---|---|
-| G1 Terms compatibility | every SKU in the bundle is licence-coherent (§6); commercial use permitted; attribution implementable in the UI | founder + counsel reading, dated |
-| G2 Cost | pilot ESTIMATE within the FD-14 envelope, **unless FA-08** explicitly approves the extra spend for a demonstrated quality need | §7 arithmetic re-run with prices re-verified at P3.7 |
+| G1 Terms compatibility | every SKU in the bundle is licence-coherent (§6); commercial use permitted; attribution implementable in the UI; **for S2, written Mapbox commercial/legal confirmation on whether the Commercial Application License (vehicle usage) applies to Wayvro Rider/Driver use (FA-19) — unresolved ⇒ no pilot/production S2 freeze** (SP-04 evaluation may still use a permitted evaluation/free account under its terms) | founder + counsel reading, dated |
+| G2 Cost | pilot ESTIMATE within the FD-14 envelope, **unless FA-08** explicitly approves the extra spend for a demonstrated quality need; the estimate must name its billing mode (Google PAYG vs subscription plan; Mapbox Search Box sessions vs requests, standard vs preview) and include any applicable commercial licence (S2: FA-19) — public pay-as-you-go pricing is not treated as the complete production cost while FA-19 is open | §7 arithmetic re-run with prices re-verified at P3.7 |
 | G3 Production reliability | a production path with an SLA or a Wayvro-operated, monitored, redundant host; **a free tier or no-SLA public instance is not a reliability strategy** (OpenFreeMap public, MapTiler free, vendor free tiers are acceptable for development and SP-04 only) | written SLA / hosting plan |
-| G4 Accuracy floor | meets the PROPOSED SP-04 thresholds (benchmark doc §7) or the founder accepts a documented shortfall with mitigation (aliases, pin) | SP-04 evidence |
+| G4 Accuracy floor and route safety | meets the SP-04 thresholds (benchmark doc §7; approved as pre-measurement thresholds, FA-07) or the founder accepts a documented shortfall with mitigation (aliases, pin); **and has no unresolved CRITICAL route invalidity** (benchmark doc §7.1: wrong-way on a one-way road, private/inaccessible segment used as normal routing, prohibited/closed passage, unsafe or physically impossible manoeuvre, systematic severe defect) — a critical case is cleared only by ground-truth correction, an evidence-backed provider/config/map-data correction followed by a re-run, or a founder-signed product mitigation proving the route is never presented or used; a high weighted score never offsets it | SP-04 evidence |
 | G5 Privacy | no client SDK telemetry that cannot be disclosed or disabled as required; no account identifiers sent to vendors | inventory + adapter review |
 | G6 Size/performance | renderer fits the SP-02 size budget (≤ 30.0 MB arm64-v8a download, PROPOSED) | SP-02 re-measure (P3.7) |
 
@@ -308,7 +317,7 @@ Additional rules: geo route logs use route templates only (no query strings); au
 | Latency | **10** | p95 per SKU vs budgets |
 | Terms / operational risk | **10** | caching freedom, lock-in/exit cost, ops burden for a one-person team, vendor stability |
 
-Normalisation: each metric scores 0–100 as `100 × clamp((value − floor) / (target − floor), 0, 1)` where target = the PROPOSED threshold's ideal end and floor = an unacceptable value (e.g. geocode top-1: floor 50 %, target 90 %; distance error median: floor 25 %, target 3 %). The floors/targets are listed in the benchmark doc §7 and approved with FA-07.
+Normalisation: each metric scores 0–100 as `100 × clamp((value − floor) / (target − floor), 0, 1)` where target = the approved threshold's ideal end and floor = an unacceptable value (e.g. geocode top-1: floor 50 %, target 90 %; distance error median: floor 25 %, target 3 %). The floors/targets are listed in the benchmark doc §7 and approved with FA-07.
 
 Why these weights: accuracy dominates because a wrong pickup is a safety and trust failure, not a cosmetic one; landmark usefulness is weighted separately because Lahore addressing is landmark-first; cost has real weight because FD-14 is tight for a pre-revenue pilot; latency is mostly controllable by caching/region; ops risk matters for a solo-founder team. **Justification for a possible adjustment** (offered, not applied): if the founder prefers, raise terms/ops risk to 15 and reduce cost to 15 — the open stack's operational burden on one person is a real reliability risk that G3 only partly captures.
 
@@ -344,8 +353,8 @@ Re-opening: any later vendor change is a new ADR-006 revision with a re-run of t
 
 ## 15. Recommendation framing (hypotheses to test — NOT a decision)
 
-- **H1.** Because the FD-14 envelope has ≈ USD 0 planned geo headroom, the evidence will most likely decide between **S2 (Mapbox)** and **S3 (Open)**; S2 wins if its Lahore search/reverse quality is materially better than self-hosted Photon, S3 wins if quality is comparable, because S3 removes per-call cost and caching restrictions at the price of operations time.
-- **H2.** **S1 (Google)** is selected only if SP-04 shows a quality gap on accuracy/landmark criteria large enough to justify ≈ USD 450–890/month at pilot (and ≈ USD 5.9–8.9K at scale) **and** the founder approves the spend (FA-08).
+- **H1.** Because the FD-14 envelope has ≈ USD 0 planned geo headroom, **S3 (Open)** is the cost baseline every other bundle must beat on quality. **S2 (Mapbox)** is no longer a low-cost default: at standard Search Box session pricing it is ≈ USD 316–325/month at pilot (≈ 38–89 only under a request-billed or preview variant), and it cannot be frozen for pilot/production until Mapbox confirms in writing whether the Commercial Application License for vehicle usage applies (FA-19).
+- **H2.** **S1 (Google)** is selected only if SP-04 shows a quality gap on accuracy/landmark criteria large enough to justify its cost — ≈ USD 275–375/month at pilot on the Essentials subscription with Essentials routes, ≈ USD 450–1,200 under PAYG or Pro-route variants (≈ USD 5.8–8.9K at scale at list prices) — **and** the founder approves the spend (FA-08). Neither the PAYG nor the subscription model alone decides affordability.
 - **H3.** S4/S4c are considered only if their terms are verified in writing; otherwise they are dropped without scoring.
 - **H4.** Whatever wins, manual pin, landmark aliases and the landmark-first formatter remain required because no vendor is expected to resolve society plot addresses reliably (to be confirmed or refuted by C03 cases).
 
@@ -356,7 +365,8 @@ These are hypotheses. Writing them down does not bias scoring: the founder rates
 | Item | Owner | Blocks |
 |---|---|---|
 | FA-06 evaluation accounts (Google billing account with hard quotas ≈ free tier; Mapbox free account; optional TomTom/HERE); keys only in local untracked env | founder | SP-04 candidate comparison |
-| FA-07 approve weights, gates, floors/targets | founder | SP-04 scoring |
+| FA-07 weights, gates, floors/targets — **APPROVED 2026-10-12** as pre-measurement values, plus the route-critical hard gate (G4); changeable only through evidence + reviewed ADR update | founder | — (decided) |
+| FA-19 Mapbox Commercial Application License (vehicle usage) applicability to Wayvro Rider/Driver use — written Mapbox sales/legal confirmation; no fee assumed | founder (+ counsel) | pilot/production S2 freeze (not SP-04 evaluation, not implementation) |
 | FA-08 any paid geo spend beyond free tiers | founder | S1/S4c selection |
 | Terms reading of the final bundle (map coupling, caching, snapshot retention, attribution, ODbL share-alike) | founder + counsel | ADR-006 ACCEPTED-ON-EVIDENCE |
 | EG-12 data-location review for chosen vendors (`docs/phase2/PHASE2_EXTERNAL_GATES.md`) | counsel | real data (Phase 7) |

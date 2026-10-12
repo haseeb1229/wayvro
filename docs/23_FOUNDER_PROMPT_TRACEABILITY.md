@@ -79,6 +79,7 @@
 - **Kickoff rule honoured:** the `main` Android job failed twice, so planning stopped; no branch or commit was made from a repeatedly red `main`.
 - **CI repair (workflow only):** exact-key Gradle dependency cache, explicit main-only save with verification, disk evidence, removal of unused runner toolchains; merged via PR #6 (`058fcea`).
 - **Phase 3 plan (plan only):** `docs/phase3/` traces all 29 target-phase-3 IDs (P0 17 / P1 11 / P2 1); no implementation, migration, dependency, provider account or freeze. Register unchanged at 532.
+- **Plan-review closure (same day):** verdict "TARGETED FIX BEFORE PASS" — Mapbox Search Box session vs request pricing corrected; Mapbox Commercial Application License (vehicle usage) gate FA-19; Google PAYG + subscription model; SP-04 route-critical hard gate; founder decisions FA-01/02/07/10/11/12/16/17/18 recorded, FA-08 no paid spend; one full implementation run that cannot declare Phase 3 complete without real-world evidence.
 - **Founder corrections applied:** one public app; spikes SP-01/SP-02/SP-04 before freezes; no Transistorsoft purchase without SP-01 evidence and approval; `USE_FULL_SCREEN_INTENT` not requested; provider terms re-verified from primary sources; release URL-scheme finding re-verified on a CI-built artefact; no-phone-while-driving rule for field drives.
 
 ## Workflow requirements imported from Minhaj where applicable

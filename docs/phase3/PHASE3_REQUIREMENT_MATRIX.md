@@ -1,8 +1,8 @@
 # PHASE3_REQUIREMENT_MATRIX — Traceability for all 29 Phase 3 requirements (PROPOSED)
 
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA decisions in `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1a); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
-Source of scope: `docs/requirements-register.json` (schema 5.1, 532 IDs), filtered on `phase0.target_phase = 3`. Titles below are the register titles (long titles abbreviated with "…" only where marked). Acceptance test detail per ID: `docs/phase3/PHASE3_TEST_STRATEGY.md` §9. Checkpoints P3.0–P3.10: `docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md`. Founder/external actions FA-xx: `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md`. External gates EG-xx carried from Phase 2: `docs/phase2/PHASE2_EXTERNAL_GATES.md`. Nothing in this file is implemented; every evidence item is a plan.
+Source of scope: `docs/requirements-register.json` (schema 5.1, 532 IDs), filtered on `phase0.target_phase = 3`. Titles below are the register titles (long titles abbreviated with "…" only where marked). Acceptance test detail per ID: `docs/phase3/PHASE3_TEST_STRATEGY.md` §9. Checkpoints P3.0–P3.10: `docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md`. Founder/external actions FA-xx: `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` (2026-10-12 decisions: FA-01/02/07/10/11/16 APPROVED, FA-12 DECIDED synthetic, FA-17 APPROVED IN PRINCIPLE, FA-18 DEFERRED to Phase 4; open: FA-03/04/05/06/08/09/19). External gates EG-xx carried from Phase 2: `docs/phase2/PHASE2_EXTERNAL_GATES.md`. Nothing in this file is implemented; every evidence item is a plan.
 
 ## 0. Scope verification (executed 2026-10-12 against `main` @ `6aed6a4`)
 
@@ -20,7 +20,7 @@ Source of scope: `docs/requirements-register.json` (schema 5.1, 532 IDs), filter
 | IMPL+FREEZE | Implementable, but a freeze or exit step needs spike evidence (SP-01 devices, SP-02 reference device, SP-04 field data) before the related ADR can move to ACCEPTED-ON-EVIDENCE. |
 | IMPL+EXT | Implementable; activation or exit needs an external party (native Urdu reviewer, provider console/licence, physical devices, accessibility tester, legal). |
 
-Closure statuses used at P3.10 (per ID): **ENGINEERING_SATISFIED** (every repository-provable item in the "Engineering evidence" column exists and passed in CI on the closure SHA) · **PARTIAL_EXTERNAL_GATED** (engineering evidence complete; the listed external item is still open) · **BLOCKED** (engineering evidence itself is incomplete because an external input is missing, e.g. FA-02 not approved so the location sub-step was not built). A class of IMPL+FREEZE or IMPL+EXT does **not** pre-decide the closure status; the evidence decides.
+Closure statuses used at P3.10 (per ID): **ENGINEERING_SATISFIED** (every repository-provable item in the "Engineering evidence" column exists and passed in CI on the closure SHA) · **PARTIAL_EXTERNAL_GATED** (engineering evidence complete; the listed external item is still open) · **BLOCKED** (engineering evidence itself is incomplete because an external input is missing, e.g. no acceptable FA-17 tunnel session so a signed-in release-build check could not run). A class of IMPL+FREEZE or IMPL+EXT does **not** pre-decide the closure status; the evidence decides.
 
 ## 2. Summary
 
@@ -39,9 +39,9 @@ Closure statuses used at P3.10 (per ID): **ENGINEERING_SATISFIED** (every reposi
 |---|---|---|---|---|---|---|
 | A01 | P0 | splash, version compatibility, hard/soft update, maintenance | IMPL | P3.4, P3.9, P3.10 | mob-shared, api | store listing URL (EG-18) for the update link only |
 | A06 | P0 | Urdu/English + Roman-Urdu-aware search; fallback text; RTL | IMPL+EXT | P3.2, P3.5, P3.7, P3.9 | mob-shared, web-public | FA-09 native review; SP-04 Roman-Urdu autocomplete metric (FA-05) |
-| A07 | P0 | foreground/background location rationale, revoke/regrant, approximate | IMPL+FREEZE | P3.5, P3.6, P3.8 | mob-shared, mob-driver | FA-02 (rider permission); SP-01 / FA-03 (background parameters, ADR-029) |
+| A07 | P0 | foreground/background location rationale, revoke/regrant, approximate | IMPL+FREEZE | P3.5, P3.6, P3.8 | mob-shared, mob-driver | FA-02 APPROVED (rider permission); SP-01 / FA-03 (background parameters, ADR-029) |
 | A08 | P1 | VoiceOver/TalkBack, dynamic text, contrast, tap targets | IMPL+EXT | P3.5, P3.8, P3.9, P3.10 | mob-shared | physical TalkBack pass (FA-04/FA-14); VoiceOver needs iPhone (FA-13, not Phase-3 blocking) |
-| B01 | P0 | map, geolocation, manual pin, GPS accuracy, landmark address | IMPL+FREEZE | P3.2, P3.5, P3.7 | mob-rider, api | SP-04 + SP-02 renderer freeze (ADR-046); provider licence (register: "Maps provider licence"); FA-02 |
+| B01 | P0 | map, geolocation, manual pin, GPS accuracy, landmark address | IMPL+FREEZE | P3.2, P3.5, P3.7 | mob-rider, api | SP-04 + SP-02 renderer freeze (ADR-046); provider licence (register: "Maps provider licence"; FA-19 for an S2/Mapbox bundle); FA-02 APPROVED |
 | B02 | P0 | autocomplete, reverse geocoding, fallback pin | IMPL+FREEZE | P3.2, P3.5, P3.7 | mob-rider, api | SP-04 (register: "Lahore geocode field accuracy"); FA-05, FA-06 |
 | B03 | P0 | route visualisation, distance/ETA with confidence/coverage | IMPL+FREEZE | P3.2, P3.3, P3.5, P3.7 | mob-rider, api | SP-04 route/ETA accuracy; renderer (ADR-046) for the visual polyline |
 | B04 | P0 | eligible car fare estimate; category/seat/luggage info | IMPL | P3.1, P3.3, P3.5 | mob-rider, api | real rates (FA-15, Phase 8) — synthetic config only in Phase 3 |
@@ -50,31 +50,33 @@ Closure statuses used at P3.10 (per ID): **ENGINEERING_SATISFIED** (every reposi
 | E06 | P0 | route provider abstraction: ETA, distance, geocode, tiles, directions | IMPL+FREEZE | P3.2, P3.7 | api, worker | SP-04 per-SKU freeze (ADR-006); provider licence; FA-06 |
 | E07 | P0 | cache and cost protection; degradation without invented ETAs | IMPL | P3.2, P3.3, P3.7 | api, worker | per-provider cache TTLs re-verified against terms at P3.7 (adapter TTL = 0 until verified) |
 | E08 | P0 | zones, exclusions, airport pickup points, service hours | IMPL | P3.1, P3.3 | api, web-ops | real Lahore boundaries + district source (FA-12) before pilot only |
-| H06 | P0 | config versioning, rate cards, fee policies, approval, rollback | IMPL | P3.1, P3.3, P3.4 | web-ops, api | second staff member for real maker-checker (EG-20 precedent); FA-10 roles |
+| H06 | P0 | config versioning, rate cards, fee policies, approval, rollback | IMPL | P3.1, P3.3, P3.4 | web-ops, api | second staff member for real maker-checker (EG-20 precedent); FA-10 roles APPROVED |
 | H10 | P1 | zone/city management, categories, vehicle documents matrix | IMPL | P3.1, P3.8 | web-ops, api | approved Punjab matrix (EG-03) for real eligibility values |
 | I11 | P0 | cost alerts, quotas, circuit breakers, usage budgets | IMPL+EXT | P3.2, P3.7 | api, worker, infra | provider-console hard caps (FA-06); verified price table at P3.7; alert channel (EG-21) |
 | K19 | P1 | localized onboarding UX states, camera guidance, offline resume, a11y | IMPL+EXT | P3.8, P3.9 | mob-driver | FA-09 native review |
 | L08 | P1 | Lite experience for weak networks and older Android … | IMPL+FREEZE | P3.5, P3.6, P3.7, P3.9 | mob-shared, api | SP-02 device data/perf measurement (FA-04) |
 | P18 | P1 | localized content: English, Urdu, Roman Urdu, reviewed terminology … | IMPL+EXT | P3.9 | mob-shared, web-public, api | FA-09 (register: "Reviewed terminology"); counsel texts (EG-02) for legal copy |
-| Q26 | P1 | performance budgets incl. start, map, data, battery, p95/p99, reconnect … | IMPL+FREEZE | P3.6, P3.7, P3.10 | mob-shared, api, infra | FA-07 budget approval; SP-02 (FA-04); SP-01 for battery/reconnect (FA-03) |
+| Q26 | P1 | performance budgets incl. start, map, data, battery, p95/p99, reconnect … | IMPL+FREEZE | P3.6, P3.7, P3.10 | mob-shared, api, infra | FA-07 budgets APPROVED (pre-measurement); SP-02 (FA-04); SP-01 for battery/reconnect (FA-03) |
 | Q27 | P1 | representative low-end Android devices as first-class QA targets | IMPL+EXT | P3.6, P3.7, P3.10 | mob-shared | devices (register: "Representative test devices procured"; FA-03, FA-04) |
 | Q31 | P1 | supported OS/app-version matrix and deprecation policy | IMPL | P3.4 | mob-shared, api | founder decision on minimum Android (F-P3-10) inside FA-01 |
-| R28 | P2 | catalogue models Economy, Comfort, Bike, Rickshaw … as separate configs | IMPL | P3.1 | api, web-ops | product lifecycle approval (FA-11); legal activation of BIKE/RICKSHAW outside Phase 3 |
+| R28 | P2 | catalogue models Economy, Comfort, Bike, Rickshaw … as separate configs | IMPL | P3.1 | api, web-ops | product lifecycle APPROVED (FA-11); legal activation of BIKE/RICKSHAW outside Phase 3 |
 | U04 | P0 | third-party SDK inventory: data, purpose, permissions, endpoints, disclosures | IMPL+FREEZE | P3.0, P3.5, P3.7, P3.10 | mob-shared, company | renderer/provider choice (P3.7); store declarations (EG-18) |
-| U05 | P0 | permission-minimisation review, just-in-time, core-purpose justified | IMPL+FREEZE | P3.0, P3.5, P3.6, P3.8 | mob-shared | FA-02; SP-01 for background-location justification |
-| V05 | P0 | just-in-time by mode/task; rider never gets driver prompts; recovery | IMPL+FREEZE | P3.5, P3.6, P3.8, P3.10 | mob-shared, mob-driver | SP-01 (register dependency); FA-02, FA-03 |
+| U05 | P0 | permission-minimisation review, just-in-time, core-purpose justified | IMPL+FREEZE | P3.0, P3.5, P3.6, P3.8 | mob-shared | FA-02 APPROVED; SP-01 for background-location justification |
+| V05 | P0 | just-in-time by mode/task; rider never gets driver prompts; recovery | IMPL+FREEZE | P3.5, P3.6, P3.8, P3.10 | mob-shared, mob-driver | SP-01 (register dependency); FA-02 APPROVED; FA-03 |
 | V08 | P1 | mode-aware navigation, homes, deep-link/notification routing, restoration, back stack | IMPL | P3.0, P3.5, P3.8, P3.10 | mob-shared | external URL scheme waits EG-15 + decode-uri-component gate (CON-P3-07) |
-| V10 | P1 | cross-mode regression matrix; mode-scoped flags/kill switches | IMPL | P3.0, P3.4, P3.5, P3.10 | infra, mob-shared | FA-16 CI emulator minutes; enforcement from Phase 4 (register note) |
-| V11 | P1 | startup/memory/battery/size budgets; lazy driver modules; profiled on devices | IMPL+FREEZE | P3.5, P3.6, P3.7, P3.10 | mob-shared | SP-02 (register dependency); FA-04, FA-07 |
+| V10 | P1 | cross-mode regression matrix; mode-scoped flags/kill switches | IMPL | P3.0, P3.4, P3.5, P3.10 | infra, mob-shared | FA-16 APPROVED (PR tier + manual full matrix); enforcement from Phase 4 (register note) |
+| V11 | P1 | startup/memory/battery/size budgets; lazy driver modules; profiled on devices | IMPL+FREEZE | P3.5, P3.6, P3.7, P3.10 | mob-shared | SP-02 (register dependency); FA-04; FA-07 APPROVED |
 
 ### 2.3 Dependency note — IDs that depend on SP-01 / SP-02 / SP-04
 
 | Spike | Founder actions | IDs whose **exit** depends on it | What the spike decides for those IDs | If the spike evidence is missing at P3.10 |
 |---|---|---|---|---|
-| SP-01 (real-device background location, OEM behaviour, offer path) | FA-03, FA-08 (only if fallback is paid), FA-17 (TC-01 release-build runtime check; NOT RUN without it), FA-18 (optional push-wake TC-22) | A07, V05, U05; partly Q26 (battery/reconnect clauses), Q27 (OEM classes), V10 (background-location regression lane, used from Phase 4) | ADR-029 (SDK) and ADR-003 (stack freeze); background rationale timing and revocation recovery parameters; justification text for BACKGROUND/FGS permissions requested in Phase 4 | A07/V05/U05 stay PARTIAL_EXTERNAL_GATED (foreground rider path and driver permission state machine can still be ENGINEERING-complete); ADR-029/ADR-003 stay OPEN-SPIKE; no background permission ships |
-| SP-02 (low-end reference device, release AAB) | FA-04, FA-07, FA-17 (signed-in measurements; NOT RUN without it) | V11, Q26, Q27, L08; B01 and U04 through the renderer freeze (ADR-046) | whether budgets (`docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md`) PASS on R1 (no map) and R2 (with map); renderer size/perf acceptability | budgets reported NOT RUN (never PASS from emulator); renderer freeze BLOCKED-EXTERNAL; map integration not merged into the shipped app |
-| SP-04 (Lahore field benchmark, ≥50 cases) | FA-05, FA-06, FA-07, FA-08 | B01, B02, B03, E06; partly A06 (Roman-Urdu autocomplete), E07 (terms-based TTLs), I11 (cost per 1,000 quotes), U04 (provider data flows); B04 indirectly (fare depends on route distance accuracy) | ADR-006 provider per SKU (ACCEPTED-ON-EVIDENCE) and, with SP-02, ADR-046; licence-coherent renderer + geo bundle (CON-P3-16) | production adapters not bound; staging/production quote refused 503 ROUTING_UNAVAILABLE by design; IDs stay PARTIAL_EXTERNAL_GATED with the synthetic-double evidence only |
-| SP-08 (cross-mode Maestro harness) | FA-16 | V08, V10, V05, A01, A07, K19, L08 (E2E families) | not external: Phase 3 builds and runs it; physical-device release subset needs FA-03/FA-04 | the emulator tiers are engineering evidence; the physical-device subset is NOT RUN until devices exist |
+| SP-01 (real-device background location, OEM behaviour, offer path) | FA-03, FA-08 (only if fallback is paid; no spend pre-approved), FA-17 (APPROVED IN PRINCIPLE; TC-01 release-build runtime check BLOCKED if no acceptable tunnel session), FA-18 (DEFERRED to Phase 4; TC-22 push-wake NOT RUN) | A07, V05, U05; partly Q26 (battery/reconnect clauses), Q27 (OEM classes), V10 (background-location regression lane, used from Phase 4) | ADR-029 (SDK) and ADR-003 (stack freeze); background rationale timing and revocation recovery parameters; justification text for BACKGROUND/FGS permissions requested in Phase 4 | A07/V05/U05 stay PARTIAL_EXTERNAL_GATED (foreground rider path and driver permission state machine can still be ENGINEERING-complete); ADR-029/ADR-003 stay OPEN-SPIKE; no background permission ships |
+| SP-02 (low-end reference device, release AAB) | FA-04, FA-07 (APPROVED), FA-17 (APPROVED IN PRINCIPLE; signed-in measurements BLOCKED if no acceptable tunnel session) | V11, Q26, Q27, L08; B01 and U04 through the renderer freeze (ADR-046) | whether budgets (`docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md`) PASS on R1 (no map) and R2 (with map); renderer size/perf acceptability | budgets reported NOT RUN (never PASS from emulator); renderer freeze BLOCKED-EXTERNAL; map integration not merged into the shipped app |
+| SP-04 (Lahore field benchmark, ≥50 cases) | FA-05, FA-06, FA-07 (APPROVED, incl. the route-critical hard gate), FA-08, FA-19 (S2 freeze only) | B01, B02, B03, E06; partly A06 (Roman-Urdu autocomplete), E07 (terms-based TTLs), I11 (cost per 1,000 quotes), U04 (provider data flows); B04 indirectly (fare depends on route distance accuracy) | ADR-006 provider per SKU (ACCEPTED-ON-EVIDENCE) and, with SP-02, ADR-046; licence-coherent renderer + geo bundle (CON-P3-16) | production adapters not bound; staging/production quote refused 503 ROUTING_UNAVAILABLE by design; IDs stay PARTIAL_EXTERNAL_GATED with the synthetic-double evidence only |
+| SP-08 (cross-mode Maestro harness) | FA-16 (APPROVED) | V08, V10, V05, A01, A07, K19, L08 (E2E families) | not external: Phase 3 builds and runs it; physical-device release subset needs FA-03/FA-04 | the emulator tiers are engineering evidence; the physical-device subset is NOT RUN until devices exist |
+
+Full-run evidence rule (`docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md` §1.1): if SP-01, SP-02 or SP-04 real-world evidence or the FA-09 native Urdu/Roman-Urdu review is missing at P3.10, the affected IDs/freezes are reported BLOCKED-EXTERNAL / PARTIAL, all safe engineering work is still completed, and Phase 3 is not declared or merged as complete until that closure evidence is supplied.
 
 The Phase 2 Android emulator smoke and any Phase 3 emulator run do **not** satisfy SP-01 or SP-02 (`docs/12_PHASE_PLAN_AND_GATES.md`, Phase 3 open prerequisites).
 
@@ -85,11 +87,11 @@ Gate text (`docs/12_PHASE_PLAN_AND_GATES.md`): "route/ETA confidence, price snap
 | Gate clause | IDs | Repository evidence (CI) | Real-world evidence (external) |
 |---|---|---|---|
 | Route/ETA confidence | B03, E06, E07, B02, B01 | `GeoSourceMeta` contract tests (confidence HIGH/MEDIUM/LOW/UNKNOWN, cacheStatus, fetchedAt server time) on every route and on `POST /v1/quotes` responses; FAULT-GEO suite proves routing failure ⇒ 503 ROUTING_UNAVAILABLE and never a straight-line/invented ETA outside the MOCK double; mobile confidence label + "estimate" copy tests | SP-04 per-SKU accuracy table (route distance error, off-peak ETA error, geocode top-1/top-3) recorded in the ADR-006 file at P3.7 |
-| Lahore geocoding accuracy | B02, A06, B01 | Roman-Urdu normaliser and landmark-alias unit tests; landmark-first formatter tests | SP-04 geocode/reverse/autocomplete metrics vs FA-07 thresholds |
-| Vehicle classes / zone policy | R28, H10, E08 | catalog migration, lifecycle trigger, zone-boundary and service-hours tests (TEST_STRATEGY §4.3) | real boundaries (FA-12) only before pilot |
+| Lahore geocoding accuracy | B02, A06, B01 | Roman-Urdu normaliser and landmark-alias unit tests; landmark-first formatter tests | SP-04 geocode/reverse/autocomplete metrics vs the FA-07-approved thresholds |
+| Vehicle classes / zone policy | R28, H10, E08 | catalog migration, lifecycle trigger, zone-boundary and service-hours tests (TEST_STRATEGY §4.3) | real boundaries only before pilot (FA-12 DECIDED: synthetic in Phase 3) |
 | Price snapshot / server-authoritative quote | E05, B06, B04, H06 | PROP-MONEY/PROP-QUOTE (Σ components = total, determinism, rounding step); quote immutability trigger; GET restore returns byte-identical components after a newer rate card activates; QUOTE-TAMPER suite | — (real rates are Phase 8, FA-15) |
 | Provider bill controls | I11, E07 | budget thresholds 50/80/100 % signals and refusal, atomic counter concurrency, breaker transitions, `geo.provider_usage` rollup idempotency, rate limits | founder attestation of provider-console hard caps (FA-06); price table verified at P3.7 |
-| Unified-app mode-switch/navigation correctness | V08, V10, V05, A01, K19 | `resolveIntent` unit tests; restoration precedence tests; SP-08 Maestro PR tier + nightly matrix (accounts A–G, API 29 + 35); intent-filter manifest gate (F-P3-01) | physical-device release subset (FA-03/FA-04) |
+| Unified-app mode-switch/navigation correctness | V08, V10, V05, A01, K19 | `resolveIntent` unit tests; restoration precedence tests; SP-08 Maestro PR tier + manual full matrix (accounts A–G, API 29 + 35); intent-filter manifest gate (F-P3-01) | physical-device release subset (FA-03/FA-04) |
 | Representative device tests | Q27, V11, Q26, L08, A07, A08 | none sufficient in CI (emulator results are labelled as such) | SP-02 R1/R2 reports on the reference device; SP-01 device runs on ≥3 OEM classes; physical TalkBack pass |
 | SP-01/02/04 recorded before freezes | A07, V05, U05, V11, Q26, Q27, B01, B02, B03, E06 | ADR files are written only with evidence attached; CI cannot produce this evidence | ADR-029 + ADR-003 (SP-01), ADR-050 + ADR-046 (SP-02), ADR-006 + ADR-046 (SP-04) moved to ACCEPTED-ON-EVIDENCE or left OPEN-SPIKE with BLOCKED-EXTERNAL recorded |
 
@@ -108,7 +110,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | API | `GET /v1/app/config` (public, cacheable, no session; returns version status, maintenance state + expected end, client-presentation switches, map-style descriptor, server time). Request headers `X-Wayvro-App-Version`, `X-Wayvro-App-Build`, `X-Wayvro-Platform` on every request; server middleware returns 426 WAYVRO_E_APP_UPDATE_REQUIRED for blocked/below-minimum builds on non-exempt routes; 503 WAYVRO_E_MAINTENANCE during maintenance. Exempt routes: health, app config, legal policy reads, account deletion, sign-out, support contact (list owned by `docs/phase3/PHASE3_ARCHITECTURE.md` §9.3). |
 | DB | `platform.app_version_policies` (0013): platform, min_supported_build, recommended_build, message keys, store_url_key, effective_from, MC status, with blocked build ranges in the child table `platform.app_blocked_builds` (int4range + reason code SECURITY / DATA_CORRUPTION / CONTRACT_BREAK); maintenance = runtime switch `platform.maintenance` (`platform.runtime_switches`). |
 | UI | Mobile AppRoot states OK / SOFT_UPDATE (dismissible banner, once per 24 h) / HARD_UPDATE (blocking; legal pages, web deletion link and support contact stay reachable) / MAINTENANCE (blocking, retry, expected end); offline with no cached policy ⇒ proceed (server enforces); last policy in memory + secure-store key `wayvro.app-policy.v1`. Web-ops release-control pages. |
-| Controls | Policy activation MC; guard: min build cannot exceed latest released build; maintenance is the runtime switch `platform.maintenance` whose safe state is ENABLED: starting maintenance = single authorised staff with step-up (move to the safe state), ending it = maker-checker (`docs/phase3/PHASE3_ARCHITECTURE.md` §9.1); audit + outbox event; new staff permissions platform.app_policy.*, platform.switch.* (FA-10). |
+| Controls | Policy activation MC; guard: min build cannot exceed latest released build; maintenance is the runtime switch `platform.maintenance` whose safe state is ENABLED: starting maintenance = single authorised staff with step-up (move to the safe state), ending it = maker-checker (`docs/phase3/PHASE3_ARCHITECTURE.md` §9.1); audit + outbox event; new staff permissions platform.app_policy.*, platform.switch.* (FA-10 APPROVED: RELEASE_MANAGER role). |
 | External | Store listing URL for the update button (EG-18); until then the HARD_UPDATE screen shows instructions without a store link. |
 | Engineering evidence (→ ENGINEERING_SATISFIED) | contract tests for `GET /v1/app/config` + 426/503 envelopes; integration: exempt routes work under HARD_UPDATE and MAINTENANCE, non-exempt refused; blocked build range honoured; MC + step-up + audit tests; mobile pure-logic `evaluateAppPolicy` table tests incl. offline/no-cache/clock-offset; Maestro flows MAINT-01 (maintenance → retry → recovered) and UPD-01/02 (soft dismiss persistence, hard block with legal reachable) on emulator. |
 | Remains PARTIAL_EXTERNAL_GATED | store link (EG-18). If store link is absent at closure the ID can still be ENGINEERING_SATISFIED with the instruction fallback documented. |
@@ -132,12 +134,12 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 |---|---|
 | Class / checkpoints | IMPL+FREEZE · P3.5 (rider foreground), P3.6 (SP-01), P3.8 (driver readiness rationale) |
 | Surfaces | mob-shared, mob-driver · register deps V05, V06, U05 |
-| Mobile | `src/platform/location` wrapper over expo-location (only after FA-02; background/FGS options disabled); permission state machine as pure logic with the states of `docs/phase3/PHASE3_PERMISSION_LOCATION_MODEL.md` §4.1 (UNKNOWN, NOT_DETERMINED, RATIONALE, REQUESTING, GRANTED_PRECISE, GRANTED_APPROXIMATE, DENIED_CAN_ASK, BLOCKED, REVOKED, SERVICES_OFF, FIXING/FIX_*); rationale screen before the first OS prompt at the first "use current location" tap; approximate grant ⇒ coarse centre + mandatory pin confirm; revocation detected on AppState foreground ⇒ silent fallback to search/pin; settings deep link. Driver: readiness checklist shows location readiness (informational, foreground only) + rationale copy; no background request in Phase 3. |
-| Manifest | ACCESS_COARSE_LOCATION + ACCESS_FINE_LOCATION move from `forbidden` to `allowed` in `infra/ci/android/permission-allowlist.json` only with FA-02 (requirementIds B01, B02, A07, V05, U05); ACCESS_BACKGROUND_LOCATION, FOREGROUND_SERVICE_LOCATION stay forbidden. iOS: NSLocationWhenInUseUsageDescription only. |
+| Mobile | `src/platform/location` wrapper over expo-location (FA-02 APPROVED 2026-10-12; background/FGS options disabled); permission state machine as pure logic with the states of `docs/phase3/PHASE3_PERMISSION_LOCATION_MODEL.md` §4.1 (UNKNOWN, NOT_DETERMINED, RATIONALE, REQUESTING, GRANTED_PRECISE, GRANTED_APPROXIMATE, DENIED_CAN_ASK, BLOCKED, REVOKED, SERVICES_OFF, FIXING/FIX_*); rationale screen before the first OS prompt at the first "use current location" tap; approximate grant ⇒ coarse centre + mandatory pin confirm; revocation detected on AppState foreground ⇒ silent fallback to search/pin; settings deep link. Driver: readiness checklist shows location readiness (informational, foreground only) + rationale copy; no background request in Phase 3. |
+| Manifest | ACCESS_COARSE_LOCATION + ACCESS_FINE_LOCATION move from `forbidden` to `allowed` in `infra/ci/android/permission-allowlist.json` per the FA-02 approval (requirementIds B01, B02, A07, V05, U05); ACCESS_BACKGROUND_LOCATION, FOREGROUND_SERVICE_LOCATION, POST_NOTIFICATIONS, USE_FULL_SCREEN_INTENT stay forbidden. iOS: NSLocationWhenInUseUsageDescription only. |
 | Controls | Architecture test keeps expo-task-manager / expo-background-fetch banned and permits expo-location only inside `src/platform/location`. |
-| External | FA-02 (rider permission approval); SP-01 + FA-03 for background parameters (ADR-029). |
+| External | FA-02 rider permission APPROVED (2026-10-12); SP-01 + FA-03 for background parameters (ADR-029). |
 | Engineering evidence | pure-logic tests for every state transition incl. approximate and revocation; Maestro LOC-01..05 on emulator (grant precise, grant approximate, deny, deny permanently → settings, revoke while backgrounded) using `adb shell pm grant/revoke` and `appops`; release AAB permission gate shows exactly the approved set. |
-| Remains PARTIAL_EXTERNAL_GATED | background rationale/revocation behaviour on real OEM devices (SP-01); if FA-02 is not approved the rider location sub-step is BLOCKED (manual search/pin still ships). |
+| Remains PARTIAL_EXTERNAL_GATED | background rationale/revocation behaviour on real OEM devices (SP-01). |
 
 ### A08 — P1 — VoiceOver/TalkBack, dynamic text, accessible contrast, large tap targets, screen readers
 
@@ -160,7 +162,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | API | reverse geocode endpoint (proposed `GET /v1/geo/reverse`; session required; coordinates sent to provider at ≤ 5 decimals); response carries landmark-first two-line address (primary: landmark/place or block/sector + society; secondary: area, city) + `GeoSourceMeta`. |
 | Mobile | `src/platform/maps/` interface (one adapter file imports the vendor SDK; ADR-046) — renderer integrated only after P3.7 freeze; before that, text-first pin flow (address list + "adjust" by search). Pin move → reverse geocode debounced 600 ms; GPS accuracy radius shown; accuracy worse than threshold ⇒ "confirm your pickup" prompt; map style/tile URL + any client token from `GET /v1/app/config`. |
 | Controls | RL reverse 30/min/account; no hard-coded vendor URLs/keys in the binary (BUNDLE-SECRETS scan); client key (if the SDK needs one) package/signature-restricted and rotatable. |
-| External | SP-04 + SP-02 (renderer freeze ADR-046, licence-coherent bundle CON-P3-16); provider account (FA-06); FA-02 for device geolocation. |
+| External | SP-04 + SP-02 (renderer freeze ADR-046, licence-coherent bundle CON-P3-16); provider account (FA-06); FA-19 for an S2 (Mapbox) bundle freeze; FA-02 APPROVED for device geolocation. |
 | Engineering evidence | landmark formatter unit tests over normalised component fixtures (synthetic, hand-written); reverse-geocode integration against the MOCK double incl. faults; Maestro PIN-01..03 (text-first pin, accuracy prompt, manual override); after P3.7: renderer adapter contract test + SP-02 R2. |
 | Remains PARTIAL_EXTERNAL_GATED | rendered map in the shipped app (needs P3.7 freeze); field accuracy (SP-04). |
 
@@ -173,7 +175,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | API | proposed `GET /v1/geo/autocomplete` (min 3 chars, coarse bias cell ~1.1 km, locale), `GET /v1/geo/places/{placeRef}` (resolve/forward geocode), `GET /v1/geo/reverse`; `placeRef` = AEAD-sealed provider id + expiry (never raw provider ids); session required (no pre-sign-in geo). |
 | Mobile | debounce 300 ms, min 3 chars, cancel in-flight on keystroke; "type full address / drop a pin" fallback when autocomplete is degraded or budget-exhausted. |
 | Controls | RL autocomplete 60/min/account; budget per (provider, sku); cache 24 h autocomplete / 7 days geocode and reverse (capped by terms); route-template-only logging. |
-| External | SP-04 (FA-05, FA-06, FA-07). |
+| External | SP-04 (FA-05, FA-06; thresholds FA-07 APPROVED). |
 | Engineering evidence | placeRef seal/open/expiry/tamper tests (foreign-key and bit-flip rejected); autocomplete integration incl. STALE_SERVED and budget-exhausted degrade shape; mobile debounce/cancel pure-logic tests; Maestro SRCH-01..04. |
 | Remains PARTIAL_EXTERNAL_GATED | Lahore field accuracy and per-SKU provider freeze (SP-04, ADR-006). |
 
@@ -263,7 +265,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | API | quote refusal WAYVRO_E_SERVICE_AREA (422) with details.reasonCodes ZONE_NOT_SERVED / PICKUP_RESTRICTED / OUTSIDE_SERVICE_HOURS / ROUTE_TOO_LONG; PICKUP_RESTRICTED returns candidate pickup points; staff zone-set routes (proposed `/v1/admin/catalog/zone-sets`, `/{id}/submission`, `/approval`, `/activation`). |
 | UI | web-ops zone-set upload (GeoJSON) with server validation report; mobile "outside service area / outside hours" states with next opening time. |
 | Controls | MC + step-up; production refuses `is_synthetic` zone sets; server time only. |
-| External | real Lahore boundaries + district source (FA-12) before pilot. |
+| External | real licensed/approved Lahore boundaries + district source before pilot (FA-12 DECIDED: synthetic in Phase 3). |
 | Engineering evidence | ZONE-BOUNDARY and HOURS suites (TEST_STRATEGY §4.3, §4.4); migration + grants; MC tests; quote integration per reason code. |
 | Remains PARTIAL_EXTERNAL_GATED | none for engineering (boundaries synthetic by design). |
 
@@ -275,7 +277,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Surfaces | web-ops, api · register deps E05, Q39 |
 | API | proposed `/v1/admin/pricing/rate-cards` (+ `/{id}/submission`, `/approval`, `/activation`, `/rollback`), `/v1/admin/pricing/previews`, `/v1/admin/pricing/tax-policies`; rollback = activate a NEW version cloned from a prior approved card (history never rewritten); preview prices synthetic benchmark routes from stored snapshots (no provider call). |
 | UI | web-ops pricing pages: draft, diff vs active, preview, submit, approve, activate, rollback. |
-| Controls | drafter ≠ approver (DB CHECK); one ACTIVE per (city, product) partial unique index; advisory-lock version allocation; step-up; audit rows (append-only, Q39); new permissions pricing.rate_card.draft/submit/approve/activate/rollback, pricing.tax_policy.* (role mapping FA-10). |
+| Controls | drafter ≠ approver (DB CHECK); one ACTIVE per (city, product) partial unique index; advisory-lock version allocation; step-up; audit rows (append-only, Q39); new permissions pricing.rate_card.draft/submit/approve/activate/rollback, pricing.tax_policy.* (FA-10 APPROVED: PRICING_MANAGER role). |
 | External | a second qualified staff member for real approvals (EG-20 precedent). |
 | Engineering evidence | AUTHZ-MATRIX extended (every new admin route × roles × city scope × stale step-up); CONC-PRICING (two concurrent activations ⇒ one ACTIVE); rollback test (new version id, old rows untouched); Playwright web-ops pricing journey + axe. |
 | Remains PARTIAL_EXTERNAL_GATED | none for engineering. |
@@ -324,7 +326,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Class / checkpoints | IMPL+FREEZE · P3.5, P3.6 (SP-02 R1), P3.7 (R2), P3.9 |
 | Surfaces | mob-shared, api · register deps Q26, Q27, ADR-019 (CON-P3-11: in-app Lite mode) |
 | Mobile/API | Lite toggle + auto-suggest from request-timing heuristics (no NetInfo); no tiles, text-first route summary, `?detail=lite` (no polyline), no auto-refresh, stale indicators when data age exceeds threshold; "resumable booking" in Phase 3 = pending quote-group restore via `GET /v1/quotes/{quoteGroupId}` (ride requests are Phase 4). |
-| Budgets | Lite ≤ 150 KB per standard quote flow (proposed, FA-07). |
+| Budgets | Lite ≤ 150 KB per standard quote flow (FA-07 approved, pre-measurement). |
 | External | SP-02 device data measurement (FA-04). |
 | Engineering evidence | API payload-size tests (lite vs standard); mobile pure-logic for heuristic and stale thresholds; Maestro LITE-01 on emulator with `-netspeed edge -netdelay gprs`; restore test after process death. |
 | Remains PARTIAL_EXTERNAL_GATED | measured data/perf on the reference device (SP-02). |
@@ -349,7 +351,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Surfaces | mob-shared, api, infra · register deps V11, Q27 |
 | Artefacts | ADR-050 + `docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md` (proposed numbers); server load harness for `POST /v1/quotes` (cache miss/hit), autocomplete, reverse, app config. |
 | Scope note | dispatch assignment latency and realtime reconnect are budgeted but measured only in SP-01 harness / Phase 4 (no dispatch code in Phase 3). |
-| External | FA-07 approval; SP-02 (FA-04); SP-01 battery/reconnect (FA-03). |
+| External | FA-07 APPROVED (pre-measurement budgets); SP-02 (FA-04); SP-01 battery/reconnect (FA-03). |
 | Engineering evidence | budget table committed with owner + measurement method per line; server load runs (local stack, labelled non-staging); AAB size gate (bundletool get-size) and Hermes bundle size check in CI. |
 | Remains PARTIAL_EXTERNAL_GATED | device-measured start/memory/jank/data/battery values (SP-02/SP-01); staging-class server numbers (no staging exists). |
 
@@ -361,7 +363,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Surfaces | mob-shared · register deps Q26, Q32 · register blocker "Representative test devices procured" |
 | Plan | reference device Transsion-class Android Go 3–4 GB RAM (Infinix Smart 10 / Tecno Spark 30C class); SP-01 OEM classes Samsung A-series, Xiaomi Redmi (HyperOS), Transsion and/or Vivo Y; constrained storage run (≤ 1 GB free) and constrained network profile in SP-02. |
 | External | FA-03, FA-04. |
-| Engineering evidence | device protocol docs + capture templates; release-tier checklist in CI docs; emulator low-RAM AVD (2 GB, Go image) nightly lane labelled emulator-only. |
+| Engineering evidence | device protocol docs + capture templates; release-tier checklist in CI docs; emulator low-RAM AVD (2 GB, Go image) full-matrix lane labelled emulator-only. |
 | Remains PARTIAL_EXTERNAL_GATED | physical device runs (cannot be satisfied by Claude or CI). |
 
 ### Q31 — P1 — Supported OS/app-version matrix and deprecation policy define minimum Android/iOS, forced/soft upgrade, backend compatibility and security exception handling.
@@ -384,7 +386,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Surfaces | api, web-ops · register deps H10, E08, B04 · F-P3-04 (products ≠ vehicle classes) |
 | DB | `catalog.service_products` rows ECONOMY (CAR), COMFORT (CAR), BIKE (BIKE), RICKSHAW (RICKSHAW) as MODELLED; per-city status in `catalog.city_service_products` (NOT_CONFIGURED / CONFIGURED / ENABLED / SUSPENDED / DISABLED_LEGAL_GATE, legal_basis_ref); separate eligibility rules, rate cards and safety_profile_code per product; later XL/Pet/Kids/accessible variants are new rows, not UI labels. |
 | Controls | trigger refuses ENABLED when the vehicle class is DISABLED_LEGAL_GATE or legal_basis_ref is null for gated classes; production refuses ENABLED on synthetic config. |
-| External | FA-11 lifecycle approval; legal activation of BIKE/RICKSHAW outside Phase 3. |
+| External | FA-11 lifecycle APPROVED; legal activation of BIKE/RICKSHAW outside Phase 3 (written legal/permit/insurance evidence). |
 | Engineering evidence | lifecycle trigger tests; static scan: no product-code switch statements in UI (labels come from name keys); quote integration shows BIKE/RICKSHAW in `unavailable[]` with DISABLED_LEGAL_GATE. |
 | Remains PARTIAL_EXTERNAL_GATED | none for engineering. |
 
@@ -407,7 +409,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Class / checkpoints | IMPL+FREEZE · P3.0 (intent-filter gate), P3.5, P3.6, P3.8 |
 | Surfaces | mob-shared · register deps V05, A07, U04 |
 | Controls | `infra/ci/android/permission-allowlist.json` with requirementIds and justification per permission; forbidden list keeps BACKGROUND/FGS location, POST_NOTIFICATIONS, USE_FULL_SCREEN_INTENT, RECORD_AUDIO, contacts, media; NEW exported-components and intent-filter allowlist (F-P3-01); architecture test bans and the location-wrapper exception. |
-| External | FA-02; SP-01 for future background justification. |
+| External | FA-02 APPROVED; SP-01 for future background justification. |
 | Engineering evidence | AAB-GATES on every PR (permissions, intent filters, 16 KB, ABI); negative-control fixtures (manifest with `exp+wayvro` scheme fails; manifest with ACCESS_BACKGROUND_LOCATION fails); permission review table in the inventory. |
 | Remains PARTIAL_EXTERNAL_GATED | background-location justification (SP-01, Phase 4 request). |
 
@@ -418,7 +420,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Class / checkpoints | IMPL+FREEZE · P3.5, P3.6, P3.8, P3.10 |
 | Surfaces | mob-shared, mob-driver · register deps A07, U05, SP-01 · invariant INV-07 (`docs/phase0/PHASE0_UNIFIED_APP_ROLE_MODEL.md`) |
 | Mobile | permission requests only from task screens (rider location at first "use current location"; driver camera only in capture); driver permission state machine foreground-only; recovery paths for denied/permanent/revoked. |
-| External | SP-01 (FA-03); FA-02. |
+| External | SP-01 (FA-03); FA-02 APPROVED. |
 | Engineering evidence | Maestro RIDER-HYGIENE-01 (account A full rider flow: no permission dialog other than when-in-use location after tapping "use current location"; asserted by dialog absence + `dumpsys package` runtime-permission state at end); same on account B in Rider mode; release manifest gate; static test that no rider-graph module imports camera/location-background APIs. |
 | Remains PARTIAL_EXTERNAL_GATED | SP-01 rider-hygiene check on the real release AAB on physical OEM devices. |
 
@@ -438,11 +440,11 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 
 | Field | Content |
 |---|---|
-| Class / checkpoints | IMPL · P3.0 (gates), P3.4 (mode-scoped switches), P3.5 (PR tier), P3.10 (nightly) |
+| Class / checkpoints | IMPL · P3.0 (gates), P3.4 (mode-scoped switches), P3.5 (PR tier), P3.10 (manual full matrix) |
 | Surfaces | infra, mob-shared · register deps P16, Q13, Q32 · register note: scaffolded Phase 3, enforced from Phase 4 · INV-14 |
-| Mechanisms | SP-08 Maestro matrix (accounts A–G; PR tier ≤ 15 min, nightly ≤ 60 min on API 29 + 35); `platform.runtime_switches` with scope ALL/RIDER/DRIVER and city; DISABLE = single authorised staff + step-up (emergency, audited, outbox event), ENABLE = MC; client-presentation switches delivered by `GET /v1/app/config`, enforced server-side (WAYVRO_E_FEATURE_DISABLED). |
-| External | FA-16 (CI emulator minutes); physical subset (FA-03/FA-04). |
-| Engineering evidence | PR-tier Maestro job green; nightly matrix report artefact; switch semantics tests (rider-scoped switch never affects driver routes and vice versa); proposal to make the PR-tier job a required check (ruleset change = founder action). |
+| Mechanisms | SP-08 Maestro matrix (accounts A–G; PR tier ≤ 15 min, full matrix ≤ 60 min on API 29 + 35 via manual `workflow_dispatch`, mandatory at final closure); `platform.runtime_switches` with scope ALL/RIDER/DRIVER and city; DISABLE = single authorised staff + step-up (emergency, audited, outbox event), ENABLE = MC; client-presentation switches delivered by `GET /v1/app/config`, enforced server-side (WAYVRO_E_FEATURE_DISABLED). |
+| External | FA-16 APPROVED (CI emulator minutes: PR tier + manual full matrix, no nightly); physical subset (FA-03/FA-04). |
+| Engineering evidence | PR-tier Maestro job green; full-matrix (`workflow_dispatch`) report artefact on the closure SHA; switch semantics tests (rider-scoped switch never affects driver routes and vice versa); proposal to make the PR-tier job a required check (ruleset change = founder action). |
 | Remains PARTIAL_EXTERNAL_GATED | physical-device release subset; enforcement as a release blocker is Phase 4. |
 
 ### V11 — P1 — Startup time, memory, battery, binary size and low-end Android performance budgets protect rider users from driver-only complexity; expensive driver modules/providers/background workers are not initialized until needed and are profiled on representative devices.
@@ -452,7 +454,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 | Class / checkpoints | IMPL+FREEZE · P3.5, P3.6, P3.7, P3.10 |
 | Surfaces | mob-shared · register deps Q26, Q27, SP-02 · F-P3-07 (Hermes single bundle: lazy = deferred evaluation) |
 | Mobile | driver graph via `lazyScreen(() => import())`; zero driver feature modules evaluated at rider startup (instrumented in an E2E-only build flag, absent from release); no background worker in Phase 3. |
-| Budgets | Play download arm64-v8a ≤ 30.0 MB, armeabi-v7a ≤ 29.0 MB; Hermes bundle ≤ 4.5 MB; cold start p50 ≤ 2.5 s / p90 ≤ 4.0 s on the reference device (proposed, FA-07). |
+| Budgets | Play download arm64-v8a ≤ 30.0 MB, armeabi-v7a ≤ 29.0 MB; Hermes bundle ≤ 4.5 MB; cold start p50 ≤ 2.5 s / p90 ≤ 4.0 s on the reference device (FA-07 approved, pre-measurement; the 30.0 MB / 29.0 MB target is never silently raised). |
 | External | SP-02 (FA-04). |
 | Engineering evidence | size gate in CI; dependency-cruiser rule: rider graph cannot statically import `features/driver`; E2E-build module-evaluation probe asserts 0 driver modules after rider cold start (emulator). |
 | Remains PARTIAL_EXTERNAL_GATED | device-measured start/memory/battery (SP-02; battery via SP-01 harness). |
@@ -463,7 +465,7 @@ Abbreviations: **MC** = maker-checker (drafter ≠ approver, step-up, audited, a
 |---|---|---|
 | INV-07 rider-only account never receives background-location/FGS/KYC prompts | Maestro RIDER-HYGIENE + manifest gate in Phase 3; SP-01 #1 device check | V05, U05, A07 |
 | INV-09 driver suspension ≠ account suspension | Phase-2 tests re-run; Maestro account D (driver restricted, rider quote works) | V08, V10 |
-| INV-14 cross-mode regression | scaffold (PR + nightly tiers) in Phase 3; enforced from Phase 4 | V10 |
+| INV-14 cross-mode regression | scaffold (PR tier + manual full matrix) in Phase 3; enforced from Phase 4 | V10 |
 | INV-05/INV-06 (go-online / abandon active job) | NOT in Phase 3 (no presence, no trips); documented extension point only, no speculative code | — |
 
 ## 6. Reporting

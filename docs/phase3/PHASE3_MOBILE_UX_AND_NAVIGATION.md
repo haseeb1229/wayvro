@@ -1,6 +1,6 @@
 # PHASE3_MOBILE_UX_AND_NAVIGATION — Unified-app shell, mode navigation, rider quote UX and driver readiness (PROPOSED)
 
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA decisions in `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1a); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 Requirement IDs covered by this document: V08, V05, V11, A01, A06, A07 (UI side), A08, B01, B02, B03, B04, B06 (rider display), K19, L08, P18, Q31 (client behaviour), R28 (rider display). Permission and location detail lives in `docs/phase3/PHASE3_PERMISSION_LOCATION_MODEL.md`; cross-mode E2E proof in `docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.md`; endpoint and schema detail in `docs/phase3/PHASE3_ARCHITECTURE.md` and `docs/phase3/PHASE3_PRICING_QUOTE_MODEL.md` (those documents own exact paths; endpoint names below are PROPOSED references).
 
@@ -37,7 +37,7 @@ Shell facts that this plan builds on:
 - `architecture.test.ts` enforces: thin route files (< 25 lines, default export), driver screens only via `lazyScreen(import())`, core never statically imports `features/driver/`, rider/driver/account feature isolation, camera/picker/file-system only in `features/driver/`, a global import ban on expo-location, expo-notifications, expo-task-manager, expo-background-fetch, react-native-maps, expo-media-library, no console logging, secure storage only.
 - No i18n library: typed catalogue `core/i18n/strings.ts` (en source; ur/ur-Latn provisional, `PENDING_REVIEW_LOCALES`), driver catalogue `features/driver/i18n/driver-strings.ts`, RTL per component (`isRtl`), `TranslationPendingNote`.
 - Design tokens are provisional (`core/ui/tokens.ts`: colours, spacing, 4 type styles, `MIN_TOUCH_TARGET = 48`); primitives (`core/ui/primitives.tsx`): Screen, Title, Heading, Body, Button (primary/secondary/danger, busy), LinkRow, TextField, Checkbox, RadioGroup, Banner (info/warning/error), PlaceholderBadge, TranslationPendingNote, ErrorBanner, StateView; view-state adapters (`core/ui/view-state.ts`: loading / error / empty / ready+stale).
-- Reanimated, gesture-handler and worklets are excluded from autolinking (ADR-043; F-P3-08). `updates.enabled=false`. No URL scheme is configured in `app.config.ts`, but the release AAB still registers `exp+wayvro` through expo-dev-client (F-P3-01 (verified on the 2026-10-11 local release AAB; re-verification on the post-repair CI artefact recorded in `docs/phase3/PHASE3_PLAN.md`); fixed at P3.0).
+- Reanimated, gesture-handler and worklets are excluded from autolinking (ADR-043; F-P3-08). `updates.enabled=false`. No URL scheme is configured in `app.config.ts`, but the release AAB still registers `exp+wayvro` through expo-dev-client (F-P3-01 (verified on the 2026-10-11 local release AAB; re-verification on the post-repair CI artefact recorded in `docs/phase3/PHASE3_PLAN.md`); fixed at P3.0 by applying the documented expo-dev-client `addGeneratedScheme` option variant-conditionally, so the generated `exp+<slug>` scheme exists only in development builds, release builds never expose `exp+wayvro`, and dev-client functionality is preserved).
 
 ### 1.2 What does not exist yet
 Rider screens, mode controller, driver home outside `earn/*`, intent router, version/maintenance handling, location, maps, client flags/config, Lite mode, quote UI, money formatting for display, component or device E2E tests.
@@ -228,7 +228,7 @@ resolveIntent(raw: unknown, ctx: { appPolicy, session, account: AccountState | n
 |---|---|
 | Restoration resolver (§6) | uses the router |
 | In-app links/banners (e.g. "Document renewal due" on `/drive`, "Last price check" on `/ride`) | use the router |
-| System path delivery (`+native-intent`, PROPOSED) | every path is parsed by `parseWayvroPath` (length ≤ 512 before any decoding — decode-uri-component gate from ADR-043 — path allowlist, then `resolveIntent`); anything else ⇒ mode home. In release there is **no external scheme** (F-P3-01 removes `exp+wayvro`; CON-P3-07), so this hook only sees app-internal launches; in development builds the dev-client scheme exercises it |
+| System path delivery (`+native-intent`, PROPOSED) | every path is parsed by `parseWayvroPath` (length ≤ 512 before any decoding — decode-uri-component gate from ADR-043 — path allowlist, then `resolveIntent`); anything else ⇒ mode home. In release there is **no external scheme** (F-P3-01 keeps `exp+wayvro` out of release builds; CI verifies the release AAB intent filters/schemes; CON-P3-07), so this hook only sees app-internal launches; in development builds the dev-client scheme exercises it; intentional deep links stay disabled while the decode-uri-component exception is open |
 | Push notifications | **not in Phase 3** (no expo-notifications; architecture ban kept). A future notification payload is the same `Intent` envelope + `v` field; the handler only calls `resolveIntent` |
 | External deep links / App Links / universal links | blocked until EG-15 identifiers clear and the decode-uri-component exception is resolved; then a reviewed link plan adds the scheme/hosts and the CI intent-filter gate allowlist (P3.0) is updated |
 
@@ -406,7 +406,7 @@ States: loading, error/retry, offline (cached with stale indicator), partial (el
 (Status marks are text glyphs with full text labels for screen readers; never colour alone.)
 
 ### 10.2 Eligibility per product `/drive/eligibility`
-Per vehicle × product: eligible / not eligible with plain reasons (model year, seats, AC, body type, legal gate). BIKE/RICKSHAW show "Not offered in Lahore yet" (DISABLED_LEGAL_GATE; FA-11). Display only; dispatch eligibility is Phase 4.
+Per vehicle × product: eligible / not eligible with plain reasons (model year, seats, AC, body type, legal gate). BIKE/RICKSHAW show "Not offered in Lahore yet" (DISABLED_LEGAL_GATE; FA-11 APPROVED). Display only; dispatch eligibility is Phase 4.
 
 ### 10.3 Restriction / health `/drive/health`
 Lists DRIVER_ROLE, VEHICLE, SERVICE_CAPABILITY and CITY_CATEGORY restrictions with existing `driverRestriction.*` copy, effective-until, appeal button when appealable. Always states "Booking rides as a rider is not affected" unless an ACCOUNT restriction exists.
@@ -500,9 +500,9 @@ Visual language: original Wayvro palette and composition; no incumbent layouts, 
 - Catalogue namespaces added to `core/i18n/strings.ts` (rider + shared) and `features/driver/i18n/driver-strings.ts` (driver), all three locales, same keys (compile-time completeness, existing tests for placeholders and forbidden wording). If the main file grows too large, split per namespace with the same typed `Record<Locale, …>` contract.
 - **PKR display (PROPOSED, pending native review):** "Rs 640", "Rs 1,250" in all locales with Western digits; paisa shown only when non-zero; formatting implemented in-house from the server `{currency, minor}` string (bigint), not via `Intl` currency (Hermes `Intl` behaviour unverified, ADR-043). Thousands vs lakh grouping (1,25,000) is a native-review decision.
 - **Urdu RTL per component** (existing approach, no global `I18nManager.forceRTL`): rows reverse, text aligns right; prices, distances and times are LTR runs inside RTL text; mixed-direction addresses use separate `Text` runs with explicit `writingDirection`.
-- **Text expansion:** layouts tolerate +40 % length (Urdu/Roman-Urdu often longer); buttons wrap to two lines rather than truncate; tested with a pseudo-locale in unit snapshots of adapters (string length checks) and screenshots in SP-08 nightly.
+- **Text expansion:** layouts tolerate +40 % length (Urdu/Roman-Urdu often longer); buttons wrap to two lines rather than truncate; tested with a pseudo-locale in unit snapshots of adapters (string length checks) and screenshots in the SP-08 full matrix (manual `workflow_dispatch`, FA-16).
 - **Roman-Urdu search:** hints in the search field; server landmark aliases (`geo.landmark_aliases`) map common Roman-Urdu spellings; the client never transliterates.
-- **No machine-translation-only safety/legal text:** new ur/ur-Latn strings are marked pending review (`TranslationPendingNote`); safety/legal/price-explanation strings are blocked from P18/A06/K19 exit until FA-09 signs off. Implementation proceeds; exit does not.
+- **No machine-translation-only safety/legal text:** new ur/ur-Latn strings are marked pending review (`TranslationPendingNote`); safety/legal/price-explanation strings are blocked from P18/A06/K19 exit until FA-09 signs off. Implementation proceeds; exit does not — native Urdu/Roman-Urdu human review remains required before Phase-3 exit (confirmed 2026-10-12) and AI-generated copy alone never satisfies it.
 
 ---
 
@@ -512,7 +512,7 @@ Visual language: original Wayvro palette and composition; no incumbent layouts, 
 |---|---|---|
 | Labels | every interactive element has a label; cards read as one sentence; decorative glyphs hidden | adapter unit tests for spoken labels; TalkBack manual pass (FA-14) |
 | Focus order | heading → primary action → content → secondary actions; after navigation focus moves to the heading | manual TalkBack/VoiceOver |
-| Dynamic type | layouts usable at 200 % font scale; no clipped prices or CTAs | SP-08 nightly screenshots at `font_scale 2.0` + manual |
+| Dynamic type | layouts usable at 200 % font scale; no clipped prices or CTAs | SP-08 full-matrix screenshots at `font_scale 2.0` + manual |
 | Touch targets | ≥ 48 dp (`MIN_TOUCH_TARGET`) | primitive tests |
 | Contrast | WCAG AA for all token pairs, including confidence/stale banners | token contrast unit test |
 | Reduced motion | no animation required for meaning; durations 0 when reduced motion is on | manual |

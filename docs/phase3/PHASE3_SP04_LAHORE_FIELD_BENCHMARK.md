@@ -1,5 +1,5 @@
 # PHASE3_SP04_LAHORE_FIELD_BENCHMARK — SP-04 Lahore geo quality and cost field benchmark protocol (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (targeted fixes applied, `docs/phase3/PHASE3_PLAN.md` §11); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 **SP-04 result status: NOT RUN.** No case has been captured, no provider has been called, no metric exists.
 
@@ -11,9 +11,9 @@ SP-04 answers one question from the Phase-0 spike register (`docs/phase0/PHASE0_
 |---|---|
 | Decision fed | ADR-006 provider per SKU (OPEN-SPIKE → ACCEPTED-ON-EVIDENCE at P3.7) and ADR-046 renderer (coupled by CON-P3-16) |
 | Requirement IDs | E06, E07, B01, B02, B03, A06, I11 (cost per case), Q26 (latency) |
-| Scoring and gates | `docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md` §12 (weights 40/20/20/10/10 PROPOSED, gates G1–G6) |
+| Scoring and gates | `docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md` §12 (weights 40/20/20/10/10 and gates G1–G6 approved as pre-measurement values, FA-07; G4 includes the route-critical hard gate §7.1) |
 | Capture sheet | `docs/phase3/PHASE3_SP04_FIELD_CAPTURE_TEMPLATE.csv` (header + three EXAMPLE rows; contains no real data) |
-| Founder actions | FA-05 field drives, FA-06 evaluation accounts/keys, FA-07 approve thresholds, FA-08 any paid spend |
+| Founder actions | FA-05 field drives, FA-06 evaluation accounts/keys (no credentials committed), FA-08 any paid spend, FA-19 Mapbox commercial-licence confirmation before any S2 freeze; FA-07 thresholds APPROVED 2026-10-12 |
 | Earliest start | after P3.2 (harness + capture tooling exist). Field capture itself can start as soon as this protocol is approved, because it needs only a phone, a car and the sheet |
 
 ## 1. Candidates (bundles, from the evaluation doc §6)
@@ -203,11 +203,11 @@ Distances use the haversine formula with mean Earth radius R = 6,371,008.8 m:
 | Failure / empty rate | each SKU per candidate | (errors + timeouts + empty results) / requests; timeouts per the plan budgets (autocomplete 1.5 s, geocode 2.0 s, reverse 2.0 s, directions 2.5 s) |
 | Cost per case | each candidate | Σ (billable calls × dated unit price) beyond free tier at modelled pilot volume, and modelled cost per 1,000 quotes (evaluation doc §7) |
 
-## 7. Thresholds (PROPOSED for founder approval, FA-07)
+## 7. Thresholds (APPROVED 2026-10-12 as pre-measurement thresholds, FA-07)
 
-The Phase-0 backlog says thresholds are "set by founder"; these are proposals only.
+The Phase-0 backlog says thresholds are "set by founder"; the founder/ChatGPT plan review approved the values below as the **pre-measurement** thresholds, together with the route-critical hard gate in §7.1. They change only through explicit evidence and a reviewed ADR update — never after seeing measurements in order to obtain a PASS.
 
-| Metric | Gating threshold (PROPOSED) | Scoring floor → target (for normalisation) |
+| Metric | Gating threshold | Scoring floor → target (for normalisation) |
 |---|---|---|
 | Geocode top-1 within 50 m (address/place cases) | ≥ 80 % | 50 % → 90 % |
 | Geocode top-3 within 50 m | ≥ 90 % | 60 % → 97 % |
@@ -215,12 +215,30 @@ The Phase-0 backlog says thresholds are "set by founder"; these are proposals on
 | Route distance error | median ≤ 10 %, p90 ≤ 20 % | median 25 % → 3 % |
 | ETA error vs off-peak drive | absolute median ≤ 20 % (peak informational) | 40 % → 8 % |
 | Autocomplete correct place in top 5, incl. Roman-Urdu | ≥ 85 % overall and reported per language | 50 % → 95 % |
-| Constraint plausibility (C06/C07/C11/C12) | informational (no gate; any failure is listed) | 50 % → 100 % |
+| Constraint plausibility (C06/C07/C11/C12) | **minor** suboptimal routes are scored, not automatic failures; any **CRITICAL** route invalidity is a hard gate (§7.1) | 50 % → 100 % (minor only) |
 | Latency p95 | ≤ performance budgets (`docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md`: autocomplete 450 ms, reverse 500 ms, quote incl. provider 800 ms server-side; harness latency from Lahore is indicative) | budget × 2 → budget × 0.5 |
 | Failure/empty rate | ≤ 5 % per SKU | 20 % → 1 % |
-| Cost | pilot ESTIMATE within the FD-14 envelope unless FA-08 (gate G2) | per evaluation doc §12 |
+| Cost | pilot ESTIMATE within the FD-14 envelope unless FA-08 (gate G2), stated with its explicit billing mode (Google PAYG vs subscription; Mapbox Search Box sessions vs requests, standard vs preview) and, for S2, any Commercial Application License (FA-19) | per evaluation doc §12 |
 
-A candidate that misses a gating threshold is reported as such; it may still be selected only with a founder-signed acceptance of the shortfall and named mitigations (aliases, pin-first UX), recorded in the ADR.
+A candidate that misses a quantitative gating threshold is reported as such; it may still be selected only with a founder-signed acceptance of the shortfall and named mitigations (aliases, pin-first UX), recorded in the ADR. That acceptance route does **not** apply to a critical route invalidity (§7.1).
+
+### 7.1 Route-critical hard gate (FA-07 addition, 2026-10-12)
+
+For ride-hailing a severely invalid route is a safety defect, not a quality score. Every ROUTE case is classified by Claude from the provider geometry against the founder's ground truth (GPX track, notes, photos of signage where lawful) as **NONE**, **MINOR** (suboptimal but lawful and drivable: longer, slower, an avoidable U-turn) or **CRITICAL**:
+
+| CRITICAL class | Example |
+|---|---|
+| Wrong-way travel | route traverses a one-way road against its direction |
+| Impossible, private or inaccessible segment used as normal routing | through a gated society interior, private driveway or footpath not open to the trip |
+| Prohibited or closed passage | closed road, barrier, restricted access, turn ban |
+| Unsafe or physically impossible manoeuvre | crossing a median, U-turn where none exists, dropping onto a flyover/underpass without a connection |
+| Systematic severe defect | the same severe error class recurring across cases (e.g. a whole corridor mis-modelled) |
+
+Rules:
+- A bundle with **any unresolved CRITICAL** case is **not eligible for freeze** (evaluation doc gate G4), whatever its weighted score; a high score never offsets it.
+- A CRITICAL case is cleared **only** by (a) confirming the ground truth was wrong (re-check on site, recorded); (b) an evidence-backed provider/configuration/map-data correction followed by a re-run of the affected cases; or (c) a founder-signed, documented product mitigation proving that the route will not be presented or used (for example the leg is excluded from routing by a zone rule), recorded in the ADR.
+- MINOR cases stay in the constraint-plausibility score.
+- The classification, evidence and clearing action of every CRITICAL case are listed in the SP-04 evidence table (§11); raw provider geometry is not committed (§8).
 
 ## 8. Data handling
 
@@ -255,7 +273,7 @@ The template file in the repository contains only a header and EXAMPLE rows with
 ## 11. Deliverables of SP-04 (at P3.7)
 
 1. Evidence table: per case × candidate aggregated metrics (no raw responses), per-category summaries, per-language autocomplete results.
-2. Per-bundle score with gates G1–G6 shown pass/fail, paired-test results, cost ESTIMATE re-run with prices re-verified on the freeze date.
+2. Per-bundle score with gates G1–G6 shown pass/fail and every CRITICAL route case with its classification evidence and clearing action (§7.1), paired-test results, cost ESTIMATE re-run with prices re-verified on the freeze date.
 3. ADR-006 recommendation (bundle + per-SKU components, terms-derived cache TTLs, attribution duties, residual risks and mitigations) for founder approval; the future ADR-006 file is written as ACCEPTED-ON-EVIDENCE only after that approval.
 4. Seed list of founder/field-sourced landmark aliases (`geo.landmark_aliases`, source FIELD) for places where every candidate failed.
 5. Updated SDK inventory rows for the chosen renderer/tile host (`docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md`).
@@ -264,7 +282,7 @@ The template file in the repository contains only a header and EXAMPLE rows with
 
 | Item | Status |
 |---|---|
-| Protocol | PROPOSED (needs FA-01/FA-07) |
+| Protocol | APPROVED with the plan (FA-01, FA-07 on 2026-10-12); execution needs FA-05/FA-06 |
 | Field capture | NOT RUN — needs FA-05 |
 | Vendor comparison (S1/S2) | NOT RUN — needs FA-06 |
 | Open-stack comparison (S3) | NOT RUN — needs P3.2 harness + `geo-bench` profile |

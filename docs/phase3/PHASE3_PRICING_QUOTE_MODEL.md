@@ -1,5 +1,5 @@
 # PHASE3_PRICING_QUOTE_MODEL — Upfront quotes, rate cards, tax policy and maker-checker pricing configuration (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA decisions in `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1a); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 Requirement IDs: B04, B06, E05, H06 (primary); B03 (route/confidence display data), E07 (no invented route values), R28 (per-product pricing). ADR-013 (pricing/quote domain): FOUNDER-LOCKED scope (direction approved: upfront fixed price, FD-01/FD-02; parameters open) + PROPOSED (quote aggregate, components, rounding fields) + EXTERNAL (commission/tax/rounding values). Tables: `docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md` §6.3 (migration `0012_pricing`). The pricing engine and the quote service are authoritative server code in `apps/api/src/pricing/` (proposed); only the `Money` value object lives in the client-importable `packages/domain`. Gateway/routing: `docs/phase3/PHASE3_ARCHITECTURE.md` §5. State machine source: `docs/phase0/PHASE0_JOURNEYS_AND_STATE_MACHINES.md` SM-2.
 
@@ -312,7 +312,7 @@ Returns the same shape as 201 with each option's `status` computed at read time 
 | emergency stop | `catalog.product.suspend` (single staff, safe direction) or runtime switch `rider.quotes` | yes | stops quoting a product/city immediately while a corrected card goes through maker-checker |
 | view quotes (support) | `pricing.quote.view` | no; access reason required (W07 pattern, `staff.access_reasons`) | shows product, district codes, amounts, components, card version, status, timestamps — never coordinates or polyline |
 
-Roles: new roles `PRICING_MANAGER` (draft/submit/rollback-request), with approval by a second `PRICING_MANAGER` or `STAFF_ADMIN` — or mapped onto existing roles if the founder prefers (FA-10). `AUDITOR` gets read-only views of configuration history.
+Roles (FA-10 APPROVED 2026-10-12): dedicated least-privilege role `PRICING_MANAGER` (draft/submit/rollback-request), with approval by a **second, distinct** `PRICING_MANAGER` (maker ≠ checker); pricing permissions are not added to `COMPLIANCE_ADMIN`/`STAFF_ADMIN`. Real maker-checker needs two distinct human actors before exposure; synthetic test staff are allowed in development. `AUDITOR` gets read-only views of configuration history.
 
 ## 10. Preview tool (staff)
 
@@ -338,8 +338,8 @@ Bidding/counter-offers (Phase 9), surge/dynamic pricing, promotions/discounts (P
 | FA-15d | whether rounding happens before or after tax (pe-v1: after tax) | after tax | accountant review |
 | FA-15e | real rate-card values per product, minimum fare, booking fee, airport fee | synthetic only | pilot |
 | FA-15f | quote TTL | 300 s synthetic | pilot |
-| FA-10 | pricing roles vs mapping | 3 new roles proposed | before P3.3 staff routes |
-| FA-12 | real zone boundaries/airport precinct | synthetic geometry | pilot |
+| FA-10 | pricing roles vs mapping | **APPROVED 2026-10-12**: 3 dedicated roles | decided |
+| FA-12 | real zone boundaries/airport precinct | **DECIDED 2026-10-12**: synthetic geometry in Phase 3; real licensed boundaries later | pilot |
 
 ## 14. Property-test invariants (fast-check, already a pinned dev dependency)
 

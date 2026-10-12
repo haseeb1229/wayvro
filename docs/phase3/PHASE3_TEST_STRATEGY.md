@@ -1,6 +1,6 @@
 # PHASE3_TEST_STRATEGY — Test layers, families, tiers and acceptance evidence for all 29 IDs (PROPOSED)
 
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02/FA-07/FA-10/FA-16 APPROVED, FA-12 DECIDED); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 **No test described here has been written or run.** Every Phase 3 test is **NOT RUN** at planning time. Requirement traceability: `docs/phase3/PHASE3_REQUIREMENT_MATRIX.md`. Checkpoints: `docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md`. Device protocols: `docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md`, `docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md`, `docs/phase3/PHASE3_SP04_LAHORE_FIELD_BENCHMARK.md`, `docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.md`.
 
@@ -37,16 +37,16 @@
 | Layer | Tooling | Phase 3 scope | CI job / tier |
 |---|---|---|---|
 | Unit | Vitest | quote engine, zone-decision precedence, service-hours evaluator, eligibility evaluator, normaliser, landmark formatter, polyline codec, placeRef sealing, breaker state machine, budget maths, app-policy evaluation | quality (PR) |
-| Property | fast-check (server packages) / exhaustive enumeration (mobile) | PROP-MONEY, PROP-QUOTE, PROP-HOURS, PROP-ZONE-DECISION, PROP-POLYLINE, PROP-NORM, PROP-ELIG-VEH, PROP-BREAKER; mobile EXH-INTENT, EXH-RESTORE | quality (PR, low runs) + nightly (high runs) |
+| Property | fast-check (server packages) / exhaustive enumeration (mobile) | PROP-MONEY, PROP-QUOTE, PROP-HOURS, PROP-ZONE-DECISION, PROP-POLYLINE, PROP-NORM, PROP-ELIG-VEH, PROP-BREAKER; mobile EXH-INTENT, EXH-RESTORE | quality (PR, low runs) + full tier (high runs; manual `workflow_dispatch`) |
 | DB integration | real PostGIS | migrations 0010–0013, grants per restricted role, geometry validity/SRID, zone boundaries, triggers (MC, immutability, Σ) | integration (PR) |
 | API integration | Vitest + real PG/Valkey + MOCK geo doubles | every new route incl. negative paths; quote tamper; fault injection; budgets; cache; rate limits; authz matrix extension | integration (PR) |
 | Contract | zod, `openapi:check`, **oasdiff** (new), COMPAT-N1 | all new routes; additive-only evolution of shared schemas | quality (PR) |
 | Mobile pure logic | Vitest | ModeController, `resolveIntent`, restoration precedence, location permission state machine, app-policy states, Lite heuristics, quote view states, catalogue completeness | quality (PR) |
-| Mobile E2E | Maestro (SP-08; ADR-052 proposal) on Android emulator | PR tier smoke (accounts A, C, D, E core); scheduled full matrix A–G on API 29 + API 35 at the FA-16 cadence | new `e2e-mobile` (PR) + scheduled |
+| Mobile E2E | Maestro (SP-08; ADR-052 proposal) on Android emulator | PR tier smoke (accounts A, C, D, E core; ≤ 15 min); full matrix A–G on API 29 + API 35 on a manual `workflow_dispatch` workflow, mandatory at Phase-3 final closure (FA-16 APPROVED; no nightly/scheduled run while the repository is private) | new `e2e-mobile` (PR) + manual full tier |
 | Web E2E | Playwright + axe | web-ops catalog, zone sets, rate cards (preview/approve/activate/rollback), geo budgets, release controls | e2e-web (PR) |
 | Security | gitleaks, osv-scanner, ART-ISO, BOOT-NEG, LOG-GEO, BUNDLE-SECRETS, SDK-INV | §4.11 | security / quality / integration (PR) |
 | Release artefact gates | bundletool + gate scripts | AAB-GATES incl. NEW intent-filter/exported-component gate | android (PR) |
-| Load (targeted) | in-repo Node script (built-in fetch; no new dependency) | quote/autocomplete/reverse/app-config latency + cache-hit ratio on the local stack | nightly (informational) |
+| Load (targeted) | in-repo Node script (built-in fetch; no new dependency) | quote/autocomplete/reverse/app-config latency + cache-hit ratio on the local stack | full tier (informational) |
 | Device | physical devices per protocols | SP-01, SP-02 (R1, R2), physical SP-08 subset, TalkBack pass | manual-device (founder) |
 | Field | founder drives + harness | SP-04 | manual-field (founder + Claude analysis) |
 
@@ -67,7 +67,7 @@ Each family is numbered `-01..-n` in test names (Phase-2 convention). Test file 
 
 ### 4.2 Property (fast-check where installed; enumeration on mobile)
 
-Run counts (proposed): PR `numRuns` 500 per property; nightly 50,000 with a logged seed; any failure prints seed + shrunk counterexample and is reproducible with the seed.
+Run counts (proposed): PR `numRuns` 500 per property; full tier 50,000 with a logged seed; any failure prints seed + shrunk counterexample and is reproducible with the seed.
 
 | Family | Package | Properties |
 |---|---|---|
@@ -163,7 +163,7 @@ All against the real local stack with MOCK geo doubles. Proposed files: `apps/ap
 | QT-16 no session | 401; geo endpoints likewise (no pre-sign-in geo) |
 | QT-17 SUPERSEDED | a newer quote group by the same account marks older unexpired groups SUPERSEDED; rows kept |
 | API-CFG-01..06 | `GET /v1/app/config` public and cacheable; 426 on non-exempt routes for blocked builds; exempt routes (health, app config, legal reads, deletion, sign-out) work under HARD_UPDATE and MAINTENANCE; 503 WAYVRO_E_MAINTENANCE envelope; switch DISABLE single staff + step-up, ENABLE MC; audit + outbox event |
-| AUTHZ-MATRIX (extended) | every new `/v1/admin/...` route × {each role incl. proposed PRICING_MANAGER/CATALOG_MANAGER/RELEASE_MANAGER or their FA-10 mapping, none, offboarded, consumer token, stale step-up, wrong city, drafter approving own draft}; denials audited; route-completeness check fails if a new admin route is missing from the matrix |
+| AUTHZ-MATRIX (extended) | every new `/v1/admin/...` route × {each role incl. the FA-10-approved PRICING_MANAGER/CATALOG_MANAGER/RELEASE_MANAGER, none, offboarded, consumer token, stale step-up, wrong city, drafter approving own draft}; denials audited; route-completeness check fails if a new admin route is missing from the matrix |
 | SUPPORT-QUOTE | `pricing.quote.view` lookup is reason-gated and returns district codes, never coordinates |
 
 ### 4.7 FAULT-GEO (provider fault injection)
@@ -244,9 +244,9 @@ Implemented as fault modes of the MOCK geo doubles in `@wayvro/provider-test-dou
 |---|---|
 | 16 KB | existing `check-16kb.mjs` on every native library |
 | ABI | release contains exactly arm64-v8a and armeabi-v7a (no x86/x86_64) |
-| Permissions | allowlist; FINE/COARSE allowed only after FA-02 with requirementIds B01, B02, A07, V05, U05; BACKGROUND_LOCATION, FOREGROUND_SERVICE_LOCATION, POST_NOTIFICATIONS, USE_FULL_SCREEN_INTENT stay forbidden |
+| Permissions | allowlist; FINE/COARSE allowed per the FA-02 approval (2026-10-12) with requirementIds B01, B02, A07, V05, U05; BACKGROUND_LOCATION, FOREGROUND_SERVICE_LOCATION, POST_NOTIFICATIONS, USE_FULL_SCREEN_INTENT stay forbidden |
 | **Intent filters / exported components (NEW, F-P3-01)** | parse the merged base manifest via bundletool; allowed: MAIN/LAUNCHER on the main activity; any `<data android:scheme>` (including `exp+wayvro`), any VIEW/BROWSABLE filter, or any exported activity/service/receiver/provider not in the allowlist ⇒ FAIL; negative controls: a fixture manifest with `exp+wayvro` and one with an extra exported receiver must fail |
-| Size | bundletool get-size per ABI: report-only until FA-07, then failing at arm64-v8a ≤ 30.0 MB, armeabi-v7a ≤ 29.0 MB; Hermes bundle ≤ 4.5 MB; delta > 1.5 MB needs a written justification in the PR |
+| Size | bundletool get-size per ABI: failing at arm64-v8a ≤ 30.0 MB, armeabi-v7a ≤ 29.0 MB (FA-07 APPROVED pre-measurement budget; never silently raised); Hermes bundle ≤ 4.5 MB; delta > 1.5 MB needs a written justification in the PR |
 | Release purity | release AAB has no E2E-only module-evaluation probe, no cleartext/localhost E2E config (`usesCleartextTraffic` not true), no dev-client launcher |
 
 ### 4.13 Mobile pure-logic (Vitest, `apps/wayvro-mobile`)
@@ -262,22 +262,22 @@ Detailed in `docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.md`. Seeded synthetic accoun
 | NAV-01 mode switch Rider→Driver→Rider resets to each home (`router.replace`), Android back on home exits | C | PR |
 | NAV-02 restricted driver: Driver mode shows health/appeal; Rider quote still works (INV-09) | D | PR |
 | NAV-03 process death on quote screen → restore pending quote group; expired ⇒ "Prices updated" | A | PR |
-| NAV-04 internal intent for a driver screen while in Rider mode ⇒ permitted switch prompt or refusal per `resolveIntent` | B, C, F | nightly |
-| NAV-05 account-wide restriction ⇒ both modes blocked by AccountGate | E | nightly |
-| NAV-06 pending application ⇒ Driver entry opens Earn onboarding, not driver home | F | nightly |
-| SRCH-01..04 autocomplete (min 3 chars, debounce), degrade copy on budget exhaustion (fault-injected API), Roman-Urdu alias query, manual pin fallback | A | PR (01), nightly |
-| PIN-01..03 text-first pin, accuracy prompt, manual override | A | nightly |
+| NAV-04 internal intent for a driver screen while in Rider mode ⇒ permitted switch prompt or refusal per `resolveIntent` | B, C, F | full |
+| NAV-05 account-wide restriction ⇒ both modes blocked by AccountGate | E | full |
+| NAV-06 pending application ⇒ Driver entry opens Earn onboarding, not driver home | F | full |
+| SRCH-01..04 autocomplete (min 3 chars, debounce), degrade copy on budget exhaustion (fault-injected API), Roman-Urdu alias query, manual pin fallback | A | PR (01), full |
+| PIN-01..03 text-first pin, accuracy prompt, manual override | A | full |
 | QUOTE-01 option cards (seats/luggage/price/expiry/confidence/toll disclosure), "Request ride" absent | A | PR |
-| QUOTE-02 service-area / hours / routing-unavailable / rate-limited states | A | nightly |
-| LOC-01..05 precise grant, approximate grant, deny, deny permanently → settings link, revoke while backgrounded (`adb shell pm revoke` / `appops`) | A | nightly (only after FA-02) |
+| QUOTE-02 service-area / hours / routing-unavailable / rate-limited states | A | full |
+| LOC-01..05 precise grant, approximate grant, deny, deny permanently → settings link, revoke while backgrounded (`adb shell pm revoke` / `appops`) | A | full |
 | RIDER-HYGIENE-01 full rider flow: no permission dialog except when-in-use location after the explicit tap; end-of-run `dumpsys package` shows no other runtime permission requested | A, B | PR |
-| UPD-01/02, MAINT-01 soft update dismiss (24 h), hard update block with legal pages reachable, maintenance retry → recovered | A | nightly |
-| ONB-01..03 pending state, expired documents renewal entry, process-death resume of capture intent | F, G | nightly |
-| LITE-01 Lite mode under `-netspeed edge -netdelay gprs`: no polyline requested, stale indicators shown | A | nightly |
-| A11Y-01 font scale 2.0 (`adb shell settings put system font_scale 2.0`): key CTAs visible and tappable on rider home, search, quote, driver home | A, C | nightly |
-| RTL-01 `ur` locale: search and quote screens laid out RTL, amounts and mixed-script addresses bidi-isolated | A | nightly |
+| UPD-01/02, MAINT-01 soft update dismiss (24 h), hard update block with legal pages reachable, maintenance retry → recovered | A | full |
+| ONB-01..03 pending state, expired documents renewal entry, process-death resume of capture intent | F, G | full |
+| LITE-01 Lite mode under `-netspeed edge -netdelay gprs`: no polyline requested, stale indicators shown | A | full |
+| A11Y-01 font scale 2.0 (`adb shell settings put system font_scale 2.0`): key CTAs visible and tappable on rider home, search, quote, driver home | A, C | full |
+| RTL-01 `ur` locale: search and quote screens laid out RTL, amounts and mixed-script addresses bidi-isolated | A | full |
 
-API levels: PR tier on API 35; nightly on API 29 and API 35; a low-RAM AVD (2 GB, Go image) lane nightly — labelled emulator-only, never SP-02 evidence.
+API levels: PR tier on API 35; full tier (manual `workflow_dispatch`) on API 29 and API 35; a low-RAM AVD (2 GB, Go image) lane in the full tier — labelled emulator-only, never SP-02 evidence.
 
 ### 4.15 Accessibility
 
@@ -301,7 +301,7 @@ Catalogue completeness and placeholder parity (unit); Urdu-script and Roman-Urdu
 | Level | Method | Evidence |
 |---|---|---|
 | API | payload-size assertions: `detail=lite` responses omit polyline and stay under a byte ceiling; autocomplete response size bounded | CI (integration) |
-| Emulator | `-netspeed`/`-netdelay` profiles (edge/gprs, 3G-like) in LITE-01; request counting via the API access log (template paths) for a standard quote flow (8 debounced keystroke requests max over 2 searches) | nightly, emulator-only |
+| Emulator | `-netspeed`/`-netdelay` profiles (edge/gprs, 3G-like) in LITE-01; request counting via the API access log (template paths) for a standard quote flow (8 debounced keystroke requests max over 2 searches) | full tier, emulator-only |
 | Device | SP-02 data-per-flow measurement (Lite ≤ 150 KB, standard cold tiles ≤ 2.0 MB, warm ≤ 600 KB — proposed) on real 4G + throttled Wi-Fi | manual-device (founder), SP-02 report |
 
 ### 4.18 Device and field families
@@ -315,22 +315,22 @@ Catalogue completeness and placeholder parity (unit); Urdu-script and Roman-Urdu
 
 ### 4.19 Cross-mode regression (V10, INV-14)
 
-Lanes, all run nightly regardless of which side changed: (1) rider quote lane (A, B, D); (2) driver readiness lane (C); (3) KYC/onboarding lane (F, G — Phase-2 capture flows with the emulator virtual camera); (4) restriction lane (D, E); (5) permission hygiene lane (RIDER-HYGIENE on A and B). Background-location lane is empty in Phase 3 (no background code ships) and is wired in Phase 4 with SP-01 parameters. Server-side regression: all Phase-2 integration suites and Playwright suites stay required in PR CI. Mode-scoped switch tests prove a RIDER-scoped switch never changes driver route behaviour and vice versa.
+Lanes, all run in every full-tier run regardless of which side changed: (1) rider quote lane (A, B, D); (2) driver readiness lane (C); (3) KYC/onboarding lane (F, G — Phase-2 capture flows with the emulator virtual camera); (4) restriction lane (D, E); (5) permission hygiene lane (RIDER-HYGIENE on A and B). Background-location lane is empty in Phase 3 (no background code ships) and is wired in Phase 4 with SP-01 parameters. Server-side regression: all Phase-2 integration suites and Playwright suites stay required in PR CI. Mode-scoped switch tests prove a RIDER-scoped switch never changes driver route behaviour and vice versa.
 
 ### 4.20 Load (targeted, local)
 
 In-repo Node script using built-in `fetch` (no new dependency): `POST /v1/quotes` with route-cache miss (MOCK double latency injected at representative values) and hit, autocomplete, reverse, `GET /v1/app/config`; reports p50/p95/p99, error rate, cache-hit ratio. Results are labelled **local, non-staging**; they never satisfy the server budgets in `docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md`, which need a staging-class environment (not available in Phase 3 — reported NOT RUN).
 
-## 5. Tier split and runtime budgets (PROPOSED; FA-16 approves emulator minutes)
+## 5. Tier split and runtime budgets (FA-16 APPROVED 2026-10-12)
 
 | Tier | Trigger | Contents | Runtime budget |
 |---|---|---|---|
 | PR (required) | every PR and push to `main` / `phase-*/**` | Quality: lint/types/depcruise/knip, unit + property (500 runs), mobile vitest, openapi:check, **oasdiff**, COMPAT-N1, SDK-INV, ART-ISO · Integration: MIG-P3, GRANT-P3, TRIG-P3, ZONE-BOUNDARY, HOURS, API integration, QUOTE-TAMPER, FAULT-GEO, BUDGET/BREAKER/RL, CACHE-STALE, LOG-GEO, BOOT-NEG · Security: gitleaks (+ negative control), osv · Android: AAB-GATES · e2e-web: new web-ops journeys · **NEW e2e-mobile**: Maestro PR tier (NAV-01..03, SRCH-01, QUOTE-01, RIDER-HYGIENE-01) on API 35 | Quality growth ≤ 5 min; Integration growth ≤ 8 min (both stay inside their 40-min timeouts); Security growth ≤ 1 min; Android unchanged except the new gate (< 1 min); e2e-mobile job ≤ 60 min total with the Maestro test phase ≤ 15 min (builds its own x86_64 E2E APK with the Gradle cache, runs in parallel with the Android job, so PR wall time is not extended beyond the Android job if both fit) |
-| Nightly / scheduled | proposed separate scheduled workflow (`.github/workflows/nightly.yml`, proposed; `main` only); cadence per FA-16 — the repository is private and a daily 60-min matrix alone would use ~1,800 of a 2,000-minute monthly allowance, so the recommended option is weekly + before each checkpoint merge | Maestro full matrix A–G on API 29 + API 35 (parallel) + low-RAM AVD lane; property tests at 50,000 runs; load harness; FAULT-GEO soak (randomised fault mix for 10 min) | Maestro ≤ 60 min per API level; other lanes ≤ 30 min total |
-| Release (pre-merge of Phase 3 and before any store build) | manual dispatch + founder | nightly suite on the release-candidate SHA; size report; SDK inventory final; physical SP-08 subset; TalkBack walkthrough; SP-02 R2 if the renderer changed | physical subset ≈ 2 h per device |
+| Full (manual) | separate **manual** workflow (`workflow_dispatch` only; name proposed at P3.10, e.g. `.github/workflows/mobile-full.yml`); run on demand during the run and **mandatory at Phase-3 final closure** (FA-16 APPROVED). No nightly/scheduled trigger by default while the repository is private (a daily 60-min matrix alone would use ~1,800 of a 2,000-minute monthly allowance); a schedule may be added later only after observing Actions-minute cost | Maestro full matrix A–G on API 29 + API 35 (parallel) + low-RAM AVD lane; property tests at 50,000 runs; load harness; FAULT-GEO soak (randomised fault mix for 10 min) | Maestro ≤ 60 min per API level; other lanes ≤ 30 min total |
+| Release (pre-merge of Phase 3 and before any store build) | manual dispatch + founder | full-tier suite on the release-candidate SHA; size report; SDK inventory final; physical SP-08 subset; TalkBack walkthrough; SP-02 R2 if the renderer changed | physical subset ≈ 2 h per device |
 | Manual-device / field | founder schedule | SP-01 (≈ 15–17 h active / 21–26 h wall-clock across 3 freeze devices), SP-02 (≈ 7.5–9 h for setup + R1a + R1b + R2), SP-04 (4 sessions: S1–S3 2–3 h, S4 ≈ 2 h, + ≈ 2–3 h desk work) | per protocol |
 
-Notes: making e2e-mobile a **required** check is a ruleset change (founder action; note the Phase-2 finding about required-check name truncation in ruleset 24837051 — use a short job name). The CI workflow has no paths filter, so docs-only PRs still run the full PR tier including Android (~30–40 min per run, 75-min timeout) and e2e-mobile; because the repository is private and Actions minutes are finite, FA-16 decides whether e2e-mobile runs only on PRs touching mobile paths.
+Notes: making e2e-mobile a **required** check is a ruleset change (founder action; note the Phase-2 finding about required-check name truncation in ruleset 24837051 — use a short job name). The CI workflow has no paths filter, so docs-only PRs still run the full PR tier including Android (~30–40 min per run, 75-min timeout) and e2e-mobile; because the repository is private and Actions minutes are finite, e2e-mobile runs only on PRs touching mobile paths (FA-16 APPROVED: bounded PR smoke tier ≤ 15 min).
 
 ## 6. CI changes (PROPOSED, implemented in Phase 3, none now)
 
@@ -343,8 +343,8 @@ Notes: making e2e-mobile a **required** check is a ruleset change (founder actio
 | ART-ISO / BOOT-NEG extensions for geo | quality / integration | P3.2 |
 | SDK-INV, BUNDLE-SECRETS | quality / android | P3.5 |
 | e2e-mobile job (Maestro CLI pinned and checksum-verified; emulator with KVM) | new | P3.5 |
-| size gate switched from report-only to failing | android | after FA-07 |
-| nightly workflow | new | P3.10 |
+| size gate switched from report-only to failing (FA-07 APPROVED: arm64-v8a ≤ 30.0 MB, armeabi-v7a ≤ 29.0 MB) | android | P3.0 |
+| manual full-tier workflow (`workflow_dispatch` only; no schedule) | new | P3.10 |
 | F-P3-02 (stale Gradle cache / runner disk limit) — already fixed before planning by the workflow-only PR #6 (`docs/phase3/PHASE3_PLAN.md` §6); Phase 3 only keeps its disk/cache evidence green, no further change planned | android | — |
 
 ## 7. Tooling and dependency notes (for `docs/phase3/PHASE3_ADR_AND_DEPENDENCY_PROPOSALS.md`)
@@ -363,36 +363,36 @@ Every command and suite is reported as **PASS / FAIL / NOT RUN / BLOCKED / SKIPP
 
 ## 9. Acceptance evidence per requirement (29)
 
-"Runs": CI-PR / CI-nightly / Claude-local (during implementation, with outputs recorded) / founder (devices, field, accounts) / reviewer (FA-09) / tester (FA-14).
+"Runs": CI-PR / CI-full (manual `workflow_dispatch` full tier, FA-16) / Claude-local (during implementation, with outputs recorded) / founder (devices, field, accounts) / reviewer (FA-09) / tester (FA-14).
 
 | ID | Families and concrete tests | Evidence artefact | Runs | Remains external at closure |
 |---|---|---|---|---|
-| A01 | UNIT-POLICY table; API-CFG-01..06 (426 on non-exempt routes, exempt routes under HARD_UPDATE/MAINTENANCE, 503 envelope, MC + step-up + audit); CON-ERR for WAYVRO_E_APP_UPDATE_REQUIRED / WAYVRO_E_MAINTENANCE; Maestro UPD-01/02, MAINT-01 | CI logs + Maestro report artefact | CI-PR, CI-nightly | store link (EG-18) |
-| A06 | PROP-NORM; alias resolution integration (`geo.landmark_aliases`); catalogue completeness; Maestro SRCH-03 (Roman-Urdu alias) and RTL-01 | CI logs; review package export | CI-PR, CI-nightly, reviewer | FA-09 sign-off; SP-04 Roman-Urdu top-5 metric |
-| A07 | UNIT-LOCPERM (all transitions incl. approximate, revoked); Maestro LOC-01..05; AAB permission gate showing the FA-02 set only | CI logs; manifest gate report | CI-PR, CI-nightly, founder (SP-01) | SP-01 background parameters (ADR-029); FA-02 |
-| A08 | A11Y-TOKENS; A11Y-PRIM; A11Y-01 (200 %); A11Y-LABELS; A11Y-MAP; axe for web-ops; A11Y-DEVICE TalkBack walkthrough | CI logs; signed walkthrough record | CI-PR, CI-nightly, founder/tester | physical TalkBack record; VoiceOver NOT RUN (FA-13) |
-| B01 | UNIT-FMT; reverse-geocode integration + FG-06/07; RL reverse; Maestro PIN-01..03; BUNDLE-SECRETS; after P3.7 renderer adapter contract test | CI logs; SP-02 R2 report | CI-PR, CI-nightly, founder | renderer freeze (ADR-046, SP-04 + SP-02); provider licence |
-| B02 | UNIT-PLACEREF; autocomplete/resolve/reverse integration; CS-03/CS-07; BUD-02 degrade shape; mobile debounce/cancel tests; Maestro SRCH-01..04 | CI logs; SP-04 metric table | CI-PR, CI-nightly, founder + Claude (SP-04) | Lahore field accuracy, ADR-006 per SKU |
+| A01 | UNIT-POLICY table; API-CFG-01..06 (426 on non-exempt routes, exempt routes under HARD_UPDATE/MAINTENANCE, 503 envelope, MC + step-up + audit); CON-ERR for WAYVRO_E_APP_UPDATE_REQUIRED / WAYVRO_E_MAINTENANCE; Maestro UPD-01/02, MAINT-01 | CI logs + Maestro report artefact | CI-PR, CI-full | store link (EG-18) |
+| A06 | PROP-NORM; alias resolution integration (`geo.landmark_aliases`); catalogue completeness; Maestro SRCH-03 (Roman-Urdu alias) and RTL-01 | CI logs; review package export | CI-PR, CI-full, reviewer | FA-09 sign-off; SP-04 Roman-Urdu top-5 metric |
+| A07 | UNIT-LOCPERM (all transitions incl. approximate, revoked); Maestro LOC-01..05; AAB permission gate showing the FA-02 approved set only | CI logs; manifest gate report | CI-PR, CI-full, founder (SP-01) | SP-01 background parameters (ADR-029) |
+| A08 | A11Y-TOKENS; A11Y-PRIM; A11Y-01 (200 %); A11Y-LABELS; A11Y-MAP; axe for web-ops; A11Y-DEVICE TalkBack walkthrough | CI logs; signed walkthrough record | CI-PR, CI-full, founder/tester | physical TalkBack record; VoiceOver NOT RUN (FA-13) |
+| B01 | UNIT-FMT; reverse-geocode integration + FG-06/07; RL reverse; Maestro PIN-01..03; BUNDLE-SECRETS; after P3.7 renderer adapter contract test | CI logs; SP-02 R2 report | CI-PR, CI-full, founder | renderer freeze (ADR-046, SP-04 + SP-02); provider licence |
+| B02 | UNIT-PLACEREF; autocomplete/resolve/reverse integration; CS-03/CS-07; BUD-02 degrade shape; mobile debounce/cancel tests; Maestro SRCH-01..04 | CI logs; SP-04 metric table | CI-PR, CI-full, founder + Claude (SP-04) | Lahore field accuracy, ADR-006 per SKU |
 | B03 | PROP-POLYLINE; CON-GEO; route snapshot contract; FG-01..06 (no invented ETA); Lite payload test; confidence-label view-state tests | CI logs; SP-04 route/ETA table | CI-PR, founder + Claude (SP-04) | route/ETA accuracy (SP-04); rendered polyline after P3.7 |
 | B04 | product attribute contract tests; QT-09 (DISABLED_LEGAL_GATE never priced); static scan (no client seat/luggage constants); Maestro QUOTE-01 | CI logs; Maestro report | CI-PR | none for engineering (synthetic values by design) |
-| B06 | UNIT-QUOTE; PROP-QUOTE (Σ = total, ≥ 0, determinism, rounding bound); TRIG-P3 Σ deferred trigger; component-kind contract; breakdown view-state tests; Maestro QUOTE-01/02 | CI logs | CI-PR, CI-nightly | none for engineering |
-| E05 | PROP-MONEY; PROP-QUOTE; QT-14 snapshot after newer card; TRIG-P3 immutability; tax inclusive/exclusive tests; placeholder-tax activation refusal | CI logs | CI-PR, CI-nightly | accountant review (FA-15, pilot) |
+| B06 | UNIT-QUOTE; PROP-QUOTE (Σ = total, ≥ 0, determinism, rounding bound); TRIG-P3 Σ deferred trigger; component-kind contract; breakdown view-state tests; Maestro QUOTE-01/02 | CI logs | CI-PR, CI-full | none for engineering |
+| E05 | PROP-MONEY; PROP-QUOTE; QT-14 snapshot after newer card; TRIG-P3 immutability; tax inclusive/exclusive tests; placeholder-tax activation refusal | CI logs | CI-PR, CI-full | accountant review (FA-15, pilot) |
 | E06 | port contract suite on MOCK doubles; CON-GEO (opaque providerKey, no leak); ART-ISO + BOOT-NEG geo; depcruise fixtures; candidate adapters against real providers locally with founder keys | CI logs; Claude-local run record (NOT RUN in CI) | CI-PR, Claude-local, founder (keys) | ADR-006 freeze + licence (P3.7) |
-| E07 | CS-01..07; FG-01..10; QT refusal paths; load harness cache-hit ratio (local) | CI logs; nightly load report (local, non-staging) | CI-PR, CI-nightly | production TTLs recorded with ADR-006 |
-| E08 | GEOM-01..07; ZB-01..16; HRS-01..11; PROP-HOURS; PROP-ZONE-DECISION; zone-set MC + production synthetic refusal; Playwright zone-set upload with validation report | CI logs; Playwright report | CI-PR, CI-nightly | real boundaries (FA-12) before pilot |
+| E07 | CS-01..07; FG-01..10; QT refusal paths; load harness cache-hit ratio (local) | CI logs; full-tier load report (local, non-staging) | CI-PR, CI-full | production TTLs recorded with ADR-006 |
+| E08 | GEOM-01..07; ZB-01..16; HRS-01..11; PROP-HOURS; PROP-ZONE-DECISION; zone-set MC + production synthetic refusal; Playwright zone-set upload with validation report | CI logs; Playwright report | CI-PR, CI-full | real licensed boundaries before pilot (FA-12 DECIDED: synthetic in Phase 3) |
 | H06 | TRIG-P3 MC; CONC-PRICING; rollback-as-new-version test; preview without provider call (usage counter unchanged); AUTHZ-MATRIX extension; Playwright pricing journey + axe | CI logs; Playwright report | CI-PR | second approver in operations (EG-20 precedent) |
-| H10 | PROP-ELIG-VEH; eligibility-rule MC API tests; FK to `catalog.service_categories` unchanged (MIG-P3 live-row); Maestro driver-readiness step (account C) | CI logs | CI-PR, CI-nightly | EG-03 values |
-| I11 | BUD-01..08; BRK-01..05; PROP-BREAKER; RL-01..04; rollup idempotency | CI logs; founder attestation of provider-console caps | CI-PR, CI-nightly, founder | console caps (FA-06); alert routing (EG-21); verified price table (P3.7) |
-| K19 | state-coverage table test (every application/document status ↔ view state ↔ copy key in 3 locales); Maestro ONB-01..03; KYC regression lane | CI logs; Maestro report | CI-PR, CI-nightly, reviewer | FA-09; physical TalkBack |
-| L08 | UNIT-LITE; Lite payload-size tests; Maestro LITE-01 (network shaped); quote-restore after process death (NAV-03) | CI logs; SP-02 data report | CI-PR, CI-nightly, founder (SP-02) | device data/perf (SP-02) |
+| H10 | PROP-ELIG-VEH; eligibility-rule MC API tests; FK to `catalog.service_categories` unchanged (MIG-P3 live-row); Maestro driver-readiness step (account C) | CI logs | CI-PR, CI-full | EG-03 values |
+| I11 | BUD-01..08; BRK-01..05; PROP-BREAKER; RL-01..04; rollup idempotency | CI logs; founder attestation of provider-console caps | CI-PR, CI-full, founder | console caps (FA-06); alert routing (EG-21); verified price table (P3.7) |
+| K19 | state-coverage table test (every application/document status ↔ view state ↔ copy key in 3 locales); Maestro ONB-01..03; KYC regression lane | CI logs; Maestro report | CI-PR, CI-full, reviewer | FA-09; physical TalkBack |
+| L08 | UNIT-LITE; Lite payload-size tests; Maestro LITE-01 (network shaped); quote-restore after process death (NAV-03) | CI logs; SP-02 data report | CI-PR, CI-full, founder (SP-02) | device data/perf (SP-02) |
 | P18 | catalogue completeness + placeholder parity; hard-coded-string scan; safety/legal keys without sign-off fall back per Phase-2 rule (test); review package export | CI logs; export file | CI-PR, reviewer | FA-09; EG-02 for legal copy |
-| Q26 | budget table with method per line; AAB size gate; Hermes bundle size check; local load report; SP-02 R1/R2; SP-01 battery/reconnect harness | CI size report; SP-02/SP-01 reports | CI-PR, CI-nightly, founder | device values; staging-class server numbers (no staging) |
-| Q27 | low-RAM AVD nightly lane (emulator-labelled); SP-01 OEM runs; SP-02 constrained storage/network runs | device reports | CI-nightly, founder | physical devices (cannot be satisfied by CI) |
+| Q26 | budget table with method per line; AAB size gate; Hermes bundle size check; local load report; SP-02 R1/R2; SP-01 battery/reconnect harness | CI size report; SP-02/SP-01 reports | CI-PR, CI-full, founder | device values; staging-class server numbers (no staging) |
+| Q27 | low-RAM AVD full-tier lane (emulator-labelled); SP-01 OEM runs; SP-02 constrained storage/network runs | device reports | CI-full, founder | physical devices (cannot be satisfied by CI) |
 | Q31 | COMPAT-N1; OASDIFF; UNIT-POLICY; API-CFG blocked-build cases; matrix and deprecation policy in ADR-049 | CI logs; ADR-049 | CI-PR | founder minimum-OS decision (F-P3-10) |
-| R28 | TRIG-P3 lifecycle (ENABLED refused for gated class / null legal basis / synthetic in production); QT-09 BIKE/RICKSHAW in `unavailable[]`; static scan (no product-code UI switches) | CI logs | CI-PR | FA-11; legal activation outside Phase 3 |
+| R28 | TRIG-P3 lifecycle (ENABLED refused for gated class / null legal basis / synthetic in production); QT-09 BIKE/RICKSHAW in `unavailable[]`; static scan (no product-code UI switches) | CI logs | CI-PR | legal activation outside Phase 3 (FA-11 APPROVED lifecycle) |
 | U04 | SDK-INV gate; BUNDLE-SECRETS; inventory entries for expo-location and the renderer; iOS privacy-manifest draft (iOS build NOT RUN) | inventory doc + CI gate log | CI-PR, Claude-local | renderer entry until P3.7; store declarations (EG-18) |
 | U05 | AAB-GATES (permissions + NEW intent-filter gate with negative controls); architecture-test bans; permission review table | Android gate reports | CI-PR | SP-01 background justification (Phase 4 request) |
-| V05 | RIDER-HYGIENE-01 (A, B); static rider-graph import scan; UNIT-LOCPERM recovery paths; manifest gate; SP-01 rider-hygiene check on the real release AAB | Maestro report; SP-01 report | CI-PR, CI-nightly, founder | SP-01 physical OEM evidence |
-| V08 | EXH-INTENT; EXH-RESTORE; ModeController tests; URL-length bound + malformed-encoding fuzz; Maestro NAV-01..06; intent-filter gate (no external scheme) | CI logs; Maestro report | CI-PR, CI-nightly | external deep links out of scope (EG-15 + decode-uri-component gate) |
-| V10 | e2e-mobile PR tier green; nightly matrix report (A–G, API 29 + 35); cross-mode lanes §4.19; mode-scoped switch tests; Phase-2 suites still required | CI + nightly artefacts | CI-PR, CI-nightly, founder (physical subset) | physical subset; release-blocking enforcement from Phase 4 |
-| V11 | depcruise rule (rider graph ↛ driver features); E2E-build module-evaluation probe = 0 driver modules after rider cold start; AAB size gate; SP-02 R1/R2 cold/warm start and PSS | CI logs; SP-02 reports | CI-PR, CI-nightly, founder | device-measured budgets (SP-02); battery (SP-01) |
+| V05 | RIDER-HYGIENE-01 (A, B); static rider-graph import scan; UNIT-LOCPERM recovery paths; manifest gate; SP-01 rider-hygiene check on the real release AAB | Maestro report; SP-01 report | CI-PR, CI-full, founder | SP-01 physical OEM evidence |
+| V08 | EXH-INTENT; EXH-RESTORE; ModeController tests; URL-length bound + malformed-encoding fuzz; Maestro NAV-01..06; intent-filter gate (no external scheme) | CI logs; Maestro report | CI-PR, CI-full | external deep links out of scope (EG-15 + decode-uri-component gate) |
+| V10 | e2e-mobile PR tier green; full-matrix report (A–G, API 29 + 35, manual `workflow_dispatch`, on the closure SHA); cross-mode lanes §4.19; mode-scoped switch tests; Phase-2 suites still required | CI + full-tier artefacts | CI-PR, CI-full, founder (physical subset) | physical subset; release-blocking enforcement from Phase 4 |
+| V11 | depcruise rule (rider graph ↛ driver features); E2E-build module-evaluation probe = 0 driver modules after rider cold start; AAB size gate; SP-02 R1/R2 cold/warm start and PSS | CI logs; SP-02 reports | CI-PR, CI-full, founder | device-measured budgets (SP-02); battery (SP-01) |

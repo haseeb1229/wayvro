@@ -1,8 +1,8 @@
 # PHASE3_PERMISSION_LOCATION_MODEL — Permission inventory, rider foreground location and driver escalation design (PROPOSED)
 
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02 APPROVED); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
-Requirement IDs: A07, V05, U05 (primary); B01, B02 (location as input); U04 (SDK inventory link: `docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md`); V06/M26 (Phase-4 design only). Invariant: INV-07 (`docs/phase0/PHASE0_UNIFIED_APP_ROLE_MODEL.md` §9). Founder action: **FA-02** (approve the rider foreground location allowlist change). Without FA-02 the P3.5 location sub-step is BLOCKED and the rider flow ships search + pin/pickup points only.
+Requirement IDs: A07, V05, U05 (primary); B01, B02 (location as input); U04 (SDK inventory link: `docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md`); V06/M26 (Phase-4 design only). Invariant: INV-07 (`docs/phase0/PHASE0_UNIFIED_APP_ROLE_MODEL.md` §9). Founder action: **FA-02 — APPROVED 2026-10-12 for the Phase-3 implementation branch**: the release app may declare `android.permission.ACCESS_COARSE_LOCATION` and `android.permission.ACCESS_FINE_LOCATION`, requested just in time only when the rider explicitly chooses "use current location"; the user may choose approximate; manual search/pin remains usable; denial/revocation has recovery UI; Driver readiness may **read** permission state but Phase 3 must **not** request background Driver location. Still forbidden in the Phase-3 release app: ACCESS_BACKGROUND_LOCATION, FOREGROUND_SERVICE_LOCATION / any location FGS for Driver mode, POST_NOTIFICATIONS (unless separately justified later), USE_FULL_SCREEN_INTENT, microphone, contacts, broad media/storage. SP-01 may use a **separate non-release spike build** for background-location experiments (never the release app). The P3.5 location sub-step therefore proceeds in the single run; there is no BLOCKED-EXTERNAL path for it.
 
 Facts below marked "(re-verify)" come from vendor documentation read on 2026-10-12 and must be re-checked at implementation time; nothing here is claimed compliant.
 
@@ -19,7 +19,7 @@ Facts below marked "(re-verify)" come from vendor documentation read on 2026-10-
 
 ## 2. Permission inventory
 
-Status values: **ALLOWED now** · **PROPOSED Phase 3 (needs FA-02)** · **Phase 4 after SP-01** (own founder approval then) · **FORBIDDEN** · **BLOCKED (no feature)** (stripped via `blockedPermissions`).
+Status values: **ALLOWED now** · **APPROVED Phase 3 (FA-02, 2026-10-12)** · **Phase 4 after SP-01** (own founder approval then) · **FORBIDDEN** · **BLOCKED (no feature)** (stripped via `blockedPermissions`).
 
 | Permission | Platform | Mode | Phase | Justification | Req IDs | Request moment | Denial path | Revocation detection | Status |
 |---|---|---|---|---|---|---|---|---|---|
@@ -27,14 +27,14 @@ Status values: **ALLOWED now** · **PROPOSED Phase 3 (needs FA-02)** · **Phase 
 | DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION | Android | both | existing | AndroidX signature permission | — | install | — | — | ALLOWED now |
 | CAMERA / NSCameraUsageDescription | both | Driver/Partner onboarding | existing (P2.8) | document photos + selfie for manual review | K02, K03, V03 | capture screen, after explanation | Photo Picker for documents; in-person explanation for selfie | re-checked on capture screen focus | ALLOWED now |
 | NSPhotoLibraryUsageDescription (system picker) | iOS | Driver/Partner onboarding | existing | document import | K02 | import action | camera path | — | ALLOWED now |
-| ACCESS_COARSE_LOCATION | Android | Rider (request); Driver (status read only) | Phase 3 | pickup bias, approximate fallback; must accompany FINE on Android 12+ | B01, B02, A07, V05, U05 | first "Use current location" tap, after in-app rationale | search + pin + pickup points | `AppState` active ⇒ status re-read | PROPOSED Phase 3 (needs FA-02) |
-| ACCESS_FINE_LOCATION | Android | Rider (request); Driver (status read only) | Phase 3 | pickup must be accurate to street/gate level; a ~km-level approximate fix cannot place a pickup — justification required by Play's 2027 location policy (§7) | B01, B02, A07, V05, U05 | same request as COARSE (user may grant Approximate only) | approximate handling (§4.3) | as above | PROPOSED Phase 3 (needs FA-02) |
-| NSLocationWhenInUseUsageDescription | iOS | Rider | Phase 3 | same | B01, A07 | same | same; reduced accuracy handled like approximate | `AppState` active | PROPOSED Phase 3 (needs FA-02) |
+| ACCESS_COARSE_LOCATION | Android | Rider (request); Driver (status read only) | Phase 3 | pickup bias, approximate fallback; must accompany FINE on Android 12+ | B01, B02, A07, V05, U05 | first "Use current location" tap, after in-app rationale | search + pin + pickup points | `AppState` active ⇒ status re-read | APPROVED Phase 3 (FA-02, 2026-10-12) |
+| ACCESS_FINE_LOCATION | Android | Rider (request); Driver (status read only) | Phase 3 | pickup must be accurate to street/gate level; a ~km-level approximate fix cannot place a pickup — justification required by Play's 2027 location policy (§7) | B01, B02, A07, V05, U05 | same request as COARSE (user may grant Approximate only) | approximate handling (§4.3) | as above | APPROVED Phase 3 (FA-02, 2026-10-12) |
+| NSLocationWhenInUseUsageDescription | iOS | Rider | Phase 3 | same | B01, A07 | same | same; reduced accuracy handled like approximate | `AppState` active | APPROVED Phase 3 (FA-02, 2026-10-12) |
 | ACCESS_BACKGROUND_LOCATION | Android | Driver online only | Phase 4 | live tracking while online/on trip | D05, V06, M26 | go-online flow, after prominent disclosure, via Settings ("Allow all the time") | cannot go online; recovery screen | heartbeat + status check; server-forced offline | Phase 4 after SP-01 |
 | FOREGROUND_SERVICE | Android | Driver online only | Phase 4 | host of location FGS (realtime socket/poll path, ADR-033) | V06, M26 | implicit (normal permission) | — | — | Phase 4 after SP-01 (forbidden in Phase 3) |
 | FOREGROUND_SERVICE_LOCATION | Android | Driver online only | Phase 4 | FGS type `location` (Android 14+) | V06, M26 | implicit | — | FGS death ⇒ server-forced offline | Phase 4 after SP-01 |
 | NSLocationAlwaysAndWhenInUseUsageDescription + UIBackgroundModes `location` | iOS | Driver online only | Phase 4 | same | V06 | go-online | cannot go online | Always→WhileInUse downgrade detection (SP-01 #7) | Phase 4 after SP-01 |
-| POST_NOTIFICATIONS | Android 13+ | both | Phase 4 | wake/alert aid only (M26); FGS notice visibility | M26, L13 | first relevant moment with benefit statement | socket/poll keeps working; FGS notice only in Task Manager on 13+ (re-verify) | status check on foreground | Phase 4 (own approval; not SP-01-bound) |
+| POST_NOTIFICATIONS | Android 13+ | both | Phase 4 | wake/alert aid only (M26); FGS notice visibility | M26, L13 | first relevant moment with benefit statement | socket/poll keeps working; FGS notice only in Task Manager on 13+ (re-verify) | status check on foreground | FORBIDDEN in the Phase-3 release app (FA-02 scope); Phase 4 only if separately justified (own approval; not SP-01-bound) |
 | WAKE_LOCK, RECEIVE_BOOT_COMPLETED | Android | Driver | Phase 4 review | only if the chosen SDK (ADR-029) needs them; boot restart of tracking is not wanted (role model §6: explicit resume) | V06 | — | — | — | FORBIDDEN in Phase 3; Phase 4 decision |
 | USE_FULL_SCREEN_INTENT | Android | — | never by default | offers never depend on it (M26/ADR-033) | M26 | — | — | — | FORBIDDEN |
 | SYSTEM_ALERT_WINDOW | Android | — | — | dev overlay only | — | — | — | — | FORBIDDEN in release |
@@ -50,7 +50,7 @@ Rider-only users never see the camera, background-location, FGS or notification 
 
 ---
 
-## 3. Exact Phase-3 deltas (applied at P3.5 only after FA-02)
+## 3. Exact Phase-3 deltas (applied at P3.5; FA-02 APPROVED 2026-10-12)
 
 ### 3.1 Android release manifest delta
 Added: `android.permission.ACCESS_COARSE_LOCATION`, `android.permission.ACCESS_FINE_LOCATION`. Nothing else. Expected merged release permission set afterwards: INTERNET, DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION, CAMERA, ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION. The P3.0 intent-filter/exported-component gate (F-P3-01) must also stay green (expo-location must not add an exported service or receiver to the release manifest without review).
@@ -183,7 +183,7 @@ FGS_RUNNING ──(stop condition)──▶ STOPPED (server informed; offline re
 | Static — manifest | release AAB permission gate: no ACCESS_BACKGROUND_LOCATION, FOREGROUND_SERVICE*, POST_NOTIFICATIONS | every CI run |
 | Static — code | architecture test: background location APIs string-banned; expo-location only in `src/platform/location/`; camera only in `features/driver/`; driver screens lazy | every CI run |
 | Static — iOS | prebuild Info.plist check: no Always key, no background mode | P3.5 onward |
-| E2E (SP-08) | account A full rider journey (sign-in → home → search → use current location → quote → fare → account hub → sign-out) asserts the only system dialog seen is the foreground location dialog after the rationale; after the run `adb shell dumpsys package <appId>` shows no camera grant request and `adb shell appops get <appId> CAMERA` shows no use | PR tier (core) + nightly |
+| E2E (SP-08) | account A full rider journey (sign-in → home → search → use current location → quote → fare → account hub → sign-out) asserts the only system dialog seen is the foreground location dialog after the rationale; after the run `adb shell dumpsys package <appId>` shows no camera grant request and `adb shell appops get <appId> CAMERA` shows no use | PR tier (core) + manual full matrix |
 | Device | SP-01 rider-hygiene check on the real release app on each OEM class | P3.6 (FA-03) |
 | Lazy modules | SP-02 Perfetto/Hermes evidence that rider start-up evaluates 0 driver feature modules (F-P3-07) | P3.6 (FA-04) |
 
@@ -211,4 +211,4 @@ Result reporting: NOT RUN until each layer actually runs; emulator results never
 
 ## 9. Explicitly forbidden in Phase 3
 
-Contacts; Bluetooth (connect/scan/advertise); microphone/RECORD_AUDIO; storage and media permissions (READ/WRITE_EXTERNAL_STORAGE, READ_MEDIA_*, ACCESS_MEDIA_LOCATION); USE_FULL_SCREEN_INTENT; SYSTEM_ALERT_WINDOW in release; ACCESS_BACKGROUND_LOCATION; FOREGROUND_SERVICE and FOREGROUND_SERVICE_LOCATION; POST_NOTIFICATIONS; READ_PHONE_STATE; WAKE_LOCK; RECEIVE_BOOT_COMPLETED; any geofencing or background task registration; any location prompt at app start or for an account that has not tapped a location action; any location prompt in the Driver/Partner area in Phase 3.
+Contacts; Bluetooth (connect/scan/advertise); microphone/RECORD_AUDIO; storage and media permissions (READ/WRITE_EXTERNAL_STORAGE, READ_MEDIA_*, ACCESS_MEDIA_LOCATION); USE_FULL_SCREEN_INTENT; SYSTEM_ALERT_WINDOW in release; ACCESS_BACKGROUND_LOCATION; FOREGROUND_SERVICE and FOREGROUND_SERVICE_LOCATION; POST_NOTIFICATIONS; READ_PHONE_STATE; WAKE_LOCK; RECEIVE_BOOT_COMPLETED; any geofencing or background task registration; any location prompt at app start or for an account that has not tapped a location action; any location prompt in the Driver/Partner area in Phase 3. Background-location experiments run only in the separate non-release SP-01 spike build under `tests/spikes/` (`docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md`), never in the release app.

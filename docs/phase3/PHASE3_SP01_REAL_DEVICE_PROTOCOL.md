@@ -1,5 +1,5 @@
 # PHASE3_SP01_REAL_DEVICE_PROTOCOL — SP-01 real-device background location, permission hygiene and offer-path protocol (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02/FA-07 APPROVED, FA-17 APPROVED IN PRINCIPLE, FA-18 DEFERRED; FA-03 open); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 SP-01 result today: **NOT RUN** (`docs/phase0/PHASE0_ADR_BACKLOG.md` §E). Nothing in this file is a measurement. Every number below is either a pass criterion, a proposed spike input or an estimate, and is labelled as such.
 
@@ -8,7 +8,7 @@ SP-01 answers one question on real Pakistani Android hardware: **can one React N
 
 | Decision | Current status | What SP-01 supplies |
 |---|---|---|
-| ADR-029 background-location SDK | OPEN-SPIKE | candidate A (expo-location + expo-task-manager FGS) PASS/FAIL per OEM class; candidate B only if A fails and FA-08 approves |
+| ADR-029 background-location SDK | OPEN-SPIKE | candidate A (expo-location + expo-task-manager FGS) PASS/FAIL per OEM class; candidate B only if A fails and the founder makes a specific FA-08 spend decision after evidence (no paid spend is pre-approved) |
 | ADR-003 mobile stack freeze | FOUNDER-LOCKED (direction approved, FD-09; parameters open) + OPEN-SPIKE | together with SP-02: freeze RN/Expo (ACCEPTED-ON-EVIDENCE) or trigger the Flutter fallback evaluation |
 | ADR-033 offer delivery | FOUNDER-LOCKED (direction approved, M26), parameters OPEN-SPIKE | measured socket/poll delivery inside the location FGS with push absent; reconnect and missed-offer recovery times; OEM battery/autostart guidance content |
 | Phase-4 presence parameters (heartbeat, `T_stale`, `T_offline`, location interval, batch size) | not decided | measured behaviour of the spike inputs in §5.3; Phase 4 picks final values in ADR-029/ADR-033 |
@@ -28,8 +28,8 @@ Phase-3 requirement IDs exercised: **V05** (just-in-time, mode-scoped permission
 | P-1 | Spike harness built (app + receiver) at checkpoint P3.6 | Claude Code session | all spike cases |
 | P-2 | At least one device per OEM class acquired, USB debugging on (FA-03) | Founder | the ≥3-OEM-class pass rule |
 | P-3 | Phase-3 release app with rider search→quote flow (P3.5) | Claude Code session | TC-01 runtime part |
-| P-4 | FA-02 decision on rider foreground location | Founder | TC-01 location sub-checks (if not approved, TC-01 verifies that NO location prompt exists) |
-| P-5 | HTTPS-reachable synthetic API for the release app — founder action **FA-17** (a founder-approved temporary HTTPS endpoint, e.g. a tunnel to the local API with synthetic data only, or a staging host; same decision as SP02-D1 in `docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md`) | Founder (FA-17) | TC-01 runtime part on the release build — NOT RUN without FA-17 |
+| P-4 | FA-02 rider foreground location — **APPROVED 2026-10-12** (COARSE + FINE, just in time on "use current location" only; no background request in the release app) | done | TC-01 location sub-checks run against the approved scope |
+| P-5 | HTTPS-reachable synthetic API for the release app — **FA-17 APPROVED IN PRINCIPLE 2026-10-12 for SP-01/SP-02 only**: an ephemeral, vetted HTTPS tunnel to the minimum local synthetic API (synthetic data only, no real customer data, torn down after each session, tunnel terms/security verified before use, no URL/token committed) or a later staging host; same decision as SP02-D1 in `docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md` | Founder opens each session | TC-01 runtime part on the release build — **BLOCKED** if no acceptable free temporary option exists (TLS never weakened; never a cleartext release build) |
 | P-6 | Laptop and test device on the same private Wi-Fi; a temporary inbound firewall rule for the receiver port (private profile only, removed afterwards) | Founder | spike receiver reachability |
 
 ## 4. Candidates
@@ -80,7 +80,7 @@ Latitude/longitude never leave the device, are never logged (spike log tag print
 ### 5.4 Receiver (proposed, inside the spike directory)
 A small Node process run by the Claude Code session on the founder's laptop, bound to the laptop's private LAN address, with a per-run shared token of the `spike-local-only` kind used by the existing spikes (not a secret). It serves: `POST /points`, `GET /time`, `GET /snapshot` (authoritative online state + pending offers), the Socket.IO namespace, and an admin CLI (restrict, force offline, restart gateway). It writes received rows to a local file **outside the repository** (scratch directory) and produces the aggregate described in §12. No coordinates exist in its data (§5.2). Raw run files are deleted after aggregation (§15).
 
-Reachability note: the primary 60-min runs use the home Wi-Fi so the device can reach the laptop. A phone on mobile data cannot reach the laptop without a public tunnel; a public endpoint would be a new external service and is **not proposed**. Mobile-data behaviour is covered by keeping SIM data enabled (radio realism) and by TC-13 (network loss/return).
+Reachability note: the primary 60-min runs use the home Wi-Fi so the device can reach the laptop. A phone on mobile data cannot reach the laptop without a public tunnel; a public endpoint for the spike receiver is **not proposed** (the FA-17 in-principle approval covers only the minimum synthetic API for the release-app checks, not the receiver). Mobile-data behaviour is covered by keeping SIM data enabled (radio realism) and by TC-13 (network loss/return).
 
 ## 6. Device matrix and progressive acquisition (FA-03, FD-13)
 Exact Android and OEM-skin versions are **recorded from each device**, not assumed. Model names are classes; any current model of the same class is acceptable.
@@ -103,7 +103,7 @@ Borrowed devices are acceptable if the owner agrees, the device is factory-reset
 | **STD-EXEMPT** | only the standard Android battery-optimisation exemption granted through the spike's system dialog | run only if DEFAULT < 95 %; shows whether the standard dialog alone is enough for that OEM |
 | **GUIDED** | STD-EXEMPT + the OEM-specific settings a driver would be guided through (autostart, unrestricted background, recents lock where the OEM has one) | every device |
 
-Proposed interpretation of the backlog pass rule (for FA-07 approval): the freeze criterion "≥95 % over 60 min" is evaluated in **GUIDED**; DEFAULT and STD-EXEMPT results are mandatory records that decide how heavy the Phase-4 onboarding guidance must be per OEM (ADR-033 "explicit OEM battery/autostart guidance").
+Interpretation of the backlog pass rule (fixed before measurement with the FA-07 pre-measurement budget set approved 2026-10-12, which references these rules through PB-15/PB-17): the freeze criterion "≥95 % over 60 min" is evaluated in **GUIDED**; DEFAULT and STD-EXEMPT results are mandatory records that decide how heavy the Phase-4 onboarding guidance must be per OEM (ADR-033 "explicit OEM battery/autostart guidance").
 
 ## 8. Founder setup instructions (step by step)
 Roles: **F** = founder (physical device steps), **C** = Claude Code session on the founder's laptop (host commands, receiver, analysis). Host commands are written in POSIX form; the session runs the Windows equivalents.
@@ -177,13 +177,13 @@ Durations are estimates of wall-clock time per device. "Spike" = spike app; "Rel
 | TC-19 | Stale-FGS reconciliation on restart | Spike | role model §6.4 | GUIDED | 10 min |
 | TC-20 | Play Integrity verdict matrix | — | 10 | — | BLOCKED-EXTERNAL (see case) |
 | TC-21 | Compliance build check of the spike artefact | Spike AAB | 11 | — | 10 min (laptop) |
-| TC-22 | Push wake (optional) | — | 6 (push part) | — | NOT RUN unless FA-18 provisions an FCM/Firebase project |
+| TC-22 | Push wake (optional) | — | 6 (push part) | — | **NOT RUN in Phase 3** — FA-18 DEFERRED to Phase 4 (no Firebase project now) |
 
 ### TC-01 Rider-only permission hygiene (Release)
 - **Steps:** static: C runs `java -jar "$BUNDLETOOL_JAR" dump manifest --bundle=app-release.aab` and confirms no ACCESS_BACKGROUND_LOCATION, FOREGROUND_SERVICE, FOREGROUND_SERVICE_LOCATION, POST_NOTIFICATIONS or USE_FULL_SCREEN_INTENT and no location-type service (the CI permission gate already enforces the allowlist). Runtime: fresh install; F signs in with a synthetic number (local API runner, recording OTP sink — Phase-2 practice); F completes Rider onboarding, where-to search, pin, route preview and quote; F opens Driver mode (readiness shell) and returns to Rider mode.
 - **Measurements:** prompts shown and the screen on which each appeared; `adb shell dumpsys package dev.wayvro.app` (requested/granted runtime permissions); `adb shell appops get dev.wayvro.app` (last access time of COARSE_LOCATION/FINE_LOCATION/CAMERA ops); `adb shell dumpsys activity services dev.wayvro.app` (no foreground service at any point).
-- **Pass:** no background-location, FGS, notification or camera prompt anywhere in the rider path; location prompt (only if FA-02 approved) appears only after the "use current location" tap and after the in-app rationale; denial leaves manual search + pin usable; no location op access before that tap; zero foreground services. If FA-02 is not approved: no location prompt at all.
-- **If FA-17 (P-5) is unavailable:** the release-build runtime part is reported **NOT RUN** (R2 cannot PASS on it). The static release-manifest check still runs, and a supplementary runtime pass on the dev-client debug build (same JS paths; the debug manifest additionally carries SYSTEM_ALERT_WINDOW for the developer overlay, ADR-036) may be recorded as informational evidence only — never as PASS.
+- **Pass:** no background-location, FGS, notification or camera prompt anywhere in the rider path; the foreground location prompt (FA-02 approved scope) appears only after the "use current location" tap and after the in-app rationale; an approximate-only grant keeps the flow usable; denial leaves manual search + pin usable, with recovery UI; no location op access before that tap; Driver readiness only reads the permission state; zero foreground services.
+- **If no acceptable FA-17 tunnel session is available (P-5):** the release-build runtime part is reported **BLOCKED** (R2 cannot PASS on it); TLS is never weakened and no cleartext release build is produced. The static release-manifest check still runs, and a supplementary runtime pass on the dev-client debug build (same JS paths; the debug manifest additionally carries SYSTEM_ALERT_WINDOW for the developer overlay, ADR-036) may be recorded as informational evidence only — never as PASS.
 - **Evidence:** prompt log (screen → prompt), counts from the dumps (no raw dumps committed).
 
 ### TC-02 Go-online permission flow (Spike)
@@ -263,8 +263,8 @@ A meaningful verdict matrix needs a Play-installed build and a Google Cloud proj
 - **Steps:** C runs `infra/ci/android/check-16kb.mjs` and `infra/ci/android/check-permissions.mjs` (spike allowlist) on the spike AAB.
 - **Pass:** 16 KB PASS; spike manifest contains no USE_FULL_SCREEN_INTENT; declared FGS type is `location` only. Play pre-launch report and store declaration videos: **BLOCKED-EXTERNAL** (no Play Console; Phase 4/7 with the real app).
 
-### TC-22 Push wake (optional)
-Requires an FCM/Firebase project and credentials — optional founder action **FA-18**. Without FA-18: **NOT RUN**, and push-wake measurement stays a Phase-4 item. ADR-033 already makes push a wake aid only, so the freeze does not depend on TC-22; Phase 4 measures push before relying on it as an alert aid.
+### TC-22 Push wake (optional) — NOT RUN in Phase 3
+Requires an FCM/Firebase project and credentials. **FA-18 is DEFERRED to Phase 4 (2026-10-12):** no Firebase project is created now, so the push-wake portion is **NOT RUN** in Phase 3 and push-wake measurement is a Phase-4 item. ADR-033 already makes push a wake aid only, so the freeze does not depend on TC-22; Phase 4 measures push before relying on it as an alert aid.
 
 ## 10. Evidence capture per run (commands)
 | Evidence | Command (C) | Kept where |
@@ -308,7 +308,7 @@ Requires an FCM/Firebase project and credentials — optional founder action **F
 - **Offers:** delivered ratio by channel; latency p50/p95 (nearest-rank).
 - All runs are logged, including failed and repeated ones; nothing is discarded silently.
 
-## 13. Pass/fail rules (freeze criteria, PROPOSED for FA-07)
+## 13. Pass/fail rules (freeze criteria; fixed before measurement under the FA-07 approval of 2026-10-12)
 | # | Rule | Source |
 |---|---|---|
 | R1 | Completeness **≥ 95 %** over a 60-min screen-off run in GUIDED, on **≥ 3 OEM classes** including **Transsion (Infinix/Tecno) and Xiaomi**, plus Samsung or Vivo | backlog SP-01; `docs/phase3/PHASE3_PLAN.md`; interpretation of the config in §7 |
@@ -324,7 +324,7 @@ Verdict: **PASS** only if R1–R6 and R8 pass and R7 is recorded. R7 above budge
 
 ## 14. Fallback decision tree
 1. A fails R1 on an OEM class in GUIDED → tune spike inputs within reason (for example interval, accuracy, batching) and re-run once; record both runs.
-2. Still failing → FA-08 decision on candidate B (Transistorsoft). If approved: re-run TC-03/04/07/08/11/15 with B on the failing classes.
+2. Still failing → a specific FA-08 founder spend decision on candidate B (Transistorsoft), taken on this evidence (no paid spend is pre-approved). If approved: re-run TC-03/04/07/08/11/15 with B on the failing classes.
 3. B also fails on a required class → ADR-003 Flutter fallback evaluation (R4 exit gate) — founder decision before any further mobile architecture work.
 4. A passes R1 only in GUIDED → acceptable for freeze; Phase-4 onboarding must include the OEM guidance proven here (ADR-033).
 5. Any R2 failure is a release-app bug, fixed in the app (not a candidate question) and TC-01 re-run.
@@ -358,8 +358,9 @@ The founder is needed for physical steps (settings, unplugging, revoking, airpla
 | Effect on Phase 3 | blocks ADR-029/ADR-003 freeze | **does not block** the Android freeze; recorded as an open iOS release gate |
 
 ## 18. Open points recorded for review
-- SP01-O1: the GUIDED-config interpretation of the ≥95 % rule (§7) needs founder approval (FA-07).
-- SP01-O2: no push project exists; TC-22 stays NOT RUN unless the founder completes the optional FA-18 (FCM/Firebase project); otherwise push-wake remains a Phase-4 item.
+- SP01-O1: the GUIDED-config interpretation of the ≥95 % rule (§7) is fixed before measurement with the FA-07 approval (2026-10-12); any change needs evidence and a reviewed ADR update, never post-measurement tuning.
+- SP01-O2: FA-18 is DEFERRED to Phase 4; no push project exists, TC-22 is NOT RUN in Phase 3 and push-wake remains a Phase-4 item.
 - SP01-O3: Xiaomi developer options may require a vendor account; a dedicated test account is the only acceptable route.
 - SP01-O4: spike inputs in §5.3 are measurement settings, not product decisions; Phase 4 sets final values through ADR-029/ADR-033.
-- SP01-O5: TC-01's release-build runtime check needs FA-17 (HTTPS synthetic endpoint); without it that part is NOT RUN.
+- SP01-O5: TC-01's release-build runtime check uses the FA-17 ephemeral vetted HTTPS tunnel (APPROVED IN PRINCIPLE, synthetic data only); if no acceptable free temporary option exists, that part stays BLOCKED (never a cleartext release build).
+- SP01-O6: background-location experiments run only in this separate non-release spike build; the Phase-3 release app never requests background Driver location (FA-02 scope). If the FA-03 devices are not available by P3.10, ADR-029/ADR-003 stay unfrozen and the affected IDs are BLOCKED-EXTERNAL / PARTIAL; Phase 3 is not merged as complete without this evidence.

@@ -1,5 +1,5 @@
 # PHASE3_ARCHITECTURE — Catalog, geo gateway, pricing, release controls and unified-app shell (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — pending founder/ChatGPT review; no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA decisions in `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1a); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 Companion documents: `docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md` (tables, migrations), `docs/phase3/PHASE3_PRICING_QUOTE_MODEL.md` (quote algorithm, contracts), `docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md` (vendors, SP-04), `docs/phase3/PHASE3_MOBILE_UX_AND_NAVIGATION.md`, `docs/phase3/PHASE3_PERMISSION_LOCATION_MODEL.md`, `docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md`, `docs/phase3/PHASE3_ADR_AND_DEPENDENCY_PROPOSALS.md`. Authority: `CLAUDE.md` §2–§13, `docs/28_APP_SURFACES_AND_REPO_TOPOLOGY.md`, `docs/phase0/PHASE0_ARCHITECTURE_PROPOSAL.md` §2–§7, ADR-042 (PostgreSQL jobs), ADR-045 (test-double isolation), ADR-043 (mobile platform additions).
 
@@ -19,7 +19,7 @@ Every interface, name, endpoint, environment variable and number in this documen
 | No metrics SDK; OTel traces only; alerts are structured log signals | `packages/observability` | no new metrics stack (F-P3-05) |
 | Jobs: `platform.jobs` SKIP LOCKED + `RecurringScheduler` with dedupe key; `maintenance.purge` batch job | `apps/worker/src/scheduler.ts`, `maintenance.ts` | new recurring jobs + purge extension (§3.4) |
 | Code-only `FLAG_REGISTRY`, no runtime override | `packages/config/src/flags.ts` | runtime switches are a NEW DB-backed mechanism (§9), the flag registry stays |
-| Staff roles are code-defined, but `staff.role_assignments.role` has a **DB CHECK listing the 7 Phase-2 roles** | `packages/db/migrations/0003_staff_realm.sql` | new roles (if FA-10 approves them) need an additive CHECK widening (see data-model doc §6) |
+| Staff roles are code-defined, but `staff.role_assignments.role` has a **DB CHECK listing the 7 Phase-2 roles** | `packages/db/migrations/0003_staff_realm.sql` | the FA-10-approved roles (PRICING_MANAGER, CATALOG_MANAGER, RELEASE_MANAGER) need the **required** expand-safe CHECK widening in 0010 (see data-model doc §6) |
 | Import boundaries: depcruise `no-client-to-server-workspace`, `no-rider-driver-coupling`; eslint-plugin-boundaries element types incl. `mobile-feature-rider/driver` | `.dependency-cruiser.cjs`, `eslint.config.mjs` | extended in §4 |
 | Mobile architecture test bans expo-location, expo-notifications, expo-task-manager, expo-background-fetch, react-native-maps, expo-media-library imports | `apps/wayvro-mobile/src/architecture.test.ts` | replaced by a narrower allowlist rule (§4), not deleted |
 
