@@ -1,8 +1,23 @@
 export { ERROR_CODES, ErrorCodeSchema, ErrorDetailsSchema, ErrorEnvelopeSchema, type ErrorCode, type ErrorDetails, type ErrorEnvelope } from './errors.js';
-export { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
+export {
+  APP_BUILD_HEADER,
+  APP_PLATFORM_HEADER,
+  APP_VERSION_HEADER,
+  AppBuildHeaderSchema,
+  AppPlatformSchema,
+  AppVersionHeaderSchema,
+  IDEMPOTENCY_KEY_HEADER,
+  IdempotencyKeySchema,
+  MUTATING_METHODS,
+  REQUEST_ID_HEADER,
+  RequestIdSchema,
+} from './headers.js';
 export { HEALTH_ROUTES, LivenessSchema, ReadinessSchema, type Liveness, type Readiness, type RouteContract } from './health.js';
 export {
+  AccountModesSchema,
   AccountStateSchema,
+  DRIVER_MODE_BLOCKERS,
+  RIDER_MODE_BLOCKERS,
   ChallengeIdParamSchema,
   DEVICE_PLATFORMS,
   InstallationIdSchema,
@@ -24,6 +39,7 @@ export {
   SessionRevocationResultSchema,
   SessionTokensSchema,
   TokenRefreshRequestSchema,
+  type AccountModes,
   type AccountState,
   type Locale,
   type OtpChallenge,
@@ -251,3 +267,51 @@ export {
   SupportSessionRevocationResultSchema,
   type AccountSupportSummary,
 } from './support.js';
+
+// ── Phase 3 (maps, quotes, unified-app shell) ──
+export { APP_CONFIG_ROUTES, AppConfigSchema, CLIENT_POLICY_STATES, MAP_RENDERER_KINDS, RuntimeSwitchKeySchema, type AppConfig } from './app-config.js';
+export { CATALOG_ROUTES, CatalogProductListSchema, CatalogProductsQuerySchema, LUGGAGE_CLASSES, type CatalogProductList } from './catalog.js';
+export {
+  AutocompleteQuerySchema,
+  AutocompleteResultSchema,
+  GEO_CONFIDENCE_VALUES,
+  GEO_ROUTES,
+  GEO_SKUS,
+  GeoConfidenceSchema,
+  GeoSkuSchema,
+  GeoSourceSchema,
+  LatLngSchema,
+  PlaceQuerySchema,
+  PlaceRefParamSchema,
+  PlaceRefSchema,
+  ProviderKeySchema,
+  ResolvedPlaceSchema,
+  ReverseGeocodeQuerySchema,
+  ReverseGeocodeResultSchema,
+  type AutocompleteQuery,
+  type AutocompleteResult,
+  type GeoSource,
+  type LatLng,
+  type ResolvedPlace,
+  type ReverseGeocodeResult,
+} from './geo.js';
+export {
+  MoneyAmountSchema,
+  ProductCodeSchema,
+  QUOTE_COMPONENT_KINDS,
+  QUOTE_ROUTES,
+  QUOTE_UNAVAILABLE_REASONS,
+  QuoteComponentKindSchema,
+  QuoteComponentSchema,
+  QuoteDetailQuerySchema,
+  QuoteGroupParamSchema,
+  QuoteGroupSchema,
+  QuoteOptionSchema,
+  QuoteRequestSchema,
+  QuoteUnavailableReasonSchema,
+  type MoneyAmount,
+  type QuoteComponent,
+  type QuoteGroup,
+  type QuoteOption,
+  type QuoteRequest,
+} from './pricing.js';

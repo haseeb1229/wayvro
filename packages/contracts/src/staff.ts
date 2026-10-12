@@ -18,6 +18,10 @@ export const STAFF_ROLE_VALUES = [
   'SUPPORT_AGENT',
   'STAFF_ADMIN',
   'AUDITOR',
+  // Phase 3 (additive; FA-10): dedicated configuration roles
+  'PRICING_MANAGER',
+  'CATALOG_MANAGER',
+  'RELEASE_MANAGER',
 ] as const;
 /** Code-defined roles grow additively (H01); documented as an extensible enum in the spec (openapi.ts). */
 export const StaffRoleSchema = z.enum(STAFF_ROLE_VALUES);

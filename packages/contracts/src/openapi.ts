@@ -3,12 +3,16 @@ import { ErrorCodeSchema, ErrorEnvelopeSchema } from './errors.js';
 import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
 import { ACCOUNT_SECURITY_ROUTES } from './account-security.js';
+import { APP_CONFIG_ROUTES } from './app-config.js';
+import { CATALOG_ROUTES } from './catalog.js';
 import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
 import { ONBOARDING_ROUTES } from './compliance.js';
 import { EVIDENCE_ROUTES } from './evidence.js';
+import { GEO_ROUTES } from './geo.js';
 import { REVIEW_ROUTES } from './review.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { OIDC_ROUTES } from './oidc.js';
+import { QUOTE_ROUTES } from './pricing.js';
 import { IDENTITY_ROUTES } from './routes.js';
 import { STAFF_ROUTES, StaffRoleSchema } from './staff.js';
 import { SUPPORT_ROUTES } from './support.js';
@@ -25,6 +29,11 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...EVIDENCE_ROUTES,
   ...REVIEW_ROUTES,
   ...SUPPORT_ROUTES,
+  // Phase 3
+  ...APP_CONFIG_ROUTES,
+  ...CATALOG_ROUTES,
+  ...GEO_ROUTES,
+  ...QUOTE_ROUTES,
 ];
 
 const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> = { public: [], session: [{ sessionBearer: [] }], staff: [{ staffBearer: [] }] };
