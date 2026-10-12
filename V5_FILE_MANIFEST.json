@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 127,
+  "file_count_excluding_manifest": 128,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 12327,
-      "sha256": "49f04c6ad2ebceb5aead8d53b59c5547df84c09687095116f5363a08cfc918c6"
+      "bytes": 12629,
+      "sha256": "205611cd78dc888245a30cfd0869fdff799b53447479a8818f36614fbfbfe7c2"
     },
     {
       "path": "CLAUDE.md",
@@ -211,8 +211,8 @@
     },
     {
       "path": "docs/adr/ADR-027-ci-quality-and-dead-code-tooling.md",
-      "bytes": 6372,
-      "sha256": "088436d966408c7594c4479f627d52fb01fe7d42ac1fe3da880b15b1cb1a1783"
+      "bytes": 7433,
+      "sha256": "9c13942258e6a039dc01c0c3a5b7445a6589ff2c6128d52210224b86e0198807"
     },
     {
       "path": "docs/adr/ADR-030-web-framework-and-version-maturity.md",
@@ -261,8 +261,8 @@
     },
     {
       "path": "docs/adr/ADR-043-mobile-platform-additions.md",
-      "bytes": 9081,
-      "sha256": "e75c7c91b37f850f538c6dea0e04a930edffdb16a473b45bc6196d30547c7d3d"
+      "bytes": 12436,
+      "sha256": "ec2c7939338f29f6ceb762dc83a85b9a330d350a8e96197ba1f7a613c0d97a7c"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
@@ -563,6 +563,11 @@
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md",
       "bytes": 11790,
       "sha256": "a299e0a817f9e9e1773137447d3c5673dd35b485d9d12dc1b8088743c060f998"
+    },
+    {
+      "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
+      "bytes": 7895,
+      "sha256": "1df304d4392888365aa6b40b17bc519f1279c1c6045fd7d073a0ba2a7f7ec069"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",

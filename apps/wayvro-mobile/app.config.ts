@@ -66,9 +66,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // No over-the-air updates in Phase 1 (ADR-031 is PROPOSED: JS-only, signed, staged — never permissions/native).
   updates: { enabled: false },
   platforms: ['android', 'ios'],
-  // No URL scheme yet: deep links arrive with a reviewed link plan once the identifiers are cleared (docs/28 §15).
+  // No URL scheme in release builds: deep links arrive with a reviewed link plan once the identifiers are cleared (docs/28
+  // §15) and the decode-uri-component exception is closed (ADR-043). CI verifies the release AAB's exported components and
+  // intent filters (infra/ci/android/check-intent-filters.mjs).
   plugins: [
     'expo-router',
+    // F-P3-01: expo-dev-client would otherwise append its generated `exp+<slug>` scheme to the shared main manifest, which
+    // the release variant inherits. Listing it here (prebuild then skips its automatic copy) turns that off; the local
+    // plugin below re-adds the scheme to the debug/debugOptimized source-set manifests only, so development builds keep
+    // the dev-launcher launch path.
+    ['expo-dev-client', { addGeneratedScheme: false }],
+    './plugins/dev-client-scheme.mjs',
     // No microphone, no video audio, no barcode scanner (smaller binary; RECORD_AUDIO also blocked above). The barcode
     // flag only takes effect because package.json `expo.autolinking.android.buildFromSource` compiles expo-camera from
     // source: its prebuilt AAR always links ML Kit barcode scanning and the Play services code scanner.

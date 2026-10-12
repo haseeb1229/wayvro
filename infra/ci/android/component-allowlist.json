@@ -1,0 +1,26 @@
+{
+  "$comment": "F-P3-01 release gate: the ONLY exported components and intent filters the release AAB of the ONE public Wayvro app may declare. Any other exported activity/service/receiver/provider, any <data> (scheme/host/path/mimeType) or BROWSABLE category in an application intent filter, or any change to the filters below fails CI. External URL schemes and app/universal links stay disabled while the decode-uri-component osv exception is open (ADR-043; CON-P3-07). `${applicationId}` is substituted by the checker. Adding an entry requires a requirement ID, a reviewed link plan and founder review.",
+  "phase": "Phase 3 (P3.0): no external URL scheme, no app links; launcher entry point and the AndroidX profile installer only",
+  "exported": [
+    {
+      "kind": "activity",
+      "name": "${applicationId}.MainActivity",
+      "intentFilters": [{ "actions": ["android.intent.action.MAIN"], "categories": ["android.intent.category.LAUNCHER"] }],
+      "justification": "Launcher entry point. The expo-dev-client generated scheme (exp+<slug>) exists only in development builds (debug source-set manifest, apps/wayvro-mobile/plugins/dev-client-scheme.mjs).",
+      "requirementIds": ["V08", "U05"]
+    },
+    {
+      "kind": "receiver",
+      "name": "androidx.profileinstaller.ProfileInstallReceiver",
+      "permission": "android.permission.DUMP",
+      "intentFilters": [
+        { "actions": ["androidx.profileinstaller.action.INSTALL_PROFILE"], "categories": [] },
+        { "actions": ["androidx.profileinstaller.action.SKIP_FILE"], "categories": [] },
+        { "actions": ["androidx.profileinstaller.action.SAVE_PROFILE"], "categories": [] },
+        { "actions": ["androidx.profileinstaller.action.BENCHMARK_OPERATION"], "categories": [] }
+      ],
+      "justification": "AndroidX baseline-profile installer. Callable only by holders of the signature|privileged DUMP permission (adb shell / the platform), not by other apps.",
+      "requirementIds": ["Q26"]
+    }
+  ]
+}

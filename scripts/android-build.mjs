@@ -80,9 +80,22 @@ if (MODE === 'release') {
     join(REPORTS, '16kb-report.json'),
   ]);
   gate('check-permissions.mjs', ['--report', join(REPORTS, 'permissions-report.json')]);
+  // F-P3-01: no external URL scheme / app link and only allowlisted exported components in the release artefact.
+  gate('check-intent-filters.mjs', ['--report', join(REPORTS, 'intent-filters-report.json')]);
   // Keep the gated AAB outside android/: a later `prebuild --clean` (e.g. the debug build) deletes that directory.
   copyFileSync(aab, join(REPORTS, 'app-release.aab'));
-  console.log(`\nandroid-build: release AAB ${aab} passed the 16 KB and permission gates (copied to ${REPORTS})`);
+  console.log(`\nandroid-build: release AAB ${aab} passed the 16 KB, permission and intent-filter gates (copied to ${REPORTS})`);
 } else {
-  console.log(`\nandroid-build: debug APK at ${join(ANDROID, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')}`);
+  const apk = join(ANDROID, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+  // F-P3-01 positive control: the development build must keep the expo-dev-client launch scheme (the release gate
+  // proves its absence from the AAB). aapt2 prints the merged binary manifest of the APK.
+  const buildTools = join(androidHome, 'build-tools');
+  const latest = readdirSync(buildTools)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .pop();
+  const aapt2 = latest ? join(buildTools, latest, WINDOWS ? 'aapt2.exe' : 'aapt2') : undefined;
+  if (!aapt2 || !existsSync(aapt2)) fail(`aapt2 not found under ${buildTools}`);
+  const manifest = execFileSync(aapt2, ['dump', 'xmltree', apk, '--file', 'AndroidManifest.xml'], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  if (!/android:scheme\(0x[0-9a-f]+\)="exp\+wayvro"/.test(manifest)) fail('development APK lost the expo-dev-client exp+wayvro scheme (dev launcher path)');
+  console.log(`\nandroid-build: debug APK at ${apk} (development launch scheme exp+wayvro present)`);
 }

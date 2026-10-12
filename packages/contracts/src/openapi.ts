@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ErrorEnvelopeSchema } from './errors.js';
+import { ErrorCodeSchema, ErrorEnvelopeSchema } from './errors.js';
 import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
 import { ACCOUNT_SECURITY_ROUTES } from './account-security.js';
@@ -10,7 +10,7 @@ import { REVIEW_ROUTES } from './review.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { OIDC_ROUTES } from './oidc.js';
 import { IDENTITY_ROUTES } from './routes.js';
-import { STAFF_ROUTES } from './staff.js';
+import { STAFF_ROUTES, StaffRoleSchema } from './staff.js';
 import { SUPPORT_ROUTES } from './support.js';
 
 export const API_ROUTES: readonly RouteContract[] = [
@@ -31,7 +31,26 @@ const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> =
 
 type JsonObject = Record<string, unknown>;
 
-const jsonSchema = (schema: z.ZodType, io: 'input' | 'output'): JsonObject => z.toJSONSchema(schema, { target: 'draft-2020-12', unrepresentable: 'throw', io });
+/**
+ * Enums that are EXTENSIBLE vocabularies by contract are documented as `x-extensible-enum` instead of a closed `enum`,
+ * so that the oasdiff gate (F-P3-09) treats a new value as the additive change it is. Every other enum stays closed and
+ * still fails the gate when a value is added to a response. Applied to RESPONSE schemas only — request enums stay closed
+ * because the server validates them strictly. This list is reviewed like any contract change:
+ *  - error codes (errors.ts): new codes are additive and every client falls back to the HTTP status for an unknown code;
+ *  - staff roles (staff.ts): code-defined roles grow additively (H01); the only consumer is web-ops, deployed from the
+ *    same commit as the API, which renders role codes as text.
+ */
+const EXTENSIBLE_ENUMS: ReadonlySet<unknown> = new Set<unknown>([ErrorCodeSchema, StaffRoleSchema]);
+const markExtensibleEnums = (ctx: { zodSchema: unknown; jsonSchema: JsonObject }): void => {
+  if (!EXTENSIBLE_ENUMS.has(ctx.zodSchema)) return;
+  const { enum: values, ...rest } = ctx.jsonSchema;
+  for (const key of Object.keys(ctx.jsonSchema)) Reflect.deleteProperty(ctx.jsonSchema, key);
+  Object.assign(ctx.jsonSchema, rest, { 'x-extensible-enum': values });
+};
+
+const jsonSchema = (schema: z.ZodType, io: 'input' | 'output'): JsonObject =>
+  // responses only: request enums stay closed (the server validates them strictly)
+  z.toJSONSchema(schema, { target: 'draft-2020-12', unrepresentable: 'throw', io, ...(io === 'output' ? { override: markExtensibleEnums } : {}) });
 
 const binaryContent = (mediaTypes: readonly string[] | undefined): JsonObject =>
   mediaTypes ? { content: Object.fromEntries(mediaTypes.map((m) => [m, { schema: { type: 'string', contentMediaType: m } }])) } : {};
@@ -81,7 +100,7 @@ export function buildOpenApiDocument(version: string, routes: readonly RouteCont
     info: { title: 'Wayvro API', version, description: 'Generated from packages/contracts. Do not edit by hand.' },
     paths,
     components: {
-      schemas: { ErrorEnvelope: z.toJSONSchema(ErrorEnvelopeSchema) },
+      schemas: { ErrorEnvelope: z.toJSONSchema(ErrorEnvelopeSchema, { override: markExtensibleEnums }) },
       securitySchemes: {
         sessionBearer: { type: 'http', scheme: 'bearer', description: 'Opaque consumer access token (15-minute default lifetime; not a JWT).' },
         staffBearer: {

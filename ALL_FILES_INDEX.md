@@ -87,11 +87,12 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 ## Phase 3 — maps, quotes and core unified Rider/Driver UX (plan reviewed 2026-10-12 with targeted fixes and integrated through the Phase 3 planning PR from `docs/phase-3-planning`; implementation not started)
 - `docs/phase3/PHASE3_PLAN.md` — overview, repository truth (incl. the Android CI repair, PR #6), scope (29 IDs), findings F-P3-01..15, contradictions CON-P3-01..16, deferrals, founder decisions, readiness; it indexes the other Phase 3 planning documents in `docs/phase3/` (requirement matrix, architecture, catalog/zones/data model, pricing/quote model, geo provider evaluation, mobile UX/navigation, permission/location model, performance budgets, security/cost threat model, SDK/privacy inventory, SP-01/SP-02/SP-04/SP-08 protocols and the SP-04 capture template, test strategy, implementation sequence, external founder actions, ADR/dependency proposals, proposed implementation prompt).
 - `docs/phase3/PHASE3_HANDOFF_REPORT.md` — CI repair evidence (cache miss/hit, disk) and the Phase 3 planning handoff.
+- `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md` — the Phase 3 implementation record (checkpoints P3.0–P3.10 of the one authorised run: commands, outcomes, CI run ids, decisions, requirement status).
 - SP-01, SP-02 and SP-04 remain **OPEN / NOT RUN**; no provider, renderer, background-location SDK or mobile-stack freeze is made by the plan.
 
 ## Current baseline
 - Product: **Wayvro (WAY-VRO)**.
 - Public mobile distribution: **one Wayvro app** with Rider mode and optional approved Driver/Partner profile/mode.
 - Proposed requirements: **532** (P0 217 / P1 209 / P2 89 / P3 17): 531 after Phase 0 plus A15 (Phase 2 planning closure, 2026-10-10); dispositions NOW 396 / LATER 107 / EXTERNAL_DECISION 26 / OUT_OF_SCOPE 3.
-- Macro phases: **13** (Phase 0 through Phase 12). Status: Phases 0–2 complete; Phase 2 merged via PR #4 (`7da51b0`); external gates EG-01..EG-23 open; Android CI cache/disk repair merged via PR #6 (`058fcea`); **Phase 3 implementation not started** (plan reviewed, `docs/phase3/PHASE3_PLAN.md`).
+- Macro phases: **13** (Phase 0 through Phase 12). Status: Phases 0–2 complete; Phase 2 merged via PR #4 (`7da51b0`); external gates EG-01..EG-23 open; Android CI cache/disk repair merged via PR #6 (`058fcea`); **Phase 3 implementation in progress** on branch `phase-3/maps-quotes-unified-ux` (plan reviewed and merged via PR #7, `b1a1986`; record `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md`).
 - Coding/planning AI: **Claude Code only**.

@@ -30,6 +30,9 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the OpenAPI breaking-change gate compares against the merge base with main
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -70,6 +73,17 @@ jobs:
         run: pnpm test:coverage
       - name: OpenAPI generated-drift check
         run: pnpm openapi:check
+      - name: Install oasdiff 1.32.1 (checksum-verified)
+        run: |
+          curl -sSL -o /tmp/oasdiff.tar.gz https://github.com/oasdiff/oasdiff/releases/download/v1.32.1/oasdiff_1.32.1_linux_amd64.tar.gz
+          echo "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f  /tmp/oasdiff.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/oasdiff.tar.gz -C /tmp oasdiff
+      - name: OpenAPI breaking-change gate (oasdiff vs the merge base with main; F-P3-09) + negative controls
+        run: |
+          node scripts/openapi-breaking.mjs --oasdiff /tmp/oasdiff --self-test
+          node scripts/openapi-breaking.mjs --oasdiff /tmp/oasdiff
+      - name: Android release intent-filter gate — negative controls (F-P3-01; the gate itself runs on the AAB in the Android job)
+        run: node infra/ci/android/check-intent-filters.mjs --self-test
       - name: Phase 0 consistency checks
         run: |
           node docs/phase0/tools/phase0-coverage.js --check
@@ -226,7 +240,7 @@ jobs:
         run: |
           curl -sSL -o /tmp/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
           echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  /tmp/bundletool.jar" | sha256sum -c -
-      - name: Release AAB (arm64-v8a + armeabi-v7a) with 16 KB, ABI and permission gates
+      - name: Release AAB (arm64-v8a + armeabi-v7a) with 16 KB, ABI, permission and intent-filter gates
         env:
           WAYVRO_JDK17_HOME: ${{ env.JAVA_HOME }}
           BUNDLETOOL_JAR: /tmp/bundletool.jar

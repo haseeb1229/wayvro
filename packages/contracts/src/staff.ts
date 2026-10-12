@@ -19,7 +19,8 @@ export const STAFF_ROLE_VALUES = [
   'STAFF_ADMIN',
   'AUDITOR',
 ] as const;
-const StaffRoleSchema = z.enum(STAFF_ROLE_VALUES);
+/** Code-defined roles grow additively (H01); documented as an extensible enum in the spec (openapi.ts). */
+export const StaffRoleSchema = z.enum(STAFF_ROLE_VALUES);
 const CityCodeSchema = z.string().regex(/^[A-Z]{3}$/);
 
 /** WebAuthn options (PublicKeyCredentialCreation/RequestOptionsJSON) passed to the browser unchanged. */
