@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 105,
+  "file_count_excluding_manifest": 127,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 11036,
-      "sha256": "b0938d31c187de728729cf5ce054812fc9186f372c075f3173eb58b4181e8310"
+      "bytes": 12290,
+      "sha256": "5a6c84ded9b921de59e82e5a5ee15be22ddc585a2a314d9271997350df67b120"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8412,
-      "sha256": "85b700b8f22f819a5f45b6607224b0c312dbdfe79fcf954f4df98adbd791cd79"
+      "bytes": 8626,
+      "sha256": "3a43c480fa65fa9f078766f7feb6e95193c73e31509ea22df1814b75f9cc4a48"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 8464,
-      "sha256": "e39befc2a1f1d1c1868b49b844abddc751554ca38af3d543dd21932fdf4a12b4"
+      "bytes": 9166,
+      "sha256": "cd7e8a764d34c1ff5b0ad2fc6494a7a188ed609515e5ac0cb24163596ead1d47"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -106,8 +106,8 @@
     },
     {
       "path": "docs/12_PHASE_PLAN_AND_GATES.md",
-      "bytes": 12825,
-      "sha256": "f54dac8ef83151d925084f77afc640a8555efcd55f3b29ae0d9f452393e16bf5"
+      "bytes": 13120,
+      "sha256": "182f16980ee9a3d960aa9cc1c2d0a35fc1c658346d6cc6a7f2cc8b276ee4a1d5"
     },
     {
       "path": "docs/13_CLAUDE_ONLY_ENGINEERING_WORKFLOW.md",
@@ -161,8 +161,8 @@
     },
     {
       "path": "docs/23_FOUNDER_PROMPT_TRACEABILITY.md",
-      "bytes": 11330,
-      "sha256": "9fc3bf3430041a32a316546948b5875e2104fc7d9288924d8283773aab07727c"
+      "bytes": 12319,
+      "sha256": "ba3dfb5dfbdb94fbaac9fc8efe6e988c17c39206ee6684844755ae17e911011b"
     },
     {
       "path": "docs/24_V4_SECOND_PASS_GAP_AUDIT.md",
@@ -276,8 +276,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 5234,
-      "sha256": "bf21dc70a72241a511f4d8046584c6b4a5c2301027594921800e590d4fa638ca"
+      "bytes": 5851,
+      "sha256": "8d6d8aa6e942f37be49fc4aa558c01756cb6faa1dc0971e241aefe515c9c4860"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -528,6 +528,116 @@
       "path": "docs/phase2/PHASE2_TEST_STRATEGY.md",
       "bytes": 17281,
       "sha256": "85bd689ae6e13c15f80007ee63f598cbd97debb3c3793934025390847245af19"
+    },
+    {
+      "path": "docs/phase3/PHASE3_ADR_AND_DEPENDENCY_PROPOSALS.md",
+      "bytes": 32380,
+      "sha256": "0ed089d5fab09abdcf509b0e6c4fa2f02f699bdd9402e5c256d96a996d7dc349"
+    },
+    {
+      "path": "docs/phase3/PHASE3_ARCHITECTURE.md",
+      "bytes": 62700,
+      "sha256": "f35b60ed6f5b81bae8569c696bfb67c0be7e48b8ca544c15b1ad4cc28cd91ca0"
+    },
+    {
+      "path": "docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md",
+      "bytes": 48627,
+      "sha256": "56bb24ae031d69362068c4e97371786910ad2230c5259db1e6490bf372a9ba24"
+    },
+    {
+      "path": "docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md",
+      "bytes": 27900,
+      "sha256": "74533476b1dc49119aea66fdaf49fc9d3f9d6d8d16538e41a17f5bb5e522be06"
+    },
+    {
+      "path": "docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md",
+      "bytes": 43355,
+      "sha256": "75f55d0951c4757273c609b059b406bed88b8f8fbebe2a67fcaedaa77db5e9be"
+    },
+    {
+      "path": "docs/phase3/PHASE3_HANDOFF_REPORT.md",
+      "bytes": 21100,
+      "sha256": "000d06acf6c2eebb8d79ebdd4d3c23b462ea5035ca1a23d40416da6e5d448a86"
+    },
+    {
+      "path": "docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md",
+      "bytes": 8323,
+      "sha256": "bf3357f29883899f8c680400fc3e675912833b3edcbb90e1f71b021bdd433ef5"
+    },
+    {
+      "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
+      "bytes": 18407,
+      "sha256": "248c8296edd54bca6b83371826cd5864061b59e59d8fe493d9ab8739fb063c12"
+    },
+    {
+      "path": "docs/phase3/PHASE3_MOBILE_UX_AND_NAVIGATION.md",
+      "bytes": 47230,
+      "sha256": "d0176ac0d2f13d3c5e158de33d5da436c6cee302d077e4357793185871eae587"
+    },
+    {
+      "path": "docs/phase3/PHASE3_PERFORMANCE_BUDGETS.md",
+      "bytes": 19211,
+      "sha256": "71fab84e9729336e0e1070ed75925133762a8eca4e9dbc5e5c8ce65b0761dfc9"
+    },
+    {
+      "path": "docs/phase3/PHASE3_PERMISSION_LOCATION_MODEL.md",
+      "bytes": 22869,
+      "sha256": "f879eaa3178721a1ec0ce35c0629d53bbfc23c9d367aa8b946fb36214d53d7c5"
+    },
+    {
+      "path": "docs/phase3/PHASE3_PLAN.md",
+      "bytes": 19189,
+      "sha256": "dd74d2a22d3f09e3015371c810af4a331a72b5c9672fef350d6b04c92dc4f400"
+    },
+    {
+      "path": "docs/phase3/PHASE3_PRICING_QUOTE_MODEL.md",
+      "bytes": 31516,
+      "sha256": "42800f81f163ba6d110e8091b766a6e2b02596be4d225757b8f65bbb25e40b2f"
+    },
+    {
+      "path": "docs/phase3/PHASE3_REQUIREMENT_MATRIX.md",
+      "bytes": 58809,
+      "sha256": "f3747edd5aa6a737db64d490b399ed3a326dadcc7686f637494a31fc2498c681"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
+      "bytes": 24485,
+      "sha256": "392f9ab978e7a9055e881934644fc09b83f32273f19cf20e5accdc653bc59843"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",
+      "bytes": 69036,
+      "sha256": "cf31f05ce604b4773b2e60da072b39ee809ab4347f5460a96b8b7cf53330f69f"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md",
+      "bytes": 41493,
+      "sha256": "5795496794cedb69561ee9ab72f29f1b6545d438c008018e42c3242dfb14c695"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md",
+      "bytes": 26314,
+      "sha256": "434c142b4e207d5ba6e0c519146b58e1a87d5ed74ee8471ae2245f8a4b5e3fee"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SP04_FIELD_CAPTURE_TEMPLATE.csv",
+      "bytes": 1433,
+      "sha256": "f1ad76c696a5091ca261e9dff31a5cd2fd9062de4dc75b4f3198132a11b4cf81"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SP04_LAHORE_FIELD_BENCHMARK.md",
+      "bytes": 26025,
+      "sha256": "18f442c018918ce87b6c0a4f687b615907b551efab74ab5bd1f42ed965814342"
+    },
+    {
+      "path": "docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.md",
+      "bytes": 18422,
+      "sha256": "f200c2d044e9de5cde400ce10663840b0d764bdcd4344be8e01e5ecea9da27e5"
+    },
+    {
+      "path": "docs/phase3/PHASE3_TEST_STRATEGY.md",
+      "bytes": 52828,
+      "sha256": "a7e0f056d66772140464997e6f57842a1c2f1a9ec7f17b8af019bbddcf818f24"
     },
     {
       "path": "docs/requirements-register.json",

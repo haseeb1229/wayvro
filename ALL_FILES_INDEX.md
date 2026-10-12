@@ -84,9 +84,14 @@ This file is a navigation aid. Authority remains: founder decisions -> audited r
 - `docs/operations/incident-playbooks.md` — Phase 2 incident playbooks (not rehearsed).
 - **Phase 3 prerequisites still open:** SP-01 (real-device background location, permissions, OEM behaviour, driver online state and offer delivery), SP-02 (rider cold start, startup size and performance on representative low-end real hardware) and SP-04 (50-route/address Lahore maps, geocoding and routing field benchmark with founder field drives) remain **OPEN / NOT RUN** and must complete before the Phase 3 mobile-architecture and map-provider freezes; SP-08 (cross-mode E2E regression harness) belongs to Phase 3/4. The Phase 2 Android emulator smoke does **not** satisfy SP-01 or SP-02, which need real devices (`docs/phase0/PHASE0_ADR_BACKLOG.md`).
 
+## Phase 3 — maps, quotes and core unified Rider/Driver UX (plan PROPOSED 2026-10-12 on `docs/phase-3-planning`; pending founder/ChatGPT review; implementation not started)
+- `docs/phase3/PHASE3_PLAN.md` — overview, repository truth (incl. the Android CI repair, PR #6), scope (29 IDs), findings F-P3-01..15, contradictions CON-P3-01..16, deferrals, founder decisions, readiness; it indexes the other Phase 3 planning documents in `docs/phase3/` (requirement matrix, architecture, catalog/zones/data model, pricing/quote model, geo provider evaluation, mobile UX/navigation, permission/location model, performance budgets, security/cost threat model, SDK/privacy inventory, SP-01/SP-02/SP-04/SP-08 protocols and the SP-04 capture template, test strategy, implementation sequence, external founder actions, ADR/dependency proposals, proposed implementation prompt).
+- `docs/phase3/PHASE3_HANDOFF_REPORT.md` — CI repair evidence (cache miss/hit, disk) and the Phase 3 planning handoff.
+- SP-01, SP-02 and SP-04 remain **OPEN / NOT RUN**; no provider, renderer, background-location SDK or mobile-stack freeze is made by the plan.
+
 ## Current baseline
 - Product: **Wayvro (WAY-VRO)**.
 - Public mobile distribution: **one Wayvro app** with Rider mode and optional approved Driver/Partner profile/mode.
 - Proposed requirements: **532** (P0 217 / P1 209 / P2 89 / P3 17): 531 after Phase 0 plus A15 (Phase 2 planning closure, 2026-10-10); dispositions NOW 396 / LATER 107 / EXTERNAL_DECISION 26 / OUT_OF_SCOPE 3.
-- Macro phases: **13** (Phase 0 through Phase 12). Status: Phases 0–2 complete; Phase 2 merged via PR #4 (`7da51b0`); external gates EG-01..EG-23 open; **Phase 3 not started**.
+- Macro phases: **13** (Phase 0 through Phase 12). Status: Phases 0–2 complete; Phase 2 merged via PR #4 (`7da51b0`); external gates EG-01..EG-23 open; Android CI cache/disk repair merged via PR #6 (`058fcea`); **Phase 3 implementation not started** (plan PROPOSED, `docs/phase3/PHASE3_PLAN.md`).
 - Coding/planning AI: **Claude Code only**.
