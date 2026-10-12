@@ -75,6 +75,13 @@
 - **Founder decisions Q-01..Q-15** recorded in `docs/phase2/PHASE2_PLAN.md` §10 (including strong-proof-only historical recovery, camera + controlled import for documents with camera-only selfies, no Phase 2 bulk export, risk-triggered driver re-verification).
 - **Corrections:** account/person uniqueness is not a database invariant; test doubles physically absent from production artefacts from P2.1; versioned AEAD envelope and rotation rules; mature isolated image decode/re-encode instead of a hand-written parser; relational integrity for evidence/category/case-subject links; accessible optional selfie capture challenges.
 
+## Prompt 8 — Phase 3 planning kickoff, Android CI repair and resumed planning (2026-10-12)
+- **Kickoff rule honoured:** the `main` Android job failed twice, so planning stopped; no branch or commit was made from a repeatedly red `main`.
+- **CI repair (workflow only):** exact-key Gradle dependency cache, explicit main-only save with verification, disk evidence, removal of unused runner toolchains; merged via PR #6 (`058fcea`).
+- **Phase 3 plan (plan only):** `docs/phase3/` traces all 29 target-phase-3 IDs (P0 17 / P1 11 / P2 1); no implementation, migration, dependency, provider account or freeze. Register unchanged at 532.
+- **Plan-review closure (same day):** verdict "TARGETED FIX BEFORE PASS" — Mapbox Search Box session vs request pricing corrected; Mapbox Commercial Application License (vehicle usage) gate FA-19; Google PAYG + subscription model; SP-04 route-critical hard gate; founder decisions FA-01/02/07/10/11/12/16/17/18 recorded, FA-08 no paid spend; one full implementation run that cannot declare Phase 3 complete without real-world evidence.
+- **Founder corrections applied:** one public app; spikes SP-01/SP-02/SP-04 before freezes; no Transistorsoft purchase without SP-01 evidence and approval; `USE_FULL_SCREEN_INTENT` not requested; provider terms re-verified from primary sources; release URL-scheme finding re-verified on a CI-built artefact; no-phone-while-driving rule for field drives.
+
 ## Workflow requirements imported from Minhaj where applicable
 - Actual repo/worktree/data > verified exact-SHA checkpoint/CI > canonical docs > reports/prompts.
 - Inspect branch, HEAD, worktree, remotes, CI and Git identity before changes.
