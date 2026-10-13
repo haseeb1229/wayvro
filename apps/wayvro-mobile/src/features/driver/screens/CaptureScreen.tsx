@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { useServices } from '../../../core/services/ServicesProvider';
-import { Banner, Body, Button, Heading, Screen, Title } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Heading, Screen, Title, TranslationPendingNote } from '../../../core/ui/primitives';
 import { colors, MIN_TOUCH_TARGET, spacing } from '../../../core/ui/tokens';
 import { randomBytes } from '../../../core/platform/crypto';
 import type { CaptureChallenge } from '../api/driver-api';
@@ -170,9 +170,7 @@ function Capture({ applicationId, documentId, kind }: { readonly applicationId: 
         </View>
         <ScrollView style={styles.panelScroll} contentContainerStyle={styles.panel}>
           {captureGuidance(kind).map((key) => (
-            <Text key={key} style={styles.tip}>
-              {dt(key)}
-            </Text>
+            <Body key={key}>{dt(key)}</Body>
           ))}
           {selfie ? <ChallengePanel applicationId={applicationId} challenge={challenge} onChallenge={setChallenge} /> : null}
           {notice === null ? null : <Banner tone="warning" text={dt(notice)} />}
@@ -188,6 +186,7 @@ function Capture({ applicationId, documentId, kind }: { readonly applicationId: 
           >
             <Text style={styles.shutterText}>{busy ? dt('capture.taking') : dt('capture.shutter')}</Text>
           </Pressable>
+          <TranslationPendingNote />
         </ScrollView>
       </View>
     );

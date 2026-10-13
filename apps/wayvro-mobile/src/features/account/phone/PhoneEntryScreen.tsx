@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import type { UiLocale } from '../../../core/i18n/strings';
 import { useServices, useSessionState, useSignInNotice } from '../../../core/services/ServicesProvider';
-import { Banner, Body, Button, ErrorBanner, RadioGroup, Screen, TextField, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, ErrorBanner, RadioGroup, Screen, TextField, Title } from '../../../core/ui/primitives';
 import { FullyDrawnMarker } from '../../../platform/perf/fully-drawn';
 import { useLocaleOptions } from '../profile/use-update-profile';
 import { checkPhone, phoneFormModel, phoneRequestError } from './phone-entry';
@@ -88,7 +88,6 @@ export function PhoneEntryScreen() {
           void setUiLocale(next);
         }}
       />
-      <TranslationPendingNote />
     </Screen>
   );
 }

@@ -8,6 +8,8 @@
     "start": "expo start --dev-client",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "i18n:export": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/export.ts",
+    "i18n:import-review": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/import-review.ts",
     "android:prebuild": "expo prebuild --platform android --clean --no-install",
     "android:debug": "node ../../scripts/android-build.mjs debug",
     "android:release": "node ../../scripts/android-build.mjs release"

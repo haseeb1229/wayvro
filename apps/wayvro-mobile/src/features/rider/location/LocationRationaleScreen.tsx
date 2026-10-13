@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { Section } from '../../../core/ui/components';
-import { Body, Button, Screen, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Body, Button, Screen, Title } from '../../../core/ui/primitives';
 import { useRiderFlow } from '../flow/RiderFlowProvider';
 
 /**
@@ -58,7 +58,6 @@ export function LocationRationaleScreen() {
           router.back();
         }}
       />
-      <TranslationPendingNote />
     </Screen>
   );
 }

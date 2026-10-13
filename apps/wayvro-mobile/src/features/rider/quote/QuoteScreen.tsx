@@ -8,8 +8,9 @@ import type { UiLocale } from '../../../core/i18n/strings';
 import { quoteDetail } from '../../../core/lite/lite-mode';
 import { useLiteMode } from '../../../core/lite/use-lite';
 import { useServices } from '../../../core/services/ServicesProvider';
+import { spokenSentence } from '../../../core/ui/a11y';
 import { ConfidenceBadge, Countdown, QuoteOptionCard, SkeletonRow, StaleIndicator } from '../../../core/ui/components';
-import { Banner, Body, Button, Heading, Screen, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Heading, Screen, Title } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { quoteInput, quotePoint } from '../flow/draft';
 import { useRiderFlow } from '../flow/RiderFlowProvider';
@@ -126,7 +127,6 @@ export function QuoteScreen() {
         onRefresh={refresh}
       />
       <Body muted>{t('rider.home.bookingSoon')}</Body>
-      <TranslationPendingNote />
     </Screen>
   );
 }
@@ -215,7 +215,7 @@ function QuoteBody(props: {
       {view.route.snappedPickup === null ? null : <Banner tone="info" text={view.route.snappedPickup} />}
       {view.anyExpired ? (
         <>
-          <Banner tone="warning" text={t('rider.quote.pricesUpdated')} />
+          <Banner tone="warning" text={t('rider.quote.pricesUpdated')} announce="announced-elsewhere" />
           <Button label={t('rider.quote.getNewPrice')} onPress={props.onNewPrice} />
         </>
       ) : null}
@@ -233,7 +233,11 @@ function QuoteBody(props: {
             lines={option.lines}
             price={option.price}
             expired={option.expired}
-            label={option.expired ? option.spoken : `${option.spoken}. ${t('rider.quote.validSpoken', { minutes: Math.max(1, Math.ceil(remaining / 60)) })}`}
+            label={
+              option.expired
+                ? option.spoken
+                : spokenSentence([option.spoken, t('rider.quote.validSpoken', { minutes: Math.max(1, Math.ceil(remaining / 60)) })])
+            }
             detailsLabel={t('rider.quote.details')}
             onDetails={() => {
               props.onDetails(option.quoteId);
@@ -243,7 +247,7 @@ function QuoteBody(props: {
         );
       })}
       {view.unavailable.map((row) => (
-        <QuoteOptionCard key={row.productCode} title={row.title} lines={[row.reason]} price={null} expired label={`${row.title}. ${row.reason}`} />
+        <QuoteOptionCard key={row.productCode} title={row.title} lines={[row.reason]} price={null} expired label={spokenSentence([row.title, row.reason])} />
       ))}
       {view.route.attribution === null ? null : <Body muted>{view.route.attribution}</Body>}
       {props.lite ? <Button variant="secondary" label={t('lite.refreshPrices')} onPress={props.onRefresh} /> : null}

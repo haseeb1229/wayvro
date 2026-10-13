@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useAccountState } from '../../../core/account/use-account-state';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { formatDate } from '../../../core/i18n/strings';
-import { Banner, Body, Button, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { combineQueries, viewStateFromQuery } from '../../../core/ui/view-state';
 import { useCompliance } from '../api/driver-queries';
@@ -62,7 +62,6 @@ export default function DriveHealthScreen() {
         </View>
       ))}
       <Banner tone={accountRestricted ? 'warning' : 'info'} text={dt(riderStatementKey)} />
-      <TranslationPendingNote />
     </Screen>
   );
 }

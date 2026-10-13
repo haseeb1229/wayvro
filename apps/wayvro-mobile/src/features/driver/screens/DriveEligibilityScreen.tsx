@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { useIntentNavigation } from '../../../core/intents/use-intents';
 import { Card, Section } from '../../../core/ui/components';
-import { Banner, Body, Button, Heading, Screen, StateView, Title, TranslationPendingNote, useDirection } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Heading, Screen, StateView, Title, useDirection } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { useCompliance, useDriverApplication } from '../api/driver-queries';
@@ -69,7 +69,6 @@ export default function DriveEligibilityScreen() {
         </>
       ) : null}
       {statusButton}
-      <TranslationPendingNote />
     </Screen>
   );
 }

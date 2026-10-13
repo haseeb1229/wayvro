@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { contentDirection } from '../i18n/bidi';
 import { useI18n } from '../i18n/I18nProvider';
 import type { StringKey } from '../i18n/strings';
-import { colors, MIN_TOUCH_TARGET, spacing, typography } from './tokens';
+import { livePoliteness, spokenSentence, type Announcement } from './a11y';
+import { colors, MIN_TOUCH_TARGET, spacing, tonePairs, typography } from './tokens';
 import type { UiErrorView } from './view-state';
 
 /**
@@ -11,17 +13,29 @@ import type { UiErrorView } from './view-state';
  * text alignment/writing direction and mirrored rows, without forcing a global RTL restart.
  */
 
-/** Direction helpers for the current UI language (RTL per component; no global forceRTL). */
+/**
+ * Direction helpers for the current UI language (RTL per component; no global forceRTL). `text` is for catalogue copy
+ * in the UI language; `content(text)` is for server text in any script (addresses, place names): it aligns with the UI
+ * language but sets the writing direction from the text itself (`bidi.ts`), so mixed-script rows render correctly.
+ */
 export function useDirection() {
   const { rtl } = useI18n();
   return {
     rtl,
     text: rtl ? styles.textRtl : styles.textLtr,
     row: rtl ? styles.rowRtl : styles.rowLtr,
+    content: (text: string) => [
+      rtl ? styles.alignRight : styles.alignLeft,
+      contentDirection(text, rtl ? 'rtl' : 'ltr') === 'rtl' ? styles.writeRtl : styles.writeLtr,
+    ],
   };
 }
 
-/** `topInset`: a screen drawn without a navigation header (the release blocking overlay) also insets the status bar. */
+/**
+ * Screen container. It ends every screen with the "translation pending native-speaker review" note, so Urdu and Roman
+ * Urdu copy is never shown without it (P18; FA-09) — screens do not add the note themselves. `topInset`: a screen drawn
+ * without a navigation header (the release blocking overlay) also insets the status bar.
+ */
 export function Screen({
   children,
   scroll = true,
@@ -36,9 +50,13 @@ export function Screen({
       {scroll ? (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {children}
+          <TranslationPendingNote />
         </ScrollView>
       ) : (
-        <View style={[styles.content, styles.fill]}>{children}</View>
+        <View style={[styles.content, styles.fill]}>
+          {children}
+          <TranslationPendingNote />
+        </View>
       )}
     </SafeAreaView>
   );
@@ -122,7 +140,7 @@ export function LinkRow({
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={detail === undefined ? label : `${label}. ${detail}`}
+      accessibilityLabel={spokenSentence([label, detail])}
       onPress={onPress}
       style={({ pressed }) => [styles.linkRow, dir.row, pressed ? styles.pressed : undefined]}
     >
@@ -238,22 +256,20 @@ export function RadioGroup<V extends string>(props: {
   );
 }
 
-export type BannerTone = 'info' | 'warning' | 'error' | 'success' | 'offline' | 'stale';
+/** Banner variants; their colour pairs are the contrast-tested `tonePairs` tokens. */
+export type BannerTone = keyof typeof tonePairs;
 
-const BANNER_STYLES: Readonly<Record<BannerTone, { readonly box: object; readonly text: object }>> = {
-  info: { box: { backgroundColor: colors.infoBackground }, text: { color: colors.infoText } },
-  warning: { box: { backgroundColor: colors.warningBackground }, text: { color: colors.warningText } },
-  error: { box: { backgroundColor: colors.errorBackground }, text: { color: colors.danger } },
-  success: { box: { backgroundColor: colors.successBackground }, text: { color: colors.successText } },
-  offline: { box: { backgroundColor: colors.offlineBackground }, text: { color: colors.offlineText } },
-  stale: { box: { backgroundColor: colors.staleBackground }, text: { color: colors.staleText } },
-};
+const bannerLook = (tone: BannerTone) => ({ box: { backgroundColor: tonePairs[tone].background }, text: { color: tonePairs[tone].text } });
 
-export function Banner({ tone, text }: { readonly tone: BannerTone; readonly text: string }) {
+/**
+ * A status message. `announce` says how a screen reader is told about it (`a11y.ts`): ordinary status text is polite;
+ * a just-expired quote or a blocking policy state is assertive (announced once — the text does not change while shown).
+ */
+export function Banner({ tone, text, announce = 'status' }: { readonly tone: BannerTone; readonly text: string; readonly announce?: Announcement }) {
   const dir = useDirection();
-  const look = BANNER_STYLES[tone];
+  const look = bannerLook(tone);
   return (
-    <View style={[styles.banner, look.box]} accessibilityRole={tone === 'error' ? 'alert' : 'text'} accessibilityLiveRegion="polite">
+    <View style={[styles.banner, look.box]} accessibilityRole={tone === 'error' ? 'alert' : 'text'} accessibilityLiveRegion={livePoliteness(announce)}>
       <Text style={[styles.body, look.text, dir.text]}>{text}</Text>
     </View>
   );
@@ -265,7 +281,10 @@ export function PlaceholderBadge() {
   return <Banner tone="warning" text={t('common.placeholderNotice')} />;
 }
 
-/** Note shown in Urdu/Roman-Urdu while translations await native review. */
+/**
+ * Note shown in Urdu/Roman-Urdu while translations await native review. `Screen` renders it on every screen; only a
+ * full-bleed view that cannot use `Screen` (the camera) renders it itself.
+ */
 export function TranslationPendingNote() {
   const { t, pendingReview } = useI18n();
   return pendingReview ? <Body muted>{t('common.translationPending')}</Body> : null;
@@ -318,6 +337,10 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.xl },
   textLtr: { textAlign: 'left', writingDirection: 'ltr' },
   textRtl: { textAlign: 'right', writingDirection: 'rtl' },
+  alignLeft: { textAlign: 'left' },
+  alignRight: { textAlign: 'right' },
+  writeLtr: { writingDirection: 'ltr' },
+  writeRtl: { writingDirection: 'rtl' },
   rowLtr: { flexDirection: 'row' },
   rowRtl: { flexDirection: 'row-reverse' },
   title: { ...typography.title, color: colors.text },

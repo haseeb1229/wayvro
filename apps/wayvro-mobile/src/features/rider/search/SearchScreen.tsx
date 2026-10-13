@@ -9,7 +9,7 @@ import { useLiteMode } from '../../../core/lite/use-lite';
 import { useAppPolicy } from '../../../core/release/AppPolicyGate';
 import { useServices } from '../../../core/services/ServicesProvider';
 import { PlaceRow, StaleIndicator } from '../../../core/ui/components';
-import { Banner, Body, Button, ErrorBanner, LinkRow, Screen, TextField, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, ErrorBanner, LinkRow, Screen, TextField } from '../../../core/ui/primitives';
 import { errorView } from '../../../core/ui/view-state';
 import { pointPrecision } from '../../../platform/location/fix-policy';
 import type { DraftField, DraftPlace } from '../flow/draft';
@@ -126,6 +126,7 @@ export function SearchScreen() {
         {...hintFor(current('dropoff'))}
       />
       <Body muted>{t('rider.search.hint')}</Body>
+      <Body muted>{t('rider.search.languageHint')}</Body>
       {resolve.error === null ? null : <ErrorBanner error={errorView(resolve.error)} />}
       <SearchBody
         state={search}
@@ -166,7 +167,6 @@ export function SearchScreen() {
           }}
         />
       ) : null}
-      <TranslationPendingNote />
     </Screen>
   );
 }
@@ -230,7 +230,7 @@ function SearchBody(props: {
     case 'results':
       return (
         <View>
-          <Banner tone="info" text={t('rider.search.count', { count: state.suggestions.length })} />
+          <Banner tone="info" text={t('rider.search.count', { count: state.suggestions.length })} announce="search-results" />
           {state.stale ? <StaleIndicator text={t('rider.search.stale')} /> : null}
           {state.suggestions.map((s) => (
             <PlaceRow

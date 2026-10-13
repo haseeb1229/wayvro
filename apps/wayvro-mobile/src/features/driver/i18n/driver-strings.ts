@@ -1,4 +1,4 @@
-import type { TranslationParams, UiLocale } from '../../../core/i18n/strings';
+import { interpolate, type TranslationParams, type UiLocale } from '../../../core/i18n/strings';
 
 /**
  * Driver/Partner copy (P2.8; K14 explanations, K05 reasons/appeals). Kept with the lazily loaded Driver/Partner module so
@@ -1537,15 +1537,10 @@ const urLatn: Catalogue = {
   'drive.location.privacy': 'Aap ki location kabhi bechi nahin jati aur na ishtiharaat ke liye istemal hoti hai.',
 };
 
-/** @internal exported for the catalogue tests; code uses driverText(). */
+/** Exported for the catalogue tests and the FA-09 review export (scripts/i18n/); app code uses driverText(). */
 export const DRIVER_CATALOGUE: Readonly<Record<UiLocale, Catalogue>> = { en, ur, 'ur-Latn': urLatn };
 
-/** Looks up `key` and fills `{name}` placeholders (same rules as the app catalogue). */
+/** Looks up `key` and fills `{name}` placeholders (same rules as the app catalogue, including bidi isolation). */
 export function driverText(locale: UiLocale, key: DriverStringKey, params?: TranslationParams): string {
-  const template = DRIVER_CATALOGUE[locale][key];
-  if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) => {
-    const value = params[name];
-    return value === undefined ? whole : String(value);
-  });
+  return interpolate(locale, DRIVER_CATALOGUE[locale][key], params);
 }

@@ -1,4 +1,5 @@
 import type { Locale } from '@wayvro/contracts';
+import { hasRtlLetters, isolate } from './bidi';
 
 /**
  * User-facing copy of the app (CLAUDE.md §10: no copy in components or business logic). English is the source; Urdu
@@ -429,6 +430,7 @@ const en = {
   'rider.search.pickup': 'Pickup',
   'rider.search.dropoff': 'Drop-off',
   'rider.search.hint': "Try a nearby landmark, like 'Liberty Market' or 'Gulberg 3'.",
+  'rider.search.languageHint': "You can type in English, Urdu or Roman Urdu, for example 'Data Darbar' or 'Badshahi Masjid'.",
   'rider.search.tooShort': 'Type at least {count} characters.',
   'rider.search.searching': 'Searching…',
   'rider.search.noResults': 'No matches. Try a nearby landmark, or search the full address.',
@@ -929,6 +931,7 @@ const ur: Catalogue = {
   'rider.search.pickup': 'پک اپ',
   'rider.search.dropoff': 'ڈراپ آف',
   'rider.search.hint': "کوئی قریبی مشہور جگہ لکھیں، جیسے 'Liberty Market' یا 'Gulberg 3'۔",
+  'rider.search.languageHint': "آپ انگریزی، اردو یا رومن اردو میں لکھ سکتے ہیں، جیسے 'داتا دربار' یا 'Badshahi Masjid'۔",
   'rider.search.tooShort': 'کم از کم {count} حروف لکھیں۔',
   'rider.search.searching': 'تلاش جاری ہے…',
   'rider.search.noResults': 'کچھ نہیں ملا۔ کوئی قریبی مشہور جگہ آزمائیں، یا پورا پتہ تلاش کریں۔',
@@ -1434,6 +1437,7 @@ const urLatn: Catalogue = {
   'rider.search.pickup': 'Pickup',
   'rider.search.dropoff': 'Drop-off',
   'rider.search.hint': "Koi qareebi mashhoor jagah likhein, jaise 'Liberty Market' ya 'Gulberg 3'.",
+  'rider.search.languageHint': "Aap English, Urdu ya Roman Urdu mein likh sakte hain, jaise 'Data Darbar' ya 'Badshahi Masjid'.",
   'rider.search.tooShort': 'Kam az kam {count} huroof likhein.',
   'rider.search.searching': 'Talash jaari hai…',
   'rider.search.noResults': 'Kuch nahin mila. Koi qareebi mashhoor jagah aazmayein, ya poora pata talash karein.',
@@ -1514,7 +1518,7 @@ const urLatn: Catalogue = {
   'fare.expiredNote': 'In qeematon ki miyaad khatam ho gayi hai.',
 };
 
-/** @internal exported for the catalogue completeness tests; code uses t(). */
+/** Exported for the catalogue tests and the FA-09 review export (scripts/i18n/); app code uses t(). */
 export const CATALOGUE: Readonly<Record<UiLocale, Catalogue>> = { en, ur, 'ur-Latn': urLatn };
 
 /** Locales whose copy is a provisional translation pending native-speaker review. */
@@ -1528,14 +1532,26 @@ export function isRtl(locale: UiLocale): boolean {
 
 export type TranslationParams = Readonly<Record<string, string | number>>;
 
-/** Looks up `key` and fills `{name}` placeholders. Unknown placeholders are left visible (tests forbid them). */
-export function t(locale: UiLocale, key: StringKey, params?: TranslationParams): string {
-  const template = CATALOGUE[locale][key];
+/**
+ * Fills `{name}` placeholders of a catalogue template (shared by the app and the Driver/Partner catalogues). Unknown
+ * placeholders are left visible (tests forbid them). Every value inserted into an Urdu (right-to-left) sentence, and any
+ * value containing right-to-left letters in a left-to-right sentence, is bidi-isolated (`bidi.ts`), so prices, numbers,
+ * times and mixed-script place names keep their own direction and never re-order the words around them.
+ */
+export function interpolate(locale: UiLocale, template: string, params?: TranslationParams): string {
   if (!params) return template;
+  const rtl = isRtl(locale);
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => {
     const value = params[name];
-    return value === undefined ? whole : String(value);
+    if (value === undefined) return whole;
+    const text = String(value);
+    return rtl || hasRtlLetters(text) ? isolate(text) : text;
   });
+}
+
+/** Looks up `key` and fills `{name}` placeholders. */
+export function t(locale: UiLocale, key: StringKey, params?: TranslationParams): string {
+  return interpolate(locale, CATALOGUE[locale][key], params);
 }
 
 /** Whether a server-supplied key (a product `nameKey`, a maintenance `messageKey`) has app copy; unknown keys are never shown raw as copy. */

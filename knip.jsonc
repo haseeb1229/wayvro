@@ -19,7 +19,9 @@
     "apps/realtime": { "entry": ["src/main.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     // Local Expo config plugins are referenced by path strings in app.config.ts, which knip does not resolve (F-P3-01).
     // The SP-02 instrumentation transformer is referenced by path from metro.config.cjs (ADR-052); the E2E build only.
-    "apps/wayvro-mobile": { "entry": ["plugins/*.mjs!", "build-tools/*.cjs!"] },
+    // The FA-09 native-review tools (scripts/i18n/, P3.9) are developer CLIs, analysed like the root scripts/*.mjs! entries;
+    // they are not part of the app bundle (Metro bundles only what the app imports).
+    "apps/wayvro-mobile": { "entry": ["plugins/*.mjs!", "build-tools/*.cjs!", "scripts/i18n/{export,import-review}.ts!", "scripts/i18n/*.mjs!"] },
     "apps/web-public": { "project": ["src/**/*.{ts,tsx}!"] },
     "apps/web-ops": { "project": ["src/**/*.{ts,tsx}!"] },
     "packages/*": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!"] },

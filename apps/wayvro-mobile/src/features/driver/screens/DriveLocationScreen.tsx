@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Section } from '../../../core/ui/components';
-import { Body, Screen, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Body, Screen, Title } from '../../../core/ui/primitives';
 import { readLocationStatus } from '../../../platform/location/status';
 import type { DriverStringKey } from '../i18n/driver-strings';
 import { useDriverText } from '../ui/DriverUi';
@@ -43,7 +43,6 @@ export default function DriveLocationScreen() {
       <Section title={dt('drive.location.privacyTitle')}>
         <Body>{dt('drive.location.privacy')}</Body>
       </Section>
-      <TranslationPendingNote />
     </Screen>
   );
 }

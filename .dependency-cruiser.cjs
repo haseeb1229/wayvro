@@ -100,7 +100,9 @@ module.exports = {
       name: 'not-to-dev-dep',
       severity: 'error',
       comment: 'Production code must not depend on devDependencies.',
-      from: { path: '^(apps|packages)/[^/]+/src/', pathNot: ['\\.test\\.tsx?$'] },
+      // `__mocks__/` holds test-only fixtures and helpers (never imported by app code; the mobile architecture test
+      // excludes it from production the same way), e.g. the P3.9 TypeScript-AST audit helper.
+      from: { path: '^(apps|packages)/[^/]+/src/', pathNot: ['\\.test\\.tsx?$', '/__mocks__/'] },
       to: { dependencyTypes: ['npm-dev'], dependencyTypesNot: ['type-only'], pathNot: ['node_modules/@types/'] },
     },
   ],

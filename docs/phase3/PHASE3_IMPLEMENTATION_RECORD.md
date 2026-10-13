@@ -174,6 +174,17 @@ Open items:
 - A K19 table-driven state-coverage test across en/ur/ur-Latn.
 - An upload "retrying" state.
 
+## P3.9 — Localisation, Roman-Urdu search, accessibility — IDs P18, A06, K19, U05, L08
+
+- **Bidi and interpolation:** one shared `interpolate()`. In Urdu every inserted value is direction-isolated; in other locales only values containing Urdu/Arabic letters are. Place rows take their direction from their own text.
+- **Review discipline (FA-09):** `Screen` always renders the "translation pending native-speaker review" note (the full-screen camera view adds it itself). The review ledger `REVIEW_LEDGER` is empty, so nothing is REVIEWED.
+- **Native-review export/import:** `pnpm --filter @wayvro/wayvro-mobile i18n:export` / `i18n:import-review` (`apps/wayvro-mobile/scripts/i18n/README.md`). The export is deterministic: 931 strings (app 469, driver 462); ur and ur-Latn are 931 PENDING_NATIVE_REVIEW each. Flags: SAFETY 261, LEGAL 154, PRICE 81, PERMISSION 56. 4 PKR format decisions are pending. The import never writes the ledger: it produces a git-ignored intake file for a developer to apply.
+- **Roman-Urdu / Urdu search (A06):** 39 synthetic landmark aliases (ur-Latn 20, en 11, ur 8) covering all 14 gazetteer places, seeded as PROPOSED only (`seedSyntheticLandmarkAliases`; activation needs two distinct staff). Normaliser tests prove each alias is stored in canonical form and finds its place.
+- **Accessibility (U05/L08):** static audits — role and label on every Pressable/TextInput; 48 dp targets read from the real StyleSheet; no truncation and no fixed text heights; no animation APIs; decorative glyphs hidden; live regions (blocking banners assertive, quote/fare updates polite); spoken fare labels; text alternatives for map tasks; AA contrast for every tone/badge/confidence pair.
+- **Guard changes:** `.dependency-cruiser.cjs` `not-to-dev-dep` now skips `src/__mocks__/` (the test-only syntax-tree helper imports `typescript`); knip entries for the review CLIs.
+
+Not done / external: FA-09 native review OPEN (blocks P18/A06/K19 exit); TalkBack walkthrough on a physical device (FA-14) NOT RUN; VoiceOver (FA-13) NOT RUN; 200 % font and RTL screenshots (SP-08 full matrix) — see the closure section; the A06 field measure belongs to SP-04 (FA-05).
+
 ## SP-08 — Mobile E2E tooling and release gates (ADR-052) — IDs V10, U04, U05, Q26 (+ V08/V05/V11/A01/L08/K19 flows)
 
 - **Tool:** Maestro CLI 2.11.0 (checksum-verified, telemetry off) on an emulator; flows in `tests/e2e-mobile/flows` (PR tier + full tier, manifest-driven); a throwaway stack `wayvro_e2e_mobile` (recreated per run) with the synthetic catalog and pricing (60 s quote TTL), accounts created through the public OTP/consent endpoints.

@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true
   },
-  "include": ["app.config.ts", "src/**/*.ts", "src/**/*.tsx", "vitest.config.ts"]
+  "include": ["app.config.ts", "src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts", "vitest.config.ts"]
 }

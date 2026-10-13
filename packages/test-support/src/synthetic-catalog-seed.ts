@@ -130,7 +130,8 @@ export function assertSyntheticSeedAllowed(env: string | undefined, databaseUrl:
   if (!LOOPBACK_HOSTS.has(host)) throw new Error(`synthetic catalog seed refused: database host ${host} is not a loopback host`);
 }
 
-async function nonSyntheticConfiguration(c: pg.ClientBase): Promise<string[]> {
+/** Tables holding NON-synthetic configuration (the seeds refuse to write next to real configuration). */
+export async function nonSyntheticConfiguration(c: pg.ClientBase): Promise<string[]> {
   const found: string[] = [];
   const probe = async (table: string, where: string): Promise<void> => {
     const exists = (await c.query<{ t: string | null }>(`select to_regclass($1)::text t`, [table])).rows[0]?.t;

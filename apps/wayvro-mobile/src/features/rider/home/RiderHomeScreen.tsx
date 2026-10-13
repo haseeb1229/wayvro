@@ -15,7 +15,7 @@ import { switchDisabled } from '../../../core/release/client-policy';
 import { SoftUpdateBanner, useAppPolicy } from '../../../core/release/AppPolicyGate';
 import { useServices, useSessionState } from '../../../core/services/ServicesProvider';
 import { Card, ModeSwitch, SkeletonRow, StaleIndicator } from '../../../core/ui/components';
-import { Banner, Body, Button, ErrorBanner, Heading, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, ErrorBanner, Heading, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { FullyDrawnMarker } from '../../../platform/perf/fully-drawn';
 import { useRiderFlow } from '../flow/RiderFlowProvider';
@@ -167,7 +167,6 @@ export function RiderHomeScreen() {
           router.push('/home');
         }}
       />
-      <TranslationPendingNote />
     </Screen>
   );
 }

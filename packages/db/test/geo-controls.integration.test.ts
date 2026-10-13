@@ -3,10 +3,19 @@
  * as a no-op; hour-bucket CHECK; one ACTIVE budget per (provider, SKU); maker-checker with the single-staff DECREASE
  * exception (proven against the ACTIVE row by the guard trigger); budget and alias guard triggers (immutability,
  * transitions, no delete); alias approver ≠ creator; grants executed as LOGIN members of wayvro_api / wayvro_worker /
- * wayvro_realtime; nothing for PUBLIC. Throwaway databases; synthetic data only.
+ * wayvro_realtime; nothing for PUBLIC; the synthetic landmark-alias seed (P3.9, A06) writes PROPOSED rows only.
+ * Throwaway databases; synthetic data only.
  */
 import { randomUUID } from 'node:crypto';
-import { createRestrictedLogin, createTestDatabase, type RestrictedLogin, type TestDatabase } from '@wayvro/test-support';
+import {
+  createRestrictedLogin,
+  createTestDatabase,
+  seedSyntheticLandmarkAliases,
+  SYNTHETIC_ALIAS_PROPOSER,
+  SYNTHETIC_LANDMARK_ALIASES,
+  type RestrictedLogin,
+  type TestDatabase,
+} from '@wayvro/test-support';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runMigrations } from '../src/index.js';
@@ -284,5 +293,59 @@ describe('0011 geo controls: grants (as restricted LOGIN roles)', () => {
     expect(await pgCode(worker.query(`select 1 from geo.landmark_aliases`))).toBe('42501');
     expect(await pgCode(realtime.query(`select 1 from geo.provider_usage`))).toBe('42501');
     expect(await pgCode(realtime.query(`select 1 from geo.provider_budgets`))).toBe('42501');
+  });
+});
+
+describe('P3.9 synthetic landmark-alias seed (A06; development/test only)', () => {
+  it('refuses outside local/test and against a non-loopback database before connecting', async () => {
+    await expect(seedSyntheticLandmarkAliases({ env: 'production', databaseUrl: 'postgres://u:p@127.0.0.1:5432/db' })).rejects.toThrow(/WAYVRO_ENV/);
+    await expect(seedSyntheticLandmarkAliases({ env: 'local', databaseUrl: 'postgres://u:p@db.example.org:5432/db' })).rejects.toThrow(/loopback/);
+  });
+
+  it('writes PROPOSED synthetic aliases idempotently; only a different staff member activates one; a re-run never reverts it', async () => {
+    const db = await createTestDatabase(adminUrl);
+    try {
+      await runMigrations(db.url);
+      const total = SYNTHETIC_LANDMARK_ALIASES.length;
+      const lines: string[] = [];
+      expect(await seedSyntheticLandmarkAliases({ env: 'test', databaseUrl: db.url, log: (l) => lines.push(l) })).toEqual({ inserted: total, total });
+      expect(lines.length).toBeGreaterThan(0);
+      expect(await seedSyntheticLandmarkAliases({ env: 'test', databaseUrl: db.url })).toEqual({ inserted: 0, total });
+      const pool = new pg.Pool({ connectionString: db.url, max: 1 });
+      try {
+        const rows = await pool.query<{ status: string; creator: string; approver: string | null; same: boolean }>(
+          `select status, created_by_staff_id creator, approved_by_staff_id approver, alias_normalised = alias_display same from geo.landmark_aliases`,
+        );
+        expect(rows.rowCount).toBe(total);
+        for (const r of rows.rows) expect(r).toEqual({ status: 'PROPOSED', creator: SYNTHETIC_ALIAS_PROPOSER.staffId, approver: null, same: true });
+        // The proposer is inert: OFFBOARDED, no credential, and it cannot approve its own proposal.
+        expect((await pool.query(`select status from staff.staff_accounts where id = $1`, [SYNTHETIC_ALIAS_PROPOSER.staffId])).rows).toEqual([
+          { status: 'OFFBOARDED' },
+        ]);
+        expect((await pool.query(`select 1 from staff.webauthn_credentials where staff_id = $1`, [SYNTHETIC_ALIAS_PROPOSER.staffId])).rowCount).toBe(0);
+        const first = SYNTHETIC_LANDMARK_ALIASES[0]?.id ?? '';
+        const approve = (approver: string) =>
+          pool.query(`update geo.landmark_aliases set status = 'ACTIVE', approved_by_staff_id = $2 where id = $1`, [first, approver]);
+        expect(await pgCode(approve(SYNTHETIC_ALIAS_PROPOSER.staffId))).toBe('23514');
+        const checker = randomUUID();
+        await pool.query(
+          `insert into staff.staff_accounts (id, display_name, work_email, status, activated_at) values ($1, 'Synthetic checker', $2, 'ACTIVE', now())`,
+          [checker, `c-${checker.slice(0, 8)}@example.org`],
+        );
+        await approve(checker);
+        await seedSyntheticLandmarkAliases({ env: 'test', databaseUrl: db.url });
+        expect((await pool.query(`select status from geo.landmark_aliases where id = $1`, [first])).rows).toEqual([{ status: 'ACTIVE' }]);
+        // Next to real (non-synthetic) configuration the seed refuses, like the catalog seed.
+        await pool.query(
+          `insert into catalog.zone_sets (id, city_code, version, status, is_synthetic, source_reference) values ($1, 'LHR', 1, 'DRAFT', false, 'licensed boundary source')`,
+          [randomUUID()],
+        );
+      } finally {
+        await pool.end();
+      }
+      await expect(seedSyntheticLandmarkAliases({ env: 'test', databaseUrl: db.url })).rejects.toThrow(/non-synthetic configuration/);
+    } finally {
+      await db.drop();
+    }
   });
 });

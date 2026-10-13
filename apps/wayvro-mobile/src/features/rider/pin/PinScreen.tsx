@@ -5,7 +5,7 @@ import { useI18n } from '../../../core/i18n/I18nProvider';
 import { useLiteMode } from '../../../core/lite/use-lite';
 import { useAppPolicy } from '../../../core/release/AppPolicyGate';
 import { Card } from '../../../core/ui/components';
-import { Banner, Body, Button, Heading, Screen, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Heading, Screen } from '../../../core/ui/primitives';
 import { startCurrentLocation } from '../location/start-location';
 import { watchPickupFix } from '../../../platform/location/request';
 import { useRiderFlow } from '../flow/RiderFlowProvider';
@@ -215,7 +215,6 @@ export function PinScreen() {
       })()}
       {searchInstead}
       <Body muted>{t('rider.pin.mapLater')}</Body>
-      <TranslationPendingNote />
     </Screen>
   );
 }

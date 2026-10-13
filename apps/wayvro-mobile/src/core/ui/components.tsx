@@ -1,7 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { livePoliteness } from './a11y';
 import { useDirection } from './primitives';
-import { colors, elevation, MIN_TOUCH_TARGET, radii, spacing, typography } from './tokens';
+import { colors, confidencePairs, elevation, MIN_TOUCH_TARGET, radii, spacing, typography } from './tokens';
 
 /**
  * Phase-3 presentational components (UX doc §13). Tokens only, no business rules: every label, amount, countdown text
@@ -40,7 +41,11 @@ export function SkeletonRow({ wide = true }: { readonly wide?: boolean }) {
   );
 }
 
-/** One place suggestion: landmark line, area line, optional Urdu-script line; reads as one element. */
+/**
+ * One place suggestion: landmark line, area line, optional Urdu-script line; reads as one element. Address lines are
+ * server text in any script, so each line takes its writing direction from its own first letter (a Latin address in
+ * the Urdu UI stays left-to-right inside a right-aligned row) instead of from the UI language.
+ */
 export function PlaceRow(props: {
   readonly primary: string;
   readonly secondary: string | null;
@@ -64,8 +69,8 @@ export function PlaceRow(props: {
         {props.glyph}
       </Text>
       <View style={styles.fill}>
-        <Text style={[styles.body, dir.text]}>{props.primary}</Text>
-        {props.secondary === null ? null : <Text style={[styles.caption, styles.muted, dir.text]}>{props.secondary}</Text>}
+        <Text style={[styles.body, dir.content(props.primary)]}>{props.primary}</Text>
+        {props.secondary === null ? null : <Text style={[styles.caption, styles.muted, dir.content(props.secondary)]}>{props.secondary}</Text>}
         {props.urdu === undefined || props.urdu === null ? null : <Text style={[styles.caption, styles.muted, styles.textRtl]}>{props.urdu}</Text>}
       </View>
     </Pressable>
@@ -74,19 +79,14 @@ export function PlaceRow(props: {
 
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
 
-const CONFIDENCE_LOOK: Readonly<Record<ConfidenceLevel, { readonly bg: string; readonly fg: string; readonly glyph: string }>> = {
-  HIGH: { bg: colors.confidenceHighBackground, fg: colors.confidenceHighText, glyph: '●●●' },
-  MEDIUM: { bg: colors.confidenceMediumBackground, fg: colors.confidenceMediumText, glyph: '●●○' },
-  LOW: { bg: colors.confidenceLowBackground, fg: colors.confidenceLowText, glyph: '●○○' },
-  UNKNOWN: { bg: colors.confidenceUnknownBackground, fg: colors.confidenceUnknownText, glyph: '○○○' },
-};
+const CONFIDENCE_GLYPH: Readonly<Record<ConfidenceLevel, string>> = { HIGH: '●●●', MEDIUM: '●●○', LOW: '●○○', UNKNOWN: '○○○' };
 
 /** Route confidence as text plus a shape (never colour alone). */
 export function ConfidenceBadge({ level, text }: { readonly level: ConfidenceLevel; readonly text: string }) {
-  const look = CONFIDENCE_LOOK[level];
+  const look = confidencePairs[level];
   return (
-    <View style={[styles.badge, { backgroundColor: look.bg }]} accessible accessibilityLabel={text}>
-      <Text style={[styles.captionStrong, { color: look.fg }]} importantForAccessibility="no">{`${look.glyph} ${text}`}</Text>
+    <View style={[styles.badge, { backgroundColor: look.background }]} accessible accessibilityLabel={text}>
+      <Text style={[styles.captionStrong, { color: look.text }]} importantForAccessibility="no">{`${CONFIDENCE_GLYPH[level]} ${text}`}</Text>
     </View>
   );
 }
@@ -95,7 +95,7 @@ export function ConfidenceBadge({ level, text }: { readonly level: ConfidenceLev
 export function StaleIndicator({ text }: { readonly text: string }) {
   const dir = useDirection();
   return (
-    <View style={styles.stale} accessibilityLiveRegion="polite">
+    <View style={styles.stale} accessibilityLiveRegion={livePoliteness('stale')}>
       <Text style={[styles.caption, styles.staleText, dir.text]}>{text}</Text>
     </View>
   );
@@ -162,24 +162,27 @@ export function QuoteOptionCard(props: {
   );
 }
 
-/** Ordered "label, amount" rows exactly as the server sent them, total last. Amounts align with tabular figures. */
+/**
+ * Ordered "label, amount" rows exactly as the server sent them, total last. Amounts align with tabular figures and stay
+ * left-to-right runs in the Urdu (mirrored) row; each row is read as one element with its spoken amount ("100 rupees").
+ */
 export function FareBreakdown({
   rows,
   total,
 }: {
-  readonly rows: readonly { readonly key: string; readonly label: string; readonly amount: string }[];
-  readonly total: { readonly label: string; readonly amount: string };
+  readonly rows: readonly { readonly key: string; readonly label: string; readonly amount: string; readonly spoken: string }[];
+  readonly total: { readonly label: string; readonly amount: string; readonly spoken: string };
 }) {
   const dir = useDirection();
   return (
     <View accessibilityRole="list" style={styles.fare}>
       {rows.map((row) => (
-        <View key={row.key} style={[styles.fareRow, dir.row]} accessible accessibilityLabel={`${row.label}, ${row.amount}`}>
+        <View key={row.key} style={[styles.fareRow, dir.row]} accessible accessibilityLabel={row.spoken}>
           <Text style={[styles.body, styles.fill, dir.text]}>{row.label}</Text>
           <Text style={[styles.body, styles.tabular, styles.ltr]}>{row.amount}</Text>
         </View>
       ))}
-      <View style={[styles.fareRow, styles.fareTotal, dir.row]} accessible accessibilityLabel={`${total.label}, ${total.amount}`}>
+      <View style={[styles.fareRow, styles.fareTotal, dir.row]} accessible accessibilityLabel={total.spoken}>
         <Text style={[styles.heading, styles.fill, dir.text]}>{total.label}</Text>
         <Text style={[styles.price, styles.ltr]}>{total.amount}</Text>
       </View>

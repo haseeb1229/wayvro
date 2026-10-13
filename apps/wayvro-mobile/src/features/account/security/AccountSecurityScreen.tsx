@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useI18n } from '../../../core/i18n/I18nProvider';
-import { Body, LinkRow, Screen, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Body, LinkRow, Screen, Title } from '../../../core/ui/primitives';
 import { PhoneChangeNotice } from './PhoneChangeNotice';
 
 /** Phone number and account (P2.9): change number, lost-phone recovery request, deletion, security activity. */
@@ -38,7 +38,6 @@ export default function AccountSecurityScreen() {
           router.push('/account/delete');
         }}
       />
-      <TranslationPendingNote />
     </Screen>
   );
 }

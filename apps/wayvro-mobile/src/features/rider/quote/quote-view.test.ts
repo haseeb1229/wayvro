@@ -111,7 +111,10 @@ describe('quote view adapter (B03/B04/B06 display)', () => {
       snappedPickup: 'Pickup point: Synthetic Gate 1',
       attribution: '© OpenStreetMap contributors',
     });
-    expect(pricedView(tr, 'ur', group, NO_DRAFT, SERVER_NOW).route.snappedPickup).toBe('Pickup point: مصنوعی گیٹ');
+    // The Urdu-script name inside an English sentence is bidi-isolated (FSI … PDI) so it cannot re-order the sentence.
+    expect(pricedView(tr, 'ur', group, NO_DRAFT, SERVER_NOW).route.snappedPickup).toBe(
+      `Pickup point: ${String.fromCodePoint(0x2068)}مصنوعی گیٹ${String.fromCodePoint(0x2069)}`,
+    );
     expect(attributionText(tr, 'OTHER_DATA')).toBe('Map data attribution: OTHER_DATA');
     expect(productName(tr, 'product.unknown.name', 'COMFORT')).toBe('Comfort');
     expect(productName(tr, null, 'BIKE')).toBe('Bike');
@@ -231,7 +234,15 @@ describe('fare breakdown (components exactly as sent, total last)', () => {
       ['Tolls', 'Not included'],
       ['Rounding', 'Rs 10'],
     ]);
-    expect(view.total).toEqual({ label: 'Total', amount: 'Rs 640' });
+    expect(view.total).toEqual({ label: 'Total', amount: 'Rs 640', spoken: 'Total, 640 rupees' });
+    // Each row is read as one element with its spoken amount; a disclosed excluded toll is read as "Not included".
+    expect(view.rows.map((r) => r.spoken)).toEqual([
+      'Base fare, 150 rupees',
+      'Distance, 370 rupees',
+      'Time, 110 rupees',
+      'Tolls, Not included',
+      'Rounding, 10 rupees',
+    ]);
     expect(view.notes).toEqual(['Tolls are not included', 'Includes tax at 16%: Rs 88.28', "Prices are calculated by Wayvro's servers."]);
     expect(view.reference).toBe('Rate card 3 · pe-v1');
     expect(view.expired).toBe(false);

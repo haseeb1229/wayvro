@@ -8,3 +8,5 @@ export {
   type SyntheticCatalogSeedOptions,
   type SyntheticCatalogSeedResult,
 } from './synthetic-catalog-seed.js';
+export { seedSyntheticLandmarkAliases, type SyntheticAliasSeedOptions, type SyntheticAliasSeedResult } from './synthetic-alias-seed.js';
+export { SYNTHETIC_ALIAS_PROPOSER, SYNTHETIC_LANDMARK_ALIASES, type SyntheticLandmarkAlias } from './synthetic-landmark-aliases.js';

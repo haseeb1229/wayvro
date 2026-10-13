@@ -124,7 +124,7 @@ function BlockingScreen({ view, checking, onRetry }: { readonly view: ClientPoli
     return (
       <Screen topInset>
         <Title>{t('app.update.title')}</Title>
-        <Banner tone="error" text={t(view.reasonClass === null ? 'app.update.reason.generic' : HARD_REASON_KEY[view.reasonClass])} />
+        <Banner tone="error" text={t(view.reasonClass === null ? 'app.update.reason.generic' : HARD_REASON_KEY[view.reasonClass])} announce="blocking" />
         <Body>{t('app.update.fromStore')}</Body>
         {escapes}
       </Screen>
@@ -135,7 +135,7 @@ function BlockingScreen({ view, checking, onRetry }: { readonly view: ClientPoli
   return (
     <Screen topInset>
       <Title>{t('app.maintenance.title')}</Title>
-      <Banner tone="warning" text={t(messageKey)} />
+      <Banner tone="warning" text={t(messageKey)} announce="blocking" />
       {expectedEnd === null ? null : <Body>{t('app.maintenance.until', { time: formatDateTime(expectedEnd, locale) })}</Body>}
       <Body muted>{t('app.maintenance.autoRetry')}</Body>
       <Button label={t('common.retry')} busy={checking} busyLabel={t('app.maintenance.checking')} onPress={onRetry} />

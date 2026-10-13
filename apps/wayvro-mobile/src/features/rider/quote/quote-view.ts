@@ -2,6 +2,7 @@ import { QUOTE_UNAVAILABLE_REASONS, type MoneyAmount, type QuoteGroup, type Quot
 import { toApiError } from '../../../core/api/errors';
 import { pkrParts, formatPkr } from '../../../core/i18n/money';
 import { isStringKey, type StringKey, type TranslationParams, type UiLocale } from '../../../core/i18n/strings';
+import { spokenSentence } from '../../../core/ui/a11y';
 import type { DraftPlace } from '../flow/draft';
 import { countdownState } from './countdown';
 
@@ -93,7 +94,7 @@ export function productName(tr: Tr, nameKey: string | null, productCode: string)
   return productCode;
 }
 
-/** Spoken money ("640 rupees", "640 rupees 50 paisa"); null when the amount is malformed. @internal exported for unit tests */
+/** Spoken money ("640 rupees", "640 rupees 50 paisa"); null when the amount is malformed. */
 export function spokenMoney(tr: Tr, amount: MoneyAmount): string | null {
   const parts = pkrParts(amount);
   if (parts === null) return null;
@@ -199,7 +200,7 @@ export function pricedView(
       price: formatPkr(option.total),
       expiresAt: option.expiresAt,
       expired,
-      spoken: [title, seats, luggage, spokenPrice, ...notes].join('. '),
+      spoken: spokenSentence([title, seats, luggage, spokenPrice, ...notes]),
     };
   });
   return {

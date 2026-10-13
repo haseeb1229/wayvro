@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colors, MIN_TOUCH_TARGET } from './tokens';
+import { colors, confidencePairs, MIN_TOUCH_TARGET, tonePairs } from './tokens';
 
 /** WCAG 2.x relative luminance and contrast ratio. */
 function luminance(hex: string): number {
@@ -54,6 +54,25 @@ describe('design tokens (WCAG AA)', () => {
 
   it('every non-text indicator meets 3:1 against the page background', () => {
     for (const c of NON_TEXT) expect(contrast(colors[c], colors.background), c).toBeGreaterThanOrEqual(3);
+  });
+
+  it('P3.9: every banner tone and confidence badge pair the components render meets 4.5:1 (incl. stale/offline/confidence)', () => {
+    for (const [tone, pair] of Object.entries(tonePairs)) expect(contrast(pair.text, pair.background), `banner ${tone}`).toBeGreaterThanOrEqual(4.5);
+    for (const [level, pair] of Object.entries(confidencePairs))
+      expect(contrast(pair.text, pair.background), `confidence ${level}`).toBeGreaterThanOrEqual(4.5);
+    // Text on filled buttons (primary and danger) and muted captions on every banner background.
+    expect(contrast(colors.onPrimary, colors.danger)).toBeGreaterThanOrEqual(4.5);
+    for (const [tone, pair] of Object.entries(tonePairs)) expect(contrast(colors.textMuted, pair.background), `muted on ${tone}`).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('P3.9: no text colour token is left out of the contrast checks', () => {
+    const tested = new Set<string>([
+      ...TEXT_PAIRS.map(([fg]) => colors[fg]),
+      ...Object.values(tonePairs).map((p) => p.text),
+      ...Object.values(confidencePairs).map((p) => p.text),
+    ]);
+    const textTokens = (Object.keys(colors) as Color[]).filter((name) => /Text$|^text|^onPrimary$|^danger$/.test(name));
+    for (const name of textTokens) expect(tested.has(colors[name]), name).toBe(true);
   });
 
   it('touch targets are at least 48 dp', () => {

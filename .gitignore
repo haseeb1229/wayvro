@@ -46,6 +46,9 @@ credentials.json
 # SP-04 geo benchmark: raw provider responses, working capture CSV, GPX, run records, blind keys and the usage ledger
 # (vendor terms + founder privacy; only aggregated metrics may ever be committed — tools/geo-bench/README.md).
 tools/geo-bench/.local/
+# FA-09 native-review package and returned sheets (exported by `i18n:export`; reviewer names stay out of Git until a
+# developer records them in REVIEW_LEDGER — apps/wayvro-mobile/scripts/i18n/README.md).
+apps/wayvro-mobile/i18n-review/
 *.dump
 *.sql.gz
 *.backup

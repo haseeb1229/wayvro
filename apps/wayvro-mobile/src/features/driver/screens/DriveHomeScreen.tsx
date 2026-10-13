@@ -6,7 +6,7 @@ import { useIntentNavigation } from '../../../core/intents/use-intents';
 import { ModeNoticeBanner, useModeSwitch } from '../../../core/mode/use-mode';
 import { SoftUpdateBanner } from '../../../core/release/AppPolicyGate';
 import { ModeSwitch, SkeletonRow } from '../../../core/ui/components';
-import { Banner, Body, Button, ErrorBanner, LinkRow, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, ErrorBanner, LinkRow, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { readLocationStatus } from '../../../platform/location/status';
 import { useCompliance } from '../api/driver-queries';
@@ -133,7 +133,6 @@ export default function DriveHomeScreen() {
           router.push('/home');
         }}
       />
-      <TranslationPendingNote />
     </Screen>
   );
 }

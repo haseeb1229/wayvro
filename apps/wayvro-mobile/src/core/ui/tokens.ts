@@ -42,6 +42,26 @@ export const colors = {
   routeLine: '#1F5FBF',
 } as const;
 
+/**
+ * Foreground/background pairs of the banner tones and the route-confidence badge. They are data here (not inline in the
+ * components) so the contrast test checks exactly the pairs the components render.
+ */
+export const tonePairs = {
+  info: { background: colors.infoBackground, text: colors.infoText },
+  warning: { background: colors.warningBackground, text: colors.warningText },
+  error: { background: colors.errorBackground, text: colors.danger },
+  success: { background: colors.successBackground, text: colors.successText },
+  offline: { background: colors.offlineBackground, text: colors.offlineText },
+  stale: { background: colors.staleBackground, text: colors.staleText },
+} as const;
+
+export const confidencePairs = {
+  HIGH: { background: colors.confidenceHighBackground, text: colors.confidenceHighText },
+  MEDIUM: { background: colors.confidenceMediumBackground, text: colors.confidenceMediumText },
+  LOW: { background: colors.confidenceLowBackground, text: colors.confidenceLowText },
+  UNKNOWN: { background: colors.confidenceUnknownBackground, text: colors.confidenceUnknownText },
+} as const;
+
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
 
 export const radii = { sm: 6, md: 8, lg: 12 } as const;

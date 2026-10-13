@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useServerNow } from '../../../core/api/use-server-now';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { FareBreakdown, StaleIndicator } from '../../../core/ui/components';
-import { Banner, Body, Button, Heading, Screen, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Heading, Screen, Title } from '../../../core/ui/primitives';
 import { useRiderFlow } from '../flow/RiderFlowProvider';
 import { fareView } from './fare-view';
 
@@ -44,7 +44,7 @@ export function FareScreen() {
       <Heading>{view.title}</Heading>
       {view.expired ? (
         <>
-          <Banner tone="warning" text={t('rider.quote.pricesUpdated')} />
+          <Banner tone="warning" text={t('rider.quote.pricesUpdated')} announce="expiry" />
           <StaleIndicator text={t('fare.expiredNote')} />
           <Button
             label={t('rider.quote.getNewPrice')}
@@ -61,7 +61,6 @@ export function FareScreen() {
         </Body>
       ))}
       <Body muted>{view.reference}</Body>
-      <TranslationPendingNote />
     </Screen>
   );
 }
