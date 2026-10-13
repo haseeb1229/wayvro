@@ -1,0 +1,4 @@
+# gitleaks fingerprints of reviewed FALSE POSITIVES only (never real secrets). Each entry: why it is not a secret.
+# generic-api-key matched the words "provider key or attribution" in a unit-test TITLE (commit a885dae, Phase 3 P3.2);
+# no credential exists there. The title was reworded in the next commit; this entry covers only that historical line.
+a885daeac0226dd2594e64fce050f76ba4efc7e0:packages/provider-interfaces/src/geo-binding.test.ts:generic-api-key:64

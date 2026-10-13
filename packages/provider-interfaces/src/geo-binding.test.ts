@@ -61,7 +61,7 @@ describe('assertGeoBundle (CON-P3-16 / CONFIG-BUNDLE)', () => {
     }
   });
 
-  it('refuses malformed declarations: negative or fractional TTL/price, bad provider key or attribution, wrong/duplicate/missing SKU', () => {
+  it('refuses malformed declarations (negative or fractional TTL or price, invalid provider id or attribution, wrong, duplicate or missing SKU)', () => {
     const bad: Array<[string, () => unknown]> = [
       ['ttl', () => assertGeoBundle('none', bindProviders('test', { routing: routing([licence({ sku: 'ROUTE', maxCacheTtlSeconds: -1 })]) }))],
       ['ttl-frac', () => assertGeoBundle('none', bindProviders('test', { routing: routing([licence({ sku: 'ROUTE', maxCacheTtlSeconds: 1.5 })]) }))],
