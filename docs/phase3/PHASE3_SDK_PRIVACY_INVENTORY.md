@@ -1,5 +1,5 @@
 # PHASE3_SDK_PRIVACY_INVENTORY — Mobile/web third-party SDK and provider privacy inventory (U04) (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02 APPROVED; NEW FA-19 Mapbox licence gate); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** sections 0–10 are the 2026-10-12 planning baseline; **§11 is the implemented P3.10 inventory (2026-10-13)**. Planning status: PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02 APPROVED; NEW FA-19 Mapbox licence gate); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 ## 0. Purpose and scope
 
@@ -141,10 +141,10 @@ The check is a guard against silent drift; approval itself remains a human (foun
 
 | When | Action | Status |
 |---|---|---|
-| P3.0 | add rows for oasdiff; fix and re-verify expo-dev-client release behaviour (F-P3-01) | NOT RUN |
+| P3.0 | add rows for oasdiff; fix and re-verify expo-dev-client release behaviour (F-P3-01) | DONE — oasdiff 1.32.1 is a CI-only binary (checksum-verified, never shipped); the release AAB intent-filter gate proves no `exp+wayvro` scheme (CI Android job) |
 | P3.5 | expo-location row moves to APPROVED on install (FA-02 APPROVED 2026-10-12); manifest/allowlist delta COARSE + FINE | DONE in source (57.0.20 installed; allowlist + `blockedPermissions` updated; prebuild main manifest shows only COARSE + FINE added) — release-AAB gate and network capture NOT RUN |
-| P3.7 | choose renderer + tile host + geo bundle on SP-04/SP-02 evidence (an S2 bundle only with FA-19 resolved for a pilot/production freeze); remove rows of non-chosen candidates; telemetry settings verified by network capture | NOT RUN |
-| P3.10 | regenerate from the actual release AAB (dependency tree, autolinked modules, manifest, network capture of a scripted rider/driver session); store-disclosure drafts updated | NOT RUN |
+| P3.7 | choose renderer + tile host + geo bundle on SP-04/SP-02 evidence (an S2 bundle only with FA-19 resolved for a pilot/production freeze); remove rows of non-chosen candidates; telemetry settings verified by network capture | **BLOCKED-EXTERNAL** — no SP-04 field data (FA-05), no provider accounts (FA-06), no SP-02 device (FA-04), FA-19 open. No renderer is installed; the candidate rows stay CANDIDATE; `allowedVendorHosts` stays empty |
+| P3.10 | regenerate from the actual release AAB (dependency tree, autolinked modules, manifest, network capture of a scripted rider/driver session); store-disclosure drafts updated | **PARTIAL** — see §11: the dependency tree, resolved autolinked modules and the release manifest are checked against `infra/ci/android/sdk-inventory.json` on every Android CI run (SDK-INV, before Gradle); network capture of a scripted session **NOT RUN** (no device/proxy setup in this run); store-disclosure drafts unchanged (EG-18) |
 
 Open items: runtime network capture of the current release build (never done); exact Play Data safety categories for the chosen renderer SDK; Maestro CLI analytics behaviour; Transistorsoft licence-check/telemetry endpoints (only if CONDITIONAL activates); Mapbox Commercial Application License applicability (FA-19, only if S2 is a freeze candidate); Expo-module required-reason APIs on iOS; vendor DPAs and subprocessor lists (EG-11/EG-12, counsel).
 
@@ -171,3 +171,17 @@ request surface asserted by the adapter privacy test (no account id, phone, name
 | SP-04 harness `tools/geo-bench` | dev-only | the same requests as above, from the founder's machine with evaluation keys (FA-06) | raw responses only in git-ignored `tools/geo-bench/.local/`, deleted ≤ 30 days; only aggregated metrics committed | evaluation accounts revoked after SP-04 | DEV-ONLY (never in a deployable artefact) |
 
 Re-generated at P3.7 with the chosen bundle (rows of non-chosen candidates removed).
+
+## 11. P3.10 final inventory (Phase 3 closure, 2026-10-13)
+
+The machine-readable inventory `infra/ci/android/sdk-inventory.json` is the enforced U04 list (ADR-052; `check-sdk-inventory.mjs` runs first in `node scripts/android-build.mjs release` and fails on any autolinked module or mobile dependency without an exact-version row, and on any DEV-ONLY / PROPOSED / CANDIDATE status).
+
+| Status | Count | Rows |
+|---|---|---|
+| APPROVED (new in Phase 3) | 2 | `expo-location` 57.0.20 (FA-02: COARSE + FINE, foreground only); `wayvro-fully-drawn` (first-party local Expo module: `Activity.reportFullyDrawn()` once per process; no data, no permission, no network) |
+| APPROVED-EXISTING | 34 | the Phase 1/2 runtime dependencies, plus 14 transitive autolinked modules first listed at P3.5 (`transitiveAddedP35: true`): `@expo/dom-webview`, `@expo/log-box`, `@expo/ui`, `@react-native-masked-view/masked-view`, `expo-asset`, `expo-font`, `expo-image-loader`, `expo-json-utils`, `expo-keep-awake`, `expo-manifests`, `expo-updates-interface`, `expo-dev-launcher`, `expo-dev-menu`, `expo-dev-menu-interface` — all MIT, all already present in the Phase 1/2 release AABs; the release-purity gate proves the dev-launcher/dev-menu implementations are absent from the release dex |
+| CANDIDATE (not installed) | — | map renderers and geo SDKs (§4/§10) — no freeze (P3.7 BLOCKED-EXTERNAL) |
+
+Release-app permission delta for the whole of Phase 3: `ACCESS_COARSE_LOCATION` + `ACCESS_FINE_LOCATION` only (allowlist gate). No background location, foreground service, notifications, full-screen intent, contacts, Bluetooth, microphone or storage/media permission. No analytics, ads, crash-reporting or update SDK. `allowedVendorHosts` is empty (BUNDLE-SECRETS gate).
+
+**Founder confirmation required:** the 14 transitive rows above (recorded APPROVED-EXISTING by the SP-08 slice) and the first-party `wayvro-fully-drawn` native module (FA-09-style native code review). **Not done:** runtime network capture of the release build; Play Data safety / privacy-manifest updates (EG-18).

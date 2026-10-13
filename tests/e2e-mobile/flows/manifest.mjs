@@ -7,7 +7,7 @@
  *   file / sequence  Maestro file(s) under flows/; a sequence interleaves server-state hooks (run-flows.mjs `hooks`)
  *   before / after   hooks around the flow (`after` always runs, also on failure)
  *   checks           host-side assertions after a passing flow (run-flows.mjs `checks`)
- *   requires         `pricing`: NOT RUN (pricing pending) until the pricing slice seeds a synthetic rate card
+ *   requires         `pricing`: NOT RUN (with the reason) when the stack seeded no ACTIVE synthetic rate card
  *   apiLevels        flows that tap OS permission dialogs run on API 35 only (SP-08 §6)
  *   inv07            INV-07 flows: never quarantined; FLAKY fails the run
  */

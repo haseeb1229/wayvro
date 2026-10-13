@@ -21,7 +21,7 @@ tags: [pr, full]
 - tapOn:
     id: mode-switch-driver
 - extendedWaitUntil:
-    visible: 'Going online isn.t available yet.*'
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
     timeout: 30000
 - assertNotVisible:
     id: rider-home-where-to
@@ -31,16 +31,16 @@ tags: [pr, full]
 - launchApp:
     stopApp: true
 - extendedWaitUntil:
-    visible: 'Going online isn.t available yet.*'
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
     timeout: 60000
 - assertNotVisible:
     id: rider-home-where-to
 # hardware back on a mode home exits (the stack was reset by the switch)
 - back
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - launchApp
 - extendedWaitUntil:
-    visible: 'Going online isn.t available yet.*'
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
     timeout: 60000
 - scrollUntilVisible:
     element:

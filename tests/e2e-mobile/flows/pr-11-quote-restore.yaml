@@ -1,7 +1,7 @@
 # SP-08 #3 / NAV-03 (PR per PHASE3_TEST_STRATEGY §4.14, N) — V08, L08: process death while backgrounded on a quote →
 # relaunch offers the last price check by SERVER state ("Continue with your last price check" or "Prices have been
 # updated"); no coordinates are restored from the device.
-# REQUIRES the pricing slice: NOT RUN (pricing pending) until mobile-stack.mjs can seed a synthetic rate card.
+# REQUIRES ACTIVE synthetic rate cards (seeded by mobile-stack.mjs): NOT RUN with the reason otherwise.
 appId: dev.wayvro.app
 name: pr-11-quote-restore
 tags: [pr, full, pricing]

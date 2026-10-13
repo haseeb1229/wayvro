@@ -1,6 +1,6 @@
 # PHASE3_IMPLEMENTATION_RECORD — Full macro Phase 3 implementation (P3.0 – P3.10)
 
-**Branch:** `phase-3/maps-quotes-unified-ux` from protected `main` @ `b1a19865fa1a3f72244e2b5b10f9e1e5148004b9` (merge of the reviewed Phase-3 planning PR #7). · **Authorisation:** founder authorised the whole macro Phase 3 engineering run in one session (2026-10-12, `WAYVRO_PHASE3_FULL_IMPLEMENTATION_AUTHORISATION`); P3.0–P3.10 are internal checkpoints, not approval points. · **Plan:** `docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md` with `<PHASE3_PLAN_MERGE_SHA>` = `b1a1986…`, and every `docs/phase3/` design file. · **Status:** IN PROGRESS. · **Agent:** Claude Code (self-audit, not independent verification). · Synthetic data only; no provider account, key, real boundary, real price or real user data exists in this run.
+**Branch:** `phase-3/maps-quotes-unified-ux` from protected `main` @ `b1a19865fa1a3f72244e2b5b10f9e1e5148004b9` (merge of the reviewed Phase-3 planning PR #7). · **Authorisation:** founder authorised the whole macro Phase 3 engineering run in one session (2026-10-12, `WAYVRO_PHASE3_FULL_IMPLEMENTATION_AUTHORISATION`); P3.0–P3.10 are internal checkpoints, not approval points. · **Plan:** `docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md` with `<PHASE3_PLAN_MERGE_SHA>` = `b1a1986…`, and every `docs/phase3/` design file. · **Status:** ENGINEERING RUN AT CLOSURE — PR opened for review, **not merged**; Phase 3 is **not complete** (real-world evidence SP-01/SP-02/SP-04 and the FA-09 native review are missing; 15 IDs BLOCKED on Maestro evidence — see the closure section). · **Agent:** Claude Code (self-audit, not independent verification). · Synthetic data only; no provider account, key, real boundary, real price or real user data exists in this run.
 
 Founder confirmations in force for this run (authorisation §4–§8): FA-01, FA-02, FA-07, FA-10, FA-11, FA-12, FA-16 APPROVED; FA-17 approved in principle; FA-18 deferred to Phase 4; FA-08 no paid spend; FA-09 native review required; FA-19 Mapbox licence clarification required before any S2 freeze. Pricing maker-checker: two distinct authenticated staff identities (both may hold `PRICING_MANAGER`), maker ≠ checker enforced by database and service, mandatory audit actor ids and reason codes, `STAFF_ADMIN` is not the routine approver, break-glass is not a shortcut. SP-01 thresholds are fixed pre-measurement values (FA-07).
 
@@ -32,7 +32,12 @@ Genuine founder/external actions still open at run start: FA-03 (SP-01 real devi
 | P3.4 | `3374ea3` | release controls: version policy, maintenance, runtime switches, migration 0013 |
 | P3.2 | `a885dae`, `266071d` | geo gateway, cost controls, breaker, placeRef, migration 0011; gitleaks false-positive fix (test title; one fingerprint in `.gitleaksignore`) |
 | P3.3 | `6ed66af` | pricing: tax policies, rate cards, quotes, migration 0012; web-ops pricing + geo admin pages |
-| P3.8 | `b381f2c` | Driver/Partner shell, K19 coverage, per-product eligibility; knip production fixes; geo maker-checker hardening. **Pushed: CI run 38427719184** |
+| P3.8 | `b381f2c` | Driver/Partner shell, K19 coverage, per-product eligibility; knip production fixes; geo maker-checker hardening. **CI run 38427719184:** Security, Android, Web E2E success; **Quality FAILED** (mobile architecture test timeout; contracts coverage); **Integration FAILED** (PROP-QUOTE P-06 counterexample) |
+| CI fix | `08b8b15` | mobile architecture guards read each file once (same assertions); record P3.1–P3.8; founder evidence pack |
+| CI fix | `4547cef` | P-06: MINIMUM_ADJUSTMENT taxable only together with BASE/DISTANCE/TIME (contract refine + 0012 CHECK + engine refusal + regression test); contracts request-rule tests; property timeouts scale with run count. **CI run 38434456189:** Security, Integration, Android, Web E2E success; **Quality FAILED** (worker unit coverage) |
+| SP-08 | `af5bfd4` | mobile E2E tooling + release gates (ADR-052) merged; HARD_UPDATE escape-route, status-bar inset and E2E pricing-seed fixes; worker coverage scope (DB-backed modules measured by the integration run) |
+| P3.9 | `4347289` | localisation, Roman-Urdu aliases, accessibility audits, native-review export/import. **CI run 38439820550:** Security, Integration, Android (all release gates incl. size/purity/SDK-INV/bundle-secrets), Web E2E success; **Quality FAILED** (ART-ISO-08: the route probe lacked the P3.1/P3.4 dependencies — masked earlier because Quality had already failed at an earlier step); **Mobile E2E FAILED** (informational; 3 PASS / 3 FAIL / 8 BLOCKED, see closure) |
+| P3.10 | closure commit | ART-ISO-08 probe fix; driver-home flow selectors after P3.8; ADR-050; final U04 inventory; requirement reconciliation; status docs. CI on the closure SHA: see the PR |
 
 Order note: checkpoints were developed in parallel by delegated agents in isolated worktrees (contract-first base `7572a8a`) and merged in dependency order, so commit order differs from the P3.0–P3.10 numbering (P3.5 before P3.1; P3.4 before P3.2). Each merge was re-verified in the main tree before its commit. Several agent worktrees were created from `main` instead of the Phase-3 base, and some git operations in agent worktrees were refused by the permission system; that work was extracted as patches against the actual base and applied with three-way merges (no history was rewritten anywhere). Agents were interrupted several times by API usage limits and resumed from their transcripts.
 
@@ -74,7 +79,7 @@ Evidence (local, this machine):
 
 ### Web E2E flake (`tests/e2e-web/web-ops/staff.spec.ts:40`, PR #7)
 
-Fix at the narrowest test layer: `expectAccessible` waits for a non-empty `document.title` (a deterministic page-ready condition bounded by the expect timeout), and the enrolment test asserts the overview's own title after the `/enrol → /` navigation. The axe `document-title` rule stays enabled and no retries were added. Hypothesis (not yet proven): web-ops pages are dynamic (`connection()`), Next.js 16 streams their metadata, and `router.push('/')` + `router.refresh()` can briefly leave the document without its `<title>`. CI evidence: Web E2E PASS on run 38299271950 (P3.0). The reproduction probe (a MutationObserver on the title during repeated push + refresh navigations, with axe sampled at the original point without the wait) is prepared but **NOT RUN** yet — see the closure section.
+Fix at the narrowest test layer: `expectAccessible` waits for a non-empty `document.title` (a deterministic page-ready condition bounded by the expect timeout), and the enrolment test asserts the overview's own title after the `/enrol → /` navigation. The axe `document-title` rule stays enabled and no retries were added. Hypothesis: web-ops pages are dynamic (`connection()`), Next.js 16 streams their metadata, and `router.push('/')` + `router.refresh()` can briefly leave the document without its `<title>`. CI evidence: Web E2E PASS on run 38299271950 (P3.0). **Probe run (2026-10-13, local, production builds, not committed):** a MutationObserver on the document during 1 enrolment + 25 sign-out/sign-in navigations (`router.push('/')` + `router.refresh()`). In **26 of 26** navigations the document on `/` briefly had **no `<title>` element** (1–14 ms, median 5 ms) before the streamed metadata inserted "Wayvro Operations". At the original check point (overview banner visible), all 26 samples had the title and axe reported 0 `document-title` violations — so the flake needs axe to land inside that few-millisecond window, which matches its rarity. This supports the hypothesis; it does not reproduce the CI failure itself. The title wait closes exactly that window.
 
 ## P3.1 — Catalog (migration 0010) — IDs E08, H10, R28, B04
 
@@ -214,3 +219,63 @@ Founder confirmation needed: 14 transitive native modules newly listed as APPROV
 | knip (default, production, production strict) | PASS |
 | oasdiff gate | PASS |
 | web-ops Playwright (whole project) | NOT green locally under multi-agent load: intermittent enrolment and zone-import timing in the catalog and release journeys; pricing 8/8 and geo-admin 6/6 passed in every run. CI is the authoritative run |
+
+## P3.10 — Closure (2026-10-13)
+
+### SP-08 evidence
+- **PR tier, first CI run** (`Mobile E2E`, run 38439820550 on `4347289`, API 35 emulator, EMULATOR evidence): **3 PASS** (pr-01 sign-in → Rider home with the rider-hygiene check, pr-02 restore, pr-04 Earn entry rider-only with hygiene), **3 FAIL**, **8 BLOCKED**. Maestro wall time 924 s; E2E APK build 1,011 s.
+  - The 3 FAILs (pr-03, pr-05, pr-06) waited for the pre-P3.8 driver-home copy "Going online isn't available yet". Since P3.8 the readiness headline is one of three sentences. The closure commit matches any of the three exact headlines (no assertion removed), and the restriction-row selector allows the P3.8 "Earning paused." prefix and the P3.9 spoken detail. Re-run: the closure SHA's CI run.
+  - The 8 BLOCKED rows: **the 900 s Maestro budget (FA-16: PR tier ≤ 15 min) ran out after 6 of 14 flows.** Measured per-flow time is 63–210 s (≈ 40 s of it Maestro JVM start, plus a full sign-in per flow), so 14 flows need ≈ 25–35 min on a GitHub-hosted runner. **Founder decision required (FA-16):** raise the PR-tier budget, split the PR tier across parallel jobs (more Actions minutes), or approve reworking the runner so flows share one Maestro session and sign-in. The budget was not changed in this run.
+- **Full matrix** (`.github/workflows/mobile-full.yml`, mandatory at closure): **BLOCKED** — GitHub dispatches a `workflow_dispatch` workflow only when the file exists on the default branch (`gh workflow run mobile-full.yml --ref phase-3/maps-quotes-unified-ux` → HTTP 404 "workflow mobile-full.yml not found on the default branch"). FA-16 forbids adding an automatic trigger. It can run once the workflow file is on `main` (`gh workflow run mobile-full.yml --ref <branch>`). The 50,000-run property tier runs inside it and is therefore NOT RUN.
+
+### Performance budgets (ADR-050)
+Release AAB of `4347289` (CI): arm64-v8a **26,131,920 B** (budget 30,000,000), armeabi-v7a **25,388,836 B** (29,000,000), Hermes **3,687,008 B** (4,500,000) — PASS. Every device, battery and staging budget: NOT MEASURED.
+
+### U04
+Final inventory: `docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md` §11 (36 rows; the release permission delta for Phase 3 is COARSE + FINE only).
+
+### Requirement reconciliation (29 IDs)
+Rule (`docs/phase3/PHASE3_REQUIREMENT_MATRIX.md`): ENGINEERING_SATISFIED only if every repository-provable evidence item passed in CI on the closure SHA. Where an ID's evidence includes Maestro flows that have not passed in CI (PR-tier budget; full matrix not dispatchable before merge), the ID is **BLOCKED**, even when its server and unit evidence is complete.
+
+| ID | Status | Evidence in CI | Missing / external |
+|---|---|---|---|
+| A01 | BLOCKED | app-config contract, 426/503 + exempt-route integration, MC/step-up/audit, policy table tests; HARD_UPDATE escape fix (unit) | Maestro UPD/MAINT flows (pr-13 BLOCKED by budget; full tier not dispatchable); store link (EG-18) |
+| A06 | BLOCKED | normaliser unit/property, 39 PROPOSED aliases, alias→place tests, catalogue parity | RTL `ur` Maestro run (full tier); FA-09 native review; SP-04 Roman-Urdu field metric |
+| A07 | BLOCKED | location state-machine unit tests; release permission gate (COARSE + FINE) | Maestro LOC flows (pr-07 BLOCKED; n-04..06 full tier); SP-01 real OEM devices |
+| A08 | BLOCKED | AA contrast pairs, 48 dp, roles/labels, live regions, no-truncation audits | Maestro font-scale 2.0 run (full tier); TalkBack walkthrough (FA-14); VoiceOver (FA-13) |
+| B01 | BLOCKED | landmark formatter, reverse geocode vs MOCK incl. faults | Maestro PIN flows; renderer freeze (P3.7 BLOCKED-EXTERNAL); SP-04 |
+| B02 | BLOCKED | placeRef seal/tamper, autocomplete integration incl. stale/budget degrade, debounce tests | Maestro SRCH (pr-08 BLOCKED); SP-04; ADR-006 |
+| B03 | PARTIAL_EXTERNAL_GATED | polyline property tests, route snapshot contract, FAULT-GEO, Lite payload, confidence labels | SP-04 route/ETA accuracy; rendered polyline (P3.7) |
+| B04 | BLOCKED | product attribute contracts; DISABLED_LEGAL_GATE products never priced; no client constants | Maestro QUOTE-01 (pr-10 BLOCKED) |
+| B06 | ENGINEERING_SATISFIED | PROP-QUOTE incl. the P-06 fix, DB Σ trigger, component-kind contract, breakdown view-state | values synthetic by design; a real tax policy needs counsel |
+| E05 | ENGINEERING_SATISFIED | snapshot immutability, `wayvro_api` UPDATE refused, rounding properties, inclusive/exclusive tax split | — |
+| E06 | PARTIAL_EXTERNAL_GATED | port contract suite vs doubles, ART-ISO geo markers, BOOT-NEG, depcruise | production adapter per SKU + licence (P3.7; FA-05/06/19) |
+| E07 | PARTIAL_EXTERNAL_GATED | CACHE-STALE, FAULT-GEO, quote refusal (503, nothing invented) | production TTLs with the ADR-006 freeze; the local load harness (cache-hit ratio / p95, informational) is **NOT BUILT** |
+| E08 | ENGINEERING_SATISFIED | zone boundary + hours suites, migration/grants, MC, per-reason quote tests | boundaries synthetic by design |
+| H06 | ENGINEERING_SATISFIED | AUTHZ-MATRIX extended, CONC-PRICING, rollback-by-new-version, web-ops pricing journey + axe | — |
+| H10 | BLOCKED | PROP-ELIG-VEH, API + MC tests, per-product eligibility in the compliance view | driver-readiness Maestro step (pr-03 selector fix not yet re-run green; full tier) |
+| I11 | PARTIAL_EXTERNAL_GATED | BUDGET + BREAKER suites, rollup idempotency, signal dedupe, budget concurrency | console caps attestation (FA-06); alert routing (EG-21) |
+| K19 | BLOCKED | K19 state-coverage table test (en/ur/ur-Latn) | Maestro ONB flows (n-01/n-02 full tier; pr-12 BLOCKED); FA-09; TalkBack |
+| L08 | BLOCKED | Lite payload tests, stale thresholds, restore tests | Maestro LITE-01 (full tier); SP-02 device data |
+| P18 | PARTIAL_EXTERNAL_GATED | catalogue completeness + placeholder parity, hard-coded-copy scan, reproducible review export | FA-09 reviewer sign-off (0 of 931 strings REVIEWED) |
+| Q26 | PARTIAL_EXTERNAL_GATED | budget table + ADR-050; CI size and Hermes gates PASS | device start/memory/jank/data/battery (SP-02/SP-01); staging-class server numbers; local server load runs NOT RUN |
+| Q27 | BLOCKED | device protocols + capture templates | low-RAM AVD lane (full tier, not dispatchable); physical devices (FA-04) |
+| Q31 | PARTIAL_EXTERNAL_GATED | oasdiff gate green, policy evaluation tests, ADR-049 matrix | founder records the minimum OS. Deviation: no separate COMPAT-N1 test (old schemas parsing new responses); backward compatibility is enforced by the oasdiff gate against `main` |
+| R28 | ENGINEERING_SATISFIED | lifecycle legal-gate trigger tests, no product-code switches in UI (static scan) | deviation for review: BIKE/RICKSHAW appear in `unavailable[]` as `ZONE_NOT_SERVED` (closed reason list), not `DISABLED_LEGAL_GATE` |
+| U04 | PARTIAL_EXTERNAL_GATED | SDK-INV gate PASS on the release AAB | renderer row (P3.7); founder confirmation of 14 transitive rows + `wayvro-fully-drawn`; network capture NOT RUN; iOS privacy manifest NOT RUN; EG-18 |
+| U05 | PARTIAL_EXTERNAL_GATED | AAB gates (permissions, intent filters, 16 KB, ABI) + negative controls on every Android run | background-location justification (SP-01, Phase 4) |
+| V05 | BLOCKED | pr-01/pr-04 rider hygiene PASS on CI; static rider-graph import rules; release manifest gate | pr-09 (account B in Rider mode) BLOCKED by budget; SP-01 on physical devices |
+| V08 | BLOCKED | resolveIntent + restoration precedence tests; pr-02 PASS on CI | NAV flows (pr-03/05/06 selector fix not yet re-run green; n-03 full tier) |
+| V10 | BLOCKED | switch semantics tests; SP-08 tooling in place | PR-tier job not green (FA-16 budget); full matrix not dispatchable before merge; physical-device subset |
+| V11 | BLOCKED | size gate PASS; no static driver import from the rider graph or layouts | module-evaluation probe in CI (n-07, full tier); SP-02 device measurements |
+
+**Totals:** ENGINEERING_SATISFIED 5 · PARTIAL_EXTERNAL_GATED 9 · BLOCKED 15.
+
+### Freezes and spikes
+- **SP-01** (background location, real OEM devices): harness built (`tests/spikes/sp-01-background-location`); no device run. ADR-029 / ADR-003 stay OPEN-SPIKE. FA-03 open.
+- **SP-02** (low-end device): fully-drawn marker and instrumented build exist; no device run. FA-04 open.
+- **SP-04** (Lahore field benchmark): `tools/geo-bench` with the FA-07 thresholds and the route-critical hard gate; no field data, no provider keys. ADR-006 / ADR-046 NOT WRITTEN (BLOCKED-EXTERNAL). FA-05, FA-06, FA-19 open; FA-08 no spend.
+- **FA-09** native Urdu/Roman-Urdu review: export ready; nothing REVIEWED.
+
+### Can Phase 3 be called complete?
+**No.** Under the full-run evidence semantics (sequence §1.1), Phase 3 must not be merged as complete while the SP-01/SP-02/SP-04 evidence and the FA-09 review are missing, and 15 IDs are BLOCKED on Maestro evidence. The engineering run is closed and the PR is open for review only.

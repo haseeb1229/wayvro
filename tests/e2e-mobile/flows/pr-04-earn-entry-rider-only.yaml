@@ -23,7 +23,7 @@ tags: [pr, full, inv-07]
     visible: 'Before you apply'
     timeout: 30000
 - assertVisible: 'Applying never affects your rides: Rider mode stays available the whole time.'
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - assertNotVisible:
     id: 'com\.android\.permissioncontroller:id/.*'
 - takeScreenshot: pr-04-earn-intro

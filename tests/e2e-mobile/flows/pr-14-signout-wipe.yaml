@@ -21,7 +21,7 @@ tags: [pr, full]
 - tapOn:
     id: mode-switch-driver
 - extendedWaitUntil:
-    visible: 'Going online isn.t available yet.*'
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -81,5 +81,5 @@ tags: [pr, full]
     visible:
       id: rider-home-where-to
     timeout: 60000
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - takeScreenshot: pr-14-a-after-c-signout

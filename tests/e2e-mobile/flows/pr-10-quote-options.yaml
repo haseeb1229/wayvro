@@ -1,7 +1,7 @@
 # SP-08 #14 / QUOTE-01 (PR, N) — B03, B04, B06: search (synthetic) → quote option cards (Economy priced; Comfort shown
 # unavailable with its reason) → fare breakdown; there is no "Request ride" action in Phase 3.
-# REQUIRES the pricing slice (POST /v1/quotes + synthetic rate card): run-flows.mjs reports NOT RUN (pricing pending)
-# until mobile-stack.mjs can seed it. Selectors follow the Phase-3 quote screens; re-verify after the pricing merge.
+# REQUIRES ACTIVE synthetic rate cards (seeded by mobile-stack.mjs): run-flows.mjs reports NOT RUN with the reason
+# otherwise. Selectors follow the Phase-3 quote screens.
 appId: dev.wayvro.app
 name: pr-10-quote-options
 tags: [pr, full, pricing]

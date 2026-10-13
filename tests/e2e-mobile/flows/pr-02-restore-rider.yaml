@@ -22,5 +22,5 @@ tags: [pr, full]
     timeout: 60000
 - assertNotVisible:
     id: phone-number
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - takeScreenshot: pr-02-restored-rider-home

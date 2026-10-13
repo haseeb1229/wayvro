@@ -19,5 +19,5 @@ tags: [pr, full, inv-07]
 - assertVisible: 'Booking opens soon. For now you can check prices.'
 - assertNotVisible:
     id: 'com\.android\.permissioncontroller:id/.*'
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - takeScreenshot: pr-01-rider-home

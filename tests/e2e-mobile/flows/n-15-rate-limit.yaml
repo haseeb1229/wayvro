@@ -1,5 +1,5 @@
 # SP-08 #17 (N) — I11 (client): repeated price checks beyond the quote rate limit show the 429 copy with the retry
-# seconds and no retry storm. REQUIRES the pricing slice (its quote rate limit); NOT RUN (pricing pending) until seeded.
+# seconds and no retry storm. REQUIRES ACTIVE synthetic rate cards (NOT RUN with the reason otherwise).
 appId: dev.wayvro.app
 name: n-15-rate-limit
 tags: [full, pricing]

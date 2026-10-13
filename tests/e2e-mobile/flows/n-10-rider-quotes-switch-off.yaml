@@ -31,6 +31,6 @@ tags: [full]
 - tapOn:
     id: mode-switch-driver
 - extendedWaitUntil:
-    visible: 'Going online isn.t available yet.*'
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
     timeout: 30000
 - takeScreenshot: n-10-driver-unaffected

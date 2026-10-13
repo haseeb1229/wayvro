@@ -264,6 +264,8 @@ const app = await createApp({
   evidence: null,
   review: { review: {}, appeals: {}, monitoring: {} },
   support: {},
+  catalog: { readModel: {}, admin: {} },
+  release: { appConfig: {}, policies: {}, switches: {}, appConfigCacheSeconds: 60, enforcement: {} },
   geo: { gateway: {}, admin: {} },
   pricing: { quotes: {}, admin: {}, log: silent },
 });

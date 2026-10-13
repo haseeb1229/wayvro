@@ -14,7 +14,7 @@ tags: [pr, full, inv-07]
     visible:
       id: rider-home-where-to
     timeout: 60000
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - tapOn:
     id: rider-home-where-to
 - extendedWaitUntil:

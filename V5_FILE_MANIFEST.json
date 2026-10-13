@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 136,
+  "file_count_excluding_manifest": 137,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 12928,
-      "sha256": "020af4606c1c64c49a390aab265cf4be8197bad8d54915496588307ea62c06b8"
+      "bytes": 13608,
+      "sha256": "81fb18cb3963e95afa50fc355add1a75db24b3069ffa7814d28ba45350dcc701"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8717,
-      "sha256": "d18fb3841c94b328be5dfbc1b96708ba78181e75cabdfe9d480d92c5c1daf4d7"
+      "bytes": 9141,
+      "sha256": "b9996ce25693dbd8ec86eaf8c1b242c6c4f6c17555f636d6ca373ce204efbfa3"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 9360,
-      "sha256": "05ad0ae4e4ebd5ee55e224c05b6527c5951ca34115cee49f76675585fd4fb7c1"
+      "bytes": 10455,
+      "sha256": "928835b80e972fe052e108dc1419f54eec8b0f9c2ea5f1fa781d2806d477e7fa"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -300,6 +300,11 @@
       "sha256": "29299d0eb9d4d2c1dc6631ac831ac1911750cdca3b50c4d1e2b121c2e818a717"
     },
     {
+      "path": "docs/adr/ADR-050-phase3-performance-budgets.md",
+      "bytes": 4352,
+      "sha256": "61abcdf3293db7a543c9fe284c4f8d2183a937ba72ddf04ffec90111dbf0821e"
+    },
+    {
       "path": "docs/adr/ADR-051-service-products-zones-lifecycle.md",
       "bytes": 11897,
       "sha256": "8b174dec374c0ad035cbb1654bce36c5c9563ab0fbd91de34e1258795adf283e"
@@ -311,8 +316,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 8311,
-      "sha256": "08ff9e05a63ffe4638393ad8c10a8c2931c11e4be63557bf22e944c875d10269"
+      "bytes": 8890,
+      "sha256": "1ca7e73668b9259e3eab4b6e1d2b419ce0b9c3c82fa224fbd3b74b80ab49ea64"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -606,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 25496,
-      "sha256": "d7cbec5328ecefbd9a56b795f83f315593dbccc8152dd6c27bb1b9f144c1c836"
+      "bytes": 36658,
+      "sha256": "7ed47a4ffa132c732bb2fabf65b71ea2123dc1969064d910e94c42c1b8333ce6"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -646,8 +651,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 33674,
-      "sha256": "88c24076d7b39729697bbfcbf7890104d66f6f23e387b69e42a02f21e553ad03"
+      "bytes": 36565,
+      "sha256": "c01e8c070160b5b528cb229f04a5c658d075f435be06d157c6d5a4b84407d0e6"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",

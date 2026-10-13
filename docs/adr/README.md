@@ -69,4 +69,6 @@ Founder-locked decisions that are not repeated here: ADR-001 (name), ADR-026 (on
 | ADR | Title | Status |
 |---|---|---|
 | [ADR-049](ADR-049-app-version-maintenance-runtime-switches.md) | App version policy, maintenance and runtime kill switches (maker-checker, guardrails, 426/503 enforcement, documented fail-open) | PROPOSED — implemented in P3.4; SECURITY expedited path NOT IMPLEMENTED |
+| [ADR-050](ADR-050-phase3-performance-budgets.md) | Phase 3 performance budgets (FA-07 values binding; CI size gate; PASS only when measured in the budget's own environment) | ACCEPTED for the values; evidence PARTIAL — PB-04/PB-05 measured PASS in CI on `4347289`; device and staging budgets NOT MEASURED |
+| ADR-046 (renderer) / ADR-006 (geo per SKU) | Map renderer and geo provider freeze | **NOT WRITTEN — BLOCKED-EXTERNAL**: no SP-04 field data (FA-05), no provider accounts (FA-06), no SP-02 device (FA-04), FA-19 open; no renderer or provider is installed or bound |
 | [ADR-052](ADR-052-mobile-e2e-tooling.md) | Mobile E2E tooling (Maestro 2.11.0 on an emulator), E2E build variant, release-purity/size/SDK-INV/BUNDLE-SECRETS gates, SP-02 fully-drawn marker + instrumented build | PROPOSED — PR tier run locally on an API 35 emulator only (EMULATOR evidence); CI runs and full matrix NOT RUN |

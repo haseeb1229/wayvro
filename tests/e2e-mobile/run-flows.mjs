@@ -9,7 +9,7 @@
  *
  * Flake policy (§6): at most ONE automatic retry per flow; a pass on retry is FLAKY (never PASS); INV-07 flows (#1,
  * #12) are never quarantined and a FLAKY INV-07 flow fails the run; a flow that cannot run is BLOCKED with its cause;
- * flows whose prerequisite is missing are NOT RUN with the reason (e.g. pricing pending) — never silently skipped.
+ * flows whose prerequisite is missing are NOT RUN with the reason (e.g. no ACTIVE synthetic rate card) — never silently skipped.
  * The runner exits 1 on any FAIL / BLOCKED / FLAKY INV-07 result or when the Maestro phase exceeds its budget.
  * Waits are Maestro's element waits; the runner itself never sleeps to "settle" the UI.
  *
@@ -261,7 +261,7 @@ for (const flow of selected) {
   if (flow.notTestable) Object.assign(row, { status: 'NOT TESTABLE', reason: flow.notTestable });
   else if (flow.manualOnly) Object.assign(row, { status: 'NOT RUN', reason: flow.manualOnly });
   else if (flow.requires?.includes('pricing') && !stack.pricing.seeded)
-    Object.assign(row, { status: 'NOT RUN', reason: `pricing pending: ${stack.pricing.reason}` });
+    Object.assign(row, { status: 'NOT RUN', reason: `pricing not seeded: ${stack.pricing.reason}` });
   else if (flow.apiLevels && !flow.apiLevels.includes(apiLevel))
     Object.assign(row, { status: 'SKIPPED', reason: `runs on API ${flow.apiLevels.join('/')} only (system-dialog taps, SP-08 §6)` });
   else if ((Date.now() - started) / 1000 > budgetSeconds)

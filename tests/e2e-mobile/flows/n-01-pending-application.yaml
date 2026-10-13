@@ -28,5 +28,5 @@ tags: [full]
 - extendedWaitUntil:
     visible: 'Your application is being reviewed'
     timeout: 30000
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - takeScreenshot: n-01-in-review

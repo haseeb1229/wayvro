@@ -32,5 +32,5 @@ tags: [full, inv-07]
 - extendedWaitUntil:
     visible: 'Your account'
     timeout: 30000
-- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
 - assertNotVisible: 'Before you apply'
