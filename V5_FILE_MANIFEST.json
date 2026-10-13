@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 128,
+  "file_count_excluding_manifest": 130,
   "files": [
     {
       "path": ".gitattributes",
@@ -210,6 +210,11 @@
       "sha256": "ff6fb833ddc9d9ffee281c888d1c3cffc2314787202253cb21d6f48087e30c0a"
     },
     {
+      "path": "docs/adr/ADR-019-lite-mode.md",
+      "bytes": 3153,
+      "sha256": "07a1c48a205a26a904518080ca11b125d682b6a80d18ba4df83b755260e80f42"
+    },
+    {
       "path": "docs/adr/ADR-027-ci-quality-and-dead-code-tooling.md",
       "bytes": 7433,
       "sha256": "9c13942258e6a039dc01c0c3a5b7445a6589ff2c6128d52210224b86e0198807"
@@ -261,8 +266,8 @@
     },
     {
       "path": "docs/adr/ADR-043-mobile-platform-additions.md",
-      "bytes": 12436,
-      "sha256": "ec2c7939338f29f6ceb762dc83a85b9a330d350a8e96197ba1f7a613c0d97a7c"
+      "bytes": 16376,
+      "sha256": "6d7d6ad3328e430e8695daa4dca3e6c0d9ba4916776eff2cbc34f899e8c39499"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
@@ -275,9 +280,14 @@
       "sha256": "4f2cbb514e249ba3ab9750d391bba597b84777a00b7f1a773f1ef195026954e4"
     },
     {
+      "path": "docs/adr/ADR-048-unified-app-mode-navigation.md",
+      "bytes": 6520,
+      "sha256": "2bdee113db238fc3907aab654cc8ceee11b8491361341dd854608944cbeeeaa9"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 5851,
-      "sha256": "8d6d8aa6e942f37be49fc4aa558c01756cb6faa1dc0971e241aefe515c9c4860"
+      "bytes": 6610,
+      "sha256": "d81d7b6e15c958fa94bd691fffe09b827dcb53a414e8e1b897e1db37fba836c2"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -606,8 +616,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 30234,
-      "sha256": "a3d042055610b5840295883e2ee7d094ff7ec885140c56720fdcb1d27aff95e4"
+      "bytes": 32458,
+      "sha256": "8f06a470c26a5ebf26edcede1c1bcee675799c9bec892febbd1e4ff34eef2ada"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",

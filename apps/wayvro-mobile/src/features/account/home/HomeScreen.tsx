@@ -2,6 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useAccountState } from '../../../core/account/use-account-state';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { formatDate } from '../../../core/i18n/strings';
+import { LiteToggle } from '../../../core/lite/use-lite';
 import { Banner, Body, Button, ErrorBanner, LinkRow, RadioGroup, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { useLocaleOptions, useUpdateProfile } from '../profile/use-update-profile';
@@ -53,7 +54,13 @@ export function HomeScreen() {
       ) : null}
       <PhoneChangeNotice />
       <RestrictionNotices items={home.restrictions} />
-      <Banner tone="info" text={t('home.ridesComing')} />
+      <LinkRow
+        label={t('home.rides')}
+        detail={t('home.ridesHint')}
+        onPress={() => {
+          router.push('/ride');
+        }}
+      />
       {home.driverEntry === null ? null : (
         <LinkRow
           label={t(home.driverEntry === 'apply' ? 'home.earn' : 'home.driverArea')}
@@ -103,6 +110,7 @@ export function HomeScreen() {
         }}
       />
       {update.error === null ? null : <ErrorBanner error={update.error} />}
+      <LiteToggle />
       <TranslationPendingNote />
       <SignOutButton />
     </Screen>

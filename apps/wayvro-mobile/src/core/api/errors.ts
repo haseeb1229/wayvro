@@ -20,6 +20,15 @@ export const UI_ERROR_KINDS = [
   'restricted',
   /** The feature is switched off server-side (release gate); nothing to retry. */
   'feature-disabled',
+  /**
+   * Phase 3 (422 WAYVRO_E_SERVICE_AREA): nothing can be priced for this pickup/drop-off/time; `detail.reasonCodes` say
+   * why (ZONE_NOT_SERVED, PICKUP_RESTRICTED, OUTSIDE_SERVICE_HOURS, ROUTE_TOO_LONG, NO_ACTIVE_RATE_CARD).
+   */
+  'service-area',
+  /** Phase 3 (426 WAYVRO_E_APP_UPDATE_REQUIRED): this build may not continue; the app-policy gate blocks the app. */
+  'update-required',
+  /** Phase 3 (503 WAYVRO_E_MAINTENANCE): planned maintenance; the app-policy gate shows the maintenance screen. */
+  'maintenance',
   'unavailable',
   'unknown',
 ] as const;
@@ -33,6 +42,8 @@ export interface ApiErrorDetail {
   readonly requestId: string | null;
   /** Reason codes of the restriction(s) behind a WAYVRO_E_ACCOUNT_RESTRICTED refusal (never shown raw as an error message). */
   readonly reasonCodes: readonly string[];
+  /** Phase 3: with SERVICE_AREA / OUTSIDE_SERVICE_HOURS — the next opening instant (server time), else null. */
+  readonly nextOpenAt: string | null;
   /**
    * true when the outcome is UNKNOWN (no response, timeout, 5xx): the request may or may not have taken effect, so a
    * retry must reuse the same idempotency key. false when the server answered definitively.
@@ -54,6 +65,7 @@ export class ApiError extends Error {
       retryAfterSeconds: detail.retryAfterSeconds ?? null,
       requestId: detail.requestId ?? null,
       reasonCodes: detail.reasonCodes ?? [],
+      nextOpenAt: detail.nextOpenAt ?? null,
       transient: detail.transient ?? false,
     };
   }
@@ -90,6 +102,10 @@ const KIND_BY_CODE: Readonly<Partial<Record<ErrorCode, UiErrorKind>>> = {
   // P2.10: generic OIDC outcomes (a 401 here is not an expired session; the app offers the phone instead)
   WAYVRO_E_OIDC_NOT_LINKED: 'validation',
   WAYVRO_E_OIDC_LINK_CONFLICT: 'conflict',
+  // Phase 3 (P3.3/P3.4): quote refusals and the release controls
+  WAYVRO_E_SERVICE_AREA: 'service-area',
+  WAYVRO_E_APP_UPDATE_REQUIRED: 'update-required',
+  WAYVRO_E_MAINTENANCE: 'maintenance',
 };
 
 function kindForStatus(status: number): UiErrorKind {
@@ -97,6 +113,8 @@ function kindForStatus(status: number): UiErrorKind {
   if (status === 403) return 'unknown';
   if (status === 409) return 'conflict';
   if (status === 429) return 'rate-limited';
+  // A 426 without a valid envelope (proxy, older gateway) still means this build may not continue.
+  if (status === 426) return 'update-required';
   if (status === 400 || status === 422) return 'validation';
   if (status >= 500) return 'unavailable';
   return 'unknown';
@@ -114,6 +132,7 @@ export function errorFromResponse(status: number, body: unknown): ApiError {
     requestId,
     retryAfterSeconds: details?.retryAfterSeconds ?? null,
     reasonCodes: details?.reasonCodes ?? [],
+    nextOpenAt: details?.nextOpenAt ?? null,
     transient,
   });
 }

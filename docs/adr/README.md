@@ -44,6 +44,14 @@ ADR-038 and ADR-042 were corrected on this branch after the P2.1 review (lookup-
 
 ADR-040 (OIDC/`jose`) was accepted in P2.10 for the server-side verifier; production use stays externally gated.
 
+## Phase 3 implementation decisions (P3.5, 2026-10-13) — on the Phase-3 branch, not yet reviewed or merged
+
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-048](ADR-048-unified-app-mode-navigation.md) | Unified-app mode, navigation, restoration and intent routing | ACCEPTED on P3.5 unit evidence (EXH-RESTORE, EXH-INTENT) — SP-08/SP-02 device evidence NOT RUN |
+| [ADR-019](ADR-019-lite-mode.md) | Lite mode (in-app; auto-suggest from request timing, `detail=lite`) | ACCEPTED on P3.5 unit evidence — PB-12a data budget NOT RUN |
+| [ADR-043](ADR-043-mobile-platform-additions.md) (P3.5 addendum) | expo-location 57.0.20, foreground-only (FA-02 APPROVED: COARSE + FINE only) | prebuild manifest verified; release-AAB gates and device behaviour NOT RUN |
+
 **Phase 3 planning (2026-10-12, PROPOSED — no ADR file written):** the planning pack proposes ADR-046 … ADR-052 and the evidence each backlog ADR (ADR-003, -006, -013, -019, -029, -031, -033) needs before acceptance (`docs/phase3/PHASE3_ADR_AND_DEPENDENCY_PROPOSALS.md`). Finding F-P3-01: the release AAB registers the `exp+wayvro` URL scheme through the auto-applied `expo-dev-client` config plugin, so ADR-043's "no URL scheme" statement and the decode-uri-component exception premise are inaccurate; the correction is planned as the first Phase 3 implementation checkpoint (`docs/phase3/PHASE3_PLAN.md` §6).
 
 Founder-locked decisions that are not repeated here: ADR-001 (name), ADR-026 (one public Wayvro app), ADR-035 (modular monolith baseline) — see the Phase 0 backlog.

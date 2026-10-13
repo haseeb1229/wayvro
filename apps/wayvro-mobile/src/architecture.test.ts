@@ -46,14 +46,75 @@ describe('architecture guards', () => {
     for (const file of sourceFiles(join(SRC, 'app'))) {
       expect(file.endsWith('.tsx'), rel(file)).toBe(true);
       const code = readFileSync(file, 'utf8');
-      expect(/export default/.test(code), rel(file)).toBe(true);
+      // `+native-intent` is Expo Router's system-path hook (not a route): it only re-exports the bounded intent parser.
+      if (rel(file) === 'app/+native-intent.tsx') expect(/export \{ redirectSystemPath \} from '\.\.\/core\/intents\/native-intent';/.test(code)).toBe(true);
+      else expect(/export default/.test(code), rel(file)).toBe(true);
       expect(code.split('\n').length, rel(file)).toBeLessThan(25);
     }
   });
 
-  it('no module requests location, media-library, notification or background capabilities', () => {
-    const forbidden = /^(expo-location|expo-media-library|expo-notifications|expo-task-manager|expo-background-fetch|react-native-maps)/;
+  it('no module requests media-library, notification, background-task, map or animation capabilities', () => {
+    const forbidden =
+      /^(expo-media-library|expo-notifications|expo-task-manager|expo-background-fetch|react-native-maps|react-native-reanimated|react-native-gesture-handler)(\/|$)/;
     for (const file of production) for (const m of importsOf(readFileSync(file, 'utf8'))) expect(forbidden.test(m), `${rel(file)} imports ${m}`).toBe(false);
+  });
+
+  it('P3.5 (FA-02 scope): expo-location is imported ONLY under src/platform/location/, and no background/geofence/FGS API appears anywhere', () => {
+    const importers = production.filter((f) => importsOf(readFileSync(f, 'utf8')).some((m) => /^expo-location(\/|$)/.test(m))).map(rel);
+    expect(importers.sort()).toEqual(['platform/location/request.ts', 'platform/location/status.ts']);
+    const banned =
+      /\b(requestBackgroundPermissionsAsync|startLocationUpdatesAsync|startGeofencingAsync|hasStartedLocationUpdatesAsync|enableNetworkProviderAsync)\b/;
+    for (const file of production) expect(banned.test(readFileSync(file, 'utf8')), rel(file)).toBe(false);
+  });
+
+  it('P3.5: the location module has two entry points — Driver/Partner may import only the read-only `status`; core imports neither', () => {
+    const locationImports = (file: string): string[] => importsOf(readFileSync(file, 'utf8')).filter((m) => m.includes('platform/location/'));
+    for (const file of production.filter((f) => rel(f).startsWith('features/driver/')))
+      for (const m of locationImports(file)) expect(m.endsWith('platform/location/status'), `${rel(file)} imports ${m}`).toBe(true);
+    for (const file of production.filter((f) => rel(f).startsWith('core/'))) expect(locationImports(file), rel(file)).toEqual([]);
+    // Driver/Partner screens may read the permission state; they never request it.
+    for (const file of production.filter((f) => rel(f).startsWith('features/driver/')))
+      expect(/requestForeground|currentFix|watchPickupFix/.test(readFileSync(file, 'utf8')), rel(file)).toBe(false);
+  });
+
+  it('P3.5: layouts never import the Driver/Partner feature (they are evaluated at start-up), and /drive screens are lazy', () => {
+    for (const file of sourceFiles(join(SRC, 'app')).filter((f) => f.endsWith('_layout.tsx'))) {
+      expect(
+        importsOf(readFileSync(file, 'utf8')).some((m) => m.includes('features/driver')),
+        rel(file),
+      ).toBe(false);
+    }
+    const driveRoutes = sourceFiles(join(SRC, 'app/(session)/drive')).filter((f) => !f.endsWith('_layout.tsx'));
+    expect(driveRoutes.length).toBeGreaterThanOrEqual(4);
+    for (const file of driveRoutes) expect(readFileSync(file, 'utf8').includes('lazyScreen(() => import('), rel(file)).toBe(true);
+  });
+
+  it('P3.5: core/mode, core/intents and core/release import nothing from features/*', () => {
+    for (const file of production.filter((f) => /^core\/(mode|intents|release|lite)\//.test(rel(f))))
+      for (const m of importsOf(readFileSync(file, 'utf8'))) expect(m.includes('features/'), `${rel(file)} imports ${m}`).toBe(false);
+  });
+
+  it('P3.5: rider screens hold no hard-coded user-facing text and no product-code business rules', () => {
+    // Negative controls: the scans below do catch literal copy and product-code rules.
+    // `(?<!=)` skips arrow functions (`=>`) whose body starts with a generic call.
+    const literalJsxText = /(?<!=)>\s*[A-Za-z][A-Za-z ,.'!?]{2,}\s*</;
+    expect(literalJsxText.test('<Text>Book a ride</Text>')).toBe(true);
+    expect(literalJsxText.test('<Text>\n  Book a ride\n</Text>')).toBe(true);
+    expect(literalJsxText.test('() =>\n  new Thing<T>()')).toBe(false);
+    expect(/\b(label|title|text|detail)=["'][A-Za-z]/.test('<Button label="Continue" />')).toBe(true);
+    expect(/'(ECONOMY|COMFORT|BIKE|RICKSHAW)'/.test("case 'ECONOMY':")).toBe(true);
+    const screens = production.filter(
+      (f) =>
+        (rel(f).startsWith('features/rider/') || /features\/driver\/screens\/Drive(Home|Eligibility|Health|Location)Screen/.test(rel(f))) && f.endsWith('.tsx'),
+    );
+    expect(screens.length).toBeGreaterThan(0);
+    for (const file of screens) {
+      const code = readFileSync(file, 'utf8');
+      // JSX text children and string-literal labels must come from the typed catalogues.
+      expect(literalJsxText.test(code), `${rel(file)} has literal JSX text`).toBe(false);
+      expect(/\b(label|title|text|detail)=["'][A-Za-z]/.test(code), `${rel(file)} has a literal label`).toBe(false);
+      expect(/'(ECONOMY|COMFORT|BIKE|RICKSHAW)'/.test(code), `${rel(file)} switches on product codes`).toBe(false);
+    }
   });
 
   it('camera, image picker and file system are used ONLY inside the Driver/Partner feature (P2.8, just-in-time capture)', () => {

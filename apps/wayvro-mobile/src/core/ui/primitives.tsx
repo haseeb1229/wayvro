@@ -11,7 +11,8 @@ import type { UiErrorView } from './view-state';
  * text alignment/writing direction and mirrored rows, without forcing a global RTL restart.
  */
 
-function useDirection() {
+/** Direction helpers for the current UI language (RTL per component; no global forceRTL). */
+export function useDirection() {
   const { rtl } = useI18n();
   return {
     rtl,
@@ -117,7 +118,10 @@ export function TextField(
     readonly onChangeText: (value: string) => void;
     readonly hint?: string;
     readonly error?: string | null;
-  } & Pick<TextInputProps, 'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline'>,
+  } & Pick<
+    TextInputProps,
+    'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline' | 'onFocus'
+  >,
 ) {
   const dir = useDirection();
   const { label, hint, error, value, onChangeText, ...inputProps } = props;
@@ -203,15 +207,23 @@ export function RadioGroup<V extends string>(props: {
   );
 }
 
-export function Banner({ tone, text }: { readonly tone: 'info' | 'warning' | 'error'; readonly text: string }) {
+export type BannerTone = 'info' | 'warning' | 'error' | 'success' | 'offline' | 'stale';
+
+const BANNER_STYLES: Readonly<Record<BannerTone, { readonly box: object; readonly text: object }>> = {
+  info: { box: { backgroundColor: colors.infoBackground }, text: { color: colors.infoText } },
+  warning: { box: { backgroundColor: colors.warningBackground }, text: { color: colors.warningText } },
+  error: { box: { backgroundColor: colors.errorBackground }, text: { color: colors.danger } },
+  success: { box: { backgroundColor: colors.successBackground }, text: { color: colors.successText } },
+  offline: { box: { backgroundColor: colors.offlineBackground }, text: { color: colors.offlineText } },
+  stale: { box: { backgroundColor: colors.staleBackground }, text: { color: colors.staleText } },
+};
+
+export function Banner({ tone, text }: { readonly tone: BannerTone; readonly text: string }) {
   const dir = useDirection();
+  const look = BANNER_STYLES[tone];
   return (
-    <View
-      style={[styles.banner, tone === 'info' ? styles.bannerInfo : tone === 'warning' ? styles.bannerWarning : styles.bannerError]}
-      accessibilityRole={tone === 'error' ? 'alert' : 'text'}
-      accessibilityLiveRegion="polite"
-    >
-      <Text style={[styles.body, tone === 'info' ? styles.infoText : tone === 'warning' ? styles.warningText : styles.errorText, dir.text]}>{text}</Text>
+    <View style={[styles.banner, look.box]} accessibilityRole={tone === 'error' ? 'alert' : 'text'} accessibilityLiveRegion="polite">
+      <Text style={[styles.body, look.text, dir.text]}>{text}</Text>
     </View>
   );
 }
@@ -331,9 +343,4 @@ const styles = StyleSheet.create({
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.primary },
   radioSelected: { backgroundColor: colors.primary },
   banner: { borderRadius: 8, padding: spacing.md },
-  bannerInfo: { backgroundColor: colors.infoBackground },
-  bannerWarning: { backgroundColor: colors.warningBackground },
-  bannerError: { backgroundColor: colors.errorBackground },
-  infoText: { color: colors.infoText },
-  warningText: { color: colors.warningText },
 });
