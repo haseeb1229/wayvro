@@ -206,6 +206,7 @@ export function ModeSwitch(props: {
     return (
       <Pressable
         key={mode}
+        testID={`mode-switch-${mode.toLowerCase()}`}
         accessibilityRole="tab"
         accessibilityLabel={selected ? text : spoken}
         accessibilityState={{ selected, disabled: props.busy, busy: props.busy }}

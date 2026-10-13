@@ -17,6 +17,7 @@ import { useServices, useSessionState } from '../../../core/services/ServicesPro
 import { Card, ModeSwitch, SkeletonRow, StaleIndicator } from '../../../core/ui/components';
 import { Banner, Body, Button, ErrorBanner, Heading, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
+import { FullyDrawnMarker } from '../../../platform/perf/fully-drawn';
 import { useRiderFlow } from '../flow/RiderFlowProvider';
 import { startCurrentLocation } from '../location/start-location';
 import { lastQuoteSummary, placeLine } from '../quote/quote-view';
@@ -84,12 +85,17 @@ export function RiderHomeScreen() {
         />
       ) : null}
       {model.whereTo.enabled ? (
-        <Button
-          label={t('rider.home.whereTo')}
-          onPress={() => {
-            router.push({ pathname: '/ride/search', params: { field: 'dropoff' } });
-          }}
-        />
+        <>
+          {/* SP-02 §6.1: account state resolved and "Where to?" enabled = Rider home interactive (PB-01). */}
+          <FullyDrawnMarker />
+          <Button
+            testID="rider-home-where-to"
+            label={t('rider.home.whereTo')}
+            onPress={() => {
+              router.push({ pathname: '/ride/search', params: { field: 'dropoff' } });
+            }}
+          />
+        </>
       ) : (
         <WhereToDisabled whereTo={model.whereTo} />
       )}
@@ -172,7 +178,7 @@ function WhereToDisabled({ whereTo }: { readonly whereTo: Extract<ReturnType<typ
   const { action } = whereTo;
   return (
     <>
-      <Button label={t('rider.home.whereTo')} disabled onPress={noop} />
+      <Button testID="rider-home-where-to" label={t('rider.home.whereTo')} disabled onPress={noop} />
       <Banner tone="warning" text={t(whereTo.reasonKey)} />
       {action.kind === 'appeal' ? (
         <Button

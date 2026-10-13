@@ -101,6 +101,7 @@ export function OtpEntryScreen() {
       {resent ? <Banner tone="info" text={t('otp.resent')} /> : null}
       {model.blocked === 'expired' && error === null ? <Banner tone="warning" text={t('otp.expired')} /> : null}
       <TextField
+        testID="otp-code"
         label={t('otp.label')}
         value={code}
         onChangeText={(value) => {
@@ -116,7 +117,7 @@ export function OtpEntryScreen() {
         autoFocus
       />
       {error === null ? null : <ErrorBanner error={error} />}
-      <Button label={t('otp.submit')} busyLabel={t('otp.verifying')} busy={verify.isPending} disabled={!model.canSubmit} onPress={submit} />
+      <Button testID="otp-submit" label={t('otp.submit')} busyLabel={t('otp.verifying')} busy={verify.isPending} disabled={!model.canSubmit} onPress={submit} />
       <Button
         variant="secondary"
         label={model.resendInSeconds > 0 ? t('otp.resendIn', { seconds: model.resendInSeconds }) : t('otp.resend')}

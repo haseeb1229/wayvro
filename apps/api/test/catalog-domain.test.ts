@@ -10,7 +10,8 @@ import { isOpen, nextOpening, overlappingWindows, parseLocalTime, type ServiceHo
 import { evaluateVehicleEligibility, type BodyType, type EligibilityRuleFacts, type VehicleFacts } from '../src/catalog/vehicle-eligibility.js';
 import { decideZones, isServed, type PickupPointCandidate, type ZoneHit, type ZoneKind } from '../src/catalog/zone-decision.js';
 
-const RUNS = { numRuns: 500 };
+// PR tier 500 runs; the manual full tier (.github/workflows/mobile-full.yml) sets WAYVRO_PROPERTY_RUNS=50000 (PHASE3_TEST_STRATEGY §5).
+const RUNS = { numRuns: Number(process.env['WAYVRO_PROPERTY_RUNS'] ?? '500') };
 const H = 3_600_000;
 const M = 60_000;
 const row = (weekday: number, opens: string, closes: string, productCode: string | null = null): ServiceHoursRow => ({

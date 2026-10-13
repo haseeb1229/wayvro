@@ -1,0 +1,33 @@
+# SP-08 #20 (B) (N) — V10, D03: an approved Driver/Partner opens the compliance view from the Driver/Partner home and
+# sees every document valid with no renewal action due (G's renewal path is n-02).
+appId: dev.wayvro.app
+name: n-13-compliance-renewal
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_B}
+      PHONE_LOCAL: ${PHONE_LOCAL_B}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Going online isn.t available yet.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Documents: all valid'
+    direction: DOWN
+- tapOn: 'Documents: all valid'
+- extendedWaitUntil:
+    visible: 'Driver/Partner status'
+    timeout: 30000
+- assertNotVisible: 'Renewal due'
+- takeScreenshot: n-13-compliance

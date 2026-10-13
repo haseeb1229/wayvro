@@ -90,6 +90,12 @@ export function isEscapePath(view: ClientPolicyView, pathname: string): boolean 
   return true;
 }
 
+/**
+ * Whether the session guard renders `pathname` without the account state: only an escape hatch under a blocking state,
+ * where the server answers `GET /v1/account/state` with 426 / 503 while the escape screen's own endpoints are exempt.
+ */
+export const rendersWithoutAccountState = (view: ClientPolicyView, pathname: string): boolean => isBlocking(view) && isEscapePath(view, pathname);
+
 /** Foreground refetches of the policy happen at most once per 15 minutes; start and explicit retries always fetch. */
 const FOREGROUND_REFETCH_MS = 15 * 60 * 1000;
 export type FetchTrigger = 'start' | 'foreground' | 'retry';

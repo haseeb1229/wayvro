@@ -21,9 +21,18 @@ export function useDirection() {
   };
 }
 
-export function Screen({ children, scroll = true }: { readonly children: ReactNode; readonly scroll?: boolean }) {
+/** `topInset`: a screen drawn without a navigation header (the release blocking overlay) also insets the status bar. */
+export function Screen({
+  children,
+  scroll = true,
+  topInset = false,
+}: {
+  readonly children: ReactNode;
+  readonly scroll?: boolean;
+  readonly topInset?: boolean;
+}) {
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={topInset ? ['top', 'bottom', 'left', 'right'] : ['bottom', 'left', 'right']}>
       {scroll ? (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {children}
@@ -67,12 +76,15 @@ export function Button(props: {
   readonly disabled?: boolean;
   readonly busy?: boolean;
   readonly busyLabel?: string;
+  /** Stable locator for the SP-08 Maestro flows (ADR-052): locale-independent, never user-visible. */
+  readonly testID?: string;
 }) {
   const { variant = 'primary', disabled = false, busy = false } = props;
   const inactive = disabled || busy;
   const label = busy && props.busyLabel !== undefined ? props.busyLabel : props.label;
   return (
     <Pressable
+      testID={props.testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inactive, busy }}
@@ -139,7 +151,7 @@ export function TextField(
     readonly error?: string | null;
   } & Pick<
     TextInputProps,
-    'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline' | 'onFocus'
+    'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline' | 'onFocus' | 'testID'
   >,
 ) {
   const dir = useDirection();

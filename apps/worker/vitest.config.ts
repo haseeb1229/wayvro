@@ -23,6 +23,8 @@ export default defineConfig({
         'src/outbox/account-state-hint.ts',
         'src/release/app-policy-activator.ts',
         'src/release/switch-expiry.ts',
+        'src/release/rate-card-activator.ts',
+        'src/geo/usage-rollup.ts',
       ],
       thresholds: { lines: 95, functions: 95, branches: 85, statements: 95 },
     },

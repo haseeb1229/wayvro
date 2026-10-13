@@ -1,0 +1,36 @@
+# SP-08 #13 (N) — V11 behavioural proxy: a rider-only journey (home → search → account hub → legal) reaches no
+# Driver/Partner screen without tapping the Driver/Partner entry and never uses the camera. The module-evaluation count
+# itself (PB-06) is read from the instrumented build's `WayvroPerf eval` logcat lines (run-flows logcat.txt), not here.
+appId: dev.wayvro.app
+name: n-07-lazy-driver-modules
+tags: [full, inv-07]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Packages'
+- extendedWaitUntil:
+    visible: 'Packages Mall.*'
+    timeout: 30000
+- back
+- back
+- scrollUntilVisible:
+    element: 'Account'
+    direction: DOWN
+- tapOn: 'Account'
+- extendedWaitUntil:
+    visible: 'Your account'
+    timeout: 30000
+- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible: 'Before you apply'

@@ -1,0 +1,32 @@
+# SP-08 #4 (E) + NAV-05 (PR, N) — V13, V08: an ACCOUNT-scope restriction that affects rider use disables "Where to?"
+# with its reason and an appeal entry; the Driver/Partner area shows the same restriction with nothing actionable.
+appId: dev.wayvro.app
+name: pr-06-account-restricted
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_E}
+      PHONE_LOCAL: ${PHONE_LOCAL_E}
+- extendedWaitUntil:
+    visible: "Price checks aren't available because of a restriction on your account."
+    timeout: 60000
+- assertVisible:
+    text: 'Where to\?'
+    enabled: false
+- assertVisible: 'Appeal'
+- takeScreenshot: pr-06-rider-restricted
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Going online isn.t available yet.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Your whole account is restricted, so riding is affected too.*'
+    direction: DOWN
+- takeScreenshot: pr-06-driver-restricted

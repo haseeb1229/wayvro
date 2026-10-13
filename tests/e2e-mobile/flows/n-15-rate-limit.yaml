@@ -1,0 +1,31 @@
+# SP-08 #17 (N) — I11 (client): repeated price checks beyond the quote rate limit show the 429 copy with the retry
+# seconds and no retry storm. REQUIRES the pricing slice (its quote rate limit); NOT RUN (pricing pending) until seeded.
+appId: dev.wayvro.app
+name: n-15-rate-limit
+tags: [full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- repeat:
+    times: 12
+    commands:
+      - tapOn:
+          id: rider-home-where-to
+      - inputText: 'Liberty'
+      - tapOn: 'Liberty Market.*'
+      - tapOn:
+          id: search-pickup
+      - inputText: 'Emporium'
+      - tapOn: 'Emporium Mall.*'
+      - back
+      - back
+- extendedWaitUntil:
+    visible: '.*(Too many|try again in).*'
+    timeout: 60000

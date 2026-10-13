@@ -283,6 +283,27 @@ describe('0012 upgrade path', () => {
     }
   });
 
+  it('synthetic seed: the quote TTL option (SP-08 E2E stack) is applied to new cards and range-checked before connecting', async () => {
+    for (const quoteTtlSeconds of [59, 1801, 60.5])
+      await expect(seedSyntheticCatalog({ env: 'test', databaseUrl: 'postgres://u:p@127.0.0.1:1/none', quoteTtlSeconds })).rejects.toThrow(/quoteTtlSeconds/);
+    const db = await createTestDatabase(adminUrl);
+    try {
+      await runMigrations(db.url);
+      await seedSyntheticCatalog({ env: 'test', databaseUrl: db.url, quoteTtlSeconds: 60 });
+      const pool = new pg.Pool({ connectionString: db.url, max: 1 });
+      try {
+        const ttl = await pool.query(
+          `select distinct c.quote_ttl_seconds t from pricing.rate_card_components c join pricing.rate_cards r on r.id = c.rate_card_id`,
+        );
+        expect(ttl.rows).toEqual([{ t: 60 }]);
+      } finally {
+        await pool.end();
+      }
+    } finally {
+      await db.drop();
+    }
+  });
+
   it('PostGIS columns carry the declared typmods', async () => {
     const r = await owner.query<{ c: string; t: string }>(
       `select a.attrelid::regclass::text || '.' || a.attname c, format_type(a.atttypid, a.atttypmod) t from pg_attribute a

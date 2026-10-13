@@ -1,0 +1,57 @@
+# SP-08 #10 / LOC-03 (PR on API 35, N) — A07, B02: the in-app rationale comes first, exactly one OS dialog follows the
+# explicit tap, and after "Don't allow" search still works with no dialog loop. run-flows.mjs then checks that only the
+# location permissions were ever asked and none was granted.
+appId: dev.wayvro.app
+name: pr-07-location-denied
+tags: [pr, full, api35-dialogs]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- scrollUntilVisible:
+    element: 'Use current location'
+    direction: DOWN
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible: 'Use your location for pickup\?'
+    timeout: 30000
+# the rationale is shown before any OS dialog
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- scrollUntilVisible:
+    element: 'Continue'
+    direction: DOWN
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_deny_button'
+    timeout: 30000
+- takeScreenshot: pr-07-os-dialog
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_deny_button'
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+# denied: the pickup screen offers search instead (no re-prompt, no dialog loop)
+- extendedWaitUntil:
+    visible: 'Search for an address instead'
+    timeout: 30000
+- takeScreenshot: pr-07-pickup-after-deny
+- tapOn: 'Search for an address instead'
+- extendedWaitUntil:
+    visible: 'Pickup'
+    timeout: 30000
+- inputText: 'Liberty'
+- extendedWaitUntil:
+    visible: 'Liberty Market.*'
+    timeout: 30000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- takeScreenshot: pr-07-search-after-deny

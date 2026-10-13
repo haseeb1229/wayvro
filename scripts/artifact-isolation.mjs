@@ -13,7 +13,9 @@
  *   03 no file contains a double package specifier, double class name, local-runner or local-route marker, and the
  *      test-double brand key occurs only in the production refusal guard of @wayvro/provider-interfaces; P3.2 adds the
  *      synthetic geo doubles (provider key, gazetteer and place ids, straight-line router) and the SP-04 harness path
- *      `tools/geo-bench`, with a negative control (03c: a planted file carrying every geo marker must be caught);
+ *      `tools/geo-bench`, with a negative control (03c: a planted file carrying every geo marker must be caught); P3.5
+ *      adds the SP-08 E2E / SP-02 instrumentation markers (03d negative control) — the mobile release AAB is scanned
+ *      for the same markers by infra/ci/android/check-release-purity.mjs;
  *   04 dynamic import / require resolution of the dev-only packages and of a devDependency fails with
  *      ERR_MODULE_NOT_FOUND / MODULE_NOT_FOUND from inside the artefact, while a real production dependency resolves
  *      (positive control, so the probe is meaningful);
@@ -41,6 +43,10 @@ const DEV_ONLY_PACKAGES = ['@wayvro/provider-test-doubles', '@wayvro/test-suppor
 // Phase 3 P3.2 (ADR-045 scope note): the synthetic geo doubles — their provider key, gazetteer, place ids and the
 // straight-line router — and the dev-only SP-04 benchmark harness path must never reach a deployable artefact.
 const GEO_DOUBLE_MARKERS = ['geo-mock', 'SYNTHETIC_GAZETTEER', 'createGeoTestDoubles', 'straightLineRoute', 'syn-lhr-', 'tools/geo-bench'];
+// Phase 3 P3.5 (ADR-052, SP-02 §6.2): markers of the SP-08 E2E variant and of the instrumented driver-module evaluation
+// build (probe symbol, its log prefix, the E2E origin key and network config, the mobile E2E harness path). The mobile
+// release AAB itself is proven free of them by infra/ci/android/check-release-purity.mjs in the Android job.
+const E2E_INSTRUMENTATION_MARKERS = ['__wayvroPerfEval', 'WayvroPerf eval', 'e2eLoopbackPort', 'wayvro_e2e_network_security', 'tests/e2e-mobile'];
 const FORBIDDEN_STRINGS = [
   ...DEV_ONLY_PACKAGES,
   'RecordingOtpDelivery',
@@ -50,6 +56,7 @@ const FORBIDDEN_STRINGS = [
   'main.local',
   '/__local/',
   ...GEO_DOUBLE_MARKERS,
+  ...E2E_INSTRUMENTATION_MARKERS,
 ];
 const BRAND_KEY = 'wayvro.provider.mock';
 const BRAND_ALLOWED = 'node_modules/@wayvro/provider-interfaces/dist/brand.js';
@@ -163,6 +170,21 @@ function inspectArtifact(app, dir) {
     );
   } finally {
     rmSync(planted, { force: true });
+  }
+  // 03d negative control (P3.5): a planted file carrying every E2E/instrumentation marker must be caught as well.
+  const plantedE2e = join(dir, 'dist', '__e2e_probe.js');
+  writeFileSync(plantedE2e, `export const probe = ${JSON.stringify(E2E_INSTRUMENTATION_MARKERS)};\n`);
+  try {
+    const control = scanArtifact(dir).hits.filter((h) => h.startsWith('dist/__e2e_probe.js'));
+    const missed = E2E_INSTRUMENTATION_MARKERS.filter((m) => !control.some((h) => h.endsWith(`: ${m}`)));
+    record(
+      '03d',
+      app,
+      missed.length === 0,
+      missed.length ? `scan missed ${missed.join(', ')}` : `planted E2E/instrumentation markers detected (${E2E_INSTRUMENTATION_MARKERS.length})`,
+    );
+  } finally {
+    rmSync(plantedE2e, { force: true });
   }
 
   // 04 resolution from inside the artefact.

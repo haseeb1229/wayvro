@@ -1,0 +1,36 @@
+# SP-08 #22 (N) — docs/28 §10, A01: with the RIDER-scoped `rider.quotes` switch DISABLED (run-flows hook, seeded staff
+# maker) "Where to?" is disabled with its reason; C's Driver/Partner area is unaffected. The hook restores it afterwards.
+appId: dev.wayvro.app
+name: n-10-rider-quotes-switch-off
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible: 'Price checks are paused right now. Please try again later.'
+    timeout: 60000
+- assertVisible:
+    id: rider-home-where-to
+    enabled: false
+- takeScreenshot: n-10-rider-quotes-off
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_C}
+      PHONE_LOCAL: ${PHONE_LOCAL_C}
+- extendedWaitUntil:
+    visible: 'Price checks are paused right now. Please try again later.'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Going online isn.t available yet.*'
+    timeout: 30000
+- takeScreenshot: n-10-driver-unaffected

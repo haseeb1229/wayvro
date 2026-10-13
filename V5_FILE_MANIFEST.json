@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 135,
+  "file_count_excluding_manifest": 136,
   "files": [
     {
       "path": ".gitattributes",
@@ -305,9 +305,14 @@
       "sha256": "8b174dec374c0ad035cbb1654bce36c5c9563ab0fbd91de34e1258795adf283e"
     },
     {
+      "path": "docs/adr/ADR-052-mobile-e2e-tooling.md",
+      "bytes": 10624,
+      "sha256": "4c7d039b2a673820464ed03bf8e68a960817918aae82df1ce4d43b0564c53dd2"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 7982,
-      "sha256": "965ed20fe84dd1b73baa3dcb46c4c3ffef38ae7a7f346d8fbbfed3134ce6084c"
+      "bytes": 8311,
+      "sha256": "08ff9e05a63ffe4638393ad8c10a8c2931c11e4be63557bf22e944c875d10269"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -601,8 +606,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 20471,
-      "sha256": "eb39336fc9d58ab41d68cd4c97f583d4d7c573065d1f40ee40a108e1d675a65c"
+      "bytes": 23316,
+      "sha256": "8f24ecb4f187a7bf4154349dcb4ce47a3c78f6916d8288719bcd531cd3344f85"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -641,8 +646,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 32458,
-      "sha256": "8f06a470c26a5ebf26edcede1c1bcee675799c9bec892febbd1e4ff34eef2ada"
+      "bytes": 33674,
+      "sha256": "88c24076d7b39729697bbfcbf7890104d66f6f23e387b69e42a02f21e553ad03"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",

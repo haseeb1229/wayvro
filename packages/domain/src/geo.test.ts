@@ -11,8 +11,8 @@ import {
   simplifyPolyline,
 } from './geo.js';
 
-// PR tier: 500 runs per property (docs/phase3/PHASE3_TEST_STRATEGY.md §4.2)
-const NUM_RUNS = 500;
+// PR tier: 500 runs per property (docs/phase3/PHASE3_TEST_STRATEGY.md §4.2); the manual full tier sets WAYVRO_PROPERTY_RUNS=50000 (§5)
+const NUM_RUNS = Number(process.env['WAYVRO_PROPERTY_RUNS'] ?? '500');
 const lat = fc.double({ min: -90, max: 90, noNaN: true, noDefaultInfinity: true });
 const lng = fc.double({ min: -180, max: 180, noNaN: true, noDefaultInfinity: true });
 const point = fc.record({ lat, lng });

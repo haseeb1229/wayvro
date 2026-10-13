@@ -5,6 +5,7 @@ import { useI18n } from '../../../core/i18n/I18nProvider';
 import type { UiLocale } from '../../../core/i18n/strings';
 import { useServices, useSessionState, useSignInNotice } from '../../../core/services/ServicesProvider';
 import { Banner, Body, Button, ErrorBanner, RadioGroup, Screen, TextField, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { FullyDrawnMarker } from '../../../platform/perf/fully-drawn';
 import { useLocaleOptions } from '../profile/use-update-profile';
 import { checkPhone, phoneFormModel, phoneRequestError } from './phone-entry';
 
@@ -49,7 +50,10 @@ export function PhoneEntryScreen() {
       <Title>{t('phone.title')}</Title>
       {statusBanner === null ? null : <Banner tone="info" text={statusBanner} />}
       <Body>{t('phone.body')}</Body>
+      {/* SP-02 §6.1: the signed-out first screen is interactive once rendered (PB-02). */}
+      <FullyDrawnMarker />
       <TextField
+        testID="phone-number"
         label={t('phone.label')}
         hint={t('phone.hint')}
         value={phone}
@@ -66,7 +70,14 @@ export function PhoneEntryScreen() {
         onSubmitEditing={submit}
       />
       {request.isError ? <ErrorBanner error={phoneRequestError(request.error)} /> : null}
-      <Button label={t('phone.submit')} busyLabel={t('phone.sending')} busy={request.isPending} disabled={!model.canSubmit} onPress={submit} />
+      <Button
+        testID="phone-submit"
+        label={t('phone.submit')}
+        busyLabel={t('phone.sending')}
+        busy={request.isPending}
+        disabled={!model.canSubmit}
+        onPress={submit}
+      />
       <Body muted>{t('phone.legalNote')}</Body>
       <RadioGroup<UiLocale>
         label={t('language.label')}

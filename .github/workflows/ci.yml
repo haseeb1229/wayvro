@@ -221,7 +221,7 @@ jobs:
       # key — never a stale prefix match. The key covers what decides the Gradle dependency graph: the lockfile (React
       # Native/Expo/library versions, hence plugin + AAR/JAR coordinates and the Gradle wrapper version from the RN
       # template), the app manifest + config (plugins, autolinking exclusions, build-from-source) and the build script
-      # (tasks, ABIs). Gate scripts and the permission allowlist read the built AAB and do not change ~/.gradle.
+      # (tasks, ABIs) and the local Expo modules' Gradle files. Gate scripts and the allowlists read the built AAB and do not change ~/.gradle.
       - name: Restore Gradle dependency cache (exact key only)
         id: gradle-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -229,7 +229,7 @@ jobs:
           path: |
             ~/.gradle/caches/modules-2
             ~/.gradle/wrapper/dists
-          key: gradle-deps-v2-${{ runner.os }}-jdk17-${{ hashFiles('pnpm-lock.yaml', 'apps/wayvro-mobile/package.json', 'apps/wayvro-mobile/app.config.ts', 'scripts/android-build.mjs') }}
+          key: gradle-deps-v2-${{ runner.os }}-jdk17-${{ hashFiles('pnpm-lock.yaml', 'apps/wayvro-mobile/package.json', 'apps/wayvro-mobile/app.config.ts', 'apps/wayvro-mobile/modules/*/android/build.gradle', 'scripts/android-build.mjs') }}
       - run: pnpm install --frozen-lockfile
       # Metro resolves workspace packages through their compiled `dist` (e.g. @wayvro/contracts since P2.3).
       - name: Build the workspace packages the app imports
@@ -240,7 +240,13 @@ jobs:
         run: |
           curl -sSL -o /tmp/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
           echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  /tmp/bundletool.jar" | sha256sum -c -
-      - name: Release AAB (arm64-v8a + armeabi-v7a) with 16 KB, ABI, permission and intent-filter gates
+      - name: Release gates — negative controls (size, release purity, SDK inventory, bundle secrets)
+        run: |
+          node infra/ci/android/check-size.mjs --self-test
+          node infra/ci/android/check-release-purity.mjs --self-test
+          node infra/ci/android/check-sdk-inventory.mjs --self-test
+          node infra/ci/android/check-bundle-secrets.mjs --self-test
+      - name: Release AAB (arm64-v8a + armeabi-v7a) with SDK-INV, 16 KB, ABI, permission, intent-filter, size, release-purity and bundle-secrets gates
         env:
           WAYVRO_JDK17_HOME: ${{ env.JAVA_HOME }}
           BUNDLETOOL_JAR: /tmp/bundletool.jar
@@ -353,3 +359,175 @@ jobs:
           name: playwright-report-${{ github.sha }}
           retention-days: 7
           path: build-logs/playwright-report/
+
+  # SP-08 PR tier (ADR-052; FA-16): INFORMATIONAL — not in ruleset 24837051 (making it required is a founder action;
+  # the short name keeps the required-check context readable). Heavy steps run only when a mobile-affecting path changed
+  # against the merge base (private repository: Actions minutes are finite). It builds its own x86_64 E2E variant
+  # (release-mode Hermes bundle); the gated release AAB of the Android job is never replaced or touched.
+  mobile-e2e:
+    name: Mobile E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      MAESTRO_VERSION: 2.11.0
+      MAESTRO_SHA256: 5384593cb4e7a106489e75a821d157dd43f4e438df6bc308b72e82c685e1283a
+      MAESTRO_CLI_NO_ANALYTICS: '1'
+      MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED: 'true'
+      MAESTRO_DISABLE_UPDATE_CHECK: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Mobile-affecting change? (mobile app, contracts/packages and API paths vs the merge base)
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in
+            pull_request) base=$(git merge-base HEAD "origin/$BASE_REF" || true) ;;
+            push) base=$(git cat-file -e "$BEFORE^{commit}" 2>/dev/null && echo "$BEFORE" || true) ;;
+            *) base="" ;;
+          esac
+          if [ "$EVENT" = "workflow_dispatch" ] || [ -z "$base" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Mobile E2E: running (event $EVENT, no comparable base)"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" HEAD)
+          if printf '%s\n' "$changed" | grep -qE '^(apps/wayvro-mobile/|apps/api/|packages/|tests/e2e-mobile/|scripts/android-build\.mjs|infra/ci/android/|pnpm-lock\.yaml|\.github/workflows/ci\.yml)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Mobile E2E: running (mobile-affecting paths changed since $base)"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Mobile E2E: SKIPPED (no mobile-affecting change since $base)"
+            echo "### Mobile E2E: SKIPPED (no mobile-affecting change)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Free disk — remove toolchains this job does not use
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          for d in /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL /usr/local/julia* /usr/local/share/boost; do
+            if [ -e "$d" ]; then
+              du -sh "$d"
+              sudo rm -rf "$d"
+            fi
+          done
+          df -h /
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: steps.scope.outputs.run == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.run == 'true'
+        with:
+          node-version-file: .node-version
+      - if: steps.scope.outputs.run == 'true'
+        run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        if: steps.scope.outputs.run == 'true'
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.scope.outputs.run == 'true'
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      # Restore ONLY (the Android job on main pushes owns the save), with the Android job's exact key.
+      - name: Restore Gradle dependency cache (exact key only)
+        if: steps.scope.outputs.run == 'true'
+        id: gradle-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+          key: gradle-deps-v2-${{ runner.os }}-jdk17-${{ hashFiles('pnpm-lock.yaml', 'apps/wayvro-mobile/package.json', 'apps/wayvro-mobile/app.config.ts', 'apps/wayvro-mobile/modules/*/android/build.gradle', 'scripts/android-build.mjs') }}
+      - if: steps.scope.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Build the API + local runner, the seed packages and the app's workspace packages
+        if: steps.scope.outputs.run == 'true'
+        run: pnpm turbo run build build:local --filter='@wayvro/api...' --filter=@wayvro/test-support --filter='@wayvro/wayvro-mobile^...'
+      - name: E2E APK (x86_64, release-mode Hermes bundle, emulator-loopback origin; Gradle cache hit=${{ steps.gradle-cache.outputs.cache-hit || 'false' }})
+        if: steps.scope.outputs.run == 'true'
+        env:
+          WAYVRO_JDK17_HOME: ${{ env.JAVA_HOME }}
+        run: |
+          start=$(date +%s)
+          node scripts/android-build.mjs e2e
+          echo "E2E APK build: $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Remove native intermediates after the build
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          rm -rf apps/wayvro-mobile/android
+          find node_modules -mindepth 3 -maxdepth 5 -type d \( -path '*/android/build' -o -path '*/android/.cxx' \) -prune -exec rm -rf {} +
+          df -h /
+      - name: Install Maestro ${{ env.MAESTRO_VERSION }} (checksum-verified)
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          curl -sSL -o /tmp/maestro.zip "https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip"
+          echo "${MAESTRO_SHA256}  /tmp/maestro.zip" | sha256sum -c -
+          unzip -q /tmp/maestro.zip -d /tmp
+          /tmp/maestro/bin/maestro --version
+      - name: Start local infrastructure (compose project "wayvro")
+        if: steps.scope.outputs.run == 'true'
+        env:
+          WAYVRO_CLAMAV_NO_FRESHCLAM: 'true'
+        run: pnpm infra:up
+      - name: Mobile E2E stack (throwaway database, synthetic seed, API local runner on :4120)
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          cp .env.example .env
+          mkdir -p build-logs/e2e-mobile
+          nohup node tests/e2e-mobile/mobile-stack.mjs > build-logs/e2e-mobile/stack.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 240); do
+            if [ -f build-logs/e2e-mobile/stack.json ]; then cat build-logs/e2e-mobile/stack.log; exit 0; fi
+            if ! kill -0 "$pid" 2>/dev/null; then cat build-logs/e2e-mobile/stack.log; exit 1; fi
+            sleep 1
+          done
+          cat build-logs/e2e-mobile/stack.log
+          exit 1
+      - name: Enable KVM for the emulator
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: PR-tier flows on an API 35 emulator (cold boot, animations off; Maestro phase budget 15 min)
+        if: steps.scope.outputs.run == 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          disk-size: 6G
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: node tests/e2e-mobile/run-flows.mjs --tier pr --lane api-35 --apk apps/wayvro-mobile/build-reports/e2e/wayvro-e2e.apk --maestro /tmp/maestro/bin/maestro --budget-seconds 900
+      - name: Report (per-flow summary and Maestro wall time)
+        if: always() && steps.scope.outputs.run == 'true'
+        run: |
+          if [ -f build-logs/e2e-mobile/pr-api-35/summary.md ]; then
+            cat build-logs/e2e-mobile/pr-api-35/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Mobile E2E: BLOCKED — no flow summary was written (see the stack and emulator steps)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Stop local infrastructure
+        if: always() && steps.scope.outputs.run == 'true'
+        run: pnpm infra:down
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && steps.scope.outputs.run == 'true'
+        with:
+          name: mobile-e2e-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: warn
+          # JUnit per Maestro invocation, screenshots, retry videos of failed flows, logcat, summaries, the E2E build report.
+          path: |
+            build-logs/e2e-mobile/
+            apps/wayvro-mobile/build-reports/e2e/e2e-build-report.json

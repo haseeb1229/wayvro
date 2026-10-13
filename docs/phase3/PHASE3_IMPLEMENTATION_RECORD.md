@@ -174,6 +174,23 @@ Open items:
 - A K19 table-driven state-coverage test across en/ur/ur-Latn.
 - An upload "retrying" state.
 
+## SP-08 — Mobile E2E tooling and release gates (ADR-052) — IDs V10, U04, U05, Q26 (+ V08/V05/V11/A01/L08/K19 flows)
+
+- **Tool:** Maestro CLI 2.11.0 (checksum-verified, telemetry off) on an emulator; flows in `tests/e2e-mobile/flows` (PR tier + full tier, manifest-driven); a throwaway stack `wayvro_e2e_mobile` (recreated per run) with the synthetic catalog and pricing (60 s quote TTL), accounts created through the public OTP/consent endpoints.
+- **E2E build variant:** `node scripts/android-build.mjs e2e` — release-mode Hermes bundle, x86_64, debug-key signed, emulator-loopback origin only (`10.0.2.2:<port>`), E2E-only network security config. `release` mode refuses to build while the E2E variables are set.
+- **New release gates in the Android job** (each with a `--self-test` negative control in CI): SDK-INV (`sdk-inventory.json`, exact versions), release purity (no cleartext, no E2E resources/keys, no instrumentation probe, no dev launcher), size budgets (FA-07), bundle secrets. ART-ISO 03d covers the same markers in server artefacts.
+- **SP-02 instrumentation:** a first-party local Expo module `modules/wayvro-fully-drawn` (Kotlin, `Activity.reportFullyDrawn()` once per process) ships in the release AAB; the driver-module evaluation probe exists only in the instrumented E2E build.
+- **Workflows:** CI job `Mobile E2E` (INFORMATIONAL, not in the ruleset; runs only on mobile-affecting changes); `.github/workflows/mobile-full.yml` (manual full matrix, FA-16: no schedule).
+
+Fixed at the merge (findings of the SP-08 emulator run):
+- HARD_UPDATE "Read legal policies" stalled on the session guard's `/v1/account/state` read (426). Under a blocking policy the guard now renders the escape screens (legal; deletion under HARD_UPDATE) without the account state (`rendersWithoutAccountState`, unit-tested). The server's 426/503 gate is unchanged.
+- The blocking screen's title was drawn under the status bar: `Screen topInset`.
+- Pricing seed: the E2E stack now uses `seedSyntheticCatalog({ quoteTtlSeconds: 60 })` (new optional, range-checked, integration-tested) instead of the never-built `seedSyntheticPricing`; the quote TTL is 60 s (the rate card CHECK minimum), not 45 s.
+
+Evidence: the PR tier ran on a local API 35 emulator only (EMULATOR evidence): 9 PASS, 2 NOT RUN (pricing pending at the time), 1 FLAKY + 1 FAIL from adb transport loss under load, 1 FAIL that was the HARD_UPDATE finding above. After the fixes, the emulator re-run is **NOT RUN**. The first CI run of `Mobile E2E` and the `mobile-full.yml` full matrix: see the closure section.
+
+Founder confirmation needed: 14 transitive native modules newly listed as APPROVED-EXISTING in `sdk-inventory.json` (`transitiveAddedP35: true`; all MIT; already in the Phase 1/2 release AABs) and the first-party `wayvro-fully-drawn` module (FA-09 native review).
+
 ## Shared verification after the merges (local, main tree, before the push of `b381f2c`)
 
 | Suite | Result |

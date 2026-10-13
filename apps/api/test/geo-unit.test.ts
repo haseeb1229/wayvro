@@ -20,7 +20,8 @@ import { PlaceRefError, PlaceRefSealer } from '../src/geo/place-ref.js';
 import { classifyFailure } from '../src/geo/provider-call.js';
 
 const SEED = 'synthetic-geo-unit-seed-00000000000000000';
-const NUM_RUNS = 500;
+// PR tier 500 runs; the manual full tier (.github/workflows/mobile-full.yml) sets WAYVRO_PROPERTY_RUNS=50000 (PHASE3_TEST_STRATEGY §5).
+const NUM_RUNS = Number(process.env['WAYVRO_PROPERTY_RUNS'] ?? '500');
 
 describe('PROP-NORM (search normalisation)', () => {
   const urdu = fc.string({ unit: fc.constantFrom(...'ابپتٹثجچحخدڈذرڑزژسشصضطظعغفقکگلمنںوہھءیے'.split('')), minLength: 1, maxLength: 30 });

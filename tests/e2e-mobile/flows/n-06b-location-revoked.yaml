@@ -1,0 +1,22 @@
+# SP-08 #11 / LOC-05, part 2 of 2 (N): back in the foreground after the revocation the app falls back silently —
+# Rider home, no crash, no automatic re-prompt; search still works.
+appId: dev.wayvro.app
+name: n-06b-location-revoked
+tags: [full]
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Anarkali'
+- extendedWaitUntil:
+    visible: 'Anarkali Bazaar.*'
+    timeout: 30000

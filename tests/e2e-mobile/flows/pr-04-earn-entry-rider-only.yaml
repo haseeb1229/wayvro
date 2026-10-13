@@ -1,0 +1,29 @@
+# SP-08 #4 (A) (PR, N) — V08, docs/28 §5: a rider-only account selecting Driver/Partner opens the Earn introduction
+# (onboarding), never a driver home, and no permission dialog appears.
+appId: dev.wayvro.app
+name: pr-04-earn-entry-rider-only
+tags: [pr, full, inv-07]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Before you apply'
+    timeout: 30000
+- assertVisible: 'Applying never affects your rides: Rider mode stays available the whole time.'
+- assertNotVisible: 'Going online isn.t available yet.*'
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- takeScreenshot: pr-04-earn-intro

@@ -5,6 +5,7 @@ import {
   evaluateClientPolicy,
   isBlocking,
   isEscapePath,
+  rendersWithoutAccountState,
   maintenanceRetryDelayMs,
   parseCachedPolicy,
   shouldFetchPolicy,
@@ -84,6 +85,19 @@ describe('UNIT-POLICY evaluateClientPolicy (A01/Q31)', () => {
     expect(isEscapePath(maintenance, '/account/delete')).toBe(false);
     for (const path of ['/', '/ride', '/ride/quote', '/drive', '/earn', '/home', '/sign-in', '/legalese'])
       expect(isEscapePath(hard, path) || isEscapePath(maintenance, path), path).toBe(false);
+  });
+
+  it('the session guard skips the gated account state only on an escape hatch of a blocking state (SP-08 #21)', () => {
+    const hard = evaluateClientPolicy(input({ forced: 'UPDATE_REQUIRED' }));
+    const maintenance = evaluateClientPolicy(input({ forced: 'MAINTENANCE' }));
+    expect(rendersWithoutAccountState(hard, '/legal')).toBe(true);
+    expect(rendersWithoutAccountState(hard, '/account/delete')).toBe(true);
+    expect(rendersWithoutAccountState(maintenance, '/legal/TERMS/1')).toBe(true);
+    expect(rendersWithoutAccountState(maintenance, '/account/delete')).toBe(false);
+    for (const view of [{ kind: 'ok' } as const, { kind: 'soft-update', bannerVisible: true } as const])
+      for (const path of ['/legal', '/account/delete', '/ride']) expect(rendersWithoutAccountState(view, path), `${view.kind} ${path}`).toBe(false);
+    for (const path of ['/ride', '/drive', '/home'])
+      expect(rendersWithoutAccountState(hard, path) || rendersWithoutAccountState(maintenance, path), path).toBe(false);
   });
 });
 

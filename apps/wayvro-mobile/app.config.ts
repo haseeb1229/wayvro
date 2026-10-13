@@ -21,6 +21,19 @@ const API_URL = env['WAYVRO_API_URL']?.trim() ?? '';
 const DEV_LOCAL_API = env['WAYVRO_DEV_LOCAL_API'] === '1';
 
 /**
+ * SP-08 E2E variant ONLY (ADR-052): `node scripts/android-build.mjs e2e` sets WAYVRO_E2E_API_PORT (the API local runner's
+ * port on the emulator host loopback 10.0.2.2). It adds the E2E-only network security config plugin and the
+ * `e2eLoopbackPort` app-config key; `release` mode refuses to build while it is set and the release-purity gate proves
+ * neither reaches the release AAB. Combining it with WAYVRO_API_URL is refused (ambiguous origin).
+ */
+const E2E_API_PORT_RAW = env['WAYVRO_E2E_API_PORT']?.trim() ?? '';
+const E2E_PORT_VALID = /^[1-9][0-9]{3,4}$/.test(E2E_API_PORT_RAW) && Number(E2E_API_PORT_RAW) >= 1024 && Number(E2E_API_PORT_RAW) <= 65535;
+if (E2E_API_PORT_RAW !== '' && (!E2E_PORT_VALID || API_URL !== '')) {
+  throw new Error('WAYVRO_E2E_API_PORT must be a port number 1024-65535 and cannot be combined with WAYVRO_API_URL');
+}
+const E2E_API_PORT = E2E_API_PORT_RAW === '' ? null : Number(E2E_API_PORT_RAW);
+
+/**
  * Expo and its modules add these by default. None is justified by the shell, the P2.3 account slice or the P2.8 Driver/Partner
  * onboarding (which needs only CAMERA, requested just in time), so they are removed from the
  * merged manifest; CI then verifies the release AAB against infra/ci/android/permission-allowlist.json. Later
@@ -117,8 +130,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isAndroidMotionActivityEnabled: false,
       },
     ],
+    ...(E2E_API_PORT === null ? [] : ['./plugins/e2e-loopback-network.mjs']),
   ],
-  extra: { wayvroApi: { ...(API_URL === '' ? {} : { baseUrl: API_URL }), devLocalApi: DEV_LOCAL_API } },
+  extra: {
+    wayvroApi: {
+      ...(API_URL === '' ? {} : { baseUrl: API_URL }),
+      devLocalApi: DEV_LOCAL_API,
+      ...(E2E_API_PORT === null ? {} : { e2eLoopbackPort: E2E_API_PORT }),
+    },
+  },
   android: {
     package: APP_ID,
     versionCode: BUILD_NUMBER,

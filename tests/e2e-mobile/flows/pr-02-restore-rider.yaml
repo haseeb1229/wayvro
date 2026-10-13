@@ -1,0 +1,26 @@
+# SP-08 #2 (PR: A) — V08: session restore after a force-stop lands on Rider home from server state, with no flash of
+# the Driver/Partner area and no new sign-in.
+appId: dev.wayvro.app
+name: pr-02-restore-rider
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- stopApp
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible:
+    id: phone-number
+- assertNotVisible: 'Going online isn.t available yet.*'
+- takeScreenshot: pr-02-restored-rider-home

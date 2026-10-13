@@ -87,6 +87,12 @@ export interface SyntheticCatalogSeedOptions {
   readonly databaseUrl: string;
   /** Receives one line per planned write (what the seed is about to do). */
   readonly log?: (line: string) => void;
+  /**
+   * Quote TTL of the synthetic rate cards when they are first created (default `SYNTHETIC_CATALOG.pricing.quoteTtlSeconds`;
+   * the database admits 60–1800 s). The mobile E2E stack (SP-08) uses the 60 s minimum so quote expiry is testable. A
+   * re-run never edits an existing card: an ACTIVE card is immutable.
+   */
+  readonly quoteTtlSeconds?: number;
 }
 
 export interface SyntheticCatalogSeedResult {
@@ -146,7 +152,7 @@ async function nonSyntheticConfiguration(c: pg.ClientBase): Promise<string[]> {
  * pricing doc §5. A card is written as DRAFT with its components and then activated through the database's seed path
  * (staff-less synthetic DRAFT → ACTIVE, migrator members only). Another ACTIVE card for the product is refused.
  */
-async function seedPricing(client: pg.ClientBase, log: (line: string) => void): Promise<void> {
+async function seedPricing(client: pg.ClientBase, log: (line: string) => void, quoteTtlSeconds: number): Promise<void> {
   const S = SYNTHETIC_CATALOG;
   const P = S.pricing;
   log(`tax policy ${P.taxPolicyId} (${P.taxPolicyCode}, placeholder, 0 bp exclusive) -> APPROVED`);
@@ -170,7 +176,7 @@ async function seedPricing(client: pg.ClientBase, log: (line: string) => void): 
     ).rows[0];
     if (active) throw new Error(`synthetic catalog seed refused: another ACTIVE rate card exists for ${S.cityCode}/${product}`);
     const v = P.cards[product];
-    log(`rate card ${id} (${S.cityCode}/${product}, synthetic) -> ACTIVE`);
+    log(`rate card ${id} (${S.cityCode}/${product}, synthetic, quote TTL ${String(quoteTtlSeconds)} s) -> ACTIVE`);
     await client.query(
       `insert into pricing.rate_cards (id, city_code, product_code, version, status, is_synthetic, source_reference)
        select $1, $2, $3, coalesce(max(version), 0) + 1, 'DRAFT', true, $4 from pricing.rate_cards where city_code = $2 and product_code = $3`,
@@ -192,7 +198,7 @@ async function seedPricing(client: pg.ClientBase, log: (line: string) => void): 
         P.roundingMode,
         P.tollPolicy,
         P.taxPolicyId,
-        P.quoteTtlSeconds,
+        quoteTtlSeconds,
         P.maxDistanceM,
         P.maxDurationS,
       ],
@@ -203,6 +209,9 @@ async function seedPricing(client: pg.ClientBase, log: (line: string) => void): 
 
 export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions): Promise<SyntheticCatalogSeedResult> {
   assertSyntheticSeedAllowed(options.env, options.databaseUrl);
+  const quoteTtlSeconds = options.quoteTtlSeconds ?? SYNTHETIC_CATALOG.pricing.quoteTtlSeconds;
+  if (!Number.isInteger(quoteTtlSeconds) || quoteTtlSeconds < 60 || quoteTtlSeconds > 1800)
+    throw new Error(`synthetic catalog seed refused: quoteTtlSeconds must be an integer 60-1800 (got ${String(quoteTtlSeconds)})`);
   const log = options.log ?? (() => undefined);
   const S = SYNTHETIC_CATALOG;
   const client = new pg.Client({ connectionString: options.databaseUrl });
@@ -290,7 +299,8 @@ export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions)
         where city_code = $1 and product_code = 'COMFORT'`,
       [S.cityCode],
     );
-    if ((await client.query<{ t: string | null }>(`select to_regclass('pricing.rate_cards')::text t`)).rows[0]?.t) await seedPricing(client, log);
+    if ((await client.query<{ t: string | null }>(`select to_regclass('pricing.rate_cards')::text t`)).rows[0]?.t)
+      await seedPricing(client, log, quoteTtlSeconds);
     await client.query('commit');
     return { zoneSetId: S.zoneSetId, zoneSetVersion: version, createdZoneSet };
   } catch (e) {

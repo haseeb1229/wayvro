@@ -1,0 +1,45 @@
+# SP-08 #4 (D) + NAV-02 (PR, N) — V13, INV-09: a Driver/Partner-role restriction pauses the Driver/Partner area only;
+# the rider "Where to?" stays enabled (a driver restriction is never an account restriction).
+appId: dev.wayvro.app
+name: pr-05-driver-role-restricted
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_D}
+      PHONE_LOCAL: ${PHONE_LOCAL_D}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertVisible:
+    id: rider-home-where-to
+    enabled: true
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Going online isn.t available yet.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Restrictions on Driver/Partner: 1'
+    direction: DOWN
+- assertVisible: 'Riding with Wayvro is not affected.'
+- takeScreenshot: pr-05-driver-restricted
+- scrollUntilVisible:
+    element:
+      id: mode-switch-rider
+    direction: DOWN
+- tapOn:
+    id: mode-switch-rider
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+- assertVisible:
+    id: rider-home-where-to
+    enabled: true

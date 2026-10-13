@@ -1,0 +1,23 @@
+# SP-08 #1 (PR, N) — INV-07, V08, V05: cold start signed out → real OTP sign-in → Rider home; no permission dialog of
+# any kind before a location tap. run-flows.mjs adds the rider-hygiene check (#12) on `dumpsys package` afterwards.
+appId: dev.wayvro.app
+name: pr-01-signin-rider-home
+tags: [pr, full, inv-07]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertVisible:
+    id: rider-home-where-to
+    enabled: true
+- assertVisible: 'Booking opens soon. For now you can check prices.'
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- assertNotVisible: 'Going online isn.t available yet.*'
+- takeScreenshot: pr-01-rider-home

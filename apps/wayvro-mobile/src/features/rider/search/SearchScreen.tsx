@@ -102,6 +102,7 @@ export function SearchScreen() {
     <Screen>
       <Stack.Screen options={{ title: t('rider.search.title') }} />
       <TextField
+        testID="search-pickup"
         label={t('rider.search.pickup')}
         value={texts.pickup}
         onChangeText={field === 'pickup' ? onChange : noop}
@@ -113,6 +114,7 @@ export function SearchScreen() {
         {...hintFor(current('pickup'))}
       />
       <TextField
+        testID="search-dropoff"
         label={t('rider.search.dropoff')}
         value={texts.dropoff}
         onChangeText={field === 'dropoff' ? onChange : noop}

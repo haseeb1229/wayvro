@@ -1,0 +1,32 @@
+# SP-08 #16 / QUOTE-02 (N) — E07, E08, CON-P3-08: an outside-area drop-off is refused with its own copy and no price or
+# ETA (synthetic gazetteer: the airport precinct / out-of-zone places of the synthetic zone set). REQUIRES the pricing
+# slice; NOT RUN (pricing pending) until seeded. Outside-hours and routing-unavailable variants need deterministic
+# double inputs from the pricing slice and are added with it.
+appId: dev.wayvro.app
+name: n-09-quote-refusals
+tags: [full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Badshahi'
+- tapOn: 'Badshahi Mosque.*'
+- extendedWaitUntil:
+    visible: "Wayvro can't give a price for this trip."
+    timeout: 60000
+- assertNotVisible: '.*Rs.*'

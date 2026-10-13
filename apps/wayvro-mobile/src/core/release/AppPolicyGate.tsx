@@ -122,7 +122,7 @@ function BlockingScreen({ view, checking, onRetry }: { readonly view: ClientPoli
   );
   if (view.kind === 'hard-update') {
     return (
-      <Screen>
+      <Screen topInset>
         <Title>{t('app.update.title')}</Title>
         <Banner tone="error" text={t(view.reasonClass === null ? 'app.update.reason.generic' : HARD_REASON_KEY[view.reasonClass])} />
         <Body>{t('app.update.fromStore')}</Body>
@@ -133,7 +133,7 @@ function BlockingScreen({ view, checking, onRetry }: { readonly view: ClientPoli
   const messageKey = view.kind === 'maintenance' && view.messageKey !== null && isStringKey(view.messageKey) ? view.messageKey : 'app.maintenance.body';
   const expectedEnd = view.kind === 'maintenance' ? view.expectedEnd : null;
   return (
-    <Screen>
+    <Screen topInset>
       <Title>{t('app.maintenance.title')}</Title>
       <Banner tone="warning" text={t(messageKey)} />
       {expectedEnd === null ? null : <Body>{t('app.maintenance.until', { time: formatDateTime(expectedEnd, locale) })}</Body>}

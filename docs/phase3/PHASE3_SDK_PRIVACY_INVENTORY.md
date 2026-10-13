@@ -124,7 +124,9 @@ Next.js build-time telemetry is a developer/CI tool setting, not a runtime SDK; 
 
 ## 8. CI check proposal (U04 enforcement)
 
-Proposed script (name illustrative: scripts/check-sdk-inventory.mjs, not created) run in the Quality job:
+**Implemented at P3.5 (ADR-052):** `infra/ci/android/check-sdk-inventory.mjs` (SDK-INV) runs first inside `node scripts/android-build.mjs release` in the Android job (fail fast, before Gradle), against the machine-readable companion `infra/ci/android/sdk-inventory.json` (items 1–3 below; exact versions; DEV-ONLY/PROPOSED/CANDIDATE statuses fail; stale rows are warnings). The resolved Android autolinking also links transitive modules that had no row here — `@expo/dom-webview`, `@expo/log-box`, `@expo/ui`, `@react-native-masked-view/masked-view`, `expo-asset`, `expo-font`, `expo-image-loader`, `expo-json-utils`, `expo-keep-awake`, `expo-manifests`, `expo-updates-interface`, `expo-dev-launcher`, `expo-dev-menu`, `expo-dev-menu-interface` (all MIT, all shipped in the Phase-1/2 release AABs) — plus the first-party local module `wayvro-fully-drawn` (SP-02 §6.1). They are recorded APPROVED-EXISTING with `transitiveAddedP35: true` and **need founder confirmation at the P3.10 regeneration**. BUNDLE-SECRETS (`check-bundle-secrets.mjs`) reads `allowedVendorHosts` (empty until the renderer/tile host is chosen at P3.7). Item 5 (diff-gate) is not implemented: the exact-version rule already forces an inventory change for every mobile dependency change.
+
+Original proposal (name illustrative at planning time):
 
 1. Read `apps/wayvro-mobile/package.json` dependencies and the **resolved autolinked native module list** for the release variant (Expo autolinking resolution output), so transitive native SDKs are caught, not only direct dependencies.
 2. Read a machine-readable inventory (proposed future JSON file under docs/phase3, generated from this document's tables) mapping each package to status, allowed version range, permissions it may contribute, network-endpoint class and approval reference.

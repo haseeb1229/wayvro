@@ -1,0 +1,85 @@
+# SP-08 #25 (PR, N) — V07 (client), Q01: C uses Driver/Partner mode and signs out from the account hub; A then signs in
+# on the same installation WITHOUT clearing app data and starts in Rider mode (the local mode preference was wiped),
+# with nothing of C's Driver/Partner area visible.
+appId: dev.wayvro.app
+name: pr-14-signout-wipe
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_C}
+      PHONE_LOCAL: ${PHONE_LOCAL_C}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Going online isn.t available yet.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-rider
+    direction: DOWN
+# sign out from the account hub (reached from Rider home)
+- tapOn:
+    id: mode-switch-rider
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Account'
+    direction: DOWN
+- tapOn: 'Account'
+- scrollUntilVisible:
+    element: 'Sign out'
+    direction: DOWN
+- tapOn: 'Sign out'
+- extendedWaitUntil:
+    visible: 'Sign out\?'
+    timeout: 15000
+# the confirmation dialog (Android AlertDialog) labels its buttons in upper case
+- tapOn: 'SIGN OUT'
+- extendedWaitUntil:
+    visible:
+      id: phone-number
+    timeout: 30000
+# A signs in on the same installation (no clearState)
+- runScript:
+    file: scripts/otp-baseline.js
+    env:
+      PHONE: ${PHONE_A}
+- tapOn:
+    id: phone-number
+- inputText: ${PHONE_LOCAL_A}
+- tapOn:
+    id: phone-submit
+- extendedWaitUntil:
+    visible:
+      id: otp-code
+    timeout: 30000
+- retry:
+    maxRetries: 10
+    commands:
+      - runScript:
+          file: scripts/otp-code.js
+          env:
+            PHONE: ${PHONE_A}
+- tapOn:
+    id: otp-code
+- inputText: ${output.otp}
+- tapOn:
+    id: otp-submit
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible: 'Going online isn.t available yet.*'
+- takeScreenshot: pr-14-a-after-c-signout

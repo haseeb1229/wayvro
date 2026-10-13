@@ -1,0 +1,39 @@
+# SP-08 #4 (G), #20, ONB-02 (N) — K19, D03, V08: the Driver/Partner home lists the expired document and the renewal
+# screen opens from the compliance view; riding is not affected.
+appId: dev.wayvro.app
+name: n-02-expired-documents
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_G}
+      PHONE_LOCAL: ${PHONE_LOCAL_G}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Going online isn.t available yet.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Documents: 1 expired'
+    direction: DOWN
+- tapOn: 'Documents: 1 expired'
+- extendedWaitUntil:
+    visible: 'Driver/Partner status'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Renew'
+    direction: DOWN
+- tapOn: 'Renew'
+- extendedWaitUntil:
+    visible: 'Renew: .*'
+    timeout: 30000
+- takeScreenshot: n-02-renewal
