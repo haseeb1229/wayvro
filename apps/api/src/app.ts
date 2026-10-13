@@ -21,6 +21,7 @@ import { ErrorEnvelopeFilter } from './http/error-filter.js';
 import { registerHttpHooks } from './http/hooks.js';
 import type { ReleaseEnforcement } from './platform/release/enforcement.js';
 import { AppConfigController, ReleaseAdminController, type ReleaseServices } from './platform/release/release.controller.js';
+import { PricingAdminController, QuoteController, type PricingServices } from './pricing/pricing.controller.js';
 import type { AccountService } from './identity/account.service.js';
 import { AccountSecurityController } from './identity/account-security.controller.js';
 import type { AccountSecurityService } from './identity/account-security.service.js';
@@ -56,6 +57,7 @@ import {
   EVIDENCE_SERVICES,
   GEO_ADMIN_SERVICE,
   GEO_GATEWAY,
+  PRICING_SERVICES,
   REVIEW_SERVICES,
   RELEASE_SERVICES,
   LEGAL_DB,
@@ -128,6 +130,8 @@ export interface AppDependencies {
   readonly release: ReleaseServices & { readonly enforcement: ReleaseEnforcement };
   /** Geo gateway and staff geo controls (P3.2). */
   readonly geo: GeoServices;
+  /** Upfront quotes and staff pricing administration (P3.3). */
+  readonly pricing: PricingServices;
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
 }
@@ -170,6 +174,8 @@ export const API_CONTROLLERS: readonly Type[] = [
   ReleaseAdminController,
   GeoController,
   GeoAdminController,
+  QuoteController,
+  PricingAdminController,
 ];
 
 @Module({})
@@ -202,6 +208,7 @@ class ApiModule {
         { provide: RELEASE_SERVICES, useValue: deps.release },
         { provide: GEO_GATEWAY, useValue: deps.geo.gateway },
         { provide: GEO_ADMIN_SERVICE, useValue: deps.geo.admin },
+        { provide: PRICING_SERVICES, useValue: deps.pricing },
         { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore, deps.staff.policy) },
       ],
     };

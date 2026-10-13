@@ -190,6 +190,21 @@ const apiEnvSchema = serviceEnvSchema
      * default (300 m, PHASE3_CATALOG_ZONES_AND_DATA_MODEL §3), not a field-validated value.
      */
     PICKUP_SNAP_MAX_METERS: int(300, 25, 2000),
+    /**
+     * Phase 3 quotes (P3.3; PHASE3_ARCHITECTURE §5.4a/§12; configurable defaults, not provider facts): overall server
+     * deadline of `POST /v1/quotes` (one routing attempt inside it, never retried), per-account and per-IP-prefix limits
+     * (evaluated before idempotency, so replays count) and the replay window of a quote request.
+     */
+    QUOTE_DEADLINE_MS: int(3000, 1000, 10_000),
+    QUOTES_PER_MINUTE_ACCOUNT: int(20, 1, 10_000),
+    QUOTES_PER_DAY_ACCOUNT: int(200, 1, 100_000),
+    QUOTES_PER_MINUTE_IP_PREFIX: int(60, 1, 100_000),
+    QUOTE_IDEMPOTENCY_TTL_SECONDS: int(900, 60, 3600),
+    /**
+     * Rate-card sanity envelope (T3-23, PROPOSED): a submitted component more than this percentage away from the ACTIVE
+     * card's value needs an explicit override reason visible to the approver. Configurable default, not a pricing rule.
+     */
+    PRICING_ENVELOPE_MAX_CHANGE_PERCENT: int(50, 1, 1000),
     /** Namespace for rate-limit keys when several environments or test runs share one Valkey. */
     // Release controls (P3.4; PHASE3_ARCHITECTURE §9/§12): in-process cache of policies + switches ("takes effect within
     // 10 s"), HTTP max-age and per-IP-prefix limit of the public GET /v1/app/config, and the client tuning it carries.

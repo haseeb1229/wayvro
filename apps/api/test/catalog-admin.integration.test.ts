@@ -13,6 +13,7 @@ import { routePolicyOf } from '../src/auth/policy.js';
 import { CatalogAdminService, cityProductObjectId, type RateCardPresence } from '../src/catalog/catalog-admin.service.js';
 import { CatalogAdminController } from '../src/catalog/catalog.controller.js';
 import { IdempotencyStore, type IdempotentResult } from '../src/platform/idempotency.js';
+import { PgRateCardPresence } from '../src/pricing/rate-card-store.js';
 import type { StaffPrincipal } from '../src/staff/staff-session.js';
 import { STAFF_ENV, staffKit, type Staff } from './staff-helpers.js';
 import { bearer, key, post, signIn, startApi, type Harness } from './support.js';
@@ -525,7 +526,7 @@ describe('eligibility rules (H10)', () => {
 });
 
 describe('city products: legal gate and ENABLE maker-checker (R28, T3-15)', () => {
-  it('fails closed through the API until a rate-card source is wired; the legal gate refuses BIKE; only ENABLED products can be suspended', async () => {
+  it('refuses ENABLE through the API while no ACTIVE rate card exists (pricing tables wired); the legal gate refuses BIKE; only ENABLED products can be suspended', async () => {
     const list = CityProductListSchema.parse(
       (await h.inject({ method: 'GET', url: '/v1/admin/catalog/city-products?cityCode=LHR', headers: kit.sb(auditor) })).json(),
     );
@@ -542,7 +543,8 @@ describe('city products: legal gate and ENABLE maker-checker (R28, T3-15)', () =
       reasonCode: 'LAUNCH_READY',
     });
     expect(errorOf(enable)?.code).toBe('WAYVRO_E_CONFLICT');
-    expect(errorOf(enable)?.details?.reasonCodes).toContain('RATE_CARD_CHECK_UNAVAILABLE');
+    expect(errorOf(enable)?.details?.reasonCodes).toContain('PREREQ_RATE_CARD_MISSING');
+    expect(errorOf(enable)?.details?.reasonCodes).not.toContain('RATE_CARD_CHECK_UNAVAILABLE');
     const bike = await stepped(maker, '/v1/admin/catalog/city-products/enable-requests', {
       cityCode: 'LHR',
       productCode: 'BIKE',
@@ -589,6 +591,32 @@ describe('city products: legal gate and ENABLE maker-checker (R28, T3-15)', () =
       kind: 'error',
       details: { reasonCodes: ['PREREQ_RATE_CARD_MISSING'] },
     });
+    // without any rate-card source the service fails closed
+    expect(outcome(await service('test', null).requestEnable(principal(maker), req, key()))).toMatchObject({
+      kind: 'error',
+      details: { reasonCodes: ['RATE_CARD_CHECK_UNAVAILABLE'] },
+    });
+    // the wired source reads the pricing tables: an ACTIVE card with an APPROVED tax policy satisfies it
+    const presence = new PgRateCardPresence(h.runtime.db.pool);
+    expect(await presence.hasActiveRateCard('LHR', 'ECONOMY')).toBe(false);
+    const tax = randomUUID();
+    const card = randomUUID();
+    await h.owner.query(
+      `insert into pricing.tax_policies (id, code, version, status, jurisdiction_code, rate_bp, applies_to, inclusive, is_placeholder) values ($1, 'SYNTH-TAX-C', 1, 'APPROVED', 'PK', 0, '{BASE}', false, true)`,
+      [tax],
+    );
+    await h.owner.query(
+      `insert into pricing.rate_cards (id, city_code, product_code, version, status, is_synthetic, source_reference) values ($1, 'LHR', 'ECONOMY', 1, 'DRAFT', true, 'SYNTHETIC — not a Wayvro price')`,
+      [card],
+    );
+    await h.owner.query(
+      `insert into pricing.rate_card_components (rate_card_id, base_minor, per_km_minor, per_min_minor, minimum_fare_minor, booking_fee_minor, airport_pickup_fee_minor,
+                                                 rounding_step_minor, rounding_mode, toll_policy, tax_policy_id, quote_ttl_seconds, max_distance_m, max_duration_s)
+       values ($1, 1, 1, 1, 0, 0, 0, 1, 'HALF_UP', 'NOT_APPLICABLE', $2, 300, 60000, 7200)`,
+      [card, tax],
+    );
+    await h.owner.query(`update pricing.rate_cards set status = 'ACTIVE', effective_from = clock_timestamp() where id = $1`, [card]);
+    expect(await presence.hasActiveRateCard('LHR', 'ECONOMY')).toBe(true);
     const requested = outcome(await withCards.requestEnable(principal(maker), req, key()));
     expect(requested).toMatchObject({ kind: 'success', body: { status: 'CONFIGURED', pendingTransition: 'ENABLE', changedByStaffId: maker.staffId } });
     expect(outcome(await withCards.decideEnable(principal(maker), { cityCode: 'LHR', productCode: 'ECONOMY', decision: 'APPROVE' }, key()))).toMatchObject({

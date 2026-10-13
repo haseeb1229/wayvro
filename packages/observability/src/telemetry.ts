@@ -114,3 +114,29 @@ export function recordGeoSpan(startedAt: number, facts: GeoSpanFacts): void {
   if (facts.outcome !== 'OK') span.setStatus({ code: api.SpanStatusCode.ERROR });
   span.end();
 }
+
+/** The only attributes a pricing span (`pricing.quote.create`, `pricing.engine.price`) may carry (PHASE3_ARCHITECTURE §10). */
+export interface PricingSpanFacts {
+  readonly name: 'pricing.quote.create' | 'pricing.engine.price';
+  /** Stable outcome code, e.g. OK, ROUTING_UNAVAILABLE, SERVICE_AREA, RATE_LIMITED. */
+  readonly outcome: string;
+  readonly productCount: number;
+  readonly latencyMs: number;
+}
+
+/** Allowlisted, shape-checked span attributes for a pricing span — never coordinates, amounts, a polyline or an account. */
+export function pricingSpanAttributes(facts: PricingSpanFacts): Record<string, string | number> {
+  return {
+    'pricing.outcome': OUTCOME.test(facts.outcome) ? facts.outcome : 'INVALID',
+    'pricing.product_count': Number.isInteger(facts.productCount) && facts.productCount >= 0 ? facts.productCount : -1,
+    'pricing.latency_ms': Number.isFinite(facts.latencyMs) ? Math.max(0, Math.round(facts.latencyMs)) : -1,
+  };
+}
+
+/** Records one pricing step as a finished span (a no-op tracer when telemetry is off). */
+export function recordPricingSpan(startedAt: number, facts: PricingSpanFacts): void {
+  const span = api.trace.getTracer('wayvro.pricing').startSpan(facts.name, { startTime: startedAt });
+  span.setAttributes(pricingSpanAttributes(facts));
+  if (facts.outcome !== 'OK') span.setStatus({ code: api.SpanStatusCode.ERROR });
+  span.end();
+}

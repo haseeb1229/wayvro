@@ -3,8 +3,11 @@
  * The maker drafts a synthetic zone set, sees the GeoJSON validation report refuse swapped coordinates (nothing
  * imported), imports valid synthetic geometry, sets daily hours and submits; the maker is never offered an approval of
  * their own draft; the checker approves (fresh WebAuthn step-up through the virtual authenticator) and activates. The
- * same maker-checker flow runs for a vehicle eligibility rule. An ENABLE request is refused fail-closed (no rate-card
- * source until pricing exists) and the refusal reason is shown as text. axe on every screen; synthetic data only.
+ * same maker-checker flow runs for a vehicle eligibility rule. An ENABLE request is refused fail-closed while no ACTIVE
+ * rate card exists for the product (the E2E stack seeds none: ../seed-pricing.mjs leaves its COMFORT fixture card
+ * RETIRED and pricing.spec activates only COMFORT) and the refusal reason is shown as text. The zone-set version is
+ * read from the database (../seed-pricing.mjs holds a RETIRED synthetic LHR zone set for its quote fixture), never
+ * assumed. axe on every screen; synthetic data only.
  */
 import pg from 'pg';
 import { expect, test, type BrowserContext, type Dialog, type Page } from '@playwright/test';
@@ -64,6 +67,8 @@ test.describe.serial('catalog manager maker-checker journey', () => {
   let checker: Page;
   let makerContext: BrowserContext;
   let checkerContext: BrowserContext;
+  /** The zone-set version this journey drafts (`v<n>`), read from the database before the draft. */
+  let zv = '';
   test.beforeAll(async ({ browser }) => {
     makerContext = await browser.newContext();
     checkerContext = await browser.newContext();
@@ -91,12 +96,14 @@ test.describe.serial('catalog manager maker-checker journey', () => {
     await maker.getByRole('link', { name: 'Zones', exact: true }).click();
     await expect(maker.getByRole('heading', { level: 1, name: 'Zone sets' })).toBeVisible();
     await expectAccessible(maker);
+    const next = await query<{ next: number }>(`select coalesce(max(version), 0) + 1 as next from catalog.zone_sets where city_code = 'LHR'`, []);
+    zv = `v${String(next[0]?.next ?? 1)}`;
     const draft = maker.getByRole('form', { name: 'Draft a zone set' });
     await draft.getByLabel('Source reference').fill('SYNTHETIC — not real Lahore boundaries (E2E)');
     await draft.getByRole('button', { name: 'Create draft' }).click();
-    await maker.getByRole('button', { name: 'Open v1' }).click();
+    await maker.getByRole('button', { name: `Open ${zv}` }).click();
     const detail = maker.getByTestId('zone-set-detail');
-    await expect(detail.getByRole('heading', { name: /LHR v1 — DRAFT/ })).toBeVisible();
+    await expect(detail.getByRole('heading', { name: `LHR ${zv} — DRAFT` })).toBeVisible();
     const importForm = maker.getByRole('form', { name: 'Import GeoJSON' });
     await importForm.getByLabel('GeoJSON FeatureCollection (WGS84, [longitude, latitude])').fill(SWAPPED);
     await importForm.getByRole('button', { name: 'Validate and import' }).click();
@@ -108,24 +115,24 @@ test.describe.serial('catalog manager maker-checker journey', () => {
     await expect(detail.getByTestId('zone-EXC')).toContainText('EXCLUSION');
     await maker.getByRole('form', { name: 'Daily service hours' }).getByRole('button', { name: 'Set the same hours every day' }).click();
     await expect(detail.getByText('06:00–23:00').first()).toBeVisible();
-    await maker.getByRole('button', { name: 'Submit for approval v1' }).click();
-    await expect(maker.getByTestId('zone-set-v1')).toContainText('PENDING_APPROVAL');
+    await maker.getByRole('button', { name: `Submit for approval ${zv}` }).click();
+    await expect(maker.getByTestId(`zone-set-${zv}`)).toContainText('PENDING_APPROVAL');
     // the maker is never offered the approval of their own draft (the API refuses it as well)
-    await expect(maker.getByRole('button', { name: 'Approve v1' })).toHaveCount(0);
+    await expect(maker.getByRole('button', { name: `Approve ${zv}` })).toHaveCount(0);
   });
 
   test('the checker approves with a fresh step-up and activates; the database records two distinct staff', async () => {
     await checker.goto('/zones');
-    await expect(checker.getByTestId('zone-set-v1')).toContainText('PENDING_APPROVAL');
-    await checker.getByRole('button', { name: 'Approve v1' }).click();
-    await expect(checker.getByTestId('zone-set-v1')).toContainText('APPROVED');
+    await expect(checker.getByTestId(`zone-set-${zv}`)).toContainText('PENDING_APPROVAL');
+    await checker.getByRole('button', { name: `Approve ${zv}` }).click();
+    await expect(checker.getByTestId(`zone-set-${zv}`)).toContainText('APPROVED');
     answerDialogs(checker, ['']);
-    await checker.getByRole('button', { name: 'Activate v1' }).click();
-    await expect(checker.getByTestId('zone-set-v1')).toContainText('ACTIVE');
+    await checker.getByRole('button', { name: `Activate ${zv}` }).click();
+    await expect(checker.getByTestId(`zone-set-${zv}`)).toContainText('ACTIVE');
     await expectAccessible(checker);
     const rows = await query<{ status: string; drafted_by_staff_id: string; approved_by_staff_id: string }>(
-      `select status, drafted_by_staff_id, approved_by_staff_id from catalog.zone_sets where city_code = 'LHR' and version = 1`,
-      [],
+      `select status, drafted_by_staff_id, approved_by_staff_id from catalog.zone_sets where city_code = 'LHR' and version = $1`,
+      [Number(zv.slice(1))],
     );
     expect(rows).toEqual([{ status: 'ACTIVE', drafted_by_staff_id: stack().catalog.makerId, approved_by_staff_id: stack().catalog.checkerId }]);
   });
@@ -151,13 +158,13 @@ test.describe.serial('catalog manager maker-checker journey', () => {
     await expect(checker.getByTestId('rule-ECONOMY-v1')).toContainText('ACTIVE');
   });
 
-  test('an ENABLE request is refused fail-closed until a rate-card source exists, and the reason is shown as text', async () => {
+  test('an ENABLE request without an ACTIVE rate card is refused fail-closed, and the reason is shown as text', async () => {
     await maker.goto('/catalog');
     await expect(maker.getByTestId('city-product-LHR-BIKE')).toContainText('DISABLED_LEGAL_GATE');
     await expect(maker.getByRole('button', { name: 'Request enable BIKE' })).toHaveCount(0);
     answerDialogs(maker, ['COUNSEL-MEMO-SYNTHETIC-E2E', 'LAUNCH_READY']);
     await maker.getByRole('button', { name: 'Request enable ECONOMY' }).click();
-    await expect(maker.getByRole('alert').filter({ hasText: 'RATE_CARD_CHECK_UNAVAILABLE' })).toBeVisible();
+    await expect(maker.getByRole('alert').filter({ hasText: 'PREREQ_RATE_CARD_MISSING' })).toBeVisible();
     await expect(maker.getByTestId('city-product-LHR-ECONOMY')).toContainText('NOT_CONFIGURED');
     await expectAccessible(maker);
   });

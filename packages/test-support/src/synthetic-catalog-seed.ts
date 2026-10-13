@@ -16,9 +16,12 @@
  * City products: ECONOMY → ENABLED (`legal_basis_ref = 'SYNTHETIC_LOCAL_TEST_ONLY'`, `is_synthetic`, no maker — a
  * system-seeded row, which the database admits because ENABLED needs a checker only when a staff maker exists) so local
  * quotes have a product; COMFORT → CONFIGURED (zone + rule prerequisites exist) so the staff maker-checker ENABLE flow
- * can be exercised once a rate-card source exists. The database does NOT require a rate card for ENABLED: until the
- * pricing seed (P3.3) adds synthetic rate cards, quotes for ECONOMY report NO_ACTIVE_RATE_CARD rather than a price.
- * BIKE/RICKSHAW stay DISABLED_LEGAL_GATE (FA-11; the database refuses anything else).
+ * can be exercised (its synthetic rate card is ACTIVE, so every ENABLE prerequisite holds). BIKE/RICKSHAW stay
+ * DISABLED_LEGAL_GATE (FA-11; the database refuses anything else).
+ *
+ * Pricing (P3.3, only once migration 0012 exists): placeholder tax policy SYNTH-TAX-0 (0 bp, exclusive) and ACTIVE
+ * synthetic ECONOMY/COMFORT rate cards ("SYNTHETIC — not a Wayvro price"; pricing doc §5). Production refuses to
+ * activate or price with any of them (is_synthetic / is_placeholder).
  */
 import pg from 'pg';
 
@@ -52,6 +55,27 @@ export const SYNTHETIC_CATALOG = {
   ],
   airportPoint: { lat: 31.52, lng: 74.405, nameEn: 'Synthetic arrivals bay' },
   hours: { opensLocal: '06:00', closesLocal: '23:00' },
+  /**
+   * Synthetic pricing (P3.3; docs/phase3/PHASE3_PRICING_QUOTE_MODEL.md §5): every number is SYNTHETIC — chosen to
+   * exercise the arithmetic, not derived from any market price, regulation or tax rate (FA-15).
+   */
+  pricing: {
+    taxPolicyId: '00000000-0000-7000-8000-00000000c550',
+    taxPolicyCode: 'SYNTH-TAX-0',
+    economyCardId: '00000000-0000-7000-8000-00000000c551',
+    comfortCardId: '00000000-0000-7000-8000-00000000c552',
+    sourceReference: 'SYNTHETIC — not a Wayvro price',
+    cards: {
+      ECONOMY: { baseMinor: 10000, perKmMinor: 3500, perMinMinor: 500, minimumFareMinor: 25000, bookingFeeMinor: 1000, airportPickupFeeMinor: 20000 },
+      COMFORT: { baseMinor: 15000, perKmMinor: 5000, perMinMinor: 700, minimumFareMinor: 35000, bookingFeeMinor: 1000, airportPickupFeeMinor: 20000 },
+    },
+    roundingStepMinor: 1000,
+    roundingMode: 'HALF_UP',
+    tollPolicy: 'EXCLUDED_DISCLOSED',
+    quoteTtlSeconds: 300,
+    maxDistanceM: 60000,
+    maxDurationS: 7200,
+  },
 } as const;
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -114,6 +138,67 @@ async function nonSyntheticConfiguration(c: pg.ClientBase): Promise<string[]> {
   await probe('pricing.rate_cards', 'not is_synthetic');
   await probe('pricing.tax_policies', 'not is_placeholder');
   return found;
+}
+
+/**
+ * Synthetic pricing (only once migration 0012 created the `pricing` schema): the placeholder tax policy SYNTH-TAX-0
+ * (0 bp, exclusive, APPROVED, system-seeded) and ACTIVE synthetic ECONOMY/COMFORT rate cards with the values of the
+ * pricing doc §5. A card is written as DRAFT with its components and then activated through the database's seed path
+ * (staff-less synthetic DRAFT → ACTIVE, migrator members only). Another ACTIVE card for the product is refused.
+ */
+async function seedPricing(client: pg.ClientBase, log: (line: string) => void): Promise<void> {
+  const S = SYNTHETIC_CATALOG;
+  const P = S.pricing;
+  log(`tax policy ${P.taxPolicyId} (${P.taxPolicyCode}, placeholder, 0 bp exclusive) -> APPROVED`);
+  await client.query(
+    `insert into pricing.tax_policies (id, code, version, status, jurisdiction_code, rate_bp, applies_to, inclusive, rounding_mode, is_placeholder)
+     select $1, $2, coalesce(max(version), 0) + 1, 'APPROVED', 'PK', 0, '{BASE,DISTANCE,TIME,MINIMUM_ADJUSTMENT,BOOKING_FEE}', false, 'HALF_EVEN', true
+       from pricing.tax_policies where code = $2
+     on conflict (id) do nothing`,
+    [P.taxPolicyId, P.taxPolicyCode],
+  );
+  for (const [product, id] of [
+    ['ECONOMY', P.economyCardId],
+    ['COMFORT', P.comfortCardId],
+  ] as const) {
+    if ((await client.query(`select 1 from pricing.rate_cards where id = $1`, [id])).rowCount !== 0) continue;
+    const active = (
+      await client.query<{ id: string }>(`select id from pricing.rate_cards where city_code = $1 and product_code = $2 and status = 'ACTIVE'`, [
+        S.cityCode,
+        product,
+      ])
+    ).rows[0];
+    if (active) throw new Error(`synthetic catalog seed refused: another ACTIVE rate card exists for ${S.cityCode}/${product}`);
+    const v = P.cards[product];
+    log(`rate card ${id} (${S.cityCode}/${product}, synthetic) -> ACTIVE`);
+    await client.query(
+      `insert into pricing.rate_cards (id, city_code, product_code, version, status, is_synthetic, source_reference)
+       select $1, $2, $3, coalesce(max(version), 0) + 1, 'DRAFT', true, $4 from pricing.rate_cards where city_code = $2 and product_code = $3`,
+      [id, S.cityCode, product, P.sourceReference],
+    );
+    await client.query(
+      `insert into pricing.rate_card_components (rate_card_id, base_minor, per_km_minor, per_min_minor, minimum_fare_minor, booking_fee_minor, airport_pickup_fee_minor,
+                                                 rounding_step_minor, rounding_mode, toll_policy, tax_policy_id, quote_ttl_seconds, max_distance_m, max_duration_s)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [
+        id,
+        v.baseMinor,
+        v.perKmMinor,
+        v.perMinMinor,
+        v.minimumFareMinor,
+        v.bookingFeeMinor,
+        v.airportPickupFeeMinor,
+        P.roundingStepMinor,
+        P.roundingMode,
+        P.tollPolicy,
+        P.taxPolicyId,
+        P.quoteTtlSeconds,
+        P.maxDistanceM,
+        P.maxDurationS,
+      ],
+    );
+    await client.query(`update pricing.rate_cards set status = 'ACTIVE', effective_from = clock_timestamp() where id = $1`, [id]);
+  }
 }
 
 export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions): Promise<SyntheticCatalogSeedResult> {
@@ -205,6 +290,7 @@ export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions)
         where city_code = $1 and product_code = 'COMFORT'`,
       [S.cityCode],
     );
+    if ((await client.query<{ t: string | null }>(`select to_regclass('pricing.rate_cards')::text t`)).rows[0]?.t) await seedPricing(client, log);
     await client.query('commit');
     return { zoneSetId: S.zoneSetId, zoneSetVersion: version, createdZoneSet };
   } catch (e) {

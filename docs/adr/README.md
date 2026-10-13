@@ -46,6 +46,7 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | ADR | Title | Status |
 |---|---|---|
 | [ADR-051](ADR-051-service-products-zones-lifecycle.md) | Service products vs vehicle classes, zone sets and the activation lifecycle | ACCEPTED-ON-EVIDENCE (P3.1, local) — real boundaries, eligibility values, legal activation and the rate-card prerequisite source open |
+| [ADR-013](ADR-013-pricing-quote-domain.md) | Pricing and quote domain: upfront fixed quotes, rate cards, tax policy, maker-checker configuration | ACCEPTED-ON-EVIDENCE (P3.3, local) — every rate/fee/tax/rounding/TTL value EXTERNAL (FA-15); synthetic values only |
 
 ADR-038 and ADR-042 were corrected on this branch after the P2.1 review (lookup-rotation locking; per-claim lease tokens).
 

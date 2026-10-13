@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { appPolicyActivationLockKey, appPolicyGuardrailProblems, releaseEnvSchema, releasedBuildsOf, type PolicyGuardrailInput } from './release-guardrails.js';
+import {
+  appPolicyActivationLockKey,
+  appPolicyGuardrailProblems,
+  rateCardActivationLockKey,
+  releaseEnvSchema,
+  releasedBuildsOf,
+  type PolicyGuardrailInput,
+} from './release-guardrails.js';
 
 const released = { ANDROID: 120, IOS: 0 } as const;
 const base: PolicyGuardrailInput = { platform: 'ANDROID', minSupportedBuild: 100, recommendedBuild: 110, storeUrlKey: 'store.android', blockedRanges: [] };
@@ -57,5 +64,7 @@ describe('app version policy guardrails (T3-25)', () => {
 
   it('one activation lock key per platform', () => {
     expect(appPolicyActivationLockKey('ANDROID')).not.toBe(appPolicyActivationLockKey('IOS'));
+    expect(rateCardActivationLockKey('LHR', 'ECONOMY')).not.toBe(rateCardActivationLockKey('LHR', 'COMFORT'));
+    expect(rateCardActivationLockKey('LHR', 'ECONOMY')).not.toBe(appPolicyActivationLockKey('ANDROID'));
   });
 });

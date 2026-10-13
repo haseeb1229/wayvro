@@ -117,7 +117,14 @@ describe('geo.usage-rollup (BUD-06)', () => {
     await owner.query(
       `insert into geo.provider_usage (provider_key, sku, hour_bucket, calls) values ('geo-mock', 'GEOCODE', date_trunc('hour', now() - interval '401 days'), 5)`,
     );
-    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, geoUsageDays: 400, batchSize: 100 });
+    const result = await purgeOnce(worker, {
+      otpChallengeDays: 7,
+      succeededJobDays: 7,
+      applicationDraftExpiryDays: 30,
+      geoUsageDays: 400,
+      quoteRetentionDays: 30,
+      batchSize: 100,
+    });
     expect(result.geoUsage).toBe(1);
     expect((await rows()).some((r) => r.sku === 'GEOCODE')).toBe(false);
     expect((await rows()).length).toBeGreaterThan(0);

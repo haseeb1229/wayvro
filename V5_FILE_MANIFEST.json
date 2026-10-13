@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 133,
+  "file_count_excluding_manifest": 134,
   "files": [
     {
       "path": ".gitattributes",
@@ -210,6 +210,11 @@
       "sha256": "ff6fb833ddc9d9ffee281c888d1c3cffc2314787202253cb21d6f48087e30c0a"
     },
     {
+      "path": "docs/adr/ADR-013-pricing-quote-domain.md",
+      "bytes": 10840,
+      "sha256": "f80a9f1af008cf4caa22edf64b3ad2e672c14fdc72554405261dfc5cdfc0cb7d"
+    },
+    {
       "path": "docs/adr/ADR-019-lite-mode.md",
       "bytes": 3153,
       "sha256": "07a1c48a205a26a904518080ca11b125d682b6a80d18ba4df83b755260e80f42"
@@ -296,13 +301,13 @@
     },
     {
       "path": "docs/adr/ADR-051-service-products-zones-lifecycle.md",
-      "bytes": 11624,
-      "sha256": "0828653454e9062e07004e94613a1ee5d2bf2edca3293fda1b39b9a25103e243"
+      "bytes": 11897,
+      "sha256": "8b174dec374c0ad035cbb1654bce36c5c9563ab0fbd91de34e1258795adf283e"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 7714,
-      "sha256": "b612f39f76175e1846219a8884ca23eaa19e9d0861827645f589d5ecf95f0003"
+      "bytes": 7982,
+      "sha256": "965ed20fe84dd1b73baa3dcb46c4c3ffef38ae7a7f346d8fbbfed3134ce6084c"
     },
     {
       "path": "docs/operations/developer-setup.md",

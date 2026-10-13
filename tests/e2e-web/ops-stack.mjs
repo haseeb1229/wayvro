@@ -11,6 +11,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { seedCatalog } from './seed-catalog.mjs';
+import { seedGeo } from './seed-geo.mjs';
+import { seedPricing } from './seed-pricing.mjs';
 import { seedRelease } from './seed-release.mjs';
 import { seedReview } from './seed-review.mjs';
 import { seedSupport } from './seed-support.mjs';
@@ -76,6 +78,8 @@ const review = await seedReview({ root: ROOT, pool, adminIds: issued.map((i) => 
 const support = await seedSupport({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED });
 const catalog = await seedCatalog({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
 const release = await seedRelease({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
+const pricing = await seedPricing({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
+const geo = await seedGeo({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
 await pool.end();
 mkdirSync(join(ROOT, 'build-logs'), { recursive: true });
 writeFileSync(
@@ -88,6 +92,8 @@ writeFileSync(
     support,
     catalog,
     release,
+    pricing,
+    geo,
   }),
 );
 

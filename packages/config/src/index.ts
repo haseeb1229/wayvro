@@ -18,6 +18,7 @@ export {
   MAX_APP_BUILD,
   appPolicyActivationLockKey,
   appPolicyGuardrailProblems,
+  rateCardActivationLockKey,
   releaseEnvSchema,
   releasedBuildsOf,
   type AppPlatform,

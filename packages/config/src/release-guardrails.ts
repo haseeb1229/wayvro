@@ -96,3 +96,11 @@ export function appPolicyGuardrailProblems(input: PolicyGuardrailInput, released
 export function appPolicyActivationLockKey(platform: AppPlatform): string {
   return `wayvro.activation:app-policy:${platform}`;
 }
+
+/**
+ * The advisory-lock key serialising every activation of one (city, product)'s rate cards (P3.3): the staff activation
+ * in the API and the scheduled activation in the worker take the same lock, then compare-and-set `status = 'APPROVED'`.
+ */
+export function rateCardActivationLockKey(cityCode: string, productCode: string): string {
+  return `wayvro.activation:rate-card:${cityCode}:${productCode}`;
+}

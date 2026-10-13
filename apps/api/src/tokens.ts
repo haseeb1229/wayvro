@@ -29,6 +29,8 @@ export const RELEASE_SERVICES = Symbol('RELEASE_SERVICES');
 // Phase 3 P3.2 geo gateway
 export const GEO_GATEWAY = Symbol('GEO_GATEWAY');
 export const GEO_ADMIN_SERVICE = Symbol('GEO_ADMIN_SERVICE');
+// Phase 3 P3.3 pricing (quotes + staff pricing administration)
+export const PRICING_SERVICES = Symbol('PRICING_SERVICES');
 
 export interface ServiceInfo {
   readonly service: string;

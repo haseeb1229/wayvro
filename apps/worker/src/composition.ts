@@ -20,6 +20,7 @@ import { DELETION_PROCESSING_JOB, RECOVERY_COMPLETION_JOB, deletionProcessingJob
 import { MAINTENANCE_PURGE_JOB, maintenanceJob } from './maintenance.js';
 import { SCHEDULED_ACTIVATION_JOB, scheduledActivationJob } from './release/activation.js';
 import { appPolicyActivator } from './release/app-policy-activator.js';
+import { rateCardActivator } from './release/rate-card-activator.js';
 import { runtimeSwitchExpiryActivator } from './release/switch-expiry.js';
 import { RecurringScheduler } from './scheduler.js';
 import { accountStateHintConsumer, type HintPublisher } from './outbox/account-state-hint.js';
@@ -62,18 +63,20 @@ export function composeWorker(
       succeededJobDays: config.SUCCEEDED_JOB_RETENTION_DAYS,
       applicationDraftExpiryDays: config.APPLICATION_DRAFT_EXPIRY_DAYS,
       geoUsageDays: config.GEO_USAGE_RETENTION_DAYS,
+      quoteRetentionDays: config.QUOTE_RETENTION_DAYS,
       batchSize: 5000,
     }),
     keyRotationJob(rotation),
     applicationIntakeJob(pool),
     documentExpiryJob(pool, log),
     recoveryCompletionJob({ pool, cipher, lookup: new PhoneLookup(rotation.hasher), log }),
-    // Phase 3 (P3.4): scheduled activation registry — app version policies and runtime-switch effective_until expiry
-    // (rate cards/zone sets/eligibility rules register their activators here in their phase)
+    // Phase 3 (P3.4/P3.3): scheduled activation registry — app version policies, runtime-switch effective_until expiry and
+    // rate cards (zone sets/eligibility rules have no scheduled activation in Phase 3)
     scheduledActivationJob(
       [
         appPolicyActivator({ pool, env: config.WAYVRO_ENV, released: releasedBuildsOf(config), log }),
         runtimeSwitchExpiryActivator({ pool, env: config.WAYVRO_ENV, log }),
+        rateCardActivator({ pool, env: config.WAYVRO_ENV, log }),
       ],
       log,
     ),

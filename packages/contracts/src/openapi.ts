@@ -12,7 +12,7 @@ import { GEO_ADMIN_ROUTES, GEO_ROUTES } from './geo.js';
 import { REVIEW_ROUTES } from './review.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { OIDC_ROUTES } from './oidc.js';
-import { QUOTE_ROUTES } from './pricing.js';
+import { PRICING_ADMIN_ROUTES, QUOTE_ROUTES } from './pricing.js';
 import { IDENTITY_ROUTES } from './routes.js';
 import { STAFF_ROUTES, StaffRoleSchema } from './staff.js';
 import { SUPPORT_ROUTES } from './support.js';
@@ -36,6 +36,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...GEO_ROUTES,
   ...GEO_ADMIN_ROUTES,
   ...QUOTE_ROUTES,
+  ...PRICING_ADMIN_ROUTES,
 ];
 
 const SECURITY: Readonly<Record<RouteContract['auth'], readonly JsonObject[]>> = { public: [], session: [{ sessionBearer: [] }], staff: [{ staffBearer: [] }] };

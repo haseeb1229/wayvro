@@ -68,6 +68,14 @@ module.exports = {
       to: { path: '(^tools/geo-bench/|node_modules/@wayvro/geo-bench/)' },
     },
     {
+      name: 'pricing-engine-purity',
+      severity: 'error',
+      comment:
+        'P3.3/ADR-013: the pricing engine is pure and deterministic (property P-05): it imports only Money and plain data — never the database, Valkey, crypto, time sources or another module (catalog, geo).',
+      from: { path: '^apps/api/src/pricing/engine\\.ts$' },
+      to: { pathNot: ['(^packages/domain/|node_modules/@wayvro/domain/)'] },
+    },
+    {
       name: 'sanitiser-only-in-its-container',
       severity: 'error',
       comment: 'ADR-041: the image decoder runs only inside the isolated sanitiser container; no app or other package imports it.',

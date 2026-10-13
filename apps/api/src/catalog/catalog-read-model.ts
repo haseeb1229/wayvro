@@ -303,6 +303,32 @@ export class CatalogReadModel {
     return enabled.some((p) => isServed(zones, p.code));
   }
 
+  /**
+   * Display data of the given products whatever their city status (product definitions are migration-owned reference
+   * rows) — the quote restore shows a stored quote even after its product was suspended.
+   */
+  async productDisplays(productCodes: readonly string[], q: Queryable = this.db): Promise<ReadonlyMap<string, ProductDisplay>> {
+    if (productCodes.length === 0) return new Map();
+    const r = await q.query<ProductRow>(
+      `select p.code, p.vehicle_class, p.name_key, p.description_key, p.seats_max, p.luggage_class, p.routing_profile, p.sort_order, null status, null is_synthetic
+         from catalog.service_products p where p.code = any($1::text[])`,
+      [[...productCodes]],
+    );
+    return new Map(r.rows.map((p) => [p.code, display(p)]));
+  }
+
+  /** One pickup point of any zone set (zone sets are immutable after DRAFT): the snapped point of a stored quote. */
+  async pickupPoint(id: string, q: Queryable = this.db): Promise<SnappedPickup | null> {
+    const r = await q.query<{ id: string; kind: PickupPointKind; name_en: string; name_ur: string; instruction_key: string; lat: number; lng: number }>(
+      `select id, kind, name_en, name_ur, instruction_key, ST_Y(point) lat, ST_X(point) lng from catalog.pickup_points where id = $1`,
+      [id],
+    );
+    const p = r.rows[0];
+    return p
+      ? { pickupPointId: p.id, kind: p.kind, nameEn: p.name_en, nameUr: p.name_ur, instructionKey: p.instruction_key, point: { lat: p.lat, lng: p.lng } }
+      : null;
+  }
+
   /** ENABLED products of a city with display data, in sort order (`GET /v1/catalog/products`). */
   async productsForCity(cityCode: string, q: Queryable = this.db): Promise<CatalogProductView[]> {
     return (await this.products(q, cityCode))

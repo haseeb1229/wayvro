@@ -27,6 +27,7 @@ import { SessionService } from './identity/session.service.js';
 import { ComplianceAdminService } from './compliance/compliance-admin.service.js';
 import type { GeoSeams } from './geo/gateway.js';
 import { composeGeo, type GeoModule } from './geo/module.js';
+import { PlaceRefSealer } from './geo/place-ref.js';
 import { OnboardingService } from './compliance/onboarding.service.js';
 import { ConsentService } from './legal/consent.service.js';
 import { preparePolicyRegistry } from './legal/policy-registry.js';
@@ -42,6 +43,9 @@ import { AppPolicyAdminService } from './platform/release/policy-admin.service.j
 import { ReleaseStateCache } from './platform/release/state.js';
 import { RuntimeSwitchAdminService } from './platform/release/switch-admin.service.js';
 import { RuntimeSwitchStore } from './platform/release/switches.js';
+import { PricingAdminService } from './pricing/pricing-admin.service.js';
+import { QuoteService } from './pricing/quote.service.js';
+import { PgRateCardPresence } from './pricing/rate-card-store.js';
 import { AppealsService } from './review/appeals.service.js';
 import { MonitoringService } from './review/monitoring.service.js';
 import { ReviewService } from './review/review.service.js';
@@ -134,9 +138,12 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     : null;
   const accounts = new AccountService(db.pool, idempotency, config, onboarding.available);
   const consents = new ConsentService(db.pool, cipher, idempotency, config);
-  // Phase 3 catalog (P3.1). ENABLE needs an ACTIVE rate card; no rate-card source exists until the pricing module (P3.3)
-  // wires one here, so the admin service is built with `null` and refuses every ENABLE (RATE_CARD_CHECK_UNAVAILABLE).
-  const catalog = { readModel: new CatalogReadModel(db.pool, config), admin: new CatalogAdminService(db.pool, idempotency, config, null) };
+  // Phase 3 catalog (P3.1). ENABLE needs an ACTIVE rate card (with an APPROVED tax policy), read from the pricing
+  // tables (P3.3).
+  const catalog = {
+    readModel: new CatalogReadModel(db.pool, config),
+    admin: new CatalogAdminService(db.pool, idempotency, config, new PgRateCardPresence(db.pool)),
+  };
   // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
   await preparePolicyRegistry(db.pool, config.WAYVRO_ENV, log);
   // Geo gateway (P3.2): licence-coherent bundle check at boot; unbound geo ports answer 503 for their SKU.
@@ -155,6 +162,23 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       serviceArea: { inServiceArea: (cityCode: string, point: { lat: number; lng: number }) => catalog.readModel.inServiceArea(cityCode, point) },
     },
   });
+  // Pricing (P3.3): quotes price with the catalog read model + ONE geo routing call; placeRefs are opened (never
+  // resolved) with the same key class the gateway seals them with.
+  const pricing = {
+    quotes: new QuoteService({
+      db: db.pool,
+      idempotency,
+      limiter,
+      switches,
+      catalog: catalog.readModel,
+      routing: geo.routing,
+      placeRefs: new PlaceRefSealer(cipher, config.GEO_PLACE_REF_TTL_SECONDS),
+      policy: config,
+      log,
+    }),
+    admin: new PricingAdminService(db.pool, idempotency, config, log),
+    log,
+  };
   const app = await createApp({
     info: { service: 'api', version: config.WAYVRO_BUILD_VERSION },
     readinessChecks: [databaseCheck(db), redisProbe],
@@ -184,6 +208,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     },
     catalog,
     geo: { gateway: geo.gateway, admin: geo.admin },
+    pricing,
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {

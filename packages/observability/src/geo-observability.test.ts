@@ -1,7 +1,18 @@
 /** Phase 3 P3.2 geo additions: redaction keys/values (T3-28) and telemetry URL scrubbing + allowlisted span attributes. */
 import { api } from '@opentelemetry/sdk-node';
 import { describe, expect, it } from 'vitest';
-import { REDACTED, geoSpanAttributes, isSensitiveKey, recordGeoSpan, redact, redactString, scrubSpanUrlAttributes, scrubbingExporter } from './index.js';
+import {
+  REDACTED,
+  geoSpanAttributes,
+  isSensitiveKey,
+  pricingSpanAttributes,
+  recordGeoSpan,
+  recordPricingSpan,
+  redact,
+  redactString,
+  scrubSpanUrlAttributes,
+  scrubbingExporter,
+} from './index.js';
 
 describe('geo redaction (Phase 3)', () => {
   it.each([
@@ -110,6 +121,27 @@ describe('geo gateway span attributes', () => {
   it('recording a span without a registered SDK is a safe no-op', () => {
     expect(() => {
       recordGeoSpan(Date.now(), { providerKey: null, sku: 'ROUTE', cacheStatus: 'NONE', outcome: 'BREAKER_OPEN', latencyMs: 0 });
+    }).not.toThrow();
+  });
+});
+
+describe('pricing span attributes', () => {
+  it('carry only outcome, product count and latency — shape-checked, never coordinates or amounts', () => {
+    expect(pricingSpanAttributes({ name: 'pricing.quote.create', outcome: 'OK', productCount: 2, latencyMs: 41.4 })).toEqual({
+      'pricing.outcome': 'OK',
+      'pricing.product_count': 2,
+      'pricing.latency_ms': 41,
+    });
+    expect(pricingSpanAttributes({ name: 'pricing.engine.price', outcome: '31.5204,74.3587', productCount: 1.5, latencyMs: Number.NaN })).toEqual({
+      'pricing.outcome': 'INVALID',
+      'pricing.product_count': -1,
+      'pricing.latency_ms': -1,
+    });
+  });
+
+  it('recording a pricing span without a registered SDK is a safe no-op', () => {
+    expect(() => {
+      recordPricingSpan(Date.now(), { name: 'pricing.quote.create', outcome: 'ROUTING_UNAVAILABLE', productCount: 0, latencyMs: 0 });
     }).not.toThrow();
   });
 });

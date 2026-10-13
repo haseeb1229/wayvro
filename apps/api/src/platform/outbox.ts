@@ -24,7 +24,9 @@ type OutboxEventType =
   | 'catalog.city-product.changed.v1'
   // Phase 3 release controls (P3.4): ids and codes only
   | 'platform.runtime-switch.changed.v1'
-  | 'platform.app-policy.activated.v1';
+  | 'platform.app-policy.activated.v1'
+  // Phase 3 pricing (P3.3): a rate card became ACTIVE (ids, codes and versions only)
+  | 'pricing.rate-card.activated.v1';
 
 export interface OutboxEventInput {
   readonly type: OutboxEventType;

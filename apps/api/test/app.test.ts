@@ -119,6 +119,7 @@ async function boot(checks: ReadinessCheck[] = [check('database', true), check('
     support: {} as never,
     release,
     geo: {} as never,
+    pricing: {} as never,
     extraControllers: extra,
   });
   await app.getHttpAdapter().getInstance().ready();
