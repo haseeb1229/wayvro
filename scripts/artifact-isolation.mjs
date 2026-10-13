@@ -11,7 +11,9 @@
  *   01 the dev-only packages (@wayvro/provider-test-doubles, @wayvro/test-support) are not installed anywhere in it;
  *   02 it ships only dist/ + production node_modules (no src/, test/, dev/, dist-dev/, coverage/);
  *   03 no file contains a double package specifier, double class name, local-runner or local-route marker, and the
- *      test-double brand key occurs only in the production refusal guard of @wayvro/provider-interfaces;
+ *      test-double brand key occurs only in the production refusal guard of @wayvro/provider-interfaces; P3.2 adds the
+ *      synthetic geo doubles (provider key, gazetteer and place ids, straight-line router) and the SP-04 harness path
+ *      `tools/geo-bench`, with a negative control (03c: a planted file carrying every geo marker must be caught);
  *   04 dynamic import / require resolution of the dev-only packages and of a devDependency fails with
  *      ERR_MODULE_NOT_FOUND / MODULE_NOT_FOUND from inside the artefact, while a real production dependency resolves
  *      (positive control, so the probe is meaningful);
@@ -36,6 +38,9 @@ import { ROOT, SERVER_APPS, buildReleaseArtifact, cleanBuild } from './build-rel
 const args = new Set(process.argv.slice(2));
 const OUT = join(tmpdir(), `wayvro-artifacts-${randomUUID().slice(0, 8)}`);
 const DEV_ONLY_PACKAGES = ['@wayvro/provider-test-doubles', '@wayvro/test-support'];
+// Phase 3 P3.2 (ADR-045 scope note): the synthetic geo doubles — their provider key, gazetteer, place ids and the
+// straight-line router — and the dev-only SP-04 benchmark harness path must never reach a deployable artefact.
+const GEO_DOUBLE_MARKERS = ['geo-mock', 'SYNTHETIC_GAZETTEER', 'createGeoTestDoubles', 'straightLineRoute', 'syn-lhr-', 'tools/geo-bench'];
 const FORBIDDEN_STRINGS = [
   ...DEV_ONLY_PACKAGES,
   'RecordingOtpDelivery',
@@ -44,6 +49,7 @@ const FORBIDDEN_STRINGS = [
   'createTestDoubleBindings',
   'main.local',
   '/__local/',
+  ...GEO_DOUBLE_MARKERS,
 ];
 const BRAND_KEY = 'wayvro.provider.mock';
 const BRAND_ALLOWED = 'node_modules/@wayvro/provider-interfaces/dist/brand.js';
@@ -106,6 +112,22 @@ function resolutionProbe(dir, specifier) {
   return { esm: r.stdout.trim(), cjs: required.stdout.trim() };
 }
 
+/** Forbidden-string and brand-key scan of every text file of an artefact directory. */
+function scanArtifact(dir) {
+  const hits = [];
+  const brandFiles = [];
+  let scanned = 0;
+  for (const file of walk(dir)) {
+    if (!TEXT_FILE.test(file) || statSync(file).size > 8 * 1024 * 1024) continue;
+    scanned++;
+    const text = readFileSync(file, 'utf8');
+    const rel = relative(dir, file).split('\\').join('/');
+    for (const s of FORBIDDEN_STRINGS) if (text.includes(s)) hits.push(`${rel}: ${s}`);
+    if (text.includes(BRAND_KEY)) brandFiles.push(rel);
+  }
+  return { hits, brandFiles, scanned };
+}
+
 function inspectArtifact(app, dir) {
   // 01 dev-only packages absent (top level and in pnpm's virtual store).
   const present = DEV_ONLY_PACKAGES.filter((p) => existsSync(join(dir, 'node_modules', p)));
@@ -123,20 +145,25 @@ function inspectArtifact(app, dir) {
   );
 
   // 03 content scan of every text file.
-  const hits = [];
-  const brandFiles = [];
-  let scanned = 0;
-  for (const file of walk(dir)) {
-    if (!TEXT_FILE.test(file) || statSync(file).size > 8 * 1024 * 1024) continue;
-    scanned++;
-    const text = readFileSync(file, 'utf8');
-    const rel = relative(dir, file).split('\\').join('/');
-    for (const s of FORBIDDEN_STRINGS) if (text.includes(s)) hits.push(`${rel}: ${s}`);
-    if (text.includes(BRAND_KEY)) brandFiles.push(rel);
-  }
+  const { hits, brandFiles, scanned } = scanArtifact(dir);
   record('03', app, hits.length === 0, hits.length ? hits.slice(0, 10).join('; ') : `${scanned} text files scanned, no double specifier/class/local marker`);
   const brandOk = brandFiles.every((f) => f === BRAND_ALLOWED);
   record('03b', app, brandOk, brandOk ? `brand key only in the refusal guard (${brandFiles.length} file)` : `brand key found in ${brandFiles.join(', ')}`);
+  // 03c negative control (P3.2): a planted file carrying every geo-double marker must be caught by the same scan.
+  const planted = join(dir, 'dist', '__geo_double_probe.js');
+  writeFileSync(planted, `export const probe = ${JSON.stringify(GEO_DOUBLE_MARKERS)};\n`);
+  try {
+    const control = scanArtifact(dir).hits.filter((h) => h.startsWith('dist/__geo_double_probe.js'));
+    const missed = GEO_DOUBLE_MARKERS.filter((m) => !control.some((h) => h.endsWith(`: ${m}`)));
+    record(
+      '03c',
+      app,
+      missed.length === 0,
+      missed.length ? `scan missed ${missed.join(', ')}` : `planted geo-double markers detected (${GEO_DOUBLE_MARKERS.length})`,
+    );
+  } finally {
+    rmSync(planted, { force: true });
+  }
 
   // 04 resolution from inside the artefact.
   const positive = { api: '@nestjs/core', worker: 'pg', realtime: 'socket.io' }[app];
@@ -215,6 +242,7 @@ const app = await createApp({
   evidence: null,
   review: { review: {}, appeals: {}, monitoring: {} },
   support: {},
+  geo: { gateway: {}, admin: {} },
 });
 const served = [...routeManifest(app)];
 const expected = new Set(API_ROUTES.map((r) => r.method + ' ' + r.path.replace(/\\{(\\w+)\\}/g, ':$1')));

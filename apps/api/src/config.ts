@@ -85,6 +85,43 @@ const identityPolicySchema = z.object({
   IDEMPOTENCY_SESSION_RESPONSE_TTL_SECONDS: int(600, 60, 86_400),
 });
 
+/**
+ * Geo gateway knobs (Phase 3 P3.2; docs/phase3/PHASE3_ARCHITECTURE.md §5, §12). Timeouts, retries, breaker parameters,
+ * cache maxima (adapters may declare lower, terms-derived TTLs), placeRef lifetime and per-account limits are
+ * CONFIGURABLE DEFAULTS, not provider facts. `GEO_LOCAL_DAILY_CALLS_PER_SKU` applies in local/test only: staging and
+ * production require an ACTIVE `geo.provider_budgets` row per (provider, SKU) and refuse the SKU without one.
+ */
+const geoPolicySchema = z.object({
+  /** Map renderer of the licence-coherent geo bundle (ADR-046); "none" (text-first UI) until the P3.7 freeze. */
+  GEO_RENDERER_KIND: z.enum(MAP_RENDERER_KINDS).default('none'),
+  GEO_AUTOCOMPLETE_TIMEOUT_MS: int(1500, 200, 5000),
+  GEO_GEOCODE_TIMEOUT_MS: int(2000, 200, 5000),
+  GEO_REVERSE_TIMEOUT_MS: int(2000, 200, 5000),
+  GEO_ROUTE_TIMEOUT_MS: int(2500, 200, 8000),
+  GEO_CONNECT_RETRIES: int(1, 0, 1),
+  GEO_RETRY_SLACK_MS: int(500, 0, 2000),
+  GEO_BREAKER_MIN_CALLS: int(20, 5, 1000),
+  GEO_BREAKER_FAILURE_PERCENT: int(50, 10, 100),
+  GEO_BREAKER_WINDOW_SECONDS: int(60, 10, 600),
+  GEO_BREAKER_CONSECUTIVE_TIMEOUTS: int(5, 1, 100),
+  GEO_BREAKER_OPEN_SECONDS: int(30, 5, 600),
+  GEO_BREAKER_HALF_OPEN_PROBES: int(3, 1, 20),
+  GEO_CACHE_MAX_TTL_AUTOCOMPLETE_SECONDS: int(86_400, 0, 86_400),
+  GEO_CACHE_MAX_TTL_GEOCODE_SECONDS: int(604_800, 0, 2_592_000),
+  GEO_CACHE_MAX_TTL_REVERSE_SECONDS: int(604_800, 0, 2_592_000),
+  GEO_CACHE_MAX_TTL_ROUTE_SECONDS: int(600, 0, 600),
+  GEO_PLACE_REF_TTL_SECONDS: int(900, 60, 3600),
+  GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT: int(60, 1, 10_000),
+  GEO_RESOLVE_PER_MINUTE_ACCOUNT: int(30, 1, 10_000),
+  GEO_REVERSE_PER_MINUTE_ACCOUNT: int(30, 1, 10_000),
+  GEO_LOCAL_DAILY_CALLS_PER_SKU: int(5000, 1, 1_000_000),
+  /** Namespace of geo cache, budget-signal, quota-cooldown, breaker-hint and usage keys in Valkey (`wv:geo:` by default). */
+  GEO_KEY_PREFIX: z
+    .string()
+    .regex(/^[a-z0-9:_-]{1,40}$/)
+    .default('wv:geo:'),
+});
+
 const oidcAudiences = z
   .string()
   .default('')
@@ -104,6 +141,7 @@ const apiEnvSchema = serviceEnvSchema
   .extend(httpEnvSchema.shape)
   .extend(keyEnvSchema.shape)
   .extend(identityPolicySchema.shape)
+  .extend(geoPolicySchema.shape)
   .extend(vaultEnvSchema.shape)
   // Phase 3 release controls (P3.4; ADR-049): latest RELEASED build per platform (default 0 = nothing released) —
   // the version-policy guardrail source until the Phase 7 release-process registry replaces it
@@ -163,8 +201,6 @@ const apiEnvSchema = serviceEnvSchema
     APP_GEO_REVERSE_DEBOUNCE_MS: int(600, 0, 5000),
     APP_LITE_AUTO_SUGGEST_AFTER_SLOW_REQUESTS: int(3, 1, 20),
     APP_LITE_SLOW_REQUEST_MS: int(4000, 500, 30_000),
-    /** Map renderer of the licence-coherent geo bundle (ADR-046); "none" until the P3.7 freeze. */
-    GEO_RENDERER_KIND: z.enum(MAP_RENDERER_KINDS).default('none'),
     RATE_LIMIT_KEY_PREFIX: z
       .string()
       .regex(/^[a-z0-9:_-]{1,40}$/)

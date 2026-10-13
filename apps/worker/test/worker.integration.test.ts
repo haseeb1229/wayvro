@@ -196,10 +196,10 @@ describe('maintenance, scheduling and composition', () => {
       `insert into platform.jobs (id, type, status, max_attempts, finished_at) values ($1, 'probe.old', 'SUCCEEDED', 1, now() - interval '30 days'), ($2, 'probe.new', 'SUCCEEDED', 1, now()), ($3, 'probe.dead', 'DEAD', 1, now() - interval '30 days')`,
       [randomUUID(), randomUUID(), randomUUID()],
     );
-    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, batchSize: 100 });
+    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, geoUsageDays: 400, batchSize: 100 });
     expect(result).toMatchObject({ idempotency: 1, jobs: 1, staffChallenges: 0, invitationsExpired: 0, breakGlassExpired: [] });
     expect((await owner.query(`select 1 from platform.jobs where type in ('probe.new', 'probe.dead')`)).rowCount).toBe(2);
-    await maintenanceJob(worker, log, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, batchSize: 100 }).handler({
+    await maintenanceJob(worker, log, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, geoUsageDays: 400, batchSize: 100 }).handler({
       id: randomUUID(),
       type: 'maintenance.purge',
       payload: {},

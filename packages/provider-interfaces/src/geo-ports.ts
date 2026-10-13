@@ -2,7 +2,7 @@
  * Vendor-neutral geo ports (Phase 3 P3.2; E06/E07; docs/phase3/PHASE3_ARCHITECTURE.md §6; ADR-006 hybrid abstraction
  * FD-04). The API's geo gateway is the only caller; adapters live in the server-only `@wayvro/geo-adapters` package
  * (one per vendor and SKU, bound by the composition root) and deterministic MOCK-branded doubles live in the dev-only
- * `@wayvro/provider-test-doubles`. No type here is provider-specific: provider place ids never leave the server (the
+ * test-double workspace package (ADR-045; never named in production code). No type here is provider-specific: provider place ids never leave the server (the
  * gateway seals them into `placeRef` tokens) and results carry Wayvro provenance only.
  *
  * Contract for every adapter:

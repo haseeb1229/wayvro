@@ -1,5 +1,15 @@
-export { ProviderBindingError, bindProviders, type ProviderRegistry } from './binding.js';
+export {
+  GEO_PORT_KINDS,
+  GEO_PORT_SKUS,
+  ProviderBindingError,
+  assertGeoBundle,
+  bindProviders,
+  type GeoBundle,
+  type GeoPortKind,
+  type ProviderRegistry,
+} from './binding.js';
 export { MOCK_PROVIDER, isMockProvider, type MockBrand } from './brand.js';
+export { GeoProviderError, type GeoProviderFailure } from './geo-errors.js';
 export {
   PROVIDER_KINDS,
   type ImageSanitiserPort,

@@ -25,6 +25,8 @@ import { OtpService } from './identity/otp.service.js';
 import { RecoveryReviewService } from './identity/recovery-review.service.js';
 import { SessionService } from './identity/session.service.js';
 import { ComplianceAdminService } from './compliance/compliance-admin.service.js';
+import type { GeoSeams } from './geo/gateway.js';
+import { composeGeo, type GeoModule } from './geo/module.js';
 import { OnboardingService } from './compliance/onboarding.service.js';
 import { ConsentService } from './legal/consent.service.js';
 import { preparePolicyRegistry } from './legal/policy-registry.js';
@@ -52,6 +54,8 @@ export interface ApiRuntime {
   readonly cipher: FieldCipher;
   /** Runtime kill switches (P3.4): the read side other server modules honour (cached, registry defaults). */
   readonly switches: RuntimeSwitchReader;
+  /** Geo module (P3.2); `geo.routing` is the routing service the pricing module (P3.3) consumes. */
+  readonly geo: GeoModule;
   close(): Promise<void>;
 }
 
@@ -59,11 +63,20 @@ export interface ComposeOptions {
   readonly providers: ProviderRegistry;
   /** Local-runner-only controllers (never passed by `src/main.ts`). */
   readonly extraControllers?: readonly Type[];
+  /**
+   * Test-only override of the geo gateway's runtime-switch reader and service-area lookup (integration tests inject
+   * controllable implementations). Production roots never pass it: `composeApi` wires the release-controls switch store
+   * and `CatalogReadModel.inServiceArea`.
+   */
+  readonly geoSeams?: GeoSeams;
 }
 
 export async function composeApi(config: ApiConfig, log: Logger, options: ComposeOptions): Promise<ApiRuntime> {
   // Staging/production refuse here until a KMS-backed key provider exists (EG-05); local/test use synthetic keys.
   const ring = loadKeyRing(config.WAYVRO_ENV, config);
+  // P3.2: placeRef sealing and keyed geo cache keys need their key classes — an explicit key spec without them fails here
+  ring.active('place_refs');
+  ring.active('geo_cache');
   const cipher = new FieldCipher(ring);
   const hasher = new KeyedHasher(ring);
   const lookup = new PhoneLookup(hasher);
@@ -126,6 +139,22 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
   const catalog = { readModel: new CatalogReadModel(db.pool, config), admin: new CatalogAdminService(db.pool, idempotency, config, null) };
   // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
   await preparePolicyRegistry(db.pool, config.WAYVRO_ENV, log);
+  // Geo gateway (P3.2): licence-coherent bundle check at boot; unbound geo ports answer 503 for their SKU.
+  const geo = composeGeo({
+    config,
+    log,
+    db: db.pool,
+    redis: limiterRedis,
+    limiter,
+    cipher,
+    hasher,
+    idempotency,
+    providers: options.providers,
+    seams: options.geoSeams ?? {
+      switches,
+      serviceArea: { inServiceArea: (cityCode: string, point: { lat: number; lng: number }) => catalog.readModel.inServiceArea(cityCode, point) },
+    },
+  });
   const app = await createApp({
     info: { service: 'api', version: config.WAYVRO_BUILD_VERSION },
     readinessChecks: [databaseCheck(db), redisProbe],
@@ -154,6 +183,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       monitoring: new MonitoringService(db.pool),
     },
     catalog,
+    geo: { gateway: geo.gateway, admin: geo.admin },
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {
@@ -161,6 +191,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     db,
     cipher,
     switches,
+    geo,
     async close() {
       await app.close();
       redisProbe.close();

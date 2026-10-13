@@ -51,6 +51,13 @@ const workerEnvSchema = serviceEnvSchema
     /** Inactive DRAFT/CONSENTED/DOCUMENTS_PENDING applications become EXPIRED_DRAFT (data model §4.5; proposal 30). */
     APPLICATION_DRAFT_EXPIRY_DAYS: int(30, 1, 365),
     KEY_ROTATION_BATCH_SIZE: int(500, 1, 10_000),
+    /** Phase 3 P3.2: hourly geo usage aggregates are kept 400 days (budget review; no personal data). */
+    GEO_USAGE_RETENTION_DAYS: int(400, 30, 1100),
+    /** Same namespace as the API's GEO_KEY_PREFIX: the rollup reads the API's hourly usage counters. */
+    GEO_KEY_PREFIX: z
+      .string()
+      .regex(/^[a-z0-9:_-]{1,40}$/)
+      .default('wv:geo:'),
   });
 
 export type WorkerConfig = Readonly<z.infer<typeof workerEnvSchema>>;

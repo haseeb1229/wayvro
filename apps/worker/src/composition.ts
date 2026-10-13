@@ -11,10 +11,11 @@ import { FieldCipher, KeyedHasher, loadKeyRing } from '@wayvro/field-crypto';
 import { PhoneLookup, keyRotationJob, otpDeliveryJob, type RotationDeps } from '@wayvro/identity-core';
 import type { Logger } from '@wayvro/observability';
 import type { ProviderRegistry } from '@wayvro/provider-interfaces';
-import { JobRunner, type JobDefinition } from '@wayvro/server-runtime';
+import { JobRunner, type GeoUsageCounters, type JobDefinition } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import { AUDIT_SEAL_JOB, AUDIT_VERIFY_JOB, auditJobs } from './audit-seal.js';
 import type { WorkerConfig } from './config.js';
+import { GEO_USAGE_ROLLUP_JOB, geoUsageRollupJob } from './geo/usage-rollup.js';
 import { DELETION_PROCESSING_JOB, RECOVERY_COMPLETION_JOB, deletionProcessingJob, recoveryCompletionJob } from './identity/account-jobs.js';
 import { MAINTENANCE_PURGE_JOB, maintenanceJob } from './maintenance.js';
 import { SCHEDULED_ACTIVATION_JOB, scheduledActivationJob } from './release/activation.js';
@@ -47,6 +48,8 @@ export function composeWorker(
   providers: ProviderRegistry,
   vaultPool: pg.Pool | null = null,
   hints: HintPublisher | null = null,
+  /** P3.2: the API's hourly geo usage counters in Valkey; null = the rollup job is not registered. */
+  geoUsage: GeoUsageCounters | null = null,
 ): WorkerRuntime {
   // Staging/production refuse until a KMS-backed key provider exists (EG-05).
   const ring = loadKeyRing(config.WAYVRO_ENV, config);
@@ -58,6 +61,7 @@ export function composeWorker(
       otpChallengeDays: config.OTP_CHALLENGE_RETENTION_DAYS,
       succeededJobDays: config.SUCCEEDED_JOB_RETENTION_DAYS,
       applicationDraftExpiryDays: config.APPLICATION_DRAFT_EXPIRY_DAYS,
+      geoUsageDays: config.GEO_USAGE_RETENTION_DAYS,
       batchSize: 5000,
     }),
     keyRotationJob(rotation),
@@ -83,6 +87,10 @@ export function composeWorker(
     { type: RECOVERY_COMPLETION_JOB, everySeconds: 600 },
     { type: SCHEDULED_ACTIVATION_JOB, everySeconds: 60 },
   ];
+  if (geoUsage) {
+    definitions.push(geoUsageRollupJob(pool, geoUsage, log));
+    recurring.push({ type: GEO_USAGE_ROLLUP_JOB, everySeconds: 900 });
+  }
   if (vaultPool && providers.has('objectStorage')) {
     const storage = providers.get('objectStorage');
     if (providers.has('malwareScanner') && providers.has('imageSanitiser')) {

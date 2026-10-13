@@ -39,6 +39,7 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-041](ADR-041-evidence-vault-and-image-sanitiser.md) | Evidence vault: storage client, encryption, malware scanning, isolated image sanitiser (sharp/libvips, one container per image) | ACCEPTED on P2.6 evidence — production hosting P2.A4/EG-05 |
 | [ADR-043](ADR-043-mobile-platform-additions.md) | Mobile platform additions for the ONE Wayvro app (P2.3 account slice, P2.8 capture) | ACCEPTED on P2.3/P2.8 build evidence — physical-device runs NOT RUN; CAMERA allowlist APPROVED (founder/ChatGPT, Phase-2 closure) |
 | [ADR-040](ADR-040-oidc-verification-with-jose.md) | OIDC ID-token verification with `jose` (Google/Apple linking; never account creation) | ACCEPTED on P2.10 evidence — production EXTERNAL_GATED (EG-06/EG-07) |
+| [ADR-047](ADR-047-geo-gateway.md) | Geo gateway: cache, quotas, cost controls, circuit breakers, privacy (Phase 3 P3.2) | ACCEPTED on P3.2 evidence for the tested mechanisms — values are configuration; real provider bundle/terms/prices ADR-006 + SP-04 (EXTERNAL); key custody EG-05 |
 
 ## Phase 3 decisions (branch `phase-3/maps-quotes-unified-ux`) — pending founder/ChatGPT review
 

@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 132,
+  "file_count_excluding_manifest": 133,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 12629,
-      "sha256": "205611cd78dc888245a30cfd0869fdff799b53447479a8818f36614fbfbfe7c2"
+      "bytes": 12928,
+      "sha256": "020af4606c1c64c49a390aab265cf4be8197bad8d54915496588307ea62c06b8"
     },
     {
       "path": "CLAUDE.md",
@@ -276,8 +276,13 @@
     },
     {
       "path": "docs/adr/ADR-045-production-test-double-isolation.md",
-      "bytes": 6425,
-      "sha256": "4f2cbb514e249ba3ab9750d391bba597b84777a00b7f1a773f1ef195026954e4"
+      "bytes": 7416,
+      "sha256": "6985801ab157ee2ecf7383bdb67f0408b0ffcfd7c3e467af49a0d12268de73c2"
+    },
+    {
+      "path": "docs/adr/ADR-047-geo-gateway.md",
+      "bytes": 8609,
+      "sha256": "9270b70bdfb7cfb999ed2113770a8b5645ca82a473840f51c4839ec0b18d3c6f"
     },
     {
       "path": "docs/adr/ADR-048-unified-app-mode-navigation.md",
@@ -296,8 +301,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 7426,
-      "sha256": "1907865e42462c7e5b005f2fac52596a7f1aa05b3915e65b28a4b632420d7f4e"
+      "bytes": 7714,
+      "sha256": "b612f39f76175e1846219a8884ca23eaa19e9d0861827645f589d5ecf95f0003"
     },
     {
       "path": "docs/operations/developer-setup.md",

@@ -8,7 +8,7 @@ import { CATALOG_ROUTES } from './catalog.js';
 import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
 import { ONBOARDING_ROUTES } from './compliance.js';
 import { EVIDENCE_ROUTES } from './evidence.js';
-import { GEO_ROUTES } from './geo.js';
+import { GEO_ADMIN_ROUTES, GEO_ROUTES } from './geo.js';
 import { REVIEW_ROUTES } from './review.js';
 import { LEGAL_ROUTES } from './legal.js';
 import { OIDC_ROUTES } from './oidc.js';
@@ -34,6 +34,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...RELEASE_ADMIN_ROUTES,
   ...CATALOG_ROUTES,
   ...GEO_ROUTES,
+  ...GEO_ADMIN_ROUTES,
   ...QUOTE_ROUTES,
 ];
 

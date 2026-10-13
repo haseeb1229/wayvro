@@ -126,7 +126,7 @@ describe('leases, expiry and restriction events', () => {
       [restriction, profile],
     );
     await new Promise((r) => setTimeout(r, 1200));
-    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, batchSize: 1000 });
+    const result = await purgeOnce(worker, { otpChallengeDays: 7, succeededJobDays: 7, applicationDraftExpiryDays: 30, geoUsageDays: 400, batchSize: 1000 });
     expect(result.reviewLeasesExpired).toBeGreaterThanOrEqual(1);
     expect(
       (

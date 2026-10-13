@@ -26,6 +26,9 @@ export const SUPPORT_SERVICE = Symbol('SUPPORT_SERVICE');
 export const CATALOG_SERVICES = Symbol('CATALOG_SERVICES');
 /** Phase 3 release controls (P3.4): app config, version policies, runtime switches. */
 export const RELEASE_SERVICES = Symbol('RELEASE_SERVICES');
+// Phase 3 P3.2 geo gateway
+export const GEO_GATEWAY = Symbol('GEO_GATEWAY');
+export const GEO_ADMIN_SERVICE = Symbol('GEO_ADMIN_SERVICE');
 
 export interface ServiceInfo {
   readonly service: string;

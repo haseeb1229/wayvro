@@ -14,6 +14,8 @@ export interface RetentionPolicy {
   readonly otpChallengeDays: number;
   readonly succeededJobDays: number;
   readonly applicationDraftExpiryDays: number;
+  /** Phase 3 P3.2: hourly geo usage aggregates (no personal data) are kept this long (GEO_USAGE_RETENTION_DAYS). */
+  readonly geoUsageDays: number;
   readonly batchSize: number;
 }
 
@@ -32,6 +34,7 @@ export async function purgeOnce(
   draftsExpired: number;
   reviewLeasesExpired: number;
   oidcNonces: number;
+  geoUsage: number;
 }> {
   const idempotency = await pool.query(
     `delete from platform.idempotency_records where ctid in (select ctid from platform.idempotency_records where expires_at <= now() limit $1)`,
@@ -86,7 +89,13 @@ export async function purgeOnce(
       where state in ('DRAFT', 'CONSENTED', 'DOCUMENTS_PENDING') and updated_at < now() - ($1::int * interval '1 day')`,
     [policy.applicationDraftExpiryDays],
   );
+  // P3.2: hourly geo usage rollups past retention (aggregates only; budget review, not billing truth)
+  const geoUsage = await pool.query(
+    `delete from geo.provider_usage where ctid in (select ctid from geo.provider_usage where hour_bucket < now() - ($1::int * interval '1 day') limit $2)`,
+    [policy.geoUsageDays, policy.batchSize],
+  );
   return {
+    geoUsage: geoUsage.rowCount ?? 0,
     restrictionsExpired: restrictions.rowCount ?? 0,
     reviewLeasesExpired: leases.rowCount ?? 0,
     draftsExpired: drafts.rowCount ?? 0,
