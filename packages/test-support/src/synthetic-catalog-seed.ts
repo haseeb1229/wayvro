@@ -93,6 +93,12 @@ export interface SyntheticCatalogSeedOptions {
    * re-run never edits an existing card: an ACTIVE card is immutable.
    */
   readonly quoteTtlSeconds?: number;
+  /**
+   * Service hours 00:00–00:00 (all day) instead of `SYNTHETIC_CATALOG.hours`, when the zone set is first created. The
+   * mobile E2E stack (SP-08) uses it so quote flows never depend on the runner's wall clock (the API integration helpers
+   * do the same); outside-hours refusals are covered by the HOURS suites. A re-run never edits an existing zone set.
+   */
+  readonly allDayServiceHours?: boolean;
 }
 
 export interface SyntheticCatalogSeedResult {
@@ -215,6 +221,7 @@ export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions)
     throw new Error(`synthetic catalog seed refused: quoteTtlSeconds must be an integer 60-1800 (got ${String(quoteTtlSeconds)})`);
   const log = options.log ?? (() => undefined);
   const S = SYNTHETIC_CATALOG;
+  const hours = options.allDayServiceHours === true ? { opensLocal: '00:00', closesLocal: '00:00' } : S.hours;
   const client = new pg.Client({ connectionString: options.databaseUrl });
   await client.connect();
   try {
@@ -229,9 +236,7 @@ export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions)
     let version = existing?.version ?? 0;
     if (!existing) {
       createdZoneSet = true;
-      log(
-        `zone set ${S.zoneSetId} (${S.cityCode}, synthetic): 4 zones, 3 pickup points, hours ${S.hours.opensLocal}-${S.hours.closesLocal} every day -> ACTIVE`,
-      );
+      log(`zone set ${S.zoneSetId} (${S.cityCode}, synthetic): 4 zones, 3 pickup points, hours ${hours.opensLocal}-${hours.closesLocal} every day -> ACTIVE`);
       const v = await client.query<{ version: number }>(
         `insert into catalog.zone_sets (id, city_code, version, status, is_synthetic, source_reference)
          select $1, $2, coalesce(max(version), 0) + 1, 'DRAFT', true, $3 from catalog.zone_sets where city_code = $2 returning version`,
@@ -265,7 +270,7 @@ export async function seedSyntheticCatalog(options: SyntheticCatalogSeedOptions)
       for (let weekday = 0; weekday < 7; weekday++) {
         await client.query(
           `insert into catalog.service_hours (id, zone_set_id, product_code, weekday, opens_local, closes_local) values ($1, $2, null, $3, $4::time, $5::time)`,
-          [`00000000-0000-7000-8000-00000000c54${String(weekday)}`, S.zoneSetId, weekday, S.hours.opensLocal, S.hours.closesLocal],
+          [`00000000-0000-7000-8000-00000000c54${String(weekday)}`, S.zoneSetId, weekday, hours.opensLocal, hours.closesLocal],
         );
       }
       await client.query(`update catalog.zone_sets set status = 'ACTIVE', effective_from = clock_timestamp() where id = $1`, [S.zoneSetId]);

@@ -313,11 +313,11 @@ export class AppPolicyAdminService {
         ]);
         if (newer.rowCount !== 0) return failure('WAYVRO_E_CONFLICT', { reasonCodes: ['NEWER_POLICY_ACTIVE'] });
         await tx.query(
-          `update platform.app_version_policies set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1 where platform = $1 and status = 'ACTIVE'`,
+          `update platform.app_version_policies set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1 where platform = $1 and status = 'ACTIVE'`,
           [row.platform],
         );
         await tx.query(
-          `update platform.app_version_policies set status = 'ACTIVE', effective_from = now(), scheduled = false, version_lock = version_lock + 1 where id = $1 and status = 'APPROVED'`,
+          `update platform.app_version_policies set status = 'ACTIVE', effective_from = clock_timestamp(), scheduled = false, version_lock = version_lock + 1 where id = $1 and status = 'APPROVED'`,
           [id],
         );
         await emitEvent(tx, {
@@ -362,7 +362,7 @@ export class AppPolicyAdminService {
         if (row.status === 'ACTIVE') {
           wasActive = true;
           await tx.query(
-            `update platform.app_version_policies set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1 where id = $1`,
+            `update platform.app_version_policies set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1 where id = $1`,
             [id],
           );
         } else if (row.status === 'APPROVED') {

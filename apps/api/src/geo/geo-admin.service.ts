@@ -240,11 +240,14 @@ export class GeoAdminService {
         return failure('WAYVRO_E_CONFLICT', { reasonCodes: ['DECREASE_NO_LONGER_LOWER'] });
       }
       if (active) {
-        await tx.query(`update geo.provider_budgets set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1 where id = $1`, [
-          active.id,
-        ]);
+        await tx.query(
+          `update geo.provider_budgets set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1 where id = $1`,
+          [active.id],
+        );
       }
-      await tx.query(`update geo.provider_budgets set status = 'ACTIVE', effective_from = now(), version_lock = version_lock + 1 where id = $1`, [id]);
+      await tx.query(`update geo.provider_budgets set status = 'ACTIVE', effective_from = clock_timestamp(), version_lock = version_lock + 1 where id = $1`, [
+        id,
+      ]);
       this.budgets.invalidate();
       return { action: 'GEO_BUDGET_ACTIVATED' };
     });
@@ -253,7 +256,9 @@ export class GeoAdminService {
   retireBudget(staff: StaffPrincipal, id: string, key: string): Promise<IdempotentResult> {
     return this.transitionBudget(staff, id, 'geo-budgets.retire', key, { id }, async (tx, b) => {
       if (b.status !== 'APPROVED' && b.status !== 'ACTIVE') return failure('WAYVRO_E_CONFLICT');
-      await tx.query(`update geo.provider_budgets set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1 where id = $1`, [id]);
+      await tx.query(`update geo.provider_budgets set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1 where id = $1`, [
+        id,
+      ]);
       this.budgets.invalidate();
       return { action: 'GEO_BUDGET_RETIRED' };
     });

@@ -69,7 +69,7 @@ export function rateCardActivator(deps: { readonly pool: pg.Pool; readonly env: 
         return 'REFUSED';
       }
       const previous = await tx.query<{ id: string }>(
-        `update pricing.rate_cards set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1
+        `update pricing.rate_cards set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1
           where city_code = $1 and product_code = $2 and status = 'ACTIVE' returning id`,
         [due.city_code, due.product_code],
       );
@@ -84,7 +84,7 @@ export function rateCardActivator(deps: { readonly pool: pg.Pool; readonly env: 
         });
       }
       await tx.query(
-        `update pricing.rate_cards set status = 'ACTIVE', effective_from = now(), scheduled = false, version_lock = version_lock + 1 where id = $1 and status = 'APPROVED'`,
+        `update pricing.rate_cards set status = 'ACTIVE', effective_from = clock_timestamp(), scheduled = false, version_lock = version_lock + 1 where id = $1 and status = 'APPROVED'`,
         [row.id],
       );
       await tx.query(

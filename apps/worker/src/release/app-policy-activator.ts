@@ -86,11 +86,11 @@ export function appPolicyActivator(deps: {
         return 'REFUSED';
       }
       await tx.query(
-        `update platform.app_version_policies set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1 where platform = $1 and status = 'ACTIVE'`,
+        `update platform.app_version_policies set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1 where platform = $1 and status = 'ACTIVE'`,
         [platform],
       );
       await tx.query(
-        `update platform.app_version_policies set status = 'ACTIVE', effective_from = now(), scheduled = false, version_lock = version_lock + 1 where id = $1 and status = 'APPROVED'`,
+        `update platform.app_version_policies set status = 'ACTIVE', effective_from = clock_timestamp(), scheduled = false, version_lock = version_lock + 1 where id = $1 and status = 'APPROVED'`,
         [id],
       );
       await tx.query(

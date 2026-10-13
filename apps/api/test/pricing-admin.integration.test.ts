@@ -10,6 +10,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { PricingPreviewSchema, QuoteGroupSchema, RateCardSchema, StaffQuoteViewSchema, TaxPolicySchema } from '@wayvro/contracts';
+import { rateCardActivationLockKey } from '@wayvro/config';
 import { createLogger } from '@wayvro/observability';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { IdempotencyStore } from '../src/platform/idempotency.js';
@@ -319,6 +320,44 @@ describe('rate cards (H06/T3-23)', () => {
     });
     const drafts = await Promise.all([0, 1, 2].map(() => draft(maker, 'COMFORT')));
     expect(new Set(drafts.map((d) => d.version)).size).toBe(3);
+  });
+
+  // Regression (PR #8 CI run 38446160279): an activation whose transaction started before a competing activation
+  // committed must still retire that card with effective_until ≥ its effective_from (transaction-start now() did not).
+  it('CONC-PRICING: an activation that waited on the activation lock retires the card activated meanwhile (time order kept)', async () => {
+    const [x, y] = [await approved('COMFORT'), await approved('COMFORT')];
+    await kit.stepUp(checker);
+    const holder = await g.h.owner.connect();
+    try {
+      await holder.query('begin');
+      await holder.query('select pg_advisory_xact_lock(hashtext($1))', [rateCardActivationLockKey('LHR', 'COMFORT')]);
+      const pending = g.h.inject(post(`/v1/admin/pricing/rate-cards/${y.id}/activation`, { when: 'NOW' }, kit.sb(checker)));
+      // the request's transaction has started and waits on the lock this test holds
+      await expect
+        .poll(
+          async () => (await g.h.owner.query<{ n: number }>(`select count(*)::int n from pg_locks where locktype = 'advisory' and not granted`)).rows[0]?.n,
+          {
+            timeout: 10_000,
+          },
+        )
+        .toBe(1);
+      await holder.query(
+        `update pricing.rate_cards set status = 'RETIRED', effective_until = clock_timestamp() where city_code = 'LHR' and product_code = 'COMFORT' and status = 'ACTIVE'`,
+      );
+      await holder.query(`update pricing.rate_cards set status = 'ACTIVE', effective_from = clock_timestamp() where id = $1`, [x.id]);
+      await holder.query('commit');
+      expect((await pending).statusCode).toBe(200);
+    } finally {
+      holder.release();
+    }
+    const rows = await g.h.owner.query<{ id: string; status: string; ordered: boolean }>(
+      `select id, status, effective_until >= effective_from ordered from pricing.rate_cards where id = any($1::uuid[]) order by version`,
+      [[x.id, y.id]],
+    );
+    expect(rows.rows).toEqual([
+      { id: x.id, status: 'RETIRED', ordered: true },
+      { id: y.id, status: 'ACTIVE', ordered: null },
+    ]);
   });
 
   it('AUDITOR reads configuration history but cannot draft; unknown ids are 404', async () => {

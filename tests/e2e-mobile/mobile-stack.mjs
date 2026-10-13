@@ -69,6 +69,9 @@ const catalog = await seedSyntheticCatalog({
   env: 'local',
   databaseUrl: dbUrl,
   quoteTtlSeconds: Number(QUOTE_TTL_SECONDS),
+  // all-day hours: quote flows must not depend on the runner's wall clock (a CI run at 23:56 PKT was refused as
+  // outside hours — correct server behaviour, wrong test precondition)
+  allDayServiceHours: true,
   log: (line) => say(`catalog: ${line}`),
 });
 // Quote flows run only when the seed really produced ACTIVE rate cards; otherwise they are NOT RUN with the reason, never PASS.
