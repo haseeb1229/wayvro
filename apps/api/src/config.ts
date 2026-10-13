@@ -6,9 +6,11 @@ import {
   keyEnvSchema,
   loadConfig,
   redisEnvSchema,
+  releaseEnvSchema,
   serviceEnvSchema,
   vaultEnvSchema,
 } from '@wayvro/config';
+import { MAP_RENDERER_KINDS } from '@wayvro/contracts';
 import { z } from 'zod';
 
 /** An IPv4/IPv6 address or CIDR block (e.g. 10.0.0.0/8, fd00::/8). */
@@ -103,6 +105,9 @@ const apiEnvSchema = serviceEnvSchema
   .extend(keyEnvSchema.shape)
   .extend(identityPolicySchema.shape)
   .extend(vaultEnvSchema.shape)
+  // Phase 3 release controls (P3.4; ADR-049): latest RELEASED build per platform (default 0 = nothing released) —
+  // the version-policy guardrail source until the Phase 7 release-process registry replaces it
+  .extend(releaseEnvSchema.shape)
   .extend({
     // Evidence uploads (KYC doc §4; configuration, not law): slot TTL 10 min, upload URL ≤ 5 min, ≤ 40 objects per
     // application, ≤ 10 slots per account per 10 minutes, optional capture challenge valid 10 min.
@@ -148,6 +153,18 @@ const apiEnvSchema = serviceEnvSchema
      */
     PICKUP_SNAP_MAX_METERS: int(300, 25, 2000),
     /** Namespace for rate-limit keys when several environments or test runs share one Valkey. */
+    // Release controls (P3.4; PHASE3_ARCHITECTURE §9/§12): in-process cache of policies + switches ("takes effect within
+    // 10 s"), HTTP max-age and per-IP-prefix limit of the public GET /v1/app/config, and the client tuning it carries.
+    RUNTIME_SWITCH_CACHE_SECONDS: int(10, 1, 60),
+    APP_CONFIG_CACHE_SECONDS: int(60, 0, 600),
+    APP_CONFIG_PER_MINUTE_IP_PREFIX: int(120, 1, 100_000),
+    APP_GEO_AUTOCOMPLETE_MIN_CHARS: int(3, 1, 10),
+    APP_GEO_AUTOCOMPLETE_DEBOUNCE_MS: int(300, 0, 5000),
+    APP_GEO_REVERSE_DEBOUNCE_MS: int(600, 0, 5000),
+    APP_LITE_AUTO_SUGGEST_AFTER_SLOW_REQUESTS: int(3, 1, 20),
+    APP_LITE_SLOW_REQUEST_MS: int(4000, 500, 30_000),
+    /** Map renderer of the licence-coherent geo bundle (ADR-046); "none" until the P3.7 freeze. */
+    GEO_RENDERER_KIND: z.enum(MAP_RENDERER_KINDS).default('none'),
     RATE_LIMIT_KEY_PREFIX: z
       .string()
       .regex(/^[a-z0-9:_-]{1,40}$/)

@@ -6,6 +6,7 @@
  * Database role: the worker's LOGIN role is a member of `wayvro_worker` (jobs, rotation, purge) and
  * `wayvro_audit_sealer` (read audit events, append seals) — never the owner/migrator.
  */
+import { releasedBuildsOf } from '@wayvro/config';
 import { FieldCipher, KeyedHasher, loadKeyRing } from '@wayvro/field-crypto';
 import { PhoneLookup, keyRotationJob, otpDeliveryJob, type RotationDeps } from '@wayvro/identity-core';
 import type { Logger } from '@wayvro/observability';
@@ -16,6 +17,9 @@ import { AUDIT_SEAL_JOB, AUDIT_VERIFY_JOB, auditJobs } from './audit-seal.js';
 import type { WorkerConfig } from './config.js';
 import { DELETION_PROCESSING_JOB, RECOVERY_COMPLETION_JOB, deletionProcessingJob, recoveryCompletionJob } from './identity/account-jobs.js';
 import { MAINTENANCE_PURGE_JOB, maintenanceJob } from './maintenance.js';
+import { SCHEDULED_ACTIVATION_JOB, scheduledActivationJob } from './release/activation.js';
+import { appPolicyActivator } from './release/app-policy-activator.js';
+import { runtimeSwitchExpiryActivator } from './release/switch-expiry.js';
 import { RecurringScheduler } from './scheduler.js';
 import { accountStateHintConsumer, type HintPublisher } from './outbox/account-state-hint.js';
 import { LocalDispatcher, PgOutboxSource, PgProcessedEventStore } from './outbox/pg-outbox.js';
@@ -60,6 +64,15 @@ export function composeWorker(
     applicationIntakeJob(pool),
     documentExpiryJob(pool, log),
     recoveryCompletionJob({ pool, cipher, lookup: new PhoneLookup(rotation.hasher), log }),
+    // Phase 3 (P3.4): scheduled activation registry — app version policies and runtime-switch effective_until expiry
+    // (rate cards/zone sets/eligibility rules register their activators here in their phase)
+    scheduledActivationJob(
+      [
+        appPolicyActivator({ pool, env: config.WAYVRO_ENV, released: releasedBuildsOf(config), log }),
+        runtimeSwitchExpiryActivator({ pool, env: config.WAYVRO_ENV, log }),
+      ],
+      log,
+    ),
   ];
   if (providers.has('otpDelivery')) definitions.push(otpDeliveryJob({ db: pool, cipher, port: providers.get('otpDelivery') }));
   const recurring = [
@@ -68,6 +81,7 @@ export function composeWorker(
     { type: MAINTENANCE_PURGE_JOB, everySeconds: 600 },
     { type: DOCUMENT_EXPIRY_JOB, everySeconds: 86_400 },
     { type: RECOVERY_COMPLETION_JOB, everySeconds: 600 },
+    { type: SCHEDULED_ACTIVATION_JOB, everySeconds: 60 },
   ];
   if (vaultPool && providers.has('objectStorage')) {
     const storage = providers.get('objectStorage');

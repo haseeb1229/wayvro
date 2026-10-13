@@ -270,7 +270,36 @@ export {
 } from './support.js';
 
 // ── Phase 3 (maps, quotes, unified-app shell) ──
-export { APP_CONFIG_ROUTES, AppConfigSchema, CLIENT_POLICY_STATES, MAP_RENDERER_KINDS, RuntimeSwitchKeySchema, type AppConfig } from './app-config.js';
+export {
+  APP_CONFIG_ROUTES,
+  APP_POLICY_STATUSES,
+  AppConfigSchema,
+  AppVersionPolicyActivationRequestSchema,
+  AppVersionPolicyDecisionRequestSchema,
+  AppVersionPolicyDraftRequestSchema,
+  AppVersionPolicyListQuerySchema,
+  AppVersionPolicyListSchema,
+  AppVersionPolicyPreviewSchema,
+  AppVersionPolicyRevisionRequestSchema,
+  AppVersionPolicySchema,
+  BLOCKED_BUILD_REASON_CODES,
+  CLIENT_POLICY_STATES,
+  MAP_RENDERER_KINDS,
+  RELEASE_ADMIN_ROUTES,
+  RuntimeSwitchChangeListSchema,
+  RuntimeSwitchChangeQuerySchema,
+  RuntimeSwitchChangeSchema,
+  RuntimeSwitchKeySchema,
+  RuntimeSwitchListSchema,
+  RuntimeSwitchRestoreDecisionSchema,
+  RuntimeSwitchRestoreRequestSchema,
+  RuntimeSwitchSafeStateRequestSchema,
+  SWITCH_CHANGE_DIRECTIONS,
+  SWITCH_CHANGE_STATUSES,
+  SWITCH_SCOPES,
+  SWITCH_STATES,
+  type AppConfig,
+} from './app-config.js';
 export {
   CATALOG_REASON_CODES,
   CATALOG_ROUTES,

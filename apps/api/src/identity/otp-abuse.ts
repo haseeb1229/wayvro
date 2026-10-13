@@ -35,8 +35,8 @@ export interface SendContext {
 }
 
 /**
- * `/24` for IPv4, `/56` for IPv6 (normalised), or `null` when the address cannot be parsed.
- * @internal exported for unit tests.
+ * `/24` for IPv4, `/56` for IPv6 (normalised), or `null` when the address cannot be parsed. Also the per-prefix key of
+ * the public app-config limit (platform/release/app-config.service.ts).
  */
 export function ipPrefix(ip: string): string | null {
   const v4 = ip.startsWith('::ffff:') ? ip.slice(7) : ip;

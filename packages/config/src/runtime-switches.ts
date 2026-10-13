@@ -111,6 +111,24 @@ export function runtimeSwitchDefinition(key: string): RuntimeSwitchDefinition | 
   return RUNTIME_SWITCH_REGISTRY.find((s) => s.key === key);
 }
 
+/** The other state (a switch has exactly two). */
+export function oppositeSwitchState(state: SwitchState): SwitchState {
+  return state === 'ENABLED' ? 'DISABLED' : 'ENABLED';
+}
+
+/** The state that keeps the capability running: the opposite of the switch's safe (stopping) state. */
+export function runningSwitchState(definition: RuntimeSwitchDefinition): SwitchState {
+  return oppositeSwitchState(definition.safeState);
+}
+
+/**
+ * Transaction-scoped advisory-lock key of one switch target (key, scope, city): every change to a target — staff
+ * changes in the API and the worker's effective_until expiry — takes it first, then locks the rows.
+ */
+export function runtimeSwitchTargetLockKey(key: string, scope: SwitchScope, cityCode: string | null): string {
+  return `wayvro.switch:${key}:${scope}:${cityCode ?? '-'}`;
+}
+
 /**
  * Read side used by every server module that honours a switch (geo gateway, quotes, maintenance hook). Implemented by
  * the release-controls module (cached ≤ RUNTIME_SWITCH_CACHE_SECONDS, registry default when no row exists).
@@ -135,7 +153,7 @@ export function validateRuntimeSwitchRegistry(switches: readonly RuntimeSwitchDe
     if (s.owner.trim() === '' || s.purpose.trim() === '') problems.push(`${where}: owner and purpose are required`);
     if (s.requirementIds.length === 0 || !s.requirementIds.every((id) => REQUIREMENT_ID.test(id))) problems.push(`${where}: valid requirement IDs required`);
     if (s.allowedScopes.length === 0) problems.push(`${where}: at least one scope is required`);
-    if ((s.securityControl as boolean) !== false) problems.push(`${where}: a runtime switch may never control a security mechanism`);
+    if (s.securityControl as boolean) problems.push(`${where}: a runtime switch may never control a security mechanism`);
   }
   return problems;
 }

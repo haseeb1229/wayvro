@@ -24,6 +24,8 @@ export const OIDC_SERVICE = Symbol('OIDC_SERVICE');
 export const SUPPORT_SERVICE = Symbol('SUPPORT_SERVICE');
 // Phase 3
 export const CATALOG_SERVICES = Symbol('CATALOG_SERVICES');
+/** Phase 3 release controls (P3.4): app config, version policies, runtime switches. */
+export const RELEASE_SERVICES = Symbol('RELEASE_SERVICES');
 
 export interface ServiceInfo {
   readonly service: string;

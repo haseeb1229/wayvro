@@ -14,6 +14,8 @@ import type { OnboardingService } from './compliance/onboarding.service.js';
 import { HealthController } from './health/health.controller.js';
 import { ErrorEnvelopeFilter } from './http/error-filter.js';
 import { registerHttpHooks } from './http/hooks.js';
+import type { ReleaseEnforcement } from './platform/release/enforcement.js';
+import { AppConfigController, ReleaseAdminController, type ReleaseServices } from './platform/release/release.controller.js';
 import type { AccountService } from './identity/account.service.js';
 import { AccountSecurityController } from './identity/account-security.controller.js';
 import type { AccountSecurityService } from './identity/account-security.service.js';
@@ -48,6 +50,7 @@ import {
   CONSENT_SERVICE,
   EVIDENCE_SERVICES,
   REVIEW_SERVICES,
+  RELEASE_SERVICES,
   LEGAL_DB,
   ONBOARDING_SERVICE,
   OTP_SERVICE,
@@ -108,6 +111,8 @@ export interface AppDependencies {
   readonly review: ReviewServices;
   /** Phase 3 catalog (P3.1): read model (consumer products; cross-context reads) and staff maker-checker administration. */
   readonly catalog: CatalogServices;
+  /** Release controls (P3.4): app config, version policies, runtime switches, and the 426/503 enforcement hook. */
+  readonly release: ReleaseServices & { readonly enforcement: ReleaseEnforcement };
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
 }
@@ -146,6 +151,8 @@ export const API_CONTROLLERS: readonly Type[] = [
   // Phase 3
   CatalogController,
   CatalogAdminController,
+  AppConfigController,
+  ReleaseAdminController,
 ];
 
 @Module({})
@@ -175,6 +182,7 @@ class ApiModule {
         { provide: EVIDENCE_SERVICES, useValue: deps.evidence },
         { provide: REVIEW_SERVICES, useValue: deps.review },
         { provide: CATALOG_SERVICES, useValue: deps.catalog },
+        { provide: RELEASE_SERVICES, useValue: deps.release },
         { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore, deps.staff.policy) },
       ],
     };
@@ -208,7 +216,7 @@ export async function createApp(deps: AppDependencies): Promise<NestFastifyAppli
       for (const method of [route.method].flat()) if (method !== 'HEAD') routes.push(`${method} ${route.url}`);
     });
   manifests.set(app, routes);
-  registerHttpHooks(app.getHttpAdapter().getInstance(), deps.log);
+  registerHttpHooks(app.getHttpAdapter().getInstance(), deps.log, deps.release.enforcement);
   app.useGlobalFilters(new ErrorEnvelopeFilter(deps.log));
   app.enableShutdownHooks();
   await app.init();

@@ -3,7 +3,7 @@ import { ErrorCodeSchema, ErrorEnvelopeSchema } from './errors.js';
 import { IDEMPOTENCY_KEY_HEADER, IdempotencyKeySchema, MUTATING_METHODS, REQUEST_ID_HEADER, RequestIdSchema } from './headers.js';
 import { HEALTH_ROUTES, type RouteContract } from './health.js';
 import { ACCOUNT_SECURITY_ROUTES } from './account-security.js';
-import { APP_CONFIG_ROUTES } from './app-config.js';
+import { APP_CONFIG_ROUTES, RELEASE_ADMIN_ROUTES } from './app-config.js';
 import { CATALOG_ROUTES } from './catalog.js';
 import { COMPLIANCE_ADMIN_ROUTES } from './compliance-admin.js';
 import { ONBOARDING_ROUTES } from './compliance.js';
@@ -31,6 +31,7 @@ export const API_ROUTES: readonly RouteContract[] = [
   ...SUPPORT_ROUTES,
   // Phase 3
   ...APP_CONFIG_ROUTES,
+  ...RELEASE_ADMIN_ROUTES,
   ...CATALOG_ROUTES,
   ...GEO_ROUTES,
   ...QUOTE_ROUTES,

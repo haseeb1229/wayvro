@@ -113,6 +113,11 @@ export function Shell({ me, initiallyLocked, children }: { readonly me: StaffMe;
                 </li>
               </>
             ) : null}
+            {can('release.view') ? (
+              <li>
+                <Link href="/release">{STRINGS.nav.release}</Link>
+              </li>
+            ) : null}
             {can('breakglass.activate') || can('breakglass.review') ? (
               <li>
                 <Link href="/break-glass">{STRINGS.nav.breakGlass}</Link>

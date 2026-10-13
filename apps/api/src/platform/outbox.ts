@@ -21,7 +21,10 @@ type OutboxEventType =
   | 'catalog.zone-set.retired.v1'
   | 'catalog.eligibility-rule.activated.v1'
   | 'catalog.eligibility-rule.retired.v1'
-  | 'catalog.city-product.changed.v1';
+  | 'catalog.city-product.changed.v1'
+  // Phase 3 release controls (P3.4): ids and codes only
+  | 'platform.runtime-switch.changed.v1'
+  | 'platform.app-policy.activated.v1';
 
 export interface OutboxEventInput {
   readonly type: OutboxEventType;

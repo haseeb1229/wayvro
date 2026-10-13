@@ -78,6 +78,13 @@
       "when": 1792500000000,
       "tag": "0010_catalog_products_zones",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0013_platform_release_controls",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,13 @@
-import { databaseEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema, vaultEnvSchema } from '@wayvro/config';
+import {
+  databaseEnvSchema,
+  isNonProductionLike,
+  keyEnvSchema,
+  loadConfig,
+  redisEnvSchema,
+  releaseEnvSchema,
+  serviceEnvSchema,
+  vaultEnvSchema,
+} from '@wayvro/config';
 import { z } from 'zod';
 
 const int = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
@@ -8,6 +17,9 @@ const workerEnvSchema = serviceEnvSchema
   .extend(redisEnvSchema.shape)
   .extend(keyEnvSchema.shape)
   .extend(vaultEnvSchema.shape)
+  // Phase 3 release controls (ADR-049): the scheduled app-policy activation re-checks the guardrails against the same
+  // latest-released-build configuration as the API
+  .extend(releaseEnvSchema.shape)
   .extend({
     // Evidence pipeline (ADR-041). The scanner and the sanitiser are bound only when configured; without them evidence
     // stays UPLOADED and is retried — never treated as clean.

@@ -22,7 +22,10 @@ Genuine founder/external actions still open at run start: FA-03 (SP-01 real devi
 
 | Checkpoint | Commit | Summary |
 |---|---|---|
-| P3.0 | (this commit) | F-P3-01 release URL scheme removed (dev-only scheme), exported-component/intent-filter release gate, oasdiff breaking-change gate, Web E2E title synchronisation, ADR-043/ADR-027/osv corrections |
+| P3.0 | `e339214` | F-P3-01 release URL scheme removed (dev-only scheme), exported-component/intent-filter release gate, oasdiff breaking-change gate, Web E2E title synchronisation, ADR-043/ADR-027/osv corrections. **CI run 38299271950:** Security, Integration, Android, Web E2E success; **Quality FAILED** at knip (unused file `apps/wayvro-mobile/plugins/dev-client-scheme.mjs` — plugin referenced only by a path string) |
+| P3.0 fix | `9a77d57` | knip entry for the local Expo plugin (negative control: a planted unused mobile file is still reported); pushed with the next checkpoint |
+| shared seams | `7572a8a` | contract-first base for the parallel checkpoints: FA-10 roles + Phase-3 permissions, new error codes, x-wayvro headers, consumer contracts (geo, quotes, catalog products, app config, `AccountState.modes`), vendor-neutral geo ports, runtime-switch registry |
+| P3.6 prep | `ca9d727` | SP-01 spike harness (tests/spikes/sp-01-background-location; candidate A; not a release app); 48/48 unit tests, no device run |
 
 ## P3.0 — Main hygiene and guardrails
 
@@ -46,7 +49,8 @@ Evidence (local, this machine):
 | Gate against the PRE-FIX release AAB (`apps/wayvro-mobile/build-reports/app-release.aab` built 2026-10-11 from `main`) | FAIL as expected: `DATA activity:dev.wayvro.app.MainActivity … exp+wayvro`, `BROWSABLE …`, `FILTERS …` — the negative control on a real artefact |
 | `expo prebuild` output after the fix | main manifest: no `exp+wayvro`; `src/debug` and `src/debugOptimized` manifests: the dev-client filter |
 | Release AAB after the fix — local `node scripts/android-build.mjs release` (JDK 17.0.20.1, bundletool 1.18.3), 2026-10-12 | PASS: 16 KB (20/20 64-bit libraries aligned), permissions (unchanged set), intent filters — exported components exactly `activity:dev.wayvro.app.MainActivity` (MAIN/LAUNCHER only) and `receiver:androidx.profileinstaller.ProfileInstallReceiver` (DUMP); no `<data>`, no BROWSABLE; log `build-logs/p30-release.log` (local, not committed) |
-| Development APK after the fix | `scripts/android-build.mjs debug` now asserts with `aapt2 dump xmltree` that the development APK still declares `exp+wayvro` (positive control of the dev-launcher path; fails the build otherwise). Local first attempt FAILED at prebuild: Node ESM cannot resolve `expo/config-plugins` (no exports map) — fixed by importing `expo/config-plugins.js`; prebuild then produced the debug/debugOptimized scheme. The debug APK verification runs in the CI Android job on this commit (local Gradle re-run in progress at commit time) |
+| CI artefacts of `e339214` (run 38299271950, Android job) | release AAB: `16 KB CHECK: PASS`, `PERMISSION CHECK: PASS`, exported components exactly `activity:dev.wayvro.app.MainActivity` + `receiver:androidx.profileinstaller.ProfileInstallReceiver`, `INTENT-FILTER CHECK: PASS`; debug APK: "development launch scheme exp+wayvro present" — F-P3-01 closed on a CI-built release artefact |
+| Development APK after the fix | `scripts/android-build.mjs debug` now asserts with `aapt2 dump xmltree` that the development APK still declares `exp+wayvro` (positive control of the dev-launcher path; fails the build otherwise). Local first attempt FAILED at prebuild: Node ESM cannot resolve `expo/config-plugins` (no exports map) — fixed by importing `expo/config-plugins.js`; prebuild then produced the debug/debugOptimized scheme. Local re-run after the fix: debug APK built, "development launch scheme exp+wayvro present" (PASS) |
 
 ### F-P3-09 — oasdiff breaking-change gate
 

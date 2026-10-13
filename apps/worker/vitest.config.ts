@@ -21,6 +21,8 @@ export default defineConfig({
         'src/identity/**',
         'src/outbox/pg-outbox.ts',
         'src/outbox/account-state-hint.ts',
+        'src/release/app-policy-activator.ts',
+        'src/release/switch-expiry.ts',
       ],
       thresholds: { lines: 95, functions: 95, branches: 85, statements: 95 },
     },

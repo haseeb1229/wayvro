@@ -8,6 +8,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createDatabase, type Database } from '@wayvro/db';
 import { FieldCipher, KeyedHasher, loadKeyRing } from '@wayvro/field-crypto';
 import { PhoneLookup } from '@wayvro/identity-core';
+import type { RuntimeSwitchReader } from '@wayvro/config';
 import type { Logger } from '@wayvro/observability';
 import type { ProviderRegistry } from '@wayvro/provider-interfaces';
 import { RateLimiter, awaitRedisReady, createRequestPathRedis, databaseCheck, redisCheck } from '@wayvro/server-runtime';
@@ -33,6 +34,12 @@ import { StaffAdminService } from './staff/staff-admin.service.js';
 import { StaffAuthService } from './staff/staff-auth.service.js';
 import { StaffWebAuthn } from './staff/webauthn.js';
 import { IdempotencyStore } from './platform/idempotency.js';
+import { AppConfigService } from './platform/release/app-config.service.js';
+import { ReleaseEnforcement } from './platform/release/enforcement.js';
+import { AppPolicyAdminService } from './platform/release/policy-admin.service.js';
+import { ReleaseStateCache } from './platform/release/state.js';
+import { RuntimeSwitchAdminService } from './platform/release/switch-admin.service.js';
+import { RuntimeSwitchStore } from './platform/release/switches.js';
 import { AppealsService } from './review/appeals.service.js';
 import { MonitoringService } from './review/monitoring.service.js';
 import { ReviewService } from './review/review.service.js';
@@ -43,6 +50,8 @@ export interface ApiRuntime {
   readonly app: NestFastifyApplication;
   readonly db: Database;
   readonly cipher: FieldCipher;
+  /** Runtime kill switches (P3.4): the read side other server modules honour (cached, registry defaults). */
+  readonly switches: RuntimeSwitchReader;
   close(): Promise<void>;
 }
 
@@ -64,6 +73,13 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
   if (!(await awaitRedisReady(limiterRedis, 3000))) log.warn('rate limiter not reachable at boot; OTP and session routes fail closed until it is');
   const limiter = new RateLimiter(limiterRedis, config.RATE_LIMIT_KEY_PREFIX);
   const idempotency = new IdempotencyStore(db.pool, cipher);
+  // Release controls (P3.4; ADR-049): one cached read side for policies + switches, shared by the 426/503 hook, app
+  // config and every module that honours a runtime switch (store unreachable at boot = registry defaults, item 16).
+  const releaseState = new ReleaseStateCache(db.pool, { ttlMs: config.RUNTIME_SWITCH_CACHE_SECONDS * 1000, log });
+  const switches = new RuntimeSwitchStore(releaseState, config.WAYVRO_ENV);
+  const invalidateRelease = () => {
+    releaseState.invalidate();
+  };
   const abuse = new OtpAbuseControls(limiter, hasher, config, log);
   const otp = new OtpService({
     db: db.pool,
@@ -125,6 +141,13 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     compliance: { onboarding, admin: new ComplianceAdminService(db.pool, idempotency, config) },
     evidence,
     support: new SupportService(db.pool, lookup, idempotency, config),
+    release: {
+      enforcement: new ReleaseEnforcement(releaseState, switches),
+      appConfig: new AppConfigService(releaseState, switches, limiter, config, log),
+      policies: new AppPolicyAdminService(db.pool, idempotency, config, log, invalidateRelease),
+      switches: new RuntimeSwitchAdminService(db.pool, idempotency, config, log, invalidateRelease),
+      appConfigCacheSeconds: config.APP_CONFIG_CACHE_SECONDS,
+    },
     review: {
       review,
       appeals: new AppealsService(db.pool, cipher, idempotency, config.IDEMPOTENCY_TTL_SECONDS),
@@ -137,6 +160,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     app,
     db,
     cipher,
+    switches,
     async close() {
       await app.close();
       redisProbe.close();
