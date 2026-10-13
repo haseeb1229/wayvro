@@ -107,6 +107,10 @@ function assertInputs(input: PricingInput): void {
   // the DB CHECK guarantees this; with it, rounding never takes the total below the minimum fare (P-04)
   if (card.minimumFareMinor % card.roundingStepMinor !== 0n) throw new PricingInvariantError('minimum fare must be a multiple of the rounding step');
   if (!Number.isInteger(tax.rateBp) || tax.rateBp < 0 || tax.rateBp > 10000) throw new PricingInvariantError('tax rate must be 0..10000 basis points');
+  // the minimum-fare top-up stands in for BASE + DISTANCE + TIME: taxing it while one of those is untaxed would let a
+  // longer trip cost less (the DB CHECK tax_policies_minimum_adjustment_consistent refuses such a policy)
+  if (tax.appliesTo.includes('MINIMUM_ADJUSTMENT') && !(['BASE', 'DISTANCE', 'TIME'] as const).every((k) => tax.appliesTo.includes(k)))
+    throw new PricingInvariantError('MINIMUM_ADJUSTMENT is taxable only together with BASE, DISTANCE and TIME');
 }
 
 /** Prices one product for one route snapshot (`pe-v1`, pricing doc §4.1). */

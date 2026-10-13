@@ -337,6 +337,21 @@ describe('tax policies (TRIG-P3)', () => {
         ),
       ),
     ).toBe('23514');
+    // the minimum top-up is taxable only together with BASE, DISTANCE and TIME (monotonic totals, PROP-QUOTE P-06)
+    expect(
+      await pgCode(
+        api.query(
+          `insert into pricing.tax_policies (id, code, version, status, jurisdiction_code, rate_bp, applies_to, inclusive, is_placeholder, drafted_by_staff_id)
+           values ($1, 'SYNTH-TAX-MC', 5, 'DRAFT', 'PK', 0, '{MINIMUM_ADJUSTMENT}', false, true, $2)`,
+          [randomUUID(), a],
+        ),
+      ),
+    ).toBe('23514');
+    await api.query(
+      `insert into pricing.tax_policies (id, code, version, status, jurisdiction_code, rate_bp, applies_to, inclusive, is_placeholder, drafted_by_staff_id)
+       values ($1, 'SYNTH-TAX-MC', 6, 'DRAFT', 'PK', 0, '{BASE,DISTANCE,TIME,MINIMUM_ADJUSTMENT}', false, true, $2)`,
+      [randomUUID(), a],
+    );
   });
 
   it('a new policy starts as DRAFT; values are immutable; no delete; REJECTED is terminal', async () => {

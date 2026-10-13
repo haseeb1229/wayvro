@@ -20,6 +20,10 @@ CREATE TABLE pricing.tax_policies (
   rate_bp integer NOT NULL CHECK (rate_bp BETWEEN 0 AND 10000),
   applies_to text[] NOT NULL
     CHECK (cardinality(applies_to) >= 1 AND applies_to <@ ARRAY['BASE', 'DISTANCE', 'TIME', 'MINIMUM_ADJUSTMENT', 'BOOKING_FEE', 'AIRPORT_FEE']::text[]),
+  -- the minimum-fare top-up replaces part of BASE + DISTANCE + TIME, so it is taxable only together with all three;
+  -- otherwise a longer trip could cost less (PROP-QUOTE P-06 counterexample found by CI run 38427719184)
+  CONSTRAINT tax_policies_minimum_adjustment_consistent
+    CHECK (NOT ('MINIMUM_ADJUSTMENT' = ANY (applies_to)) OR applies_to @> ARRAY['BASE', 'DISTANCE', 'TIME']::text[]),
   inclusive boolean NOT NULL,
   rounding_mode text NOT NULL DEFAULT 'HALF_EVEN' CHECK (rounding_mode IN ('HALF_EVEN', 'HALF_UP', 'FLOOR', 'CEILING')),
   is_placeholder boolean NOT NULL,

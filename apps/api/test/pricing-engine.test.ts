@@ -113,6 +113,30 @@ describe('UNIT-QUOTE golden examples (pricing doc §6)', () => {
     });
   });
 
+  it('P-06 regression (CI run 38427719184): a tax on the minimum top-up without BASE + DISTANCE + TIME is refused', () => {
+    // fast-check counterexample: TIME untaxed, top-up taxed at 50.01 % ⇒ 44 s cost 5 minor, 53 s cost 4 minor
+    const card: RateCardValues = {
+      baseMinor: 0n,
+      perKmMinor: 0n,
+      perMinMinor: 4n,
+      minimumFareMinor: 4n,
+      bookingFeeMinor: 0n,
+      airportPickupFeeMinor: 0n,
+      roundingStepMinor: 1n,
+      roundingMode: 'HALF_EVEN',
+      tollPolicy: 'NOT_APPLICABLE',
+      maxDistanceM: 100,
+      maxDurationS: 66,
+    };
+    const inconsistent: TaxPolicyValues = { ...SYNTH_TAX_0, rateBp: 5001, appliesTo: ['MINIMUM_ADJUSTMENT'], isPlaceholder: false };
+    expect(() => priceQuote({ card, tax: inconsistent, distanceM: 1, durationS: 44, airportPickup: null })).toThrow(PricingInvariantError);
+    // the consistent treatment of the same trip is monotonic
+    const consistent: TaxPolicyValues = { ...inconsistent, appliesTo: ['BASE', 'DISTANCE', 'TIME', 'MINIMUM_ADJUSTMENT'] };
+    const shorter = priced({ card, tax: consistent, distanceM: 1, durationS: 44, airportPickup: null }).total.minor;
+    const longer = priced({ card, tax: consistent, distanceM: 1, durationS: 53, airportPickup: null }).total.minor;
+    expect(longer >= shorter).toBe(true);
+  });
+
   it('refuses inputs outside the database CHECKs (a bug, never a price)', () => {
     const base = { card: ECONOMY_SYNTHETIC, tax: SYNTH_TAX_0, distanceM: 1000, durationS: 60, airportPickup: null };
     expect(() => priceQuote({ ...base, distanceM: 0 })).toThrow(PricingInvariantError);
@@ -126,6 +150,8 @@ describe('UNIT-QUOTE golden examples (pricing doc §6)', () => {
 
 // ── PROP-QUOTE ───────────────────────────────────────────────────────────────────────────────────────────────────
 const RUNS = Number(process.env['WAYVRO_PROPERTY_RUNS'] ?? 500);
+// the manual full tier runs 50,000 cases per property: give each property time in proportion (5 s at the PR default)
+const PROPERTY_TIMEOUT_MS = Math.max(5_000, RUNS * 3);
 const MODES: readonly RoundingMode[] = ['HALF_EVEN', 'HALF_UP', 'FLOOR', 'CEILING'];
 const amount = fc.bigInt({ min: 0n, max: 10_000_000n });
 const cardArb: fc.Arbitrary<RateCardValues> = fc
@@ -148,7 +174,10 @@ const taxArb: fc.Arbitrary<TaxPolicyValues> = fc.record({
   id: fc.constant('00000000-0000-7000-8000-00000000a0ff'),
   version: fc.integer({ min: 1, max: 99 }),
   rateBp: fc.integer({ min: 0, max: 10000 }),
-  appliesTo: fc.subarray(['BASE', 'DISTANCE', 'TIME', 'MINIMUM_ADJUSTMENT', 'BOOKING_FEE', 'AIRPORT_FEE'] as const, { minLength: 1 }),
+  // only CONSISTENT policies (the DB CHECK, the contract and the engine refuse a taxable top-up without BASE + DISTANCE + TIME)
+  appliesTo: fc
+    .subarray(['BASE', 'DISTANCE', 'TIME', 'MINIMUM_ADJUSTMENT', 'BOOKING_FEE', 'AIRPORT_FEE'] as const, { minLength: 1 })
+    .filter((kinds) => !kinds.includes('MINIMUM_ADJUSTMENT') || (['BASE', 'DISTANCE', 'TIME'] as const).every((k) => kinds.includes(k))),
   inclusive: fc.boolean(),
   roundingMode: fc.constantFrom(...MODES),
   isPlaceholder: fc.boolean(),
@@ -163,7 +192,7 @@ const inputArb: fc.Arbitrary<PricingInput> = fc.tuple(cardArb, taxArb, fc.boolea
   }),
 );
 
-describe('PROP-QUOTE invariants (pricing doc §14)', () => {
+describe('PROP-QUOTE invariants (pricing doc §14)', { timeout: PROPERTY_TIMEOUT_MS }, () => {
   it('P-01/P-02/P-07: Σ components = total, total ≥ 0 and a step multiple, only ROUNDING negative, kinds unique, no DISCOUNT', () => {
     fc.assert(
       fc.property(inputArb, (input) => {

@@ -234,6 +234,10 @@ export const TaxPolicyDraftRequestSchema = z
   })
   .refine((v) => v.isPlaceholder || v.legalReference !== undefined, { message: 'a non-placeholder policy needs a legal reference' })
   .refine((v) => new Set(v.appliesTo).size === v.appliesTo.length, { message: 'appliesTo must not repeat' })
+  // the minimum-fare top-up stands in for BASE + DISTANCE + TIME, so it is taxed only together with all three (monotonic totals)
+  .refine((v) => !v.appliesTo.includes('MINIMUM_ADJUSTMENT') || (['BASE', 'DISTANCE', 'TIME'] as const).every((k) => v.appliesTo.includes(k)), {
+    message: 'MINIMUM_ADJUSTMENT is taxable only together with BASE, DISTANCE and TIME',
+  })
   .meta({ id: 'TaxPolicyDraftRequest' });
 export const PricingDecisionRequestSchema = z
   .strictObject({ decision: z.enum(['APPROVE', 'REJECT']), reasonCode: ReasonCode.optional() })

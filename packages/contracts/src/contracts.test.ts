@@ -168,7 +168,8 @@ describe('OpenAPI generation', () => {
     expect(path?.['post']?.responses['400']?.description).toBe('Error');
   });
 
-  it('is deterministic', () => {
+  // Two full generations of the (Phase-3-sized) spec: ~2-3 s each under coverage instrumentation, so 5 s is too tight.
+  it('is deterministic', { timeout: 30_000 }, () => {
     expect(JSON.stringify(buildOpenApiDocument('1.0.0'))).toBe(JSON.stringify(buildOpenApiDocument('1.0.0')));
   });
 });
