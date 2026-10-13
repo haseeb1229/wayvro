@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 134,
+  "file_count_excluding_manifest": 135,
   "files": [
     {
       "path": ".gitattributes",
@@ -580,6 +580,11 @@
       "sha256": "98a1fb817c72bb47628ad3691616c2d40359f52653150ad6d79f19eb19cfe8b7"
     },
     {
+      "path": "docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md",
+      "bytes": 10275,
+      "sha256": "56ecc8bba2f696de45c551731c6717edb87f1f1c34a7f40b50d57dc4069a1200"
+    },
+    {
       "path": "docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md",
       "bytes": 50861,
       "sha256": "3e358e2b4813594546c2b106cbeb582b664cb840d8c59c41d90d8fbbce8888f6"
@@ -596,8 +601,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 9077,
-      "sha256": "8d8304a4def1b2b511fcc5cd4c4fcf4645fac314cab17297b4c639717b8f3bb8"
+      "bytes": 20471,
+      "sha256": "eb39336fc9d58ab41d68cd4c97f583d4d7c573065d1f40ee40a108e1d675a65c"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
