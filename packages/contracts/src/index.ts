@@ -148,6 +148,7 @@ export {
   VehicleCreateRequestSchema,
   VehicleCreatedSchema,
   VehicleParamSchema,
+  VEHICLE_BODY_TYPES,
   VehicleUpdateRequestSchema,
   type DriverApplication,
   type DriverCompliance,
@@ -270,7 +271,36 @@ export {
 
 // ── Phase 3 (maps, quotes, unified-app shell) ──
 export { APP_CONFIG_ROUTES, AppConfigSchema, CLIENT_POLICY_STATES, MAP_RENDERER_KINDS, RuntimeSwitchKeySchema, type AppConfig } from './app-config.js';
-export { CATALOG_ROUTES, CatalogProductListSchema, CatalogProductsQuerySchema, LUGGAGE_CLASSES, type CatalogProductList } from './catalog.js';
+export {
+  CATALOG_REASON_CODES,
+  CATALOG_ROUTES,
+  CITY_PRODUCT_STATUSES,
+  CONFIG_VERSION_STATUSES,
+  CatalogCityQuerySchema,
+  CatalogDecisionRequestSchema,
+  CatalogProductListSchema,
+  CatalogProductsQuerySchema,
+  CityProductEnableDecisionSchema,
+  CityProductEnableRequestSchema,
+  CityProductListSchema,
+  CityProductSchema,
+  CityProductSuspendRequestSchema,
+  EligibilityRuleDraftRequestSchema,
+  EligibilityRuleListSchema,
+  EligibilityRuleSchema,
+  LUGGAGE_CLASSES,
+  PICKUP_POINT_KINDS,
+  ServiceHoursReplaceRequestSchema,
+  ZONE_IMPORT_ISSUES,
+  ZONE_KINDS,
+  ZoneImportRequestSchema,
+  ZoneImportResultSchema,
+  ZoneSetDraftRequestSchema,
+  ZoneSetListSchema,
+  ZoneSetSchema,
+  ZoneSetSummarySchema,
+  type CatalogProductList,
+} from './catalog.js';
 export {
   AutocompleteQuerySchema,
   AutocompleteResultSchema,

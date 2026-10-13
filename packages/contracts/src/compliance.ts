@@ -21,6 +21,17 @@ export const OWNERSHIP_TYPES = [
   'FAMILY_OWNED',
   'OTHER_AUTHORISED_USE',
 ] as const;
+/**
+ * Phase 3 (P3.1, additive; DM-OPEN-02 / ADR-051): vehicle body types an applicant may CLAIM (confirmed by a reviewer
+ * like every other vehicle field); also the closed list used by catalog vehicle-eligibility rules (H10).
+ */
+export const VEHICLE_BODY_TYPES = ['HATCHBACK', 'SEDAN', 'SUV', 'CROSSOVER', 'MPV', 'MOTORCYCLE', 'AUTO_RICKSHAW'] as const;
+/** Optional applicant claims (Phase 3, additive): absent = not claimed; eligibility rules then report UNKNOWN. */
+const VehicleClaims = {
+  seats: z.number().int().min(1).max(12).optional(),
+  bodyType: z.enum(VEHICLE_BODY_TYPES).optional(),
+  airConditioned: z.boolean().optional(),
+};
 
 export const APPLICATION_STATE_VALUES = [
   'DRAFT',
@@ -119,6 +130,7 @@ export const VehicleCreateRequestSchema = z
     serviceCategory: CategoryCode,
     ownershipType: z.enum(OWNERSHIP_TYPES),
     registrationNumber: z.string().trim().min(2).max(40).optional(),
+    ...VehicleClaims,
   })
   .meta({ id: 'VehicleCreateRequest' });
 export const VehicleUpdateRequestSchema = z
@@ -129,6 +141,7 @@ export const VehicleUpdateRequestSchema = z
     modelYear: z.number().int().min(1950).max(2100).optional(),
     colour: z.string().trim().min(1).max(30).optional(),
     ownershipType: z.enum(OWNERSHIP_TYPES).optional(),
+    ...VehicleClaims,
   })
   .meta({ id: 'VehicleUpdateRequest' });
 
@@ -185,6 +198,11 @@ const VehicleViewSchema = z.object({
   ownershipType: z.enum(OWNERSHIP_TYPES),
   relation: z.enum(['OWNER', 'AUTHORISED_USER']),
   version: z.number().int(),
+  // Phase 3 (additive): the applicant's claims, null = not claimed (always sent by Phase-3 servers; optional so older
+  // fixtures and clients stay valid)
+  seats: z.number().int().nullable().optional(),
+  bodyType: z.enum(VEHICLE_BODY_TYPES).nullable().optional(),
+  airConditioned: z.boolean().nullable().optional(),
 });
 const DocumentViewSchema = z.object({
   id: z.uuid(),

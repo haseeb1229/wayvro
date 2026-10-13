@@ -103,6 +103,16 @@ export function Shell({ me, initiallyLocked, children }: { readonly me: StaffMe;
                 <Link href="/support">{STRINGS.nav.support}</Link>
               </li>
             ) : null}
+            {can('catalog.view') ? (
+              <>
+                <li>
+                  <Link href="/catalog">{STRINGS.nav.catalog}</Link>
+                </li>
+                <li>
+                  <Link href="/zones">{STRINGS.nav.zones}</Link>
+                </li>
+              </>
+            ) : null}
             {can('breakglass.activate') || can('breakglass.review') ? (
               <li>
                 <Link href="/break-glass">{STRINGS.nav.breakGlass}</Link>

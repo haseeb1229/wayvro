@@ -40,6 +40,12 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-043](ADR-043-mobile-platform-additions.md) | Mobile platform additions for the ONE Wayvro app (P2.3 account slice, P2.8 capture) | ACCEPTED on P2.3/P2.8 build evidence — physical-device runs NOT RUN; CAMERA allowlist APPROVED (founder/ChatGPT, Phase-2 closure) |
 | [ADR-040](ADR-040-oidc-verification-with-jose.md) | OIDC ID-token verification with `jose` (Google/Apple linking; never account creation) | ACCEPTED on P2.10 evidence — production EXTERNAL_GATED (EG-06/EG-07) |
 
+## Phase 3 decisions (branch `phase-3/maps-quotes-unified-ux`) — pending founder/ChatGPT review
+
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-051](ADR-051-service-products-zones-lifecycle.md) | Service products vs vehicle classes, zone sets and the activation lifecycle | ACCEPTED-ON-EVIDENCE (P3.1, local) — real boundaries, eligibility values, legal activation and the rate-card prerequisite source open |
+
 ADR-038 and ADR-042 were corrected on this branch after the P2.1 review (lookup-rotation locking; per-claim lease tokens).
 
 ADR-040 (OIDC/`jose`) was accepted in P2.10 for the server-side verifier; production use stays externally gated.

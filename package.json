@@ -25,6 +25,7 @@
     "openapi:check": "pnpm --filter @wayvro/contracts openapi:generate && git diff --exit-code -- packages/contracts/openapi",
     "docs:check": "node docs/phase0/tools/phase0-coverage.js --check && node docs/phase0/tools/regen-manifest.js --check",
     "db:migrate": "pnpm --filter @wayvro/db db:migrate",
+    "seed:synthetic": "node --env-file-if-exists=.env scripts/seed-synthetic.mjs",
     "infra:up": "node scripts/infra.mjs up",
     "infra:down": "node scripts/infra.mjs down",
     "infra:status": "node scripts/infra.mjs status",

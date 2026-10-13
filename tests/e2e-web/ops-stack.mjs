@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { seedCatalog } from './seed-catalog.mjs';
 import { seedReview } from './seed-review.mjs';
 import { seedSupport } from './seed-support.mjs';
 
@@ -70,6 +71,7 @@ const s3 = {
 };
 const review = await seedReview({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED, s3 });
 const support = await seedSupport({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED });
+const catalog = await seedCatalog({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
 await pool.end();
 mkdirSync(join(ROOT, 'build-logs'), { recursive: true });
 writeFileSync(
@@ -80,6 +82,7 @@ writeFileSync(
     reviewerInvitation: review.reviewerInvitation,
     caseId: review.caseId,
     support,
+    catalog,
   }),
 );
 

@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 130,
+  "file_count_excluding_manifest": 131,
   "files": [
     {
       "path": ".gitattributes",
@@ -285,9 +285,14 @@
       "sha256": "2bdee113db238fc3907aab654cc8ceee11b8491361341dd854608944cbeeeaa9"
     },
     {
+      "path": "docs/adr/ADR-051-service-products-zones-lifecycle.md",
+      "bytes": 11624,
+      "sha256": "0828653454e9062e07004e94613a1ee5d2bf2edca3293fda1b39b9a25103e243"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 6610,
-      "sha256": "d81d7b6e15c958fa94bd691fffe09b827dcb53a414e8e1b897e1db37fba836c2"
+      "bytes": 7024,
+      "sha256": "b75fb568374194aa6422db50e5e46305a08a7c940f554299c5c278468f81e55f"
     },
     {
       "path": "docs/operations/developer-setup.md",

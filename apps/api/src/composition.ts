@@ -12,6 +12,8 @@ import type { Logger } from '@wayvro/observability';
 import type { ProviderRegistry } from '@wayvro/provider-interfaces';
 import { RateLimiter, awaitRedisReady, createRequestPathRedis, databaseCheck, redisCheck } from '@wayvro/server-runtime';
 import { createApp } from './app.js';
+import { CatalogAdminService } from './catalog/catalog-admin.service.js';
+import { CatalogReadModel } from './catalog/catalog-read-model.js';
 import type { ApiConfig } from './config.js';
 import { AccountSecurityService } from './identity/account-security.service.js';
 import { AccountService } from './identity/account.service.js';
@@ -103,6 +105,9 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     : null;
   const accounts = new AccountService(db.pool, idempotency, config, onboarding.available);
   const consents = new ConsentService(db.pool, cipher, idempotency, config);
+  // Phase 3 catalog (P3.1). ENABLE needs an ACTIVE rate card; no rate-card source exists until the pricing module (P3.3)
+  // wires one here, so the admin service is built with `null` and refuses every ENABLE (RATE_CARD_CHECK_UNAVAILABLE).
+  const catalog = { readModel: new CatalogReadModel(db.pool, config), admin: new CatalogAdminService(db.pool, idempotency, config, null) };
   // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
   await preparePolicyRegistry(db.pool, config.WAYVRO_ENV, log);
   const app = await createApp({
@@ -125,6 +130,7 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       appeals: new AppealsService(db.pool, cipher, idempotency, config.IDEMPOTENCY_TTL_SECONDS),
       monitoring: new MonitoringService(db.pool),
     },
+    catalog,
     ...(options.extraControllers ? { extraControllers: options.extraControllers } : {}),
   });
   return {

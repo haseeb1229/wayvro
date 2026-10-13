@@ -22,6 +22,8 @@ export const RECOVERY_REVIEW_SERVICE = Symbol('RECOVERY_REVIEW_SERVICE');
 export const DELETION_SERVICE = Symbol('DELETION_SERVICE');
 export const OIDC_SERVICE = Symbol('OIDC_SERVICE');
 export const SUPPORT_SERVICE = Symbol('SUPPORT_SERVICE');
+// Phase 3
+export const CATALOG_SERVICES = Symbol('CATALOG_SERVICES');
 
 export interface ServiceInfo {
   readonly service: string;

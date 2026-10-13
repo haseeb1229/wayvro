@@ -141,6 +141,12 @@ const apiEnvSchema = serviceEnvSchema
      */
     OIDC_GOOGLE_AUDIENCES: oidcAudiences,
     OIDC_APPLE_AUDIENCES: oidcAudiences,
+    /**
+     * Phase 3 catalog (E08, T3-14): a pickup inside a PICKUP_RESTRICTED zone or an AIRPORT_PRECINCT snaps to the nearest
+     * ACTIVE pickup point of that zone within this radius (geodesic metres), else PICKUP_RESTRICTED. Configurable
+     * default (300 m, PHASE3_CATALOG_ZONES_AND_DATA_MODEL §3), not a field-validated value.
+     */
+    PICKUP_SNAP_MAX_METERS: int(300, 25, 2000),
     /** Namespace for rate-limit keys when several environments or test runs share one Valkey. */
     RATE_LIMIT_KEY_PREFIX: z
       .string()

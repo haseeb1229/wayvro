@@ -20,6 +20,13 @@ export interface OpsStack {
     readonly driverAccountId: string;
     readonly recoveryId: string;
   };
+  /** ../seed-catalog.mjs: two distinct CATALOG_MANAGER staff (maker and checker) for the Phase-3 catalog journey. */
+  readonly catalog: {
+    readonly makerInvitation: string;
+    readonly makerId: string;
+    readonly checkerInvitation: string;
+    readonly checkerId: string;
+  };
 }
 
 export const stack = (): OpsStack => JSON.parse(readFileSync(join(ROOT, 'build-logs', 'e2e-ops.json'), 'utf8')) as OpsStack;

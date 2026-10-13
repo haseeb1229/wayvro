@@ -7,6 +7,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { resolveRequestId, type Logger } from '@wayvro/observability';
 import type { Queryable, ReadinessCheck } from '@wayvro/server-runtime';
 import { PolicyGuard, assertRoutePolicies } from './auth/policy.js';
+import { CatalogAdminController, CatalogController, type CatalogServices } from './catalog/catalog.controller.js';
 import type { ComplianceAdminService } from './compliance/compliance-admin.service.js';
 import { ComplianceAdminController, OnboardingController } from './compliance/compliance.controller.js';
 import type { OnboardingService } from './compliance/onboarding.service.js';
@@ -38,6 +39,7 @@ import { EvidenceController, EvidenceViewController, type EvidenceServices } fro
 import {
   ACCOUNT_SECURITY_SERVICE,
   ACCOUNT_SERVICE,
+  CATALOG_SERVICES,
   DELETION_SERVICE,
   OIDC_SERVICE,
   SUPPORT_SERVICE,
@@ -104,6 +106,8 @@ export interface AppDependencies {
   readonly evidence: EvidenceServices | null;
   /** Manual review, appeals and monitoring (P2.7). */
   readonly review: ReviewServices;
+  /** Phase 3 catalog (P3.1): read model (consumer products; cross-context reads) and staff maker-checker administration. */
+  readonly catalog: CatalogServices;
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
 }
@@ -139,6 +143,9 @@ export const API_CONTROLLERS: readonly Type[] = [
   ReviewController,
   AccountAppealsController,
   SupportController,
+  // Phase 3
+  CatalogController,
+  CatalogAdminController,
 ];
 
 @Module({})
@@ -167,6 +174,7 @@ class ApiModule {
         { provide: COMPLIANCE_ADMIN_SERVICE, useValue: deps.compliance.admin },
         { provide: EVIDENCE_SERVICES, useValue: deps.evidence },
         { provide: REVIEW_SERVICES, useValue: deps.review },
+        { provide: CATALOG_SERVICES, useValue: deps.catalog },
         { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore, deps.staff.policy) },
       ],
     };
