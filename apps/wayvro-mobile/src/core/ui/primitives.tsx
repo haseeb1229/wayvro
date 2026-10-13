@@ -91,7 +91,21 @@ export function Button(props: {
   );
 }
 
-export function LinkRow({ label, onPress, detail }: { readonly label: string; readonly onPress: () => void; readonly detail?: string }) {
+/**
+ * A navigable row. `glyph` is an optional status mark drawn before the label; it is decorative (hidden from screen
+ * readers), so the meaning must also be in `label`/`detail` text — never the glyph or colour alone.
+ */
+export function LinkRow({
+  label,
+  onPress,
+  detail,
+  glyph,
+}: {
+  readonly label: string;
+  readonly onPress: () => void;
+  readonly detail?: string;
+  readonly glyph?: string;
+}) {
   const dir = useDirection();
   return (
     <Pressable
@@ -100,6 +114,11 @@ export function LinkRow({ label, onPress, detail }: { readonly label: string; re
       onPress={onPress}
       style={({ pressed }) => [styles.linkRow, dir.row, pressed ? styles.pressed : undefined]}
     >
+      {glyph === undefined ? null : (
+        <Text style={styles.glyph} importantForAccessibility="no" accessibilityElementsHidden>
+          {glyph}
+        </Text>
+      )}
       <View style={styles.fill}>
         <Text style={[styles.body, dir.text]}>{label}</Text>
         {detail === undefined ? null : <Text style={[styles.caption, styles.muted, dir.text]}>{detail}</Text>}
@@ -336,6 +355,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   chevron: { fontSize: 24, color: colors.textMuted },
+  glyph: { ...typography.body, fontWeight: '700', minWidth: 20, textAlign: 'center', color: colors.text },
   choiceRow: { minHeight: MIN_TOUCH_TARGET, alignItems: 'center', gap: spacing.md },
   box: { width: 28, height: 28, borderRadius: 6, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   boxChecked: { backgroundColor: colors.primary },

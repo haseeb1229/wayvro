@@ -196,6 +196,8 @@ export class GeoAdminService {
   submitBudget(staff: StaffPrincipal, id: string, key: string): Promise<IdempotentResult> {
     return this.transitionBudget(staff, id, 'geo-budgets.submit', key, { id }, async (tx, b) => {
       if (b.status !== 'DRAFT') return failure('WAYVRO_E_CONFLICT');
+      // only the drafter submits their own draft (a colleague approves it afterwards)
+      if (b.drafted_by_staff_id !== staff.staffId) return this.deny(tx, staff, 'geo.provider_budget', id, 'NOT_THE_DRAFTER');
       await tx.query(`update geo.provider_budgets set status = 'PENDING_APPROVAL', version_lock = version_lock + 1 where id = $1`, [id]);
       return { action: 'GEO_BUDGET_SUBMITTED' };
     });
@@ -205,6 +207,9 @@ export class GeoAdminService {
     return this.transitionBudget(staff, id, 'geo-budgets.decide', key, { id, decision }, async (tx, b) => {
       if (b.status !== 'PENDING_APPROVAL') return failure('WAYVRO_E_CONFLICT');
       const selfApproval = b.drafted_by_staff_id === staff.staffId;
+      // the drafter never decides their own request (Phase-2 maker-checker template); the only exception is APPROVING a
+      // DECREASE — the safe direction, still behind a fresh step-up
+      if (selfApproval && decision === 'REJECT') return this.deny(tx, staff, 'geo.provider_budget', id, 'MAKER_IS_CHECKER');
       if (decision === 'REJECT') {
         await tx.query(`update geo.provider_budgets set status = 'REJECTED', version_lock = version_lock + 1 where id = $1`, [id]);
         return { action: 'GEO_BUDGET_REJECTED' };
@@ -341,12 +346,13 @@ export class GeoAdminService {
       const a = (await tx.query<AliasRow>(`select * from geo.landmark_aliases where id = $1 for update`, [id])).rows[0];
       if (!a) return failure('WAYVRO_E_NOT_FOUND');
       if (a.status !== 'PROPOSED') return failure('WAYVRO_E_CONFLICT');
+      // the creator never decides their own alias (approve or reject)
+      if (a.created_by_staff_id === staff.staffId) return this.deny(tx, staff, 'geo.landmark_alias', id, 'MAKER_IS_CHECKER');
       if (decision === 'REJECT') {
         await tx.query(`update geo.landmark_aliases set status = 'RETIRED' where id = $1`, [id]);
         await this.audit(tx, staff, 'GEO_ALIAS_REJECTED', 'geo.landmark_alias', id);
         return success(200, aliasView(await this.loadAlias(tx, id)));
       }
-      if (a.created_by_staff_id === staff.staffId) return this.deny(tx, staff, 'geo.landmark_alias', id, 'MAKER_IS_CHECKER');
       await tx.query('savepoint approve_alias');
       try {
         await tx.query(`update geo.landmark_aliases set status = 'ACTIVE', approved_by_staff_id = $2 where id = $1`, [id, staff.staffId]);

@@ -28,6 +28,21 @@ export function captureOptionsFor(kind: EvidenceKind): CaptureOptions {
   }
 }
 
+const GUIDE_KEY: Readonly<Record<CaptureOptions['guide'], DriverStringKey>> = {
+  card: 'capture.guideCard',
+  page: 'capture.guidePage',
+  face: 'capture.guideFace',
+};
+
+/**
+ * Camera guidance (K19), in display order, as plain TEXT tips (no detection): framing for the guide, light, then the
+ * selfie note (selfie) or "hold steady" (documents).
+ */
+export function captureGuidance(kind: EvidenceKind): readonly DriverStringKey[] {
+  const { guide } = captureOptionsFor(kind);
+  return [GUIDE_KEY[guide], 'capture.guideLight', guide === 'face' ? 'capture.selfieNote' : 'capture.guideSteady'];
+}
+
 export function sourceAllowed(kind: EvidenceKind, source: CaptureSource): boolean {
   if (source === 'IN_APP_CAMERA') return true;
   return captureOptionsFor(kind).allowImport && source === 'GALLERY_IMPORT';

@@ -7,6 +7,7 @@
  * The same function normalises landmark aliases when staff enter them, so alias lookup is an exact match.
  */
 
+/** @internal exported for unit tests */
 export const QUERY_MAX_CODE_POINTS = 80;
 export const QUERY_MIN_CODE_POINTS = 3;
 

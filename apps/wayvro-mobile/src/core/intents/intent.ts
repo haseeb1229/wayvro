@@ -31,6 +31,7 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     .refine((v) => (v.policyKey === undefined) === (v.version === undefined), { message: 'policyKey and version go together' }),
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
+/** @internal exported for unit tests */
 export type IntentKind = Intent['kind'];
 
 /** @internal exported for the exhaustive tests. */

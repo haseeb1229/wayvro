@@ -11,7 +11,7 @@ import { colors, MIN_TOUCH_TARGET, spacing } from '../../../core/ui/tokens';
 import { randomBytes } from '../../../core/platform/crypto';
 import type { CaptureChallenge } from '../api/driver-api';
 import { importDocumentPhoto, queueAdopted } from '../capture/add-photo';
-import { CAMERA_JPEG_QUALITY, cameraAccessFrom, captureOptionsFor, deniedOptions, photoRefusalKey } from '../capture/capture-rules';
+import { CAMERA_JPEG_QUALITY, cameraAccessFrom, captureGuidance, captureOptionsFor, deniedOptions, photoRefusalKey } from '../capture/capture-rules';
 import type { DriverStringKey } from '../i18n/driver-strings';
 import { adoptCapture, deleteEvidenceFile, evidenceFileUri, type Adopted } from '../upload/evidence-files';
 import type { EvidenceKind } from '../upload/upload-queue';
@@ -169,11 +169,11 @@ function Capture({ applicationId, documentId, kind }: { readonly applicationId: 
           <View style={options.guide === 'face' ? styles.guideFace : options.guide === 'card' ? styles.guideCard : styles.guidePage} />
         </View>
         <ScrollView style={styles.panelScroll} contentContainerStyle={styles.panel}>
-          <Text style={styles.tip}>
-            {dt(options.guide === 'face' ? 'capture.guideFace' : options.guide === 'card' ? 'capture.guideCard' : 'capture.guidePage')}
-          </Text>
-          <Text style={styles.tip}>{dt('capture.guideLight')}</Text>
-          {selfie ? <Text style={styles.tip}>{dt('capture.selfieNote')}</Text> : <Text style={styles.tip}>{dt('capture.guideSteady')}</Text>}
+          {captureGuidance(kind).map((key) => (
+            <Text key={key} style={styles.tip}>
+              {dt(key)}
+            </Text>
+          ))}
           {selfie ? <ChallengePanel applicationId={applicationId} challenge={challenge} onChallenge={setChallenge} /> : null}
           {notice === null ? null : <Banner tone="warning" text={dt(notice)} />}
           <Pressable

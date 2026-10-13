@@ -10,13 +10,22 @@ import { Banner, Body, Button, ErrorBanner, LinkRow, Screen, StateView, Title, T
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { readLocationStatus } from '../../../platform/location/status';
 import { useCompliance } from '../api/driver-queries';
-import { markKey, readinessModel, type LocationReadiness, type ReadinessRow } from '../readiness/readiness';
+import type { DriverStringKey } from '../i18n/driver-strings';
+import { markGlyph, markKey } from '../readiness/marks';
+import { readinessModel, type LocationReadiness, type ReadinessHeadline, type ReadinessRow } from '../readiness/readiness';
 import { useDriverText } from '../ui/DriverUi';
+
+const HEADLINE_KEY: Readonly<Record<ReadinessHeadline, DriverStringKey>> = {
+  ready: 'drive.ready',
+  attention: 'drive.notReady',
+  unknown: 'drive.intro',
+};
 
 /**
  * Driver/Partner home `/drive` (lazy; K19 surfacing, V13): a readiness checklist from the server's compliance view and
- * account state — profile, documents, eligibility, restrictions, and location (READ-ONLY status, never a request). No
- * "Go online", no online state, no background location: driving opens in a later phase.
+ * account state — profile, documents, per-product eligibility, restrictions, and location (READ-ONLY status, never a
+ * request). No "Go online", no online state, no offers, no background location: driving opens in a later phase.
+ * Offline: the last loaded server data stays visible with a stale notice; nothing is recomputed on the device.
  */
 export default function DriveHomeScreen() {
   const dt = useDriverText();
@@ -59,6 +68,8 @@ export default function DriveHomeScreen() {
     );
   }
   const model = readinessModel(view.data, compliance.data ?? null, location);
+  // cached server data after a failed refresh (offline or error): shown, marked stale
+  const stale = view.stale !== null || (compliance.data !== undefined && compliance.isError);
   const open = (row: ReadinessRow): void => {
     switch (row.target.kind) {
       case 'compliance':
@@ -88,7 +99,8 @@ export default function DriveHomeScreen() {
         onSelect={modeSwitch.switchTo}
       />
       {modeSwitch.error === null ? null : <ErrorBanner error={modeSwitch.error} />}
-      <Body>{dt('drive.intro')}</Body>
+      {stale ? <Banner tone="stale" text={t('common.staleData')} /> : null}
+      <Body>{dt(HEADLINE_KEY[model.headline])}</Body>
       {compliance.data === undefined && compliance.isPending ? <SkeletonRow /> : null}
       {model.partial && compliance.isError ? (
         <>
@@ -105,6 +117,7 @@ export default function DriveHomeScreen() {
       {model.rows.map((row) => (
         <LinkRow
           key={row.id}
+          glyph={markGlyph(row.mark)}
           label={dt(row.key, { count: row.count ?? 0, state: row.stateKey === null ? '' : dt(row.stateKey) })}
           detail={dt(markKey(row.mark))}
           onPress={() => {

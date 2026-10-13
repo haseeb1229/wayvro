@@ -44,7 +44,7 @@ export interface PolicyInput {
   readonly now: number;
 }
 
-/** The soft-update banner shows at most once per 24 h after a dismissal. */
+/** The soft-update banner shows at most once per 24 h after a dismissal. @internal exported for unit tests */
 export const SOFT_BANNER_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -116,6 +116,7 @@ export interface ClientTuning {
   readonly liteSuggestAfterSlowRequests: number;
 }
 
+/** @internal exported for unit tests */
 export const DEFAULT_TUNING: ClientTuning = {
   autocompleteMinChars: 3,
   autocompleteDebounceMs: 300,

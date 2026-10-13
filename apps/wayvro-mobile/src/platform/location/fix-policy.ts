@@ -3,7 +3,7 @@
  * rules are unit-tested without a device. Coordinates live in memory only: nothing here persists or logs them.
  */
 
-/** One-shot fix ("Use current location"). Balanced accuracy; the last known position is reused only if fresh and tight. */
+/** One-shot fix ("Use current location"). Balanced accuracy; the last known position is reused only if fresh and tight. @internal exported for unit tests */
 export const ONE_SHOT_FIX = { lastKnownMaxAgeMs: 30_000, lastKnownMaxAccuracyM: 100, timeoutMs: 10_000 } as const;
 
 /** Scoped watch: only while `/ride/pin` is focused and the app is active; stopped on blur/background/sign-out/revocation. */
@@ -20,7 +20,7 @@ export interface DeviceFix {
 
 export type FixOutcome = { readonly kind: 'ok'; readonly fix: DeviceFix } | { readonly kind: 'timeout' } | { readonly kind: 'unavailable' };
 
-/** The last known position is accepted only when it is at most 30 s old and at most 100 m uncertain. */
+/** The last known position is accepted only when it is at most 30 s old and at most 100 m uncertain. @internal exported for unit tests */
 export function acceptLastKnown(fix: DeviceFix | null, now: number): boolean {
   if (fix === null || fix.accuracyM === null) return false;
   const age = now - fix.timestamp;

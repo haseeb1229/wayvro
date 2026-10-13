@@ -58,7 +58,7 @@ import {
   type ValidPlace,
 } from './schemas.js';
 
-/** Catalog read seam (P3.1): whether a point lies in the city's ACTIVE service area. */
+/** Catalog read seam (P3.1): whether a point lies in the city's ACTIVE service area. @internal exported for unit tests */
 export interface ServiceAreaLookup {
   inServiceArea(cityCode: string, point: { readonly lat: number; readonly lng: number }): Promise<boolean>;
 }

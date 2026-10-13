@@ -74,6 +74,7 @@ describe('landmark aliases through the staff API (A06)', () => {
     expect(draft.statusCode, draft.body).toBe(201);
     const alias = LandmarkAliasSchema.parse(draft.json());
     expect(alias).toMatchObject({ aliasNormalised: 'libarti', canonicalQuery: 'liberty market', status: 'PROPOSED', createdByStaffId: m1.staffId });
+    expect((await kit.privileged(m1, `/v1/admin/geo/landmark-aliases/${alias.id}/approval`, { decision: 'REJECT' })).statusCode).toBe(403);
     const self = await kit.privileged(m1, `/v1/admin/geo/landmark-aliases/${alias.id}/approval`, { decision: 'APPROVE' });
     expect(self.statusCode).toBe(403);
     const ok = await kit.privileged(m2, `/v1/admin/geo/landmark-aliases/${alias.id}/approval`, { decision: 'APPROVE' });
@@ -87,7 +88,13 @@ describe('landmark aliases through the staff API (A06)', () => {
     expect(after.suggestions).toEqual([]);
     const list = await staffGet(auditor, '/v1/admin/geo/landmark-aliases?cityCode=LHR');
     expect(list.statusCode).toBe(200);
-    expect(await auditActions(alias.id)).toEqual(['GEO_ALIAS_PROPOSED', 'STAFF_ACCESS_DENIED:MAKER_IS_CHECKER', 'GEO_ALIAS_APPROVED', 'GEO_ALIAS_RETIRED']);
+    expect(await auditActions(alias.id)).toEqual([
+      'GEO_ALIAS_PROPOSED',
+      'STAFF_ACCESS_DENIED:MAKER_IS_CHECKER',
+      'STAFF_ACCESS_DENIED:MAKER_IS_CHECKER',
+      'GEO_ALIAS_APPROVED',
+      'GEO_ALIAS_RETIRED',
+    ]);
     // AUDITOR may read but not propose
     expect(
       (
@@ -253,8 +260,11 @@ describe('BUD-08: budget changes are maker-checker, step-up and audited', () => 
       ).json(),
     );
     expect(inc.changeKind).toBe('INCREASE');
+    // only the drafter submits; the drafter never decides their own increase (approve or reject)
+    expect((await kit.privileged(m2, `/v1/admin/geo/budgets/${inc.id}/submission`, {})).statusCode).toBe(403);
     await kit.privileged(m1, `/v1/admin/geo/budgets/${inc.id}/submission`, {});
     expect((await kit.privileged(m1, `/v1/admin/geo/budgets/${inc.id}/approval`, { decision: 'APPROVE' })).statusCode).toBe(403);
+    expect((await kit.privileged(m1, `/v1/admin/geo/budgets/${inc.id}/approval`, { decision: 'REJECT' })).statusCode).toBe(403);
     const rejected = await kit.privileged(m2, `/v1/admin/geo/budgets/${inc.id}/approval`, { decision: 'REJECT' });
     expect(GeoBudgetSchema.parse(rejected.json()).status).toBe('REJECTED');
     expect((await kit.privileged(m2, `/v1/admin/geo/budgets/${inc.id}/activation`, {})).statusCode).toBe(409);

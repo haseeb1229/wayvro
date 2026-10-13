@@ -7,13 +7,13 @@ import { Banner, Body, Button, Screen, StateView, Title, TranslationPendingNote 
 import { spacing } from '../../../core/ui/tokens';
 import { combineQueries, viewStateFromQuery } from '../../../core/ui/view-state';
 import { useCompliance } from '../api/driver-queries';
-import { complianceModel } from '../compliance/compliance';
+import { healthModel } from '../readiness/health';
 import { useDriverText } from '../ui/DriverUi';
 
 /**
- * Restriction / account health `/drive/health` (lazy; V13, K19 "suspended" = a DRIVER_ROLE restriction): the server's
- * Driver/Partner restrictions with the existing copy, effective-until and the existing appeal path. Rider use is
- * stated as unaffected unless an ACCOUNT-scope restriction exists.
+ * Restriction / account health `/drive/health` (lazy; V13, K19 "suspended" = a DRIVER_ROLE restriction = earning
+ * paused): the server's Driver/Partner-side restrictions with the existing copy, effective-until and the existing
+ * appeal path. Rider use is stated as unaffected unless an ACCOUNT-scope restriction exists.
  */
 export default function DriveHealthScreen() {
   const dt = useDriverText();
@@ -21,10 +21,7 @@ export default function DriveHealthScreen() {
   const router = useRouter();
   const account = useAccountState();
   const compliance = useCompliance();
-  const view = viewStateFromQuery(combineQueries(account, compliance), ([a, c]) => ({
-    restrictions: complianceModel(c).restrictions,
-    accountRestricted: a.restrictions.some((r) => r.scope === 'ACCOUNT' && r.affectsRiderUse),
-  }));
+  const view = viewStateFromQuery(combineQueries(account, compliance), ([a, c]) => healthModel(a, c));
   if (view.kind !== 'ready') {
     return (
       <Screen scroll={false}>
@@ -40,12 +37,13 @@ export default function DriveHealthScreen() {
       </Screen>
     );
   }
-  const { restrictions, accountRestricted } = view.data;
+  const { restrictions, earningPaused, riderStatementKey, accountRestricted } = view.data;
   return (
     <Screen>
       <Stack.Screen options={{ title: dt('drive.health.title') }} />
       <Title>{dt('drive.health.title')}</Title>
       {view.stale ? <Banner tone="stale" text={t('common.staleData')} /> : null}
+      {earningPaused ? <Banner tone="warning" text={dt('drive.health.paused')} /> : null}
       {restrictions.length === 0 ? <Body>{dt('drive.health.none')}</Body> : null}
       {restrictions.map((r) => (
         <View key={r.id} style={styles.group}>
@@ -63,7 +61,7 @@ export default function DriveHealthScreen() {
           ) : null}
         </View>
       ))}
-      <Banner tone={accountRestricted ? 'warning' : 'info'} text={dt(accountRestricted ? 'drive.accountRestricted' : 'drive.health.riderUnaffected')} />
+      <Banner tone={accountRestricted ? 'warning' : 'info'} text={dt(riderStatementKey)} />
       <TranslationPendingNote />
     </Screen>
   );

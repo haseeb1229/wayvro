@@ -23,7 +23,7 @@ export function primaryRequiredAction(actions: RequiredActions): RequiredActions
   return PRIORITY.find((a) => actions.includes(a)) ?? null;
 }
 
-/** @internal exported for unit tests; screens use redirectFor. */
+/** The screen for the highest-priority required action (or the mode home); also used by the restoration resolver. */
 export function routeForRequiredActions(actions: RequiredActions, modeHome: ModeHome): AccountRoute {
   switch (primaryRequiredAction(actions)) {
     case 'RECOVERY_REVIEW':

@@ -90,7 +90,7 @@ const GRANTED_PHASES: ReadonlySet<LocationPhase> = new Set(['GRANTED_PRECISE', '
 
 export const isGrantedPhase = (phase: LocationPhase): boolean => GRANTED_PHASES.has(phase);
 
-/** The resting phase a snapshot describes (no rationale, request or fix in progress). */
+/** The resting phase a snapshot describes (no rationale, request or fix in progress). @internal exported for unit tests */
 export function phaseOf(snapshot: PermissionSnapshot): LocationPhase {
   if (!snapshot.servicesEnabled) return 'SERVICES_OFF';
   switch (snapshot.status) {

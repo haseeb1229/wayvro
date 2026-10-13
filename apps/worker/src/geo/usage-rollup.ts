@@ -15,6 +15,7 @@ import { hourBucket, type GeoUsageCounters, type JobDefinition, type Queryable }
 export const GEO_USAGE_ROLLUP_JOB = 'geo.usage-rollup';
 const GAP_LOOKBACK_MS = 46 * 3_600_000;
 
+/** @internal exported for unit tests */
 export interface RollupResult {
   readonly hoursUpserted: number;
   readonly gaps: number;

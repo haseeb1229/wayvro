@@ -128,7 +128,17 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
       ? createDatabase(config.DATABASE_VAULT_URL, { maxConnections: 5, applicationName: 'wayvro-api-vault' })
       : null;
   const evidenceSummary = vaultDb ? new EvidenceSummary(vaultDb.pool) : null;
-  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config, evidenceSummary);
+  // Phase 3 catalog (P3.1). ENABLE needs an ACTIVE rate card (with an APPROVED tax policy), read from the pricing
+  // tables (P3.3).
+  const catalog = {
+    readModel: new CatalogReadModel(db.pool, config),
+    admin: new CatalogAdminService(db.pool, idempotency, config, new PgRateCardPresence(db.pool)),
+  };
+  // P3.8: the driver compliance view reads per-product vehicle eligibility through the catalog module's read model
+  // (display only; no catalog SQL in compliance).
+  const onboarding = new OnboardingService(db.pool, cipher, hasher, idempotency, config, evidenceSummary, {
+    eligibilityForVehicle: (vehicle, cityCode, at) => catalog.readModel.eligibilityForVehicle(vehicle, cityCode, at),
+  });
   const review = new ReviewService(db.pool, cipher, idempotency, evidenceSummary, config);
   const evidence = vaultDb
     ? {
@@ -138,12 +148,6 @@ export async function composeApi(config: ApiConfig, log: Logger, options: Compos
     : null;
   const accounts = new AccountService(db.pool, idempotency, config, onboarding.available);
   const consents = new ConsentService(db.pool, cipher, idempotency, config);
-  // Phase 3 catalog (P3.1). ENABLE needs an ACTIVE rate card (with an APPROVED tax policy), read from the pricing
-  // tables (P3.3).
-  const catalog = {
-    readModel: new CatalogReadModel(db.pool, config),
-    admin: new CatalogAdminService(db.pool, idempotency, config, new PgRateCardPresence(db.pool)),
-  };
   // Registers/verifies the immutable policy registry; production refuses placeholder texts and age policy (CL-P2-09).
   await preparePolicyRegistry(db.pool, config.WAYVRO_ENV, log);
   // Geo gateway (P3.2): licence-coherent bundle check at boot; unbound geo ports answer 503 for their SKU.

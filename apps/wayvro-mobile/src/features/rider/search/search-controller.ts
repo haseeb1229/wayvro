@@ -6,6 +6,7 @@ import { isRequestCancelled } from '../../../core/api/http';
  * Where-to search (B02; UX doc §8.2). Debounce and minimum length come from GET /v1/app/config (defaults 300 ms / 3;
  * Lite 500 ms / 4). At most ONE request is in flight: a newer query aborts the older one and a sequence number drops
  * any late answer. Typed text and results stay in memory; nothing is logged.
+ * @internal exported for unit tests
  */
 export type SearchStatus =
   | 'idle'

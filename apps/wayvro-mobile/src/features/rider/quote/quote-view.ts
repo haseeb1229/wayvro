@@ -93,7 +93,7 @@ export function productName(tr: Tr, nameKey: string | null, productCode: string)
   return productCode;
 }
 
-/** Spoken money ("640 rupees", "640 rupees 50 paisa"); null when the amount is malformed. */
+/** Spoken money ("640 rupees", "640 rupees 50 paisa"); null when the amount is malformed. @internal exported for unit tests */
 export function spokenMoney(tr: Tr, amount: MoneyAmount): string | null {
   const parts = pkrParts(amount);
   if (parts === null) return null;
@@ -155,7 +155,7 @@ export function placeLine(tr: Tr, place: DraftPlace | null): string | null {
   return place.primary ?? tr('rider.place.pinned');
 }
 
-/** "Opens 06:00" in Asia/Karachi (UTC+05:00, no DST) from the server's next-opening instant. */
+/** "Opens 06:00" in Asia/Karachi (UTC+05:00, no DST) from the server's next-opening instant. @internal exported for unit tests */
 export function karachiTime(iso: string): string | null {
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) return null;
@@ -241,7 +241,7 @@ export function earliestExpiry(group: QuoteGroup): string | null {
   return times[0] ?? null;
 }
 
-/** Required licence attribution as text (B03); unknown codes are shown as the code itself, never dropped. */
+/** Required licence attribution as text (B03); unknown codes are shown as the code itself, never dropped. @internal exported for unit tests */
 export function attributionText(tr: Tr, code: string): string {
   return code === 'OSM_ODBL' ? tr('geo.attribution.OSM_ODBL') : tr('geo.attribution.other', { code });
 }

@@ -57,7 +57,7 @@ export function quotePoint(place: DraftPlace): { readonly lat: number; readonly 
   return place.placeRef === null ? { lat: place.point.lat, lng: place.point.lng } : { lat: place.point.lat, lng: place.point.lng, placeRef: place.placeRef };
 }
 
-/** Session recents: memory only, newest first, max 10, de-duplicated by placeRef or display line. */
+/** Session recents: memory only, newest first, max 10, de-duplicated by placeRef or display line. @internal exported for unit tests */
 export const MAX_RECENTS = 10;
 
 export function addRecent(recents: readonly DraftPlace[], place: DraftPlace): readonly DraftPlace[] {

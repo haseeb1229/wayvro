@@ -20,7 +20,7 @@ export interface FormattedAddress {
   readonly landmarkText: string | null;
 }
 
-/** Untrusted provider text → safe display text (or null when nothing visible remains). */
+/** Untrusted provider text → safe display text (or null when nothing visible remains). @internal exported for unit tests */
 export function cleanText(value: string | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   const cleaned = Array.from(stripInvisible(value.normalize('NFC')).replace(/\s+/gu, ' ').trim())

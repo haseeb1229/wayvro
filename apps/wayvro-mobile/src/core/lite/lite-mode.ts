@@ -10,7 +10,7 @@ import { STORAGE_KEYS, type KeyValueStore } from '../session/key-value-store';
  * hides safety/legal text or error reasons.
  */
 
-/** Samples the heuristic looks at (the last N completed API attempts). */
+/** Samples the heuristic looks at (the last N completed API attempts). @internal exported for unit tests */
 export const LITE_WINDOW = 5;
 const LITE_MIN_CHARS = 4;
 const LITE_DEBOUNCE_MS = 500;
@@ -24,6 +24,7 @@ export interface LiteThresholds {
  * Whether one attempt counts as slow: a response slower than the threshold, or the app-side timeout. Cancelled
  * requests (superseded searches) and instant network failures (no connection — offline is a different state) are not
  * samples. @returns null when the attempt is not a sample
+ * @internal exported for unit tests
  */
 export function slowSample(observation: Pick<HttpObservation, 'durationMs' | 'outcome'>, slowRequestMs: number): boolean | null {
   switch (observation.outcome) {
@@ -37,11 +38,12 @@ export function slowSample(observation: Pick<HttpObservation, 'durationMs' | 'ou
   }
 }
 
-/** Appends a sample and keeps the last LITE_WINDOW. */
+/** Appends a sample and keeps the last LITE_WINDOW. @internal exported for unit tests */
 export function pushSample(window: readonly boolean[], slow: boolean): readonly boolean[] {
   return [...window, slow].slice(-LITE_WINDOW);
 }
 
+/** @internal exported for unit tests */
 export function shouldSuggestLite(window: readonly boolean[], threshold: number): boolean {
   return window.filter(Boolean).length >= threshold;
 }
@@ -57,9 +59,10 @@ export function searchTuning(
 /** `detail` query of quote calls. */
 export const quoteDetail = (lite: boolean): 'lite' | 'full' => (lite ? 'lite' : 'full');
 
-/** Account data older than this shows its age (UX doc §11). */
+/** Account data older than this shows its age (UX doc §11). @internal exported for unit tests */
 export const ACCOUNT_STALE_MS = 5 * 60 * 1000;
 
+/** @internal exported for unit tests */
 export function isStale(updatedAt: number, now: number, thresholdMs: number): boolean {
   return now - updatedAt > thresholdMs;
 }

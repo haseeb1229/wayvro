@@ -7,6 +7,7 @@ import { IntentSchema, type Intent } from './intent';
  * paths with id-shaped parameters become intents; everything else lands on the mode home. In release builds no
  * external scheme is registered (F-P3-01, CI-gated), so this sees only app-internal launches; development builds
  * exercise it through the dev-client scheme.
+ * @internal exported for unit tests
  */
 export const MAX_SYSTEM_PATH_LENGTH = 512;
 const MAX_QUERY_PAIRS = 4;

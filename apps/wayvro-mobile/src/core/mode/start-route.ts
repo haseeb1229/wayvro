@@ -18,7 +18,7 @@ import type { LastQuote, ModePreference } from './persisted';
  *  7. the last quote group (rider home only, ≤ 30 min old) — the server's owner-only GET then decides what is shown.
  */
 
-/** A stored quote group is offered for restoration only while it is younger than this. */
+/** A stored quote group is offered for restoration only while it is younger than this. @internal exported for unit tests */
 export const LAST_QUOTE_MAX_AGE_MS = 30 * 60 * 1000;
 
 /** Step 6: the mode home for this account. The preference is a hint: it never grants a mode the server does not offer. */
@@ -34,6 +34,7 @@ export type StartRoute =
   | { readonly kind: 'required-action'; readonly href: AccountRoute }
   | { readonly kind: 'home'; readonly mode: AppMode; readonly href: ModeHome; readonly restoreQuoteGroupId: string | null };
 
+/** @internal exported for unit tests */
 export function restorableQuote(lastQuote: LastQuote | null, now: number): string | null {
   if (lastQuote === null) return null;
   const age = now - lastQuote.savedAt;

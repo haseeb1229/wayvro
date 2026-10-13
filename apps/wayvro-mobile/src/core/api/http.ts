@@ -45,7 +45,7 @@ export interface HttpDeps {
   readonly observe?: (observation: HttpObservation) => void;
 }
 
-/** Thrown when the CALLER aborted a request (e.g. a superseded search); never retried, never shown to the user. */
+/** Thrown when the CALLER aborted a request (e.g. a superseded search); never retried, never shown to the user. @internal exported for unit tests */
 export class RequestCancelledError extends Error {
   constructor() {
     super('wayvro-request-cancelled');
