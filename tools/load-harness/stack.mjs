@@ -35,6 +35,10 @@ export const LOCAL_LIMITS = {
   GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT: '10000',
   GEO_RESOLVE_PER_MINUTE_ACCOUNT: '10000',
   GEO_REVERSE_PER_MINUTE_ACCOUNT: '10000',
+  // all harness traffic comes from one loopback prefix: the per-IP-prefix geo ceilings (closure correction) are raised too
+  GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX: '100000',
+  GEO_RESOLVE_PER_MINUTE_IP_PREFIX: '100000',
+  GEO_REVERSE_PER_MINUTE_IP_PREFIX: '100000',
   GEO_LOCAL_DAILY_CALLS_PER_SKU: '1000000',
   APP_CONFIG_PER_MINUTE_IP_PREFIX: '100000',
   // sign-in of a few synthetic accounts from one loopback address

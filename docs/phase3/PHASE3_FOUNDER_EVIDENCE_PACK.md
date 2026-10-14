@@ -63,3 +63,30 @@ Steps:
 
 - FA-14 accessibility tester (TalkBack walkthrough on a physical device) — recommended before pilot; VoiceOver needs an iPhone (FA-13) and is NOT RUN in Phase 3.
 - Ruleset change: making the informational `Mobile E2E` job a required check is a founder action (Phase 4 per the SP-08 plan; keep the check name short — ruleset contexts are truncated at 100 characters).
+
+## Founder preview APK (synthetic data only) — closure correction §17
+
+**Purpose:** let the founder install Wayvro on their own ARM64 Android phone to look at the UI. This is **not performance evidence**: SP-02 uses the release-like device protocol in `docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md`. Use synthetic data only: no real SMS, no provider keys, no real accounts. OTP codes come from the local runner's OTP inbox.
+
+**Why the CI builds are not installable previews:**
+- The release AAB (`apps/wayvro-mobile/build-reports/app-release.aab`) has no API origin, so it opens on "service not configured".
+- The E2E APK is x86_64 and reaches only the emulator loopback `10.0.2.2`.
+- The development debug APK needs Metro.
+
+### Option A — release-like preview (preferred; needs FA-17)
+1. **Founder:** provide an HTTPS tunnel endpoint (FA-17, approved in principle) that forwards to a laptop-local synthetic stack: throwaway database, synthetic seed, API local runner — for example `node tests/e2e-mobile/mobile-stack.mjs`. Release builds accept only `https` origins.
+2. **Build the AAB:** `WAYVRO_API_URL=https://<tunnel-host> node scripts/android-build.mjs release`. This produces the gated release AAB for arm64-v8a + armeabi-v7a, debug-key signed, which is not an upload artefact.
+3. **Make an installable APK:**
+   - `java -jar bundletool.jar build-apks --bundle apps/wayvro-mobile/build-reports/app-release.aab --output wayvro-preview.apks --mode=universal --ks <the generated debug keystore> --ks-key-alias androiddebugkey`, using the keystore's standard debug password;
+   - unzip `universal.apk` from the `.apks` file.
+4. **Install:**
+   - with USB debugging on, run `adb install universal.apk`; or copy the file to the phone and allow "install unknown apps" for that one installation;
+   - sign in with a synthetic phone number, taking the code from the local runner's OTP inbox.
+
+### Option B — LAN development preview (UI only)
+1. Phone and laptop on the same Wi-Fi.
+2. Bind the local runner to the laptop's LAN address (`HOST`/`PORT` config of the API local runner), and allow that one port in Windows Firewall — this is a founder decision.
+3. **Build:** `WAYVRO_API_URL=http://<laptop-LAN-IP>:<port> node scripts/android-build.mjs debug`. This is the development client for arm64-v8a + x86_64; development builds accept `http`.
+4. **Run:** `pnpm --filter @wayvro/wayvro-mobile exec expo start --dev-client` on the laptop. Install the debug APK on the phone and open the Metro URL.
+
+**Status (2026-10-14):** NOT BUILT. Option A waits for the FA-17 tunnel. Option B needs the founder's consent to the firewall rule and the LAN binding. Neither changes app code.

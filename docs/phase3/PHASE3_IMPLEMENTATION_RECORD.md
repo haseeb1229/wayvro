@@ -296,3 +296,53 @@ Rule (`docs/phase3/PHASE3_REQUIREMENT_MATRIX.md`): ENGINEERING_SATISFIED only if
 
 ### Can Phase 3 be called complete?
 **No.** Under the full-run evidence semantics (sequence §1.1), Phase 3 must not be merged as complete while the SP-01/SP-02/SP-04 evidence and the FA-09 review are missing, and 14 IDs are BLOCKED on Maestro evidence. The engineering run is closed and the PR is open for review only.
+
+## Closure correction (founder decision 2026-10-14, `WAYVRO_PHASE3_ENGINEERING_CLOSURE_CORRECTION`)
+
+**Starting state:** main `b1a1986`, branch head `0573f87`, PR #8 open and not merged, worktree clean, 532 IDs / 29 Phase-3 IDs.
+
+### Founder decisions recorded
+- **FA-16 Mobile E2E:** one E2E APK + 4 balanced PR shards (≤ 900 s Maestro each), all 14 flows, an aggregate gate, one retry per flow, no nightly matrix, no paid Actions spend.
+- **Native modules:** the 14 `transitiveAddedP35` modules and the first-party `wayvro-fully-drawn` module are APPROVED (`PHASE3_SDK_PRIVACY_INVENTORY.md` §11, `sdk-inventory.json`). This is not FA-09.
+- **ADR-049:** the SECURITY single-person expedited path and the checker-less 15-minute undo are NOT APPROVED for Phase 3 (deferred, not implemented).
+- **Q31:** `minSdk 24` (Expo SDK 57 default) stays the engineering floor; the iOS minimum stays unfrozen.
+
+### Main hotfix — PR #9 (`fix/compliance-activation-clock-and-mobile-full-bootstrap`, head `c05ee74`)
+- **Phase-2 requirement-set activation race fixed:** advisory lock per (city, category) before the ACTIVE set is read; `clock_timestamp()` timestamps. Deterministic regression test: main's original code answers 500, the fix 200 with `effective_until ≥ effective_from`.
+- **`mobile-full.yml` bootstrapped** on the default branch with an unsupported-target guard: a ref without the SP-08 harness FAILS, never PASS.
+- **`.gitleaksignore`:** the reviewed Phase-3 false-positive fingerprint, so the full-history Security scan passes.
+- **CI:** all five required checks green on PR run 38562382643 (re-run after the `.gitleaksignore` commit).
+- **NOT MERGED:** the merge (`gh pr merge 9 --merge`) was refused by this session's permission system as a merge without review, so the founder merges it. Main push CI after the merge, the merge of main into this branch, and the full-matrix dispatch therefore have **not happened**.
+
+### Phase-3 branch changes (`a2fcd2b` … final SHA below)
+| Item | Change | Evidence |
+|---|---|---|
+| PR-tier sharding (FA-16) | `mobile-e2e-apk` → `mobile-e2e-shard` ×4 (own emulator, own throwaway stack, 900 s budget) → `Mobile E2E` aggregate (`tests/e2e-mobile/aggregate-shards.mjs`: all 14 flows exactly once, PASS or non-INV-07 FLAKY, budget respected; 10-case `--self-test`); `device offline` ⇒ BLOCKED (infrastructure) | self-test PASS (local); see "CI status" |
+| Network inventory (U04 §12) | `tests/e2e-mobile/net-inventory.mjs` (built-ins pcap parser; API-35 traffic is on netsim virtio-wifi, so the netsim Wi-Fi pcap is the source); wired into the mobile-full API-35 lane; raw pcaps never uploaded | 13-case self-test PASS; one local real emulator capture PASS (agent run: 12 hosts, no analytics/ads/crash/update host, `10.0.2.2:4120` = synthetic API); CI run NOT RUN |
+| R28 | `LEGAL_GATE_DISABLED` for DISABLED_LEGAL_GATE products (never priced); zone failures stay `ZONE_NOT_SERVED`; mobile copy "This service is not available yet." (ur/ur-Latn pending native review) | contract, quote integration, mobile view-state tests |
+| Deletion (§11) | **Decision A, purge:** the accepted Phase-2 model keeps no location/quote data as a retention exception (`packages/identity-core/src/deletion.ts` `retentionExceptions`; EG-16 accepts none). `identity.deletion-processing` purges the account's quote components, quotes and unshared route snapshots inside its transaction; a still-live quote defers completion to the next run. Accounts are tombstoned, never deleted, so the FK cannot strand deletion. | worker cross-phase deletion integration tests |
+| Geo abuse controls (§9) | per-IP-prefix ceilings for autocomplete/geocode (600/min), resolve (300/min), reverse (300/min) per IPv4 /24 or IPv6 /56, HMAC-hashed keys, TRUST_PROXY address only, fail closed; T3-06 route sanity (shorter than the geodesic lower bound ⇒ refused; > 3.0× great-circle ⇒ LOW + `ROUTE_RATIO_OUTLIER`); result caps tested | RL-IP, route-ratio and cap tests |
+| COMPAT-N1 (§8) | frozen test-only Phase-2 contracts (`packages/contracts/test/compat/phase2`, from `b1a1986`) parse the Phase-3 responses of 117 shared routes; requests stay strict; 225 enum positions compared | 290 contracts tests, 100 % coverage (runs in Quality) |
+| COMPAT-N1 finding | a closed error-code enum in an older client discards the whole envelope of a newly added code (a Phase-2 build would see the ADR-049 426 by status only). No Phase-2 build was ever published. Fixed forward: the Phase-3 client reads the code as an opaque string, maps known codes, and keeps the status kind plus the hints for unknown codes | mobile unit test |
+| Load harness + soak (§7) | `tools/load-harness` (Node built-ins): `pnpm load:local`, `pnpm soak:fault-geo`; full-tier `load` job in mobile-full.yml (the summary requires it) | local reports below |
+| 50k property tier | pricing PROP-QUOTE added to the full tier; property-test timeouts scale with `WAYVRO_PROPERTY_RUNS` (vitest default kept at the PR default of 500 runs) — at 50,000 runs two properties exceeded the 5 s default (a timeout, not a counterexample) | local runs below |
+
+### Evidence on the final branch state (LOCAL unless stated)
+- **CI on `7772b63`** (push run 38580717297, PR run 38580731301): Quality, Integration, Security, Web E2E and Android all success (PR run Android success; push run Android success). **Mobile E2E FAILED:** every shard's emulator could not create its userdata partition ("Not enough space … Available 3729.78 MB, need 7372.80 MB"; the split shard jobs lacked the serial job's disk cleanup), so no flow ran. One PR-run shard also hit a corrupt emulator SDK download. Fixed in `3a38199` (free-disk step in the shard jobs and the mobile-full lanes).
+- **CI from `3a38199` on: BLOCKED.** GitHub Actions refuses to start any job: "recent account payments have failed or your spending limit needs to be increased" (runs 38587027004, 38587039527). The private repository's Actions minutes are exhausted; no paid spend without founder approval. So the sharded PR tier, the full matrix (API 29 / API 35 / API 35 low-RAM), the CI 50k tier, the CI load + soak job and CI on the final SHA are all **BLOCKED (billing)**.
+- **Local Quality mirror** (final code): format, build, build:local, eslint on every source root (`--max-warnings=0`), typecheck, depcruise, knip ×3, syncpack, flags:check, test:coverage, openapi:check, oasdiff gate + self-test, the five Android gate self-tests, the aggregate and net-inventory self-tests, docs generators, gitleaks full history (`--all`), osv-scanner, ART-ISO with negative controls — **all PASS**.
+- **Local integration** (`pnpm test:integration`, real PostgreSQL/PostGIS/Valkey/SeaweedFS/ClamAV, throwaway databases): API 414/414, worker 57/57, realtime 14/14, identity-core 23/23, server-runtime 51/51 — **PASS**.
+- **Local 50k property tier:** domain geo 10/10, API geo-unit + catalog-domain + pricing-engine 53/53 — **PASS**. fast-check seeds are random per run and printed only on failure; no failure occurred.
+- **Local load harness** (`build-logs/load/load-2026-10-14T155114Z.md`, LOCAL NON-STAGING): 15 scenario/concurrency rows, 200 requests each, 0 % errors, 0 deadline refusals. quote MISS p95 422/481/801 ms at concurrency 1/4/16; quote HIT p95 80/137/327 ms (100 % hit); autocomplete p95 165/43/68 ms; reverse p95 252/224/328 ms; app-config p95 17/7/22 ms. Injected synthetic provider latency: ROUTE 250 ms, AUTOCOMPLETE 120, REVERSE 150. A first run failed reverse@4/@16 with 429: the new geo IP-prefix ceiling working, because all harness traffic comes from one loopback prefix. The harness now raises those ceilings for its local stack, as it already did for the account limits.
+- **Local FAULT-GEO soak** (`build-logs/load/fault-geo-soak-2026-10-14T154052Z.md`): seed 20261014, 600 s, 3,265 requests, **0 invariant violations**, with planted negative controls detected before the run.
+
+### Requirement status after the correction
+Unchanged totals: **ENGINEERING_SATISFIED 5 · PARTIAL_EXTERNAL_GATED 10 · BLOCKED 14**, by the matrix rule (CI on the closure SHA).
+- **R28:** the deviation is gone (`LEGAL_GATE_DISABLED`).
+- **E07:** the repository gap (load harness) is closed locally; production TTLs remain external.
+- **Q31:** COMPAT-N1 is built and the floor is decided; the iOS minimum remains external.
+- **U04:** the approval is recorded and the network inventory is built; its CI run is BLOCKED.
+- **The 14 BLOCKED IDs:** still blocked on Maestro evidence in CI (sharded tier and full matrix cannot run while Actions is blocked; the full matrix also waits for the PR #9 merge).
+
+### Repository-owned engineering closure
+**NOT PASS — BLOCKED on two founder actions:** (1) merge PR #9; (2) restore GitHub Actions (billing/spending limit). The code for every repository-owned item of the correction is complete and passes locally. The CI evidence the correction requires (sharded PR tier green, full matrix, CI 50k, CI load/soak) has not been produced. **Macro Phase 3: EXTERNAL BLOCKED** (SP-01, SP-02, SP-04, FA-09 unchanged).
