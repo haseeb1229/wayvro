@@ -119,7 +119,7 @@ Decisions/deviations:
 - Forward-geocode suggestions are held in Valkey for at most min(placeRef TTL, terms TTL); a terms TTL of 0 refuses GEOCODE mode.
 - A provider quota opens a per-SKU cool-down instead of tripping the breaker (the test strategy wins over architecture §5.4).
 - A cache read error counts as a miss; the budget step then fails closed.
-- Per-IP-prefix geo limits are NOT built (per-account only).
+- Per-IP-prefix geo limits are NOT built (per-account only). **Resolved in the closure correction** (IPv4 /24, IPv6 /56, hashed keys).
 - The API router's `maxParamLength` is 600, plus a framework-error handler: real placeRefs exceeded Fastify's default, and its default error body echoed the path.
 - Candidate adapters use Google Geocoding v3 (v4 at P3.7).
 - The open-stack compose profile is NOT DONE.
@@ -139,10 +139,10 @@ Decisions/deviations:
 
 Decisions/deviations:
 - In its safe state, `rider.quotes` answers 404 `WAYVRO_E_FEATURE_DISABLED` (the code's Phase-2 status), not the plan's 503.
-- Requested products that are not ENABLED are listed as `ZONE_NOT_SERVED` (the reason list is fixed).
+- Requested products that are not ENABLED are listed as `ZONE_NOT_SERVED` (the reason list is fixed). **Superseded in the closure correction:** legal-gated products report `LEGAL_GATE_DISABLED`.
 - `GET /v1/quotes/{id}` returns `unavailable: []`, because refusals are not stored.
 - Columns added beyond the plan: `submission_preview`, `envelope_override_reason_code`, `attribution_code`, `polyline_expires_at`, `tax_included_*`.
-- Not built (open items): the route-ratio sanity check (T3-06), a per-account limit on `GET /v1/quotes` (T3-04), the `QUOTE_NOT_FOUND_BURST` signal, and quote purge on account deletion.
+- Not built (open items): the route-ratio sanity check (T3-06), a per-account limit on `GET /v1/quotes` (T3-04), the `QUOTE_NOT_FOUND_BURST` signal, and quote purge on account deletion. **The route-ratio check and the quote purge at deletion were built in the closure correction**; T3-04 and `QUOTE_NOT_FOUND_BURST` remain open.
 
 ## P3.4 — Release controls (migration 0013) — IDs A01, Q31, V10
 

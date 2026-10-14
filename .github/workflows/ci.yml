@@ -482,6 +482,16 @@ jobs:
       MAESTRO_DISABLE_UPDATE_CHECK: 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The emulator needs ~7.4 GB for its userdata partition; the runner image leaves ~3.7 GB without this cleanup.
+      - name: Free disk — remove toolchains this job does not use
+        run: |
+          for d in /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL /usr/local/julia* /usr/local/share/boost; do
+            if [ -e "$d" ]; then
+              du -sh "$d"
+              sudo rm -rf "$d"
+            fi
+          done
+          df -h /
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
