@@ -5,7 +5,9 @@
  *                 range-checked, inside the Pakistan envelope, rounded (reverse 4 dp, bias 2 dp) BEFORE anything else
  *   2 authz       consumer session + account restrictions (route guard); runtime switch of the SKU; city ENABLED; SKU
  *                 bound
- *   3 rate limit  per account (limiter unavailable ⇒ 503, fail closed)
+ *   3 rate limit  per account AND per client IP prefix (IPv4 /24, IPv6 /56; keyed-hash key; the request IP as Fastify
+ *                 derives it under TRUST_PROXY — headers are never parsed here), consumed atomically; limiter
+ *                 unavailable ⇒ 503, fail closed
  *   4 cache       provider-namespaced keyed (HMAC) keys; TTL = min(adapter terms, configured maximum)
  *   5–7           budget → quota cool-down → breaker → adapter (timeout, deadline-aware connect retry) — provider-call.ts
  *   8 normalise   validated, formatted (Lahore formatter), provider ids sealed into account-bound placeRefs
@@ -17,6 +19,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { RuntimeSwitchReader } from '@wayvro/config';
+import type { KeyedHasher } from '@wayvro/field-crypto';
 import type {
   AutocompleteQuery,
   AutocompleteResult,
@@ -40,6 +43,7 @@ import type {
 import { LimiterUnavailableError, type GeoUsageCounters, type LimitDecision, type RateLimiter, type ValkeyClient as Redis } from '@wayvro/server-runtime';
 import { z } from 'zod';
 import type { ApiConfig } from '../config.js';
+import { ipPrefix } from '../identity/otp-abuse.js';
 import { formatAddress } from './address-format.js';
 import type { GeoCache } from './cache.js';
 import { codePointLength, normaliseQuery, QUERY_MIN_CODE_POINTS } from './normalise.js';
@@ -86,8 +90,18 @@ export type GeoPolicy = Pick<
   | 'GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT'
   | 'GEO_RESOLVE_PER_MINUTE_ACCOUNT'
   | 'GEO_REVERSE_PER_MINUTE_ACCOUNT'
+  | 'GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX'
+  | 'GEO_RESOLVE_PER_MINUTE_IP_PREFIX'
+  | 'GEO_REVERSE_PER_MINUTE_IP_PREFIX'
+  | 'ROUTE_RATIO_OUTLIER_MAX'
   | 'GEO_KEY_PREFIX'
 >;
+
+/** Who is asking: the session's account and the client IP Fastify derived (socket peer, or XFF from trusted proxies). */
+export interface GeoRequester {
+  readonly accountId: string;
+  readonly clientIp: string;
+}
 
 export interface GeoGatewayDeps {
   readonly bundle: GeoBundle;
@@ -104,10 +118,15 @@ export interface GeoGatewayDeps {
   readonly sealer: PlaceRefSealer;
   readonly reference: GeoReference;
   readonly usage: GeoUsageCounters;
+  /** Keys the per-IP-prefix limiter buckets (`risk_signals` class, as the OTP IP-prefix limits). */
+  readonly hasher: KeyedHasher;
   readonly policy: GeoPolicy;
   readonly log: Logger;
   readonly now?: () => Date;
 }
+
+/** Limit family per endpoint: account and IP-prefix ceilings per minute (forward geocode counts as autocomplete). */
+type LimitFamily = 'ac' | 'pr' | 'rv';
 
 const SWITCH: Readonly<Record<Exclude<GeoSku, 'ROUTE'>, string>> = {
   AUTOCOMPLETE: 'platform.geo-autocomplete',
@@ -155,7 +174,8 @@ export class GeoGateway {
 
   // ── consumer operations ──────────────────────────────────────────────────────────────────────────────────────
 
-  async autocomplete(accountId: string, q: AutocompleteQuery): Promise<AutocompleteResult> {
+  async autocomplete(requester: GeoRequester, q: AutocompleteQuery): Promise<AutocompleteResult> {
+    const { accountId } = requester;
     const sku = q.mode === 'GEOCODE' ? 'GEOCODE' : 'AUTOCOMPLETE';
     const started = this.now().getTime();
     const timeout = sku === 'GEOCODE' ? this.deps.policy.GEO_GEOCODE_TIMEOUT_MS : this.deps.policy.GEO_AUTOCOMPLETE_TIMEOUT_MS;
@@ -181,8 +201,8 @@ export class GeoGateway {
         throw unavailable('GEO_PROVIDER_UNAVAILABLE');
       }
       return this.metered(ctx, started, async () => {
-        // 3 rate limit (forward geocoding counts against the autocomplete limit)
-        await this.rateLimit(`geo:ac:m:${accountId}`, this.deps.policy.GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT);
+        // 3 rate limit (forward geocoding counts against the autocomplete limits)
+        await this.rateLimit('ac', requester);
         const { value, fetchedAt } = await this.cached(ctx, material, CachedPlaces, accountId, deadline, timeout, async (signal) => ({
           places: await port.geocode({ text, locale: q.locale, countryCode: 'PK' }, signal),
         }));
@@ -192,7 +212,7 @@ export class GeoGateway {
     }
     const port = this.requirePort(this.deps.ports.placesAutocomplete);
     return this.metered(ctx, started, async () => {
-      await this.rateLimit(`geo:ac:m:${accountId}`, this.deps.policy.GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT);
+      await this.rateLimit('ac', requester);
       const { value, fetchedAt } = await this.cached(ctx, material, CachedCandidates, accountId, deadline, timeout, async (signal) => ({
         candidates: await port.suggest(
           { text, locale: q.locale, biasCell: bias ? bias.toJSON() : null, countryCode: 'PK', searchSessionId: q.session },
@@ -206,7 +226,8 @@ export class GeoGateway {
     });
   }
 
-  async resolvePlace(accountId: string, placeRef: string, q: { readonly session: string; readonly locale: GeoLocale }): Promise<ResolvedPlaceResponse> {
+  async resolvePlace(requester: GeoRequester, placeRef: string, q: { readonly session: string; readonly locale: GeoLocale }): Promise<ResolvedPlaceResponse> {
+    const { accountId } = requester;
     const started = this.now().getTime();
     // 1 normalise: authenticity, account binding and expiry of the sealed token (no oracle for foreign tokens)
     let claims: PlaceRefClaims;
@@ -233,7 +254,7 @@ export class GeoGateway {
     const port = this.requirePort(this.deps.ports.geocoding);
     return this.metered(ctx, started, async () => {
       // 3 rate limit
-      await this.rateLimit(`geo:pr:m:${accountId}`, this.deps.policy.GEO_RESOLVE_PER_MINUTE_ACCOUNT);
+      await this.rateLimit('pr', requester);
       if (claims.sku === 'GEOCODE') {
         const held = await this.readHeld(licence, claims.placeId);
         ctx.meter.cacheHits++;
@@ -275,7 +296,8 @@ export class GeoGateway {
     });
   }
 
-  async reverse(accountId: string, q: z.infer<typeof ReverseGeocodeQuerySchema>): Promise<ReverseGeocodeResult> {
+  async reverse(requester: GeoRequester, q: z.infer<typeof ReverseGeocodeQuerySchema>): Promise<ReverseGeocodeResult> {
+    const { accountId } = requester;
     const sku = 'REVERSE_GEOCODE';
     const started = this.now().getTime();
     const timeout = this.deps.policy.GEO_REVERSE_TIMEOUT_MS;
@@ -290,7 +312,7 @@ export class GeoGateway {
     const port = this.requirePort(this.deps.ports.reverseGeocoding);
     const ctx: CallContext = { sku, licence, meter: newMeter(), cacheStatus: 'NONE' };
     return this.metered(ctx, started, async () => {
-      await this.rateLimit(`geo:rv:m:${accountId}`, this.deps.policy.GEO_REVERSE_PER_MINUTE_ACCOUNT);
+      await this.rateLimit('rv', requester);
       const { value, fetchedAt } = await this.cached(
         ctx,
         { p: `${String(point.lat)},${String(point.lng)}`, l: q.locale },
@@ -352,10 +374,27 @@ export class GeoGateway {
     return port;
   }
 
-  private async rateLimit(key: string, perMinute: number): Promise<void> {
+  /**
+   * Step 3: the account and the IP-prefix rule of the endpoint, consumed atomically (a denied request consumes
+   * nothing). The prefix bucket key is an HMAC of the prefix — Valkey never holds an address; an unparsable address
+   * shares one bucket (as the quotes limit does).
+   */
+  private async rateLimit(family: LimitFamily, requester: GeoRequester): Promise<void> {
+    const p = this.deps.policy;
+    const [perAccount, perPrefix] =
+      family === 'ac'
+        ? [p.GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT, p.GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX]
+        : family === 'pr'
+          ? [p.GEO_RESOLVE_PER_MINUTE_ACCOUNT, p.GEO_RESOLVE_PER_MINUTE_IP_PREFIX]
+          : [p.GEO_REVERSE_PER_MINUTE_ACCOUNT, p.GEO_REVERSE_PER_MINUTE_IP_PREFIX];
+    const prefix = ipPrefix(requester.clientIp);
+    const prefixKey = prefix ? this.deps.hasher.active('risk_signals', `ip-prefix|${prefix}`).digest.toString('hex') : 'unparsed';
     let d: LimitDecision;
     try {
-      d = await this.deps.limiter.consume([{ key, limit: perMinute, windowSeconds: 60 }]);
+      d = await this.deps.limiter.consume([
+        { key: `geo:${family}:m:${requester.accountId}`, limit: perAccount, windowSeconds: 60 },
+        { key: `geo:${family}:ip:m:${prefixKey}`, limit: perPrefix, windowSeconds: 60 },
+      ]);
     } catch (e) {
       if (e instanceof LimiterUnavailableError) {
         this.deps.log.error({ signal: 'GEO_LIMITER_UNAVAILABLE' }, 'geo rate limiter unavailable; failing closed');
@@ -363,7 +402,10 @@ export class GeoGateway {
       }
       throw e;
     }
-    if (!d.allowed) throw new WayvroError('WAYVRO_E_RATE_LIMITED', { details: { retryAfterSeconds: d.retryAfterSeconds, reasonCodes: ['GEO_RATE_LIMITED'] } });
+    if (!d.allowed) {
+      this.deps.log.warn({ signal: 'GEO_RATE_LIMITED', limit: family, rule: d.deniedRule === 1 ? 'IP_PREFIX' : 'ACCOUNT' }, 'geo request rate limited');
+      throw new WayvroError('WAYVRO_E_RATE_LIMITED', { details: { retryAfterSeconds: d.retryAfterSeconds, reasonCodes: ['GEO_RATE_LIMITED'] } });
+    }
   }
 
   private maxTtl(sku: Exclude<GeoSku, 'ROUTE'>): number {

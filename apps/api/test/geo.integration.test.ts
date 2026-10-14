@@ -79,6 +79,14 @@ describe('session and authz', () => {
     await g.h.owner.query(`insert into catalog.cities (code, name_en, name_ur, status) values ('KHI', 'Karachi', 'کراچی', 'DISABLED') on conflict do nothing`);
     const cases: Array<[string, string | null]> = [
       [`${autocompleteUrl('liberty')}&fare=100`, null],
+      // query length bounds (3..80 after trimming): empty, blank and over-long queries never reach the provider
+      [autocompleteUrl(''), null],
+      [autocompleteUrl('     '), null],
+      [autocompleteUrl('l'.repeat(81)), null],
+      // no paging/batch parameters exist (strict query objects)
+      [`${autocompleteUrl('liberty')}&page=2`, null],
+      [`${autocompleteUrl('liberty')}&limit=50`, null],
+      [`${reverseUrl(31.51, 74.341)}&limit=5`, null],
       [autocompleteUrl('!!a'), 'QUERY_TOO_SHORT'],
       [autocompleteUrl('liberty', { biasLat: '31.5' }), 'BIAS_INCOMPLETE'],
       [autocompleteUrl('liberty', { cityCode: 'KHI' }), 'CITY_NOT_ENABLED'],
@@ -126,6 +134,13 @@ describe('autocomplete, placeRef and resolve', () => {
     expect(g.doubles.control.calls('AUTOCOMPLETE')).toBe(calls);
     // cached candidates are re-sealed per response (fresh tokens)
     expect(again.suggestions[0]?.placeRef).not.toBe(body.suggestions[0]?.placeRef);
+    // result cap: the synthetic provider answers 8 candidates for this query; the gateway returns 5
+    const raw = await g.doubles.placesAutocomplete.suggest(
+      { text: 'lahore', locale: 'en', biasCell: null, countryCode: 'PK', searchSessionId: SESSION },
+      new AbortController().signal,
+    );
+    expect(raw).toHaveLength(8);
+    expect(Object.keys(body).sort()).toEqual(['source', 'suggestions']);
   });
 
   it('resolve: point, landmark-first label, service-area flag; the provider sees the place id, never the account', async () => {
@@ -236,6 +251,9 @@ describe('reverse geocoding', () => {
       inServiceArea: true,
       source: { cacheStatus: 'MISS' },
     });
+    // result cap: exactly one formatted address (an object, never a list), nothing else
+    expect(Object.keys(first.json<Record<string, unknown>>()).sort()).toEqual(['address', 'inServiceArea', 'source']);
+    expect(Array.isArray(body.address)).toBe(false);
     expect(g.doubles.control.inputs('REVERSE_GEOCODE').at(-1)).toEqual({ point: { lat: 31.51, lng: 74.341 }, locale: 'en' });
     expect(g.serviceArea.calls.at(-1)).toEqual({ cityCode: 'LHR', lat: 31.51, lng: 74.341 });
     const near = ReverseGeocodeResultSchema.parse((await geoGet(g.h, reverseUrl(31.5100412, 74.3410391), user.accessToken)).json());
@@ -357,6 +375,104 @@ describe('RL (geo parts)', () => {
   });
 });
 
+describe('RL-IP: per-IP-prefix ceilings (IPv4 /24, IPv6 /56; own harnesses with low ceilings)', () => {
+  let r: GeoHarness;
+  beforeAll(async () => {
+    // TRUST_PROXY stays at its default (false): the socket peer is the client IP
+    r = await startGeoApi({
+      env: { GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX: '5', GEO_RESOLVE_PER_MINUTE_IP_PREFIX: '3', GEO_REVERSE_PER_MINUTE_IP_PREFIX: '3' },
+    });
+  }, 120_000);
+  afterAll(async () => {
+    await r.h.close();
+  });
+  const from = (h: GeoHarness['h'], url: string, token: string, ip: string, headers: Record<string, string> = {}) =>
+    h.inject({ method: 'GET', url, remoteAddress: ip, headers: { authorization: `Bearer ${token}`, ...headers } });
+
+  it('autocomplete: two addresses of one /24 share the ceiling across accounts (429 + retryAfterSeconds); another /24 still succeeds', async () => {
+    const [u, v] = [await signIn(r.h), await signIn(r.h)];
+    for (let i = 0; i < 3; i++) expect((await from(r.h, autocompleteUrl('liberty'), u.accessToken, '203.0.113.10')).statusCode).toBe(200);
+    for (let i = 0; i < 2; i++) expect((await from(r.h, autocompleteUrl('liberty'), v.accessToken, '203.0.113.200')).statusCode).toBe(200);
+    // v has used 2 of its 60 per-account calls: the prefix ceiling (5) is what refuses
+    const limited = await from(r.h, autocompleteUrl('liberty'), v.accessToken, '203.0.113.77');
+    expect(limited.statusCode).toBe(429);
+    expect(codeOf(limited)).toBe('WAYVRO_E_RATE_LIMITED');
+    expect(reasonCodes(limited)).toEqual(['GEO_RATE_LIMITED']);
+    expect(limited.json<{ error: { details: { retryAfterSeconds: number } } }>().error.details.retryAfterSeconds).toBeGreaterThan(0);
+    expect(r.h.logs.text()).toMatch(/"signal":"GEO_RATE_LIMITED"[^\n]*"rule":"IP_PREFIX"/);
+    // forward geocoding counts against the same ceiling
+    expect((await from(r.h, autocompleteUrl('liberty', { mode: 'GEOCODE' }), u.accessToken, '203.0.113.5')).statusCode).toBe(429);
+    expect((await from(r.h, autocompleteUrl('liberty'), u.accessToken, '198.51.100.7')).statusCode).toBe(200);
+    expect((await from(r.h, autocompleteUrl('liberty'), v.accessToken, '198.51.100.8')).statusCode).toBe(200);
+    // the separate reverse ceiling of the full prefix is untouched
+    expect((await from(r.h, reverseUrl(31.51, 74.341), u.accessToken, '203.0.113.10')).statusCode).toBe(200);
+  });
+
+  it('reverse geocoding: IPv6 addresses of one /56 share the ceiling; the next /56 does not (IPv4-mapped IPv6 = its IPv4 /24)', async () => {
+    const u = await signIn(r.h);
+    for (const ip of ['2001:db8:abcd:1200::1', '2001:db8:abcd:12ff:ffff::2', '2001:db8:abcd:1234:5678:9abc:def0:1']) {
+      expect((await from(r.h, reverseUrl(31.51, 74.341), u.accessToken, ip)).statusCode, ip).toBe(200);
+    }
+    expect((await from(r.h, reverseUrl(31.51, 74.341), u.accessToken, '2001:db8:abcd:12aa::9')).statusCode).toBe(429);
+    expect((await from(r.h, reverseUrl(31.51, 74.341), u.accessToken, '2001:db8:abcd:1300::1')).statusCode).toBe(200);
+    for (let i = 0; i < 3; i++) expect((await from(r.h, reverseUrl(31.51, 74.341), u.accessToken, '192.0.2.40')).statusCode).toBe(200);
+    expect((await from(r.h, reverseUrl(31.51, 74.341), u.accessToken, '::ffff:192.0.2.41')).statusCode).toBe(429);
+  });
+
+  it('place resolution has its own ceiling per prefix', async () => {
+    const u = await signIn(r.h);
+    const ref =
+      AutocompleteResultSchema.parse((await from(r.h, autocompleteUrl('liberty'), u.accessToken, '100.64.20.1')).json()).suggestions[0]?.placeRef ?? '';
+    for (let i = 0; i < 3; i++) expect((await from(r.h, placeUrl(ref), u.accessToken, '100.64.20.2')).statusCode).toBe(200);
+    expect((await from(r.h, placeUrl(ref), u.accessToken, '100.64.20.3')).statusCode).toBe(429);
+    expect((await from(r.h, placeUrl(ref), u.accessToken, '100.64.21.3')).statusCode).toBe(200);
+  });
+
+  it('TRUST_PROXY off: a spoofed X-Forwarded-For neither escapes the peer prefix nor charges another prefix', async () => {
+    const u = await signIn(r.h);
+    for (const xff of ['198.18.0.1', '198.18.1.1', '198.18.2.1']) {
+      expect((await from(r.h, reverseUrl(31.52, 74.35), u.accessToken, '100.70.0.150', { 'x-forwarded-for': xff })).statusCode).toBe(200);
+    }
+    expect((await from(r.h, reverseUrl(31.52, 74.35), u.accessToken, '100.70.0.151', { 'x-forwarded-for': '198.18.3.1' })).statusCode).toBe(429);
+    // claiming the exhausted prefix from elsewhere does not deny the real (other) peer prefix either
+    expect((await from(r.h, reverseUrl(31.52, 74.35), u.accessToken, '198.18.0.1', { 'x-forwarded-for': '100.70.0.150' })).statusCode).toBe(200);
+  });
+
+  it('privacy: limiter keys hold a keyed hash of the prefix — no address or prefix text in Valkey', async () => {
+    const redis = await valkey();
+    try {
+      const keys = await redis.keys(`${r.h.keyPrefix}*`);
+      const ipKeys = keys.filter((k) => k.includes(':ip:m:'));
+      expect(ipKeys.length).toBeGreaterThan(0);
+      for (const k of ipKeys) expect(k).toMatch(/:geo:(ac|pr|rv):ip:m:[0-9a-f]{64}$/);
+      expect(keys.join('\n')).not.toMatch(/203\.0\.113|198\.51\.100|198\.18\.|192\.0\.2|100\.64|100\.70|2001:|ip-prefix/);
+    } finally {
+      redis.disconnect();
+    }
+  });
+
+  it('TRUST_PROXY with a listed proxy: the client IP is the X-Forwarded-For hop Fastify derives — only from that proxy', async () => {
+    const t = await startGeoApi({ env: { TRUST_PROXY: '10.9.9.9', GEO_REVERSE_PER_MINUTE_IP_PREFIX: '2' } });
+    try {
+      const u = await signIn(t.h);
+      for (let i = 0; i < 2; i++) {
+        expect((await from(t.h, reverseUrl(31.51, 74.341), u.accessToken, '10.9.9.9', { 'x-forwarded-for': '203.0.113.9' })).statusCode).toBe(200);
+      }
+      expect((await from(t.h, reverseUrl(31.51, 74.341), u.accessToken, '10.9.9.9', { 'x-forwarded-for': '203.0.113.99' })).statusCode).toBe(429);
+      // a different client behind the same proxy is a different prefix
+      expect((await from(t.h, reverseUrl(31.51, 74.341), u.accessToken, '10.9.9.9', { 'x-forwarded-for': '198.51.100.9' })).statusCode).toBe(200);
+      // an untrusted peer sending a header is keyed by its own /24 (the claimed 198.51.100.9 has 1 of its 2 calls left)
+      for (const ip of ['192.0.2.77', '192.0.2.78']) {
+        expect((await from(t.h, reverseUrl(31.51, 74.341), u.accessToken, ip, { 'x-forwarded-for': '198.51.100.9' })).statusCode).toBe(200);
+      }
+      expect((await from(t.h, reverseUrl(31.51, 74.341), u.accessToken, '192.0.2.79', { 'x-forwarded-for': '198.51.100.9' })).statusCode).toBe(429);
+      expect((await from(t.h, reverseUrl(31.51, 74.341), u.accessToken, '10.9.9.9', { 'x-forwarded-for': '198.51.100.9' })).statusCode).toBe(200);
+    } finally {
+      await t.h.close();
+    }
+  }, 120_000);
+});
+
 describe('routing service for quotes (B03/E07)', () => {
   const origin = { lat: 31.5100217, lng: 74.3410391 };
   const destination = { lat: 31.5220123, lng: 74.4040456 };
@@ -450,7 +566,7 @@ describe('routing service for quotes (B03/E07)', () => {
 });
 
 describe('BUD-05: Valkey unavailable ⇒ geo fails closed', () => {
-  it('rate limiter / budget store down ⇒ 503 and zero provider calls; signal logged', async () => {
+  it('rate limiter (account + IP-prefix rules) / budget store down ⇒ 503 on every geo read and zero provider calls; signal logged', async () => {
     const logs = captureLogs();
     const log = createLogger({ service: 'api', env: 'test', level: 'info', destination: logs.stream });
     const dead = createRequestPathRedis('redis://127.0.0.1:1', 200);
@@ -466,30 +582,38 @@ describe('BUD-05: Valkey unavailable ⇒ geo fails closed', () => {
     const doubles = g.doubles;
     const bundle = assertGeoBundle(
       'none',
-      bindProviders('test', { placesAutocomplete: doubles.placesAutocomplete, reverseGeocoding: doubles.reverseGeocoding }),
+      bindProviders('test', { placesAutocomplete: doubles.placesAutocomplete, geocoding: doubles.geocoding, reverseGeocoding: doubles.reverseGeocoding }),
     );
+    const sealer = new PlaceRefSealer(new FieldCipher(ring), 900);
     const gateway = new GeoGateway({
       bundle,
-      ports: { placesAutocomplete: doubles.placesAutocomplete, geocoding: null, reverseGeocoding: doubles.reverseGeocoding },
+      ports: { placesAutocomplete: doubles.placesAutocomplete, geocoding: doubles.geocoding, reverseGeocoding: doubles.reverseGeocoding },
       seams: { switches: new TestSwitches(), serviceArea: new TestServiceArea() },
       redis: dead,
       limiter,
       cache: new GeoCache(dead, new KeyedHasher(ring), 'wv:dead:', log),
       caller: new GeoProviderCaller(budgets, new CircuitBreaker(), dead, 'wv:dead:', log),
-      sealer: new PlaceRefSealer(new FieldCipher(ring), 900),
+      sealer,
       reference: new GeoReference(g.h.owner),
       usage: new GeoUsageCounters(dead, 'wv:dead:'),
+      hasher: new KeyedHasher(ring),
       policy: config,
       log,
     });
-    const before = doubles.control.calls('AUTOCOMPLETE') + doubles.control.calls('REVERSE_GEOCODE');
+    const providerCalls = () => (['AUTOCOMPLETE', 'GEOCODE', 'PLACE_RESOLVE', 'REVERSE_GEOCODE'] as const).reduce((n, s) => n + doubles.control.calls(s), 0);
+    const before = providerCalls();
+    const requester = { accountId: randomUUID(), clientIp: '203.0.113.20' };
+    const placeRef = sealer.seal({ providerKey: 'geo-mock', sku: 'AUTOCOMPLETE', placeId: 'syn-lhr-001', accountId: requester.accountId, cityCode: 'LHR' });
+    const refusal = { code: 'WAYVRO_E_DEPENDENCY_UNAVAILABLE', details: { reasonCodes: ['GEO_PROVIDER_UNAVAILABLE'] } };
     try {
-      await expect(gateway.autocomplete(randomUUID(), { cityCode: 'LHR', q: 'liberty', locale: 'en', session: SESSION })).rejects.toMatchObject({
-        code: 'WAYVRO_E_DEPENDENCY_UNAVAILABLE',
-      });
-      const e = await gateway.reverse(randomUUID(), { cityCode: 'LHR', lat: 31.51, lng: 74.341, locale: 'en' }).catch((x: unknown) => x);
+      const query = { cityCode: 'LHR', q: 'liberty', locale: 'en' as const, session: SESSION };
+      await expect(gateway.autocomplete(requester, query)).rejects.toMatchObject(refusal);
+      await expect(gateway.autocomplete(requester, { ...query, mode: 'GEOCODE' })).rejects.toMatchObject(refusal);
+      await expect(gateway.resolvePlace(requester, placeRef, { session: SESSION, locale: 'en' })).rejects.toMatchObject(refusal);
+      const e = await gateway.reverse(requester, { cityCode: 'LHR', lat: 31.51, lng: 74.341, locale: 'en' }).catch((x: unknown) => x);
       expect(e).toBeInstanceOf(WayvroError);
-      expect(doubles.control.calls('AUTOCOMPLETE') + doubles.control.calls('REVERSE_GEOCODE')).toBe(before);
+      expect(e).toMatchObject(refusal);
+      expect(providerCalls()).toBe(before);
       expect(logs.text()).toContain('GEO_LIMITER_UNAVAILABLE');
     } finally {
       dead.disconnect();

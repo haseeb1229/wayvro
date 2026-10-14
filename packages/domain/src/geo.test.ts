@@ -6,6 +6,8 @@ import {
   POLYLINE_MAX_ENCODED_BYTES,
   decodePolyline,
   encodePolyline,
+  geodesicLowerBoundMeters,
+  greatCircleMeters,
   inPakistanEnvelope,
   roundCoordinate,
   simplifyPolyline,
@@ -63,6 +65,37 @@ describe('Coordinates', () => {
         expect(r.roundTo(d).equals(r)).toBe(true);
         expect(Math.abs(r.lat - c.lat)).toBeLessThanOrEqual(0.5 / 10 ** d + 1e-9);
         expect(Math.abs(r.lng - c.lng)).toBeLessThanOrEqual(0.5 / 10 ** d + 1e-9);
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+});
+
+describe('great-circle distance', () => {
+  // WGS84 reference geodesics (rounded DOWN): 31°N→32°N along 74°E ≈ 110.86 km; 74°E→75°E along 31.5°N ≈ 95.00 km
+  const MERIDIAN_DEGREE_M = 110_850;
+  const PARALLEL_DEGREE_M = 94_990;
+
+  it('matches the mean-radius sphere within 0.5 % of the WGS84 geodesic; the lower bound stays below it', () => {
+    const north = greatCircleMeters({ lat: 31, lng: 74 }, { lat: 32, lng: 74 });
+    expect(north).toBeCloseTo(111_195.08, 1);
+    expect(Math.abs(north - MERIDIAN_DEGREE_M) / MERIDIAN_DEGREE_M).toBeLessThan(0.005);
+    expect(geodesicLowerBoundMeters({ lat: 31, lng: 74 }, { lat: 32, lng: 74 })).toBeLessThan(MERIDIAN_DEGREE_M);
+    const east = greatCircleMeters({ lat: 31.5, lng: 74 }, { lat: 31.5, lng: 75 });
+    expect(Math.abs(east - PARALLEL_DEGREE_M) / PARALLEL_DEGREE_M).toBeLessThan(0.005);
+    expect(geodesicLowerBoundMeters({ lat: 31.5, lng: 74 }, { lat: 31.5, lng: 75 })).toBeLessThan(PARALLEL_DEGREE_M);
+    expect(greatCircleMeters({ lat: 31.52, lng: 74.35 }, { lat: 31.52, lng: 74.35 })).toBe(0);
+  });
+
+  it('is symmetric and non-negative; the lower bound is ≈ 0.56 % below the mean-radius value (property)', () => {
+    fc.assert(
+      fc.property(lahorePoint, lahorePoint, (a, b) => {
+        const d = greatCircleMeters(a, b);
+        const low = geodesicLowerBoundMeters(a, b);
+        expect(d).toBeGreaterThanOrEqual(0);
+        expect(Math.abs(d - greatCircleMeters(b, a))).toBeLessThan(1e-6);
+        expect(low).toBeLessThanOrEqual(d);
+        expect(Math.abs(low - d * (6_335_439 / 6_371_008.8))).toBeLessThan(1e-6);
       }),
       { numRuns: NUM_RUNS },
     );

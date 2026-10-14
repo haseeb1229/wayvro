@@ -11,8 +11,9 @@
  *
  * Fault injection is per SKU and per instance: timeout (waits for the caller's abort), 5xx, connect error, malformed
  * values, slow drip, quota (429-equivalent), partial results (route without a duration, fewer suggestions, reverse
- * without locality), empty results and an error whose message echoes the request (the gateway must never log or return
- * it). A fault may be limited to the next N calls. Calls and the inputs the "provider" received are recorded.
+ * without locality), empty results, an error whose message echoes the request (the gateway must never log or return
+ * it) and — for ROUTE only — a confident (HIGH) route whose distance is `ratio` × the great-circle distance (route
+ * sanity checks, T3-06: < 1 is physically impossible, > 3 is an outlier). A fault may be limited to the next N calls. Calls and the inputs the "provider" received are recorded.
  */
 import {
   GeoProviderError,
@@ -73,7 +74,18 @@ export const SYNTHETIC_GAZETTEER: readonly SyntheticPlace[] = [
 ];
 
 export type GeoFaultMode =
-  'NONE' | 'TIMEOUT' | 'UPSTREAM_5XX' | 'CONNECT_ERROR' | 'MALFORMED' | 'SLOW_DRIP' | 'QUOTA' | 'PARTIAL' | 'EMPTY' | 'ECHO_QUERY' | 'REJECTED_INPUT';
+  | 'NONE'
+  | 'TIMEOUT'
+  | 'UPSTREAM_5XX'
+  | 'CONNECT_ERROR'
+  | 'MALFORMED'
+  | 'SLOW_DRIP'
+  | 'QUOTA'
+  | 'PARTIAL'
+  | 'EMPTY'
+  | 'ECHO_QUERY'
+  | 'REJECTED_INPUT'
+  | 'ROUTE_RATIO';
 
 export interface GeoFault {
   readonly mode: GeoFaultMode;
@@ -82,6 +94,8 @@ export interface GeoFault {
   /** SLOW_DRIP: total time before the body completes (default 10 s). QUOTA: provider-advised retry seconds. */
   readonly delayMs?: number;
   readonly retryAfterSeconds?: number;
+  /** ROUTE_RATIO: route distance ÷ great-circle distance of the received points (default 1.3, the synthetic detour). */
+  readonly ratio?: number;
 }
 
 export interface GeoTestDoubleOptions {
@@ -308,6 +322,10 @@ class RoutingDouble implements RoutingAdapter, MockBrand {
     if (fault.mode === 'MALFORMED') return { ...r, distanceM: -r.distanceM, geometry: [{ lat: 10, lng: 10 }] };
     // a route without a duration: the gateway must refuse it, never invent an ETA (FG-06)
     if (fault.mode === 'PARTIAL') return { ...r, durationS: Number.NaN };
+    if (fault.mode === 'ROUTE_RATIO') {
+      const distanceM = Math.max(1, Math.round(haversineMeters(input.origin, input.destination) * (fault.ratio ?? DETOUR_FACTOR)));
+      return { ...r, distanceM, durationS: Math.round(distanceM / SYNTHETIC_SPEED_MPS), confidence: 'HIGH' };
+    }
     return r;
   }
 }

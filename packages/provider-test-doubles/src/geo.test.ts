@@ -74,6 +74,15 @@ describe('synthetic geo doubles (local/test only)', () => {
     expect((await d.routing.route(routeInput, live())).distanceM).toBeLessThan(0);
     d.control.setFault('ROUTE', { mode: 'EMPTY' });
     await expect(d.routing.route(routeInput, live())).rejects.toBeInstanceOf(GeoProviderError);
+    d.control.clearFaults();
+    const straight = await d.routing.route(routeInput, live());
+    d.control.setFault('ROUTE', { mode: 'ROUTE_RATIO', ratio: 3.5 });
+    const outlier = await d.routing.route(routeInput, live());
+    expect(outlier.confidence).toBe('HIGH');
+    expect(Math.abs(outlier.distanceM - (straight.distanceM / 1.3) * 3.5)).toBeLessThan(5);
+    expect(outlier.durationS).toBe(Math.round(outlier.distanceM / (25_000 / 3600)));
+    d.control.setFault('ROUTE', { mode: 'ROUTE_RATIO', ratio: 0.9 });
+    expect((await d.routing.route(routeInput, live())).distanceM).toBeLessThan(straight.distanceM / 1.3);
 
     d.control.setFault('ALL', { mode: 'CONNECT_ERROR' });
     await expect(d.placesAutocomplete.suggest(input('liberty'), live())).rejects.toMatchObject({ kind: 'CONNECT' });

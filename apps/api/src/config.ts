@@ -114,6 +114,25 @@ const geoPolicySchema = z.object({
   GEO_AUTOCOMPLETE_PER_MINUTE_ACCOUNT: int(60, 1, 10_000),
   GEO_RESOLVE_PER_MINUTE_ACCOUNT: int(30, 1, 10_000),
   GEO_REVERSE_PER_MINUTE_ACCOUNT: int(30, 1, 10_000),
+  /**
+   * Per-IP-prefix ceilings (IPv4 /24, IPv6 /56 via `ipPrefix`; keyed-hash keys; the client IP is the one Fastify
+   * derives under TRUST_PROXY). A backstop against account farms on one network, NOT the primary control (the
+   * per-account limits are): carrier-grade NAT puts many unrelated riders behind one prefix, so each ceiling is 10× the
+   * endpoint's per-account limit. Per trip a rider makes ~5–15 debounced autocomplete calls and ~2–5 resolve/reverse
+   * calls against one quote, so 600/300/300 per minute matches the quotes ceiling (60/min/prefix) for the same assumed
+   * number of concurrent riders per prefix. PROPOSED values: tune from load tests and the GEO_RATE_LIMITED
+   * rule=IP_PREFIX signal before launch.
+   */
+  GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX: int(600, 1, 100_000),
+  GEO_RESOLVE_PER_MINUTE_IP_PREFIX: int(300, 1, 100_000),
+  GEO_REVERSE_PER_MINUTE_IP_PREFIX: int(300, 1, 100_000),
+  /**
+   * Route sanity (T3-06): a provider route longer than this multiple of the great-circle distance between the routed
+   * points is still priced from the provider distance but reported with confidence LOW and the reason
+   * ROUTE_RATIO_OUTLIER. Bounded 1.5–10: urban detour factors are typically 1.2–1.6, so lower values would flag normal
+   * trips. A route SHORTER than the great-circle distance is physically impossible and always refused (not configurable).
+   */
+  ROUTE_RATIO_OUTLIER_MAX: z.coerce.number().min(1.5).max(10).default(3),
   GEO_LOCAL_DAILY_CALLS_PER_SKU: int(5000, 1, 1_000_000),
   /** Namespace of geo cache, budget-signal, quota-cooldown, breaker-hint and usage keys in Valkey (`wv:geo:` by default). */
   GEO_KEY_PREFIX: z

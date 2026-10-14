@@ -12,7 +12,10 @@
  *      policy per product; staging/production refuse synthetic or placeholder configuration (503 + signal
  *      QUOTE_SYNTHETIC_CONFIG_REFUSED); nothing priceable ⇒ 422 SERVICE_AREA (an error OUTCOME, replayed for the key)
  *  10  ONE routing call (single attempt inside QUOTE_DEADLINE_MS, never retried); failure ⇒ THROW 503
- *      ROUTING_UNAVAILABLE: nothing recorded or persisted, the same key may retry; no estimate is ever invented
+ *      ROUTING_UNAVAILABLE: nothing recorded or persisted, the same key may retry; no estimate is ever invented. The
+ *      routing service's sanity check (T3-06) refuses a route shorter than the straight line the same way and marks an
+ *      outlier ratio (confidence LOW + `route.confidenceReasons: ["ROUTE_RATIO_OUTLIER"]`, priced from the provider
+ *      distance)
  *  11–12 ROUTE_TOO_LONG per card; the pure engine `pe-v1` per product
  *  13  advisory lock per account, older PRICED unexpired groups → SUPERSEDED, route snapshot (polyline only when the
  *      vendor terms permit storing it), quotes + components (deferred Σ check in the database), 201
@@ -399,6 +402,7 @@ export class QuoteService {
         durationS: route.durationS,
         polyline: lite ? null : polyline,
         confidence: route.confidence,
+        ...(route.confidenceReasons.length > 0 ? { confidenceReasons: [...route.confidenceReasons] } : {}),
         source: {
           providerKey: route.source.providerKey,
           fetchedAt: route.source.fetchedAt.toISOString(),

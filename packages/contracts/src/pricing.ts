@@ -126,6 +126,17 @@ export const QuoteGroupSchema = z
       /** Encoded, simplified polyline (≤ 2 KB); null when omitted (`detail=lite`) or not storable under provider terms. */
       polyline: z.string().max(2048).nullable(),
       confidence: GeoConfidenceSchema,
+      /**
+       * Why the server lowered the provider's confidence, as extensible codes (clients must tolerate unknown ones);
+       * known: `ROUTE_RATIO_OUTLIER` (route > the configured multiple of the great-circle distance; the price still uses
+       * the provider distance). Present on the create response (and its idempotent replays) only when non-empty; not
+       * persisted in Phase 3, so a restore (`GET /v1/quotes/{id}`) reports the stored confidence without reasons.
+       */
+      confidenceReasons: z
+        .array(z.string().regex(/^[A-Z][A-Z0-9_]{1,40}$/))
+        .min(1)
+        .max(8)
+        .optional(),
       source: z.object({
         providerKey: ProviderKeySchema,
         fetchedAt: IsoDateTime,

@@ -7,6 +7,8 @@
  *    coarser points the geo gateway uses for cache keys and provider requests (4 decimals ≈ 11 m, 2 decimals ≈ 1.1 km).
  *  - `inPakistanEnvelope`: the coarse national bounding box (lat 23.5–37.2, lng 60.8–77.9) — a plausibility gate, not a
  *    border; service areas are decided by the catalog's zone sets.
+ *  - `greatCircleMeters` / `geodesicLowerBoundMeters`: haversine distances (mean-radius estimate; strict lower bound of
+ *    the WGS84 geodesic) for plausibility checks of provider routes — never a substitute for a provider distance.
  *  - polyline codec: the widely documented "encoded polyline" format at precision 5, implemented in-house (no
  *    dependency). The decoder is bounded (maximum input length, value width and point count) and every malformed input
  *    raises a typed `GeoError`; it never loops on hostile input. `simplifyPolyline` keeps the first and last point and
@@ -93,6 +95,40 @@ export class Coordinates implements LatLngLike {
   toJSON(): { lat: number; lng: number } {
     return { lat: this.lat, lng: this.lng };
   }
+}
+
+// ── great-circle distance (haversine) ──────────────────────────────────────────────────────────────────────────────
+
+/** Mean Earth radius (IUGG R1), metres. */
+const EARTH_MEAN_RADIUS_M = 6_371_008.8;
+/**
+ * Smallest radius of curvature of the WGS84 ellipsoid (meridional, at the equator: a(1 − e²) ≈ 6,335,439.3 m), rounded
+ * down. Both principal radii of curvature (M and N) are ≥ this value everywhere, so the length of any path on the
+ * ellipsoid is ≥ the length of the same path on a sphere of this radius — the spherical distance is a strict lower
+ * bound of the true geodesic distance.
+ */
+const WGS84_MIN_RADIUS_OF_CURVATURE_M = 6_335_439;
+
+function haversineMeters(a: LatLngLike, b: LatLngLike, radiusM: number): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * radiusM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** Great-circle distance in metres on the mean-radius sphere (±0.5 % of the WGS84 geodesic). */
+export function greatCircleMeters(a: LatLngLike, b: LatLngLike): number {
+  return haversineMeters(a, b, EARTH_MEAN_RADIUS_M);
+}
+
+/**
+ * A distance in metres that never exceeds the WGS84 geodesic distance between `a` and `b` (haversine on the sphere of
+ * the smallest ellipsoidal radius of curvature, ≈ 0.56 % below the mean-radius value). Used where overstating the
+ * straight-line distance would wrongly reject a correct measurement (e.g. the route sanity check, T3-06).
+ */
+export function geodesicLowerBoundMeters(a: LatLngLike, b: LatLngLike): number {
+  return haversineMeters(a, b, WGS84_MIN_RADIUS_OF_CURVATURE_M);
 }
 
 // ── encoded polyline (precision 5) ─────────────────────────────────────────────────────────────────────────────────

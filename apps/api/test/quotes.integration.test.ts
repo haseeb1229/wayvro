@@ -6,6 +6,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { QuoteGroupSchema, type QuoteGroup } from '@wayvro/contracts';
+import { Coordinates, greatCircleMeters } from '@wayvro/domain';
 import { createLogger } from '@wayvro/observability';
 import { RateLimiter, awaitRedisReady, createRequestPathRedis } from '@wayvro/server-runtime';
 import { captureLogs } from '@wayvro/test-support';
@@ -481,6 +482,78 @@ describe('routing outage (FAULT-GEO through the quote path; E07/T3-13): refused,
       await u.h.close();
     }
   }, 120_000);
+});
+
+describe('route sanity (T3-06) with the synthetic routing double', () => {
+  /** A fresh ~2.9 km pair in the synthetic service area (clear of the restricted/airport/exclusion zones). */
+  let n = 0;
+  function short(): { pickup: { lat: number; lng: number }; dropoff: { lat: number; lng: number } } {
+    n++;
+    return { pickup: { lat: 31.42 + n * 0.003, lng: 74.22 }, dropoff: { lat: 31.44 + n * 0.003, lng: 74.24 } };
+  }
+  const straightLine = (p: { pickup: { lat: number; lng: number }; dropoff: { lat: number; lng: number } }) =>
+    greatCircleMeters(Coordinates.from(p.pickup).roundTo(4), Coordinates.from(p.dropoff).roundTo(4));
+
+  it('a route SHORTER than the great-circle distance is a malformed answer: 503 ROUTING_UNAVAILABLE, nothing persisted or cached', async () => {
+    const before = await quoteRows(g.h);
+    const pair = short();
+    const body = quoteBody(pair.pickup, pair.dropoff);
+    const k = key();
+    g.doubles.control.setFault('ROUTE', { mode: 'ROUTE_RATIO', ratio: 0.9, times: 1 });
+    const calls = routeCalls();
+    const refused = await postQuote(g.h, rider.accessToken, body, { key: k });
+    expect(refused.statusCode, refused.body).toBe(503);
+    expect(errorOf(refused)).toMatchObject({ code: 'WAYVRO_E_DEPENDENCY_UNAVAILABLE', details: { reasonCodes: ['ROUTING_UNAVAILABLE'] } });
+    expect(refused.body).not.toMatch(/distanceM|durationS|"minor"/);
+    expect(await quoteRows(g.h)).toEqual(before);
+    // counted exactly like FG-03 (a provider schema failure), plus its own signal
+    expect(g.h.logs.text()).toContain('ROUTE_SHORTER_THAN_GREAT_CIRCLE');
+    expect(g.h.logs.text()).toContain('GEO_PROVIDER_SCHEMA_FAIL');
+    g.doubles.control.clearFaults();
+    // the refused route was never cached: the same key calls the provider again and prices the sane route
+    const retried = await postQuote(g.h, rider.accessToken, body, { key: k });
+    expect(retried.statusCode, retried.body).toBe(201);
+    expect(routeCalls() - calls).toBe(2);
+    expect(group(retried).route.confidenceReasons).toBeUndefined();
+  });
+
+  it('ratio 3.5 ⇒ priced from the provider distance, confidence LOW + ROUTE_RATIO_OUTLIER; the snapshot stores LOW', async () => {
+    const pair = short();
+    g.doubles.control.setFault('ROUTE', { mode: 'ROUTE_RATIO', ratio: 3.5, times: 1 });
+    const res = await postQuote(g.h, rider.accessToken, quoteBody(pair.pickup, pair.dropoff));
+    g.doubles.control.clearFaults();
+    expect(res.statusCode, res.body).toBe(201);
+    const q = group(res);
+    expect(q.route.confidence).toBe('LOW');
+    expect(q.route.confidenceReasons).toEqual(['ROUTE_RATIO_OUTLIER']);
+    // the provider's distance is what is priced and stored — never replaced by an estimate
+    expect(Math.abs(q.route.distanceM - straightLine(pair) * 3.5)).toBeLessThanOrEqual(1);
+    const distance = q.options[0]?.components.find((c) => c.kind === 'DISTANCE');
+    expect(distance?.basis?.['distanceM']).toBe(q.route.distanceM);
+    const stored = await g.h.owner.query<{ confidence: string; distance_m: number }>(
+      `select s.confidence, s.distance_m from pricing.route_snapshots s join pricing.quotes q on q.route_snapshot_id = s.id where q.quote_group_id = $1 limit 1`,
+      [q.quoteGroupId],
+    );
+    expect(stored.rows[0]).toEqual({ confidence: 'LOW', distance_m: q.route.distanceM });
+    expect(g.h.logs.text()).toContain('ROUTE_RATIO_OUTLIER');
+    // restore reports the persisted confidence; the reasons are not persisted in Phase 3
+    const restored = QuoteGroupSchema.parse((await getQuote(g.h, rider.accessToken, q.quoteGroupId)).json());
+    expect(restored.route.confidence).toBe('LOW');
+    expect(restored.route.confidenceReasons).toBeUndefined();
+  });
+
+  it('ratio 1.4 ⇒ the provider confidence (HIGH) is kept and no reason is added', async () => {
+    const pair = short();
+    g.doubles.control.setFault('ROUTE', { mode: 'ROUTE_RATIO', ratio: 1.4, times: 1 });
+    const res = await postQuote(g.h, rider.accessToken, quoteBody(pair.pickup, pair.dropoff));
+    g.doubles.control.clearFaults();
+    expect(res.statusCode, res.body).toBe(201);
+    const q = group(res);
+    expect(q.route.confidence).toBe('HIGH');
+    expect(q.route.confidenceReasons).toBeUndefined();
+    expect(res.body).not.toContain('confidenceReasons');
+    expect(Math.abs(q.route.distanceM - straightLine(pair) * 1.4)).toBeLessThanOrEqual(1);
+  });
 });
 
 describe('service-level fail-closed rules (T3-31; limiter down)', () => {

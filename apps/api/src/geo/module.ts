@@ -96,6 +96,7 @@ export function composeGeo(deps: GeoModuleDeps): GeoModule {
     sealer: new PlaceRefSealer(deps.cipher, config.GEO_PLACE_REF_TTL_SECONDS),
     reference,
     usage,
+    hasher: deps.hasher,
     policy: config,
     log,
   });

@@ -23,6 +23,12 @@ import {
   ReadinessSchema,
   RequestIdSchema,
   SessionHelloSchema,
+  AutocompleteQuerySchema,
+  AutocompleteResultSchema,
+  PlaceQuerySchema,
+  QuoteGroupSchema,
+  ReverseGeocodeQuerySchema,
+  ReverseGeocodeResultSchema,
   buildOpenApiDocument,
 } from './index.js';
 
@@ -263,5 +269,69 @@ describe('Phase-2 closure request schemas', () => {
     expect(AppealCreateRequestSchema.safeParse({ restrictionId: id, statement }).success).toBe(true);
     expect(AppealCreateRequestSchema.safeParse({ reviewDecisionId: id, restrictionId: id, statement }).success).toBe(false);
     expect(AppealCreateRequestSchema.safeParse({ statement }).success).toBe(false);
+  });
+});
+
+describe('T3-09 geo result caps and surface (CON-GEO)', () => {
+  const placeRef = `pr1.${'A'.repeat(60)}`;
+  const source = {
+    providerKey: 'geo-mock',
+    fetchedAt: '2026-10-14T10:00:00.000Z',
+    cacheStatus: 'MISS',
+    confidence: 'UNKNOWN',
+    attributionCode: null,
+    coverageNote: null,
+  };
+
+  it('consumer geo is exactly three GET reads: no paging, batch, bulk or export route or parameter', () => {
+    const geo = API_ROUTES.filter((r) => r.path.startsWith('/v1/geo/')).map((r) => `${r.method} ${r.path}`);
+    expect(geo.sort()).toEqual(['GET /v1/geo/autocomplete', 'GET /v1/geo/places/{placeRef}', 'GET /v1/geo/reverse']);
+    expect(API_ROUTES.filter((r) => r.path.includes('/geo') && /batch|bulk|export|page|cursor/i.test(r.path))).toEqual([]);
+    for (const shape of [AutocompleteQuerySchema.shape, PlaceQuerySchema.shape, ReverseGeocodeQuerySchema.shape]) {
+      for (const k of ['page', 'pageSize', 'limit', 'offset', 'cursor', 'count']) expect(Object.keys(shape)).not.toContain(k);
+    }
+  });
+
+  it('autocomplete answers at most 5 suggestions; the query is 3..80 characters after trimming', () => {
+    const suggestion = { placeRef, primaryText: 'Liberty Market', secondaryText: null, kind: 'LANDMARK' };
+    expect(AutocompleteResultSchema.safeParse({ suggestions: Array(5).fill(suggestion), source }).success).toBe(true);
+    expect(AutocompleteResultSchema.safeParse({ suggestions: Array(6).fill(suggestion), source }).success).toBe(false);
+    const query = (q: string) => AutocompleteQuerySchema.safeParse({ cityCode: 'LHR', q, locale: 'en', session: '0192f3a0-0000-7000-8000-00000000a001' });
+    expect(query('lib').success).toBe(true);
+    expect(query('l'.repeat(80)).success).toBe(true);
+    for (const q of ['', '    ', 'li', 'l'.repeat(81)]) expect(query(q).success, JSON.stringify(q)).toBe(false);
+  });
+
+  it('reverse geocoding answers one address object (or null), never a list', () => {
+    const address = { primaryText: 'Liberty Market', secondaryText: null, landmarkText: null };
+    expect(ReverseGeocodeResultSchema.safeParse({ address, inServiceArea: true, source }).success).toBe(true);
+    expect(ReverseGeocodeResultSchema.safeParse({ address: null, inServiceArea: false, source }).success).toBe(true);
+    expect(ReverseGeocodeResultSchema.safeParse({ address: [address, address], inServiceArea: true, source }).success).toBe(false);
+  });
+});
+
+describe('quote route confidence reasons (T3-06, additive)', () => {
+  const group = (extra: Record<string, unknown>) => ({
+    quoteGroupId: '0192f3c4-0000-7000-8000-00000000000a',
+    createdAt: '2026-10-14T10:00:00.000Z',
+    pickup: { snappedTo: null },
+    route: {
+      distanceM: 9000,
+      durationS: 1300,
+      polyline: null,
+      confidence: 'LOW',
+      source: { providerKey: 'geo-mock', fetchedAt: '2026-10-14T10:00:00.000Z', cacheStatus: 'MISS', attributionCode: null },
+      ...extra,
+    },
+    options: [],
+    unavailable: [],
+  });
+
+  it('is optional, non-empty when present and an extensible code list (unknown future codes are tolerated)', () => {
+    expect(QuoteGroupSchema.safeParse(group({})).success).toBe(true);
+    expect(QuoteGroupSchema.safeParse(group({ confidenceReasons: ['ROUTE_RATIO_OUTLIER'] })).success).toBe(true);
+    expect(QuoteGroupSchema.safeParse(group({ confidenceReasons: ['SOME_FUTURE_REASON'] })).success).toBe(true);
+    expect(QuoteGroupSchema.safeParse(group({ confidenceReasons: [] })).success).toBe(false);
+    expect(QuoteGroupSchema.safeParse(group({ confidenceReasons: ['route ratio'] })).success).toBe(false);
   });
 });

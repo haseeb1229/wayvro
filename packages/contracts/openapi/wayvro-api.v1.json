@@ -107892,6 +107892,15 @@
                                 "UNKNOWN"
                               ]
                             },
+                            "confidenceReasons": {
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[A-Z][A-Z0-9_]{1,40}$"
+                              }
+                            },
                             "source": {
                               "type": "object",
                               "properties": {
@@ -109384,6 +109393,15 @@
                                 "LOW",
                                 "UNKNOWN"
                               ]
+                            },
+                            "confidenceReasons": {
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[A-Z][A-Z0-9_]{1,40}$"
+                              }
                             },
                             "source": {
                               "type": "object",

@@ -40,7 +40,7 @@ import { ConsumerSession, StaffSession, principalOf, staffOf, type Authenticated
 import { idempotencyKey, parse, render } from '../http/respond.js';
 import { GEO_ADMIN_SERVICE, GEO_GATEWAY } from '../tokens.js';
 import type { GeoAdminService } from './geo-admin.service.js';
-import type { GeoGateway } from './gateway.js';
+import type { GeoGateway, GeoRequester } from './gateway.js';
 
 type Reply = FastifyReply;
 
@@ -51,6 +51,11 @@ function idOf(params: unknown): string {
   return p.data.id;
 }
 
+/** The session's account and `req.ip` — Fastify's TRUST_PROXY-aware client address (never a raw header). */
+function requesterOf(req: AuthenticatedRequest): GeoRequester {
+  return { accountId: principalOf(req).accountId, clientIp: req.ip };
+}
+
 @Controller()
 export class GeoController {
   constructor(@Inject(GEO_GATEWAY) private readonly gateway: GeoGateway) {}
@@ -58,7 +63,7 @@ export class GeoController {
   @Get('/v1/geo/autocomplete')
   @ConsumerSession()
   async autocomplete(@Query() query: unknown, @Req() req: AuthenticatedRequest): Promise<AutocompleteResult> {
-    return AutocompleteResultSchema.parse(await this.gateway.autocomplete(principalOf(req).accountId, parse(AutocompleteQuerySchema, query)));
+    return AutocompleteResultSchema.parse(await this.gateway.autocomplete(requesterOf(req), parse(AutocompleteQuerySchema, query)));
   }
 
   @Get('/v1/geo/places/:placeRef')
@@ -66,13 +71,13 @@ export class GeoController {
   async resolve(@Param() params: unknown, @Query() query: unknown, @Req() req: AuthenticatedRequest): Promise<ResolvedPlace> {
     const p = PlaceRefParamSchema.safeParse(params);
     if (!p.success) throw new WayvroError('WAYVRO_E_VALIDATION', { details: { reasonCodes: ['PLACE_REF_INVALID'] } });
-    return ResolvedPlaceSchema.parse(await this.gateway.resolvePlace(principalOf(req).accountId, p.data.placeRef, parse(PlaceQuerySchema, query)));
+    return ResolvedPlaceSchema.parse(await this.gateway.resolvePlace(requesterOf(req), p.data.placeRef, parse(PlaceQuerySchema, query)));
   }
 
   @Get('/v1/geo/reverse')
   @ConsumerSession()
   async reverse(@Query() query: unknown, @Req() req: AuthenticatedRequest): Promise<ReverseGeocodeResult> {
-    return ReverseGeocodeResultSchema.parse(await this.gateway.reverse(principalOf(req).accountId, parse(ReverseGeocodeQuerySchema, query)));
+    return ReverseGeocodeResultSchema.parse(await this.gateway.reverse(requesterOf(req), parse(ReverseGeocodeQuerySchema, query)));
   }
 }
 

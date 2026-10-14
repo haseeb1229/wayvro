@@ -8,9 +8,14 @@
  *  - ONE provider attempt, timeout = min(GEO_ROUTE_TIMEOUT_MS, time left before the caller's deadline), no retry;
  *  - unbound port, runtime switch in the safe state, missing wiring, limiter/budget/breaker refusal, timeout or an
  *    invalid answer (e.g. a route without a duration) ⇒ `RoutingUnavailableError` — never an estimated distance or ETA;
- *  - geometry is simplified to ≤ 2,048 encoded bytes; `geometryStorable` repeats the adapter's terms declaration.
+ *  - geometry is simplified to ≤ 2,048 encoded bytes; `geometryStorable` repeats the adapter's terms declaration;
+ *  - route sanity (T3-06), against the great-circle distance of the rounded points the provider received: a distance
+ *    SHORTER than the straight line (strict lower bound of the WGS84 geodesic, 1 m tolerance for integer metres) is
+ *    physically impossible ⇒ a MALFORMED answer (counted as a provider failure, never cached, never served from
+ *    cache); longer than ROUTE_RATIO_OUTLIER_MAX × the great-circle distance ⇒ kept as the provider measured it, but
+ *    confidence LOW + reason ROUTE_RATIO_OUTLIER (signal ROUTE_RATIO_OUTLIER) — no distance or ETA is ever replaced.
  */
-import { simplifyPolyline, Coordinates, GeoError } from '@wayvro/domain';
+import { simplifyPolyline, Coordinates, GeoError, geodesicLowerBoundMeters, greatCircleMeters } from '@wayvro/domain';
 import type { RuntimeSwitchReader } from '@wayvro/config';
 import { recordGeoSpan, type Logger } from '@wayvro/observability';
 import type { GeoBundle, GeoConfidence, GeoPoint, RoutingPort, RoutingProfile } from '@wayvro/provider-interfaces';
@@ -37,12 +42,17 @@ export interface RouteRequest {
   readonly departAt: Date;
 }
 
+/** Why the server lowered the provider's route confidence (codes; the client shows the confidence level). */
+type RouteConfidenceReason = 'ROUTE_RATIO_OUTLIER';
+
 export interface RouteOutcome {
   readonly distanceM: number;
   readonly durationS: number;
   /** Simplified (≤ 2,048 encoded bytes), first and last point kept. */
   readonly geometry: readonly GeoPoint[];
   readonly confidence: GeoConfidence;
+  /** Empty unless the server lowered the confidence. */
+  readonly confidenceReasons: readonly RouteConfidenceReason[];
   readonly source: {
     readonly providerKey: string;
     readonly fetchedAt: Date;
@@ -54,7 +64,15 @@ export interface RouteOutcome {
 }
 
 const BUCKET_MS = 15 * 60_000;
+/** Tolerance of the "shorter than the straight line" check: providers report whole metres. */
+const SHORTER_TOLERANCE_M = 1;
 const CachedRoute = z.object({ route: RouteResultOutSchema });
+type ValidRoute = z.infer<typeof RouteResultOutSchema>;
+
+/** False when the route is shorter than any path between its end points can be (T3-06). */
+function physicallyPossible(route: ValidRoute, origin: GeoPoint, destination: GeoPoint): boolean {
+  return route.distanceM + SHORTER_TOLERANCE_M >= geodesicLowerBoundMeters(origin, destination);
+}
 
 export interface GeoRoutingDeps {
   readonly bundle: GeoBundle;
@@ -108,20 +126,27 @@ export class GeoRouting {
         t: departAt.getTime(),
       });
       const hit = await this.deps.cache.read(key, CachedRoute, ttl, this.now(), meta);
-      // never stale for a new quote: only an entry inside its TTL is used
-      if (hit?.state === 'FRESH') {
+      // never stale for a new quote: only an entry inside its TTL (and sane, should it predate the check) is used
+      if (hit?.state === 'FRESH' && physicallyPossible(hit.value.route, origin, destination)) {
         meter.cacheHits++;
         cacheStatus = 'HIT';
-        return this.result(hit.value.route, licence, hit.fetchedAt, 'HIT');
+        return this.result(hit.value.route, origin, destination, licence, hit.fetchedAt, 'HIT');
       }
       const { value, fetchedAt } = await this.deps.caller.call(
         { licence, deadline, timeoutMs: this.deps.policy.GEO_ROUTE_TIMEOUT_MS, retries: 0, meter },
         async (signal) => ({ route: await port.route({ origin, destination, profile: request.profile, departAt }, signal) }),
-        (raw) => validOrNull(CachedRoute, raw),
+        (raw) => {
+          const valid = validOrNull(CachedRoute, raw);
+          if (valid && !physicallyPossible(valid.route, origin, destination)) {
+            this.deps.log.warn({ signal: 'ROUTE_SHORTER_THAN_GREAT_CIRCLE', ...meta }, 'provider route shorter than the straight line; refused');
+            return null;
+          }
+          return valid;
+        },
       );
       cacheStatus = 'MISS';
       await this.deps.cache.write(key, value, fetchedAt, ttl, meta);
-      return this.result(value.route, licence, fetchedAt, 'MISS');
+      return this.result(value.route, origin, destination, licence, fetchedAt, 'MISS');
     } catch (e) {
       if (e instanceof ProviderRefused) {
         outcome = e.reason;
@@ -158,16 +183,21 @@ export class GeoRouting {
   }
 
   private result(
-    route: z.infer<typeof RouteResultOutSchema>,
+    route: ValidRoute,
+    origin: GeoPoint,
+    destination: GeoPoint,
     licence: { providerKey: string; attributionCode: string | null; geometryStorable: boolean },
     fetchedAt: Date,
     cacheStatus: 'HIT' | 'MISS',
   ): RouteOutcome {
+    const outlier = route.distanceM > this.deps.policy.ROUTE_RATIO_OUTLIER_MAX * greatCircleMeters(origin, destination);
+    if (outlier) this.deps.log.warn({ signal: 'ROUTE_RATIO_OUTLIER', providerKey: licence.providerKey, sku: 'ROUTE', cacheStatus }, 'route ratio outlier');
     return {
       distanceM: route.distanceM,
       durationS: route.durationS,
       geometry: route.geometry.length >= 2 ? simplifyPolyline(route.geometry) : route.geometry,
-      confidence: route.confidence,
+      confidence: outlier ? 'LOW' : route.confidence,
+      confidenceReasons: outlier ? ['ROUTE_RATIO_OUTLIER'] : [],
       source: { providerKey: licence.providerKey, fetchedAt, cacheStatus, attributionCode: licence.attributionCode },
       geometryStorable: licence.geometryStorable,
     };

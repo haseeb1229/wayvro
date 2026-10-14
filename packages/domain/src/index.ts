@@ -9,6 +9,8 @@ export {
   POLYLINE_MAX_INPUT_POINTS,
   decodePolyline,
   encodePolyline,
+  geodesicLowerBoundMeters,
+  greatCircleMeters,
   inPakistanEnvelope,
   roundCoordinate,
   simplifyPolyline,
