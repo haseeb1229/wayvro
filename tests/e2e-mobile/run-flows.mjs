@@ -16,7 +16,8 @@
  * The runner exits 1 on any FAIL / BLOCKED / FLAKY INV-07 result or when the Maestro phase exceeds its budget.
  * Waits are Maestro's element waits; the runner itself never sleeps to "settle" the UI.
  *
- * Evidence: <out>/summary.json + summary.md (per-flow status, attempts, seconds), Maestro JUnit per invocation,
+ * Evidence: <out>/summary.json + summary.md (per-flow status, attempts, seconds; summary.json also carries the host
+ * epoch-ms `timestamps` of the APK install and the flow phase, read by net-inventory.mjs), Maestro JUnit per invocation,
  * screenshots (takeScreenshot + Maestro step captures) under <out>/<flow>/, a screen recording of the retry of every
  * failed flow (video for failed flows only), logcat of the app-relevant tags. EMULATOR evidence only — never device
  * evidence (CLAUDE.md §8).
@@ -86,10 +87,14 @@ const adb = (list) => {
 
 // ── device preparation ──────────────────────────────────────────────────────────────────────────────────────────
 for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) adb(['shell', 'settings', 'put', 'global', k, '0']);
+// Host epoch-ms phase boundaries for tests/e2e-mobile/net-inventory.mjs (its baseline ends when the install starts).
+const timestamps = { installStartedAt: null, installFinishedAt: null, flowsStartedAt: null, flowsEndedAt: null };
 if (args.apk) {
+  timestamps.installStartedAt = Date.now();
   adbRaw(['-s', device, 'uninstall', APP_ID]);
   // Plain install (no -g): runtime permissions stay at the OS default (never pre-granted).
   adb(['install', args.apk]);
+  timestamps.installFinishedAt = Date.now();
 }
 
 // ── hooks and checks (server state through the seed connection; device state through adb) ────────────────────────
@@ -285,6 +290,7 @@ async function attempt(flow, dir) {
 const quarantine = JSON.parse(readFileSync(join(FLOW_DIR, 'quarantine.json'), 'utf8')).entries;
 const selected = FLOWS.filter((f) => f.tiers.includes(tier) && (only === null || only.has(f.id)));
 const started = Date.now();
+timestamps.flowsStartedAt = started;
 const rows = [];
 adbRaw(['-s', device, 'logcat', '-c']);
 for (const flow of selected) {
@@ -323,7 +329,8 @@ for (const flow of selected) {
   row.seconds = Math.round((Date.now() - t0) / 1000);
   say(`${flow.id}: ${row.status} in ${String(row.seconds)} s${row.problems ? ` — ${row.problems.join('; ')}` : ''}`);
 }
-const maestroSeconds = Math.round((Date.now() - started) / 1000);
+timestamps.flowsEndedAt = Date.now();
+const maestroSeconds = Math.round((timestamps.flowsEndedAt - started) / 1000);
 writeFileSync(
   join(out, 'logcat.txt'),
   adbRaw(['-s', device, 'logcat', '-d', '-v', 'time', '-s', 'ReactNativeJS:V', 'ActivityTaskManager:I', 'AndroidRuntime:E']).stdout ?? '',
@@ -341,10 +348,12 @@ const summary = {
   device,
   apiLevel,
   apk: args.apk ?? '(pre-installed)',
+  apiPort: stack.apiPort,
   pricing: stack.pricing,
   maestroPhaseSeconds: maestroSeconds,
   budgetSeconds,
   overBudget,
+  timestamps,
   counts,
   result: failing.length || overBudget ? 'FAIL' : 'PASS',
   flows: rows,

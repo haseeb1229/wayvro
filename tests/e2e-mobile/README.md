@@ -12,6 +12,7 @@ Black-box flows for the ONE Wayvro app (`docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.
 | `flows/*.yaml` | Maestro flows (`pr-*` PR smoke + full; `n-*` full only); `flows/subflows/sign-in.yaml`; `flows/scripts/*.js` (Maestro GraalJS) |
 | `flows/quarantine.json` | quarantine list (§6); empty |
 | `summarise.mjs` | merges the lane summaries of the manual full matrix |
+| `net-inventory.mjs` | U04 emulator network inventory: parses an emulator pcap — the netsim Wi-Fi capture (`-netsim-args --pcap`) on virtio-wifi images such as API 35, `-tcpdump` on older images — (DNS names, TLS SNI, endpoints) against the run-flows `timestamps`; BASELINE / WAYVRO_SYNTHETIC_API / DURING_APP_SESSION_ONLY; FAIL on an analytics/ads/crash/update host in the app session; `--self-test`. Emulator evidence with limited per-app attribution — not device evidence |
 
 ## Rules this harness keeps
 
