@@ -132,6 +132,9 @@ const api = spawn(process.execPath, [join(ROOT, 'apps/api/dist-dev/dev/main.loca
     OTP_PREFIX_MONITOR_MIN_SENDS: '100000',
     EVIDENCE_SLOTS_PER_10_MIN: '100',
     QUOTE_TTL_SECONDS,
+    // n-15 (SP-08 #17) must reach the account quote limit from a UI loop; no other flow creates more than 2 quotes in
+    // any minute of a lane (pr-10, pr-11, n-08 and n-09 are separated by sign-ins), so 3/min only affects n-15.
+    QUOTES_PER_MINUTE_ACCOUNT: '3',
     ...S3,
   },
   stdio: ['ignore', 'inherit', 'inherit'],

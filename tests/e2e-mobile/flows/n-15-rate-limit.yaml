@@ -1,5 +1,7 @@
-# SP-08 #17 (N) — I11 (client): repeated price checks beyond the quote rate limit show the 429 copy with the retry
-# seconds and no retry storm. REQUIRES ACTIVE synthetic rate cards (NOT RUN with the reason otherwise).
+# SP-08 #17 (N) — I11 (client): price checks beyond the account's quote rate limit show the "Too many price checks"
+# state with the retry seconds, no price and no retry storm. The E2E stack sets QUOTES_PER_MINUTE_ACCOUNT=3 (a UI loop
+# cannot exceed the production default of 20/min). Each loop pass stays inside search -> quote (one back, re-choose the
+# pickup), so a new quote is requested per pass and the app is never backed out. REQUIRES ACTIVE synthetic rate cards.
 appId: dev.wayvro.app
 name: n-15-rate-limit
 tags: [full, pricing]
@@ -13,19 +15,40 @@ tags: [full, pricing]
     visible:
       id: rider-home-where-to
     timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Liberty'
+- tapOn: 'Liberty Market.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- extendedWaitUntil:
+    visible: '.*(Economy|Too many price checks).*'
+    timeout: 60000
+# bounded loop: at most 6 more price checks; it stops as soon as the rate-limited state is shown
 - repeat:
-    times: 12
+    times: 6
+    while:
+      notVisible: 'Too many price checks'
     commands:
-      - tapOn:
-          id: rider-home-where-to
-      - inputText: 'Liberty'
-      - tapOn: 'Liberty Market.*'
+      - back
+      - extendedWaitUntil:
+          visible:
+            id: search-pickup
+          timeout: 30000
       - tapOn:
           id: search-pickup
+      - eraseText
       - inputText: 'Emporium'
       - tapOn: 'Emporium Mall.*'
-      - back
-      - back
-- extendedWaitUntil:
-    visible: '.*(Too many|try again in).*'
-    timeout: 60000
+      - extendedWaitUntil:
+          visible: '.*(Economy|Too many price checks).*'
+          timeout: 60000
+- assertVisible: 'Too many price checks'
+- assertVisible: '.*Too many attempts.*'
+- assertNotVisible: '.*Rs.*'
+- takeScreenshot: n-15-rate-limited

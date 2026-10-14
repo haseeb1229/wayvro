@@ -26,7 +26,10 @@ tags: [full, pricing]
     id: search-pickup
 - inputText: 'Badshahi'
 - tapOn: 'Badshahi Mosque.*'
+# the pickup lies in the synthetic EXCLUSION zone: the reason-specific refusal (rider.area.*) is shown, never a price
 - extendedWaitUntil:
-    visible: "Wayvro can't give a price for this trip."
+    visible: "Wayvro doesn't serve this trip yet"
     timeout: 60000
+- assertVisible: "Wayvro doesn't serve this pickup yet.*"
+- assertVisible: 'Change pickup'
 - assertNotVisible: '.*Rs.*'

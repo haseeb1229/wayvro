@@ -1,5 +1,5 @@
 # SP-08 #4 (G), #20, ONB-02 (N) — K19, D03, V08: the Driver/Partner home lists the expired document and the renewal
-# screen opens from the compliance view; riding is not affected.
+# screen opens from its readiness row (P3.8); riding is not affected.
 appId: dev.wayvro.app
 name: n-02-expired-documents
 tags: [full]
@@ -25,14 +25,8 @@ tags: [full]
 - scrollUntilVisible:
     element: 'Documents: 1 expired'
     direction: DOWN
+# since P3.8 the readiness row opens the renewal of the expired document directly (OPEN_DOCUMENT_RENEWAL intent)
 - tapOn: 'Documents: 1 expired'
-- extendedWaitUntil:
-    visible: 'Driver/Partner status'
-    timeout: 30000
-- scrollUntilVisible:
-    element: 'Renew'
-    direction: DOWN
-- tapOn: 'Renew'
 - extendedWaitUntil:
     visible: 'Renew: .*'
     timeout: 30000

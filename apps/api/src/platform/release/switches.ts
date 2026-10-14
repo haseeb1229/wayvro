@@ -79,11 +79,22 @@ export class RuntimeSwitchStore implements RuntimeSwitchReader {
   }
 
   /** Presentation-relevant switch states for `GET /v1/app/config` (base targets of client-visible switches). */
+  /**
+   * The client view of every client-visible switch for the public, city-less `GET /v1/app/config`. A narrower row
+   * WITHOUT a city (a mode scope such as RIDER) in the safe state stops the capability for every caller of that mode,
+   * so the client view reports the safe state too (SP-08 #22: a RIDER-scoped `rider.quotes` stop disables "Where
+   * to?"); it can only stop more, never less. City-scoped rows cannot be expressed here (the request carries no city)
+   * and stay enforced server-side on the gated routes.
+   */
   clientSwitchesOf(rows: readonly SwitchRowState[]): Array<{ key: string; state: SwitchState; messageKey: string | null }> {
     const out: Array<{ key: string; state: SwitchState; messageKey: string | null }> = [];
     for (const key of CLIENT_VISIBLE_KEYS) {
       const definition = definitionOf(key);
-      out.push({ key, state: baseState(definition, rows, this.env), messageKey: baseRow(key, rows)?.messageKey ?? null });
+      const base = baseRow(key, rows);
+      const narrowStop = rows.find((r) => r.key === key && r.scope !== 'ALL' && r.cityCode === null && r.state === definition.safeState);
+      const state = narrowStop ? definition.safeState : baseState(definition, rows, this.env);
+      const messageKey = (base?.state === definition.safeState ? base.messageKey : (narrowStop?.messageKey ?? base?.messageKey)) ?? null;
+      out.push({ key, state, messageKey });
     }
     return out;
   }

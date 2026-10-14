@@ -109,7 +109,9 @@ describe('P3.9 catalogue audit: no hard-coded user-facing copy', () => {
     expect(copyLiterals(sample).map((l) => l.text)).toEqual(['Book a ride', 'Continue', 'Offline', 'Prices', 'Delete?', 'Updated', 'Hello']);
   });
 
-  it('rider, driver, account, release-control and shared component files take every user-facing string from the catalogues', () => {
+  // Parses every scanned source file with the TypeScript compiler: slower than vitest's 5 s default when the whole suite
+  // runs in parallel (same assertions; the bound only stops a hung scan).
+  it('rider, driver, account, release-control and shared component files take every user-facing string from the catalogues', { timeout: 30_000 }, () => {
     const files = componentFiles('features', 'core', 'app');
     expect(files.length).toBeGreaterThan(50);
     const offenders = files.flatMap((file) => copyLiterals(parseTsx(file)).map((l) => `${relToSrc(file)}:${String(l.line)} "${l.text}"`));

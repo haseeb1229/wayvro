@@ -223,7 +223,10 @@ jobs:
         run: |
           node tests/e2e-mobile/net-inventory.mjs --self-test
           timeout 60 sh -c 'while pgrep -x netsimd >/dev/null; do sleep 1; done' || true
-          pcap=$(find "${TMPDIR:-/tmp}/netsimd" /tmp/netsimd -name 'netsim-*-WIFI.pcap' -size +1k 2>/dev/null | head -n 1)
+          # netsimd's capture directory differs by host OS/emulator build (run 38623281968: not under /tmp/netsimd): search the
+          # bounded temp/home locations and list every candidate
+          find /tmp "${TMPDIR:-/tmp}" "$HOME/.android" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" -name 'netsim-*.pcap' 2>/dev/null | xargs -r ls -la || true
+          pcap=$(find /tmp "${TMPDIR:-/tmp}" "$HOME/.android" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" -name 'netsim-*-WIFI.pcap' -size +1k 2>/dev/null | head -n 1)
           if [ -z "$pcap" ]; then pcap=/tmp/wayvro-net/emulator.pcap; echo "netsim Wi-Fi capture not found; falling back to -tcpdump (expected BLOCKED on virtio-wifi images)"; fi
           ls -la "$pcap"
           status=0

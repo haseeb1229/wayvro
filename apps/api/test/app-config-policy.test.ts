@@ -188,6 +188,26 @@ describe('runtime switch evaluation (switches only reduce capability)', () => {
     await expect(store.isStopped('rider.quotes', { scope: 'RIDER' })).resolves.toBe(false);
     expect(store.clientSwitchesOf([]).map((s) => s.key)).toEqual(RUNTIME_SWITCH_REGISTRY.filter((s) => s.clientVisible).map((s) => s.key));
   });
+
+  it('client view: a city-less RIDER-scoped stop disables rider.quotes for the app; a city-scoped stop stays server-side only (SP-08 #22)', () => {
+    const empty: Queryable = { query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as Queryable;
+    const store = new RuntimeSwitchStore(
+      new ReleaseStateCache(empty, { ttlMs: 1000, log: createLogger({ service: 'api', env: 'test', level: 'fatal' }) }),
+      'test',
+    );
+    const quotesOf = (rows: SwitchRowState[]) => store.clientSwitchesOf(rows).find((s) => s.key === 'rider.quotes');
+    expect(quotesOf([])?.state).toBe('ENABLED');
+    expect(quotesOf([{ ...row('rider.quotes', 'DISABLED', 'RIDER'), messageKey: 'switch.quotesPaused' }])).toEqual({
+      key: 'rider.quotes',
+      state: 'DISABLED',
+      messageKey: 'switch.quotesPaused',
+    });
+    // the base row in the safe state wins (and its message), a narrower ENABLED row never re-enables
+    expect(quotesOf([row('rider.quotes', 'DISABLED'), row('rider.quotes', 'ENABLED', 'RIDER')])?.state).toBe('DISABLED');
+    // city-scoped rows are not expressible in the city-less public config: enforced server-side only
+    expect(quotesOf([row('rider.quotes', 'DISABLED', 'RIDER', 'LHR')])?.state).toBe('ENABLED');
+    expect(quotesOf([row('rider.quotes', 'DISABLED', 'ALL', 'LHR')])?.state).toBe('ENABLED');
+  });
 });
 
 describe('release-state cache (TTL with an injected clock; fail-open)', () => {
