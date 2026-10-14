@@ -13,6 +13,11 @@ tags: [full, api35-dialogs]
     visible:
       id: rider-home-where-to
     timeout: 60000
+# deterministic precondition (as n-04): the emulator gets a synthetic in-area fix; on the 2 GB low-RAM AVD the flow
+# otherwise depended on a fix left behind by an earlier flow (run 38635173646: 'Couldn't find your location')
+- setLocation:
+    latitude: 31.5104
+    longitude: 74.3416
 - scrollUntilVisible:
     element: 'Use current location'
     direction: DOWN

@@ -214,7 +214,8 @@ jobs:
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated${{ matrix.lane == 'api-35' && ' -tcpdump /tmp/wayvro-net/emulator.pcap -netsim-args --pcap' || '' }}
           disable-animations: true
-          script: node tests/e2e-mobile/run-flows.mjs --tier full --lane ${{ matrix.lane }} --api-level ${{ matrix.api }} --apk apps/wayvro-mobile/build-reports/e2e/wayvro-e2e.apk --maestro /tmp/maestro/bin/maestro --budget-seconds 3600
+          # API-35 lane only: 120 s idle after boot (Wi-Fi up, app not installed) is the network inventory's OS baseline window
+          script: ${{ matrix.lane == 'api-35' && 'sleep 120 && ' || '' }}node tests/e2e-mobile/run-flows.mjs --tier full --lane ${{ matrix.lane }} --api-level ${{ matrix.api }} --apk apps/wayvro-mobile/build-reports/e2e/wayvro-e2e.apk --maestro /tmp/maestro/bin/maestro --budget-seconds 3600
       # U04 (closure correction §12): DNS/SNI inventory of the release-mode E2E build's session. The API-35 image's
       # traffic runs over netsim virtio-wifi, so netsimd's Wi-Fi pcap (written when the emulator exits) is the source;
       # -tcpdump only sees the unused eth0 card. Raw pcaps are never uploaded (they hold the synthetic API session).

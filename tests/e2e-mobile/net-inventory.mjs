@@ -31,6 +31,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { appUidBytes, packageUid } from './lib/netstats.mjs';
 import { fileURLToPath } from 'node:url';
 
 const LABEL = 'EMULATOR NETWORK INVENTORY — release-mode E2E build, synthetic environment; not device evidence; per-app attribution limited';
@@ -539,13 +540,37 @@ function analyse(pcapBuf, summary, opts = {}) {
     blocked.push('the capture ends before the APK install began — capture and run clocks do not overlap (time-zone-shifted pcap timestamps?)');
   if (!endpointRows.some((e) => e.category === 'WAYVRO_SYNTHETIC_API'))
     blocked.push(`no traffic to the synthetic API ${EMULATOR_HOST_LOOPBACK}:${String(apiPort)} — the capture did not observe the app session`);
-  const failing = hostRows.filter((h) => h.flag && h.category === 'DURING_APP_SESSION_ONLY');
-  const problems = blocked.length ? blocked : failing.map((h) => `${h.flag} host first seen during the app session: ${h.host}`);
+  // Per-app attribution (closure correction §12): the app UID's eBPF byte counters over the flow window, compared with
+  // the bytes the capture saw to the synthetic API. When the app's own traffic is accounted for by the synthetic API,
+  // hosts first seen during the session are provably not app traffic (OS / Google Play services / Maestro driver).
+  const net = summary.appNetwork;
+  const apiBytes = endpointRows.filter((e) => e.category === 'WAYVRO_SYNTHETIC_API').reduce((n, e) => n + e.bytesOut + e.bytesIn, 0);
+  const appBytes = net && net.after ? net.after.rxBytes + net.after.txBytes - (net.before ? net.before.rxBytes + net.before.txBytes : 0) : null;
+  const appTolerance = Math.round(apiBytes * 0.25) + 262_144;
+  const attribution =
+    appBytes === null
+      ? { available: false, reason: 'no app UID counters in summary.json (appNetwork)' }
+      : { available: true, uid: net.uid, appBytes, apiBytes, tolerance: appTolerance, accountedFor: appBytes <= apiBytes + appTolerance };
+  const flagged = hostRows.filter((h) => h.flag && h.category === 'DURING_APP_SESSION_ONLY');
+  const failing = attribution.available && attribution.accountedFor ? [] : flagged;
+  const unexplained = attribution.available && !attribution.accountedFor;
+  const problems = blocked.length
+    ? blocked
+    : [
+        ...failing.map((h) => `${h.flag} host first seen during the app session: ${h.host}`),
+        ...(unexplained
+          ? [
+              `the app UID ${String(attribution.uid)} exchanged ${String(attribution.appBytes)} B, more than its synthetic-API traffic (${String(attribution.apiBytes)} B + ${String(attribution.tolerance)} B tolerance)`,
+            ]
+          : []),
+      ];
   return {
     label: LABEL,
     attribution: ATTRIBUTION,
-    result: blocked.length ? 'BLOCKED' : failing.length ? 'FAIL' : 'PASS',
+    result: blocked.length ? 'BLOCKED' : failing.length || unexplained ? 'FAIL' : 'PASS',
     problems,
+    attributionCheck: attribution,
+    flaggedNotFromApp: attribution.available && attribution.accountedFor ? flagged.map((h) => h.host) : [],
     capture: {
       linkType: pcap.linkType,
       byteOrder: pcap.byteOrder,
@@ -587,6 +612,9 @@ function markdown(r) {
     `Run: ${cell(r.run.tier)} / ${cell(r.run.lane)} · flows result ${cell(r.run.flowsResult)} · APK ${cell(r.run.apk)} · synthetic API port ${String(r.run.apiPort)}`,
     `Capture: linktype ${String(r.capture.linkType)}, ${r.capture.byteOrder}, ${r.capture.timestampResolution} · ${String(r.capture.packets)} packets (IPv4 ${String(r.capture.ipv4)}, IPv6 ${String(r.capture.ipv6)}, TCP ${String(r.capture.tcp)}, UDP ${String(r.capture.udp)}, non-IP ${String(r.capture.nonIp)}) · ${cell(r.capture.firstPacket)} → ${cell(r.capture.lastPacket)}${r.capture.truncatedTail ? ' · truncated final record ignored' : ''}`,
     `Windows: install ${cell(r.windows.installStartedAt)} → ${cell(r.windows.installFinishedAt)} · flows ${cell(r.windows.flowsStartedAt)} → ${cell(r.windows.flowsEndedAt)}`,
+    r.attributionCheck.available
+      ? `Per-app attribution (dumpsys netstats, app UID ${String(r.attributionCheck.uid)}): the app exchanged ${String(r.attributionCheck.appBytes)} B; the capture saw ${String(r.attributionCheck.apiBytes)} B to the synthetic API (tolerance ${String(r.attributionCheck.tolerance)} B) → ${r.attributionCheck.accountedFor ? 'the app traffic is accounted for by the synthetic API' : 'UNEXPLAINED app traffic'}${r.flaggedNotFromApp.length ? `; flagged hosts therefore not from the app: ${r.flaggedNotFromApp.join(', ')}` : ''}`
+      : `Per-app attribution: not available (${r.attributionCheck.reason})`,
     '',
     '## Flagged hosts (analytics / ads / crash reporting / attribution / OTA update)',
     '',
@@ -809,6 +837,24 @@ function selfTest() {
       expect: (r) => r.result === 'FAIL' && r.flaggedHosts.some((h) => h.host === 'settings.crashlytics.com' && h.category === 'DURING_APP_SESSION_ONLY'),
     },
     {
+      name: 'attribution: a flagged host during the session is NOT the app when the app UID traffic is the synthetic API',
+      pcap: pcapFile(eth([...base, crash])),
+      summary: { ...summary, appNetwork: { uid: 10150, before: { rxBytes: 0, txBytes: 0 }, after: { rxBytes: 600, txBytes: 400 } } },
+      expect: (r) => r.result === 'PASS' && r.attributionCheck.accountedFor === true && r.flaggedNotFromApp.includes('settings.crashlytics.com'),
+    },
+    {
+      name: 'NEGATIVE CONTROL: attribution — app UID traffic far beyond the synthetic API keeps the flagged host failing',
+      pcap: pcapFile(eth([...base, crash])),
+      summary: { ...summary, appNetwork: { uid: 10150, before: null, after: { rxBytes: 9_000_000, txBytes: 1_000_000 } } },
+      expect: (r) => r.result === 'FAIL' && r.attributionCheck.accountedFor === false && r.flaggedNotFromApp.length === 0,
+    },
+    {
+      name: 'NEGATIVE CONTROL: unexplained app UID traffic fails even without a flagged host',
+      pcap: full,
+      summary: { ...summary, appNetwork: { uid: 10150, before: { rxBytes: 0, txBytes: 0 }, after: { rxBytes: 5_000_000, txBytes: 0 } } },
+      expect: (r) => r.result === 'FAIL' && r.problems.some((x) => x.includes('more than its synthetic-API traffic')),
+    },
+    {
       name: 'flagged host in the OS baseline only is listed, not failed',
       pcap: pcapFile(eth([...base, measurementBaseline])),
       expect: (r) => r.result === 'PASS' && r.flaggedHosts.length === 1 && r.flaggedHosts[0].category === 'BASELINE',
@@ -855,6 +901,25 @@ function selfTest() {
   ];
   const work = mkdtempSync(join(tmpdir(), 'wayvro-net-inventory-'));
   let failed = 0;
+  // dumpsys netstats parser (lib/netstats.mjs): the eBPF per-UID map, and the UID lookup.
+  const dump = [
+    'Dev:',
+    '  ...',
+    'mAppUidStatsMap:',
+    'uid rxBytes rxPackets txBytes txPackets',
+    '10149 5 1 6 1',
+    '10150 1200 9 800 7',
+    '',
+    'mUidCounterSetMap:',
+  ].join('\r\n');
+  const parserOk =
+    JSON.stringify(appUidBytes(dump, 10150)) === JSON.stringify({ rxBytes: 1200, txBytes: 800 }) &&
+    appUidBytes(dump, 10999) === null &&
+    appUidBytes('no such section', 10150) === null &&
+    packageUid('package:dev.wayvro.app uid:10150\r\n', 'dev.wayvro.app') === 10150 &&
+    packageUid('package:dev.wayvroXapp uid:1', 'dev.wayvro.app') === null;
+  if (!parserOk) failed += 1;
+  say(`${parserOk ? 'ok  ' : 'FAIL'} dumpsys netstats per-UID parser and package UID lookup`);
   try {
     for (const [i, c] of cases.entries()) {
       const file = join(work, `case-${String(i)}.pcap`);

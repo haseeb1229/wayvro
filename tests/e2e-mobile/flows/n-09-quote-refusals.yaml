@@ -32,4 +32,5 @@ tags: [full, pricing]
     timeout: 60000
 - assertVisible: "Wayvro doesn't serve this pickup yet.*"
 - assertVisible: 'Change pickup'
-- assertNotVisible: '.*Rs.*'
+# no price card: the price format is "Rs <digits>" (a bare '.*Rs.*' also matched ordinary copy)
+- assertNotVisible: '.*Rs [0-9][0-9,]*.*'

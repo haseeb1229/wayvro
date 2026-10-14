@@ -44,11 +44,13 @@ tags: [full, pricing]
           id: search-pickup
       - eraseText
       - inputText: 'Emporium'
-      - tapOn: 'Emporium Mall.*'
+      # the chosen pickup's helper text also reads 'Emporium Mall': tap the suggestion row by its unique subtitle
+      - tapOn: 'Johar Town.*'
       - extendedWaitUntil:
           visible: '.*(Economy|Too many price checks).*'
           timeout: 60000
 - assertVisible: 'Too many price checks'
 - assertVisible: '.*Too many attempts.*'
-- assertNotVisible: '.*Rs.*'
+# no price card: the price format is "Rs <digits>" (a bare '.*Rs.*' also matched ordinary copy)
+- assertNotVisible: '.*Rs [0-9][0-9,]*.*'
 - takeScreenshot: n-15-rate-limited

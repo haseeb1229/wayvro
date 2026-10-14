@@ -28,6 +28,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FLOWS, PR_SHARDS, validatePrShards } from './flows/manifest.mjs';
+import { appUidBytes, packageUid } from './lib/netstats.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FLOW_DIR = join(ROOT, 'tests', 'e2e-mobile', 'flows');
@@ -96,6 +97,10 @@ if (args.apk) {
   adb(['install', args.apk]);
   timestamps.installFinishedAt = Date.now();
 }
+// Per-app attribution for net-inventory.mjs: the app's UID and its eBPF traffic counters before and after the flows.
+const appUid = packageUid(adbRaw(['-s', device, 'shell', 'cmd', 'package', 'list', 'packages', '-U', APP_ID]).stdout ?? '', APP_ID);
+const uidBytes = () => (appUid === null ? null : appUidBytes(adbRaw(['-s', device, 'shell', 'dumpsys', 'netstats']).stdout ?? '', appUid));
+const appNetworkBefore = uidBytes();
 
 // ── hooks and checks (server state through the seed connection; device state through adb) ────────────────────────
 const pg = createRequire(join(ROOT, 'packages/db/package.json'))('pg');
@@ -330,6 +335,7 @@ for (const flow of selected) {
   say(`${flow.id}: ${row.status} in ${String(row.seconds)} s${row.problems ? ` — ${row.problems.join('; ')}` : ''}`);
 }
 timestamps.flowsEndedAt = Date.now();
+const appNetwork = { uid: appUid, before: appNetworkBefore, after: uidBytes(), source: 'adb shell dumpsys netstats (mAppUidStatsMap)' };
 const maestroSeconds = Math.round((timestamps.flowsEndedAt - started) / 1000);
 writeFileSync(
   join(out, 'logcat.txt'),
@@ -354,6 +360,7 @@ const summary = {
   budgetSeconds,
   overBudget,
   timestamps,
+  appNetwork,
   counts,
   result: failing.length || overBudget ? 'FAIL' : 'PASS',
   flows: rows,
