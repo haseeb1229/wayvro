@@ -103,3 +103,8 @@ cannot block a build that corrupts data, and client-only remote config cannot be
 ## Reversal
 No ACTIVE policy = no enforcement; switch rows return to registry defaults via restore or `effective_until`. Schema
 rollback only before any staff entry (DROP the four tables and guard functions); afterwards forward-fix only.
+
+## Founder decisions (2026-10-14)
+- **SECURITY single-person expedited blocked-build path:** NOT APPROVED for Phase 3 — DEFERRED. It is not implemented; a HARD_UPDATE / blocked build range keeps the normal two-person RELEASE_MANAGER maker-checker.
+- **15-minute self-undo without a checker:** NOT APPROVED for Phase 3 — DEFERRED. Not implemented; moving a switch away from its safe state stays maker-checker.
+- **Android baseline (Q31):** `minSdk 24` (the Expo SDK 57 default — `app.config.ts` sets no override; the built manifests declare `minSdkVersion="24"`) stays the engineering floor and is not raised in Phase 3. The launch floor is decided later on renderer and device evidence; the iOS minimum stays unfrozen (no iOS track).

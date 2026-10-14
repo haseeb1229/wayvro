@@ -6,10 +6,13 @@
  *
  *   node tests/e2e-mobile/run-flows.mjs --tier pr|full [--device emulator-5554] [--apk <e2e apk>] [--maestro <bin>]
  *        [--out build-logs/e2e-mobile/<tier>] [--budget-seconds 900] [--api-level 35] [--lane <label>] [--only id,id]
+ *        [--shard i/n]   (PR tier only: run the flows of shard i of the n balanced shards in flows/manifest.mjs)
  *
  * Flake policy (§6): at most ONE automatic retry per flow; a pass on retry is FLAKY (never PASS); INV-07 flows (#1,
  * #12) are never quarantined and a FLAKY INV-07 flow fails the run; a flow that cannot run is BLOCKED with its cause;
  * flows whose prerequisite is missing are NOT RUN with the reason (e.g. no ACTIVE synthetic rate card) — never silently skipped.
+ * A lost emulator adb transport ("device offline", Maestro's device server dying) is an INFRASTRUCTURE failure: the
+ * attempt is BLOCKED with that cause (a pass on the retry is still FLAKY), never PASS.
  * The runner exits 1 on any FAIL / BLOCKED / FLAKY INV-07 result or when the Maestro phase exceeds its budget.
  * Waits are Maestro's element waits; the runner itself never sleeps to "settle" the UI.
  *
@@ -19,11 +22,11 @@
  * evidence (CLAUDE.md §8).
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FLOWS } from './flows/manifest.mjs';
+import { FLOWS, PR_SHARDS, validatePrShards } from './flows/manifest.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FLOW_DIR = join(ROOT, 'tests', 'e2e-mobile', 'flows');
@@ -43,7 +46,19 @@ const apiLevel = Number(args['api-level'] ?? '35');
 const lane = args.lane ?? `api-${String(apiLevel)}`;
 const budgetSeconds = Number(args['budget-seconds'] ?? (tier === 'pr' ? '900' : '3600'));
 const out = args.out ?? join(ROOT, 'build-logs', 'e2e-mobile', `${tier}-${lane}`);
-const only = args.only ? new Set(args.only.split(',')) : null;
+const shardArg = args.shard ? /^(\d+)\/(\d+)$/.exec(args.shard) : null;
+if (args.shard && (!shardArg || tier !== 'pr')) {
+  process.stderr.write('--shard i/n is only valid with --tier pr\n');
+  process.exit(2);
+}
+if (shardArg) {
+  const problems = validatePrShards(Number(shardArg[2]));
+  if (problems.length > 0 || !PR_SHARDS[Number(shardArg[1])]) {
+    process.stderr.write(`invalid PR shard assignment: ${problems.join('; ') || `no shard ${shardArg[1]}`}\n`);
+    process.exit(2);
+  }
+}
+const only = shardArg ? new Set(PR_SHARDS[Number(shardArg[1])]) : args.only ? new Set(args.only.split(',')) : null;
 const maestroBin = args.maestro ?? process.env.MAESTRO_BIN ?? 'maestro';
 const adbBin = join(process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? '', 'platform-tools', WINDOWS ? 'adb.exe' : 'adb');
 
@@ -212,6 +227,21 @@ function recording(dir, name) {
 }
 
 const dismissSystemDialogs = () => adbRaw(['-s', device, 'shell', 'am', 'broadcast', '-a', 'android.intent.action.CLOSE_SYSTEM_DIALOGS']);
+/** Maestro's own log shows the emulator's adb transport going away (infrastructure, not an app failure). */
+function infraLost(flowDir) {
+  const logs = [];
+  const walk = (d) => {
+    if (!existsSync(d)) return;
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name === 'maestro.log' || e.name === 'maestro-console.txt') logs.push(p);
+    }
+  };
+  walk(dirname(flowDir));
+  return logs.some((p) => /device offline|DeviceServerDiedException/.test(readFileSync(p, 'utf8')));
+}
+
 /** The adb transport of a loaded emulator can drop for a moment; wait (bounded) until it is back and booted. */
 function deviceReady() {
   adbRaw(['-s', device, 'wait-for-device'], { timeout: 120_000 });
@@ -234,6 +264,8 @@ async function attempt(flow, dir) {
       const name = step.maestro.replace(/\.yaml$/, '');
       if (spawnError) return { ok: false, blocked: `maestro could not start: ${spawnError}` };
       if (!results.has(name)) return { ok: false, blocked: `maestro produced no result for ${name} (see maestro-console.txt)` };
+      if (!results.get(name) && infraLost(join(dir, name)))
+        return { ok: false, blocked: `emulator adb transport lost during ${name} (device offline; infrastructure)` };
       if (!results.get(name)) problems.push(`${name} failed: ${reasons.get(name) ?? 'see maestro-console.txt'}`);
       if (problems.length) break;
     }
@@ -274,9 +306,9 @@ for (const flow of selected) {
   const t0 = Date.now();
   row.attempts = 1;
   let result = await attempt(flow, join(dir, 'attempt-1'));
-  if (!result.ok && !result.blocked) {
+  if (!result.ok) {
     row.attempts = 2;
-    row.firstAttempt = result.problems;
+    row.firstAttempt = result.problems ?? [result.blocked];
     const stop = recording(dir, flow.id);
     try {
       result = await attempt(flow, join(dir, 'attempt-2'));
@@ -284,7 +316,7 @@ for (const flow of selected) {
       stop();
     }
     row.status = result.ok ? 'FLAKY' : result.blocked ? 'BLOCKED' : 'FAIL';
-  } else row.status = result.blocked ? 'BLOCKED' : 'PASS';
+  } else row.status = 'PASS';
   if (result.blocked) row.reason = result.blocked;
   if (!result.ok && result.problems?.length) row.problems = result.problems;
   row.quarantined = !row.inv07 && quarantine.some((q) => q.id === flow.id && Date.parse(q.expires) > Date.now());
@@ -304,6 +336,7 @@ const overBudget = maestroSeconds > budgetSeconds;
 const summary = {
   tier,
   lane,
+  shard: shardArg ? { index: Number(shardArg[1]), of: Number(shardArg[2]), flows: [...only] } : null,
   evidenceClass: 'EMULATOR (not device evidence)',
   device,
   apiLevel,

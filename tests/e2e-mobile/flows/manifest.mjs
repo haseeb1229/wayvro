@@ -137,3 +137,33 @@ export const FLOWS = [
     notTestable: 'no external URL scheme in release builds (CON-P3-07, F-P3-01); router unit tests cover parsing; activated after EG-15',
   },
 ];
+
+/*
+ * PR-tier shards (FA-16 founder decision 2026-10-14): four shards, each on its own emulator with its own throwaway
+ * stack and its own 900 s Maestro budget. Balanced (longest-first) from the measured CI flow times of runs
+ * 38452091883, 38452098038, 38457699020 and 38457704445 (passing attempts, s): pr-12 ≈ 170, pr-14 ≈ 150 (estimate: it
+ * had not yet run in CI), pr-01 ≈ 140 (includes the first-launch cold start), pr-10 ≈ 90, pr-02 ≈ 85, pr-03 / pr-07 /
+ * pr-11 ≈ 80, pr-08 / pr-09 ≈ 68, pr-13 ≈ 65, pr-05 ≈ 60, pr-06 ≈ 58, pr-04 ≈ 57 ⇒ ≈ 290–350 s per shard before
+ * retries. Every PR-tier flow belongs to exactly one shard (validatePrShards).
+ */
+export const PR_SHARDS = {
+  1: ['pr-06-account-restricted', 'pr-11-quote-restore', 'pr-12-kyc-onboarding'],
+  2: ['pr-03-driver-switch-restore', 'pr-04-earn-entry-rider-only', 'pr-13-version-hard', 'pr-14-signout-wipe'],
+  3: ['pr-01-signin-rider-home', 'pr-07-location-denied', 'pr-09-rider-hygiene-driver'],
+  4: ['pr-02-restore-rider', 'pr-05-driver-role-restricted', 'pr-08-search-autocomplete', 'pr-10-quote-options'],
+};
+
+/** Problems with the shard assignment (empty when every PR-tier flow is in exactly one shard of `count`). */
+export function validatePrShards(count) {
+  const problems = [];
+  const pr = FLOWS.filter((f) => f.tiers.includes('pr')).map((f) => f.id);
+  const keys = Object.keys(PR_SHARDS).map(Number);
+  if (keys.length !== count || keys.some((k, i) => k !== i + 1)) problems.push(`PR_SHARDS must have keys 1..${String(count)}`);
+  const assigned = Object.values(PR_SHARDS).flat();
+  for (const id of pr) {
+    const n = assigned.filter((a) => a === id).length;
+    if (n !== 1) problems.push(`${id} is assigned to ${String(n)} shards`);
+  }
+  for (const id of assigned) if (!pr.includes(id)) problems.push(`${id} is not a PR-tier flow`);
+  return problems;
+}

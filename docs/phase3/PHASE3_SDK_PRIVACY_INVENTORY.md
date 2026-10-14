@@ -184,4 +184,6 @@ The machine-readable inventory `infra/ci/android/sdk-inventory.json` is the enfo
 
 Release-app permission delta for the whole of Phase 3: `ACCESS_COARSE_LOCATION` + `ACCESS_FINE_LOCATION` only (allowlist gate). No background location, foreground service, notifications, full-screen intent, contacts, Bluetooth, microphone or storage/media permission. No analytics, ads, crash-reporting or update SDK. `allowedVendorHosts` is empty (BUNDLE-SECRETS gate).
 
-**Founder confirmation required:** the 14 transitive rows above (recorded APPROVED-EXISTING by the SP-08 slice) and the first-party `wayvro-fully-drawn` native module (FA-09-style native code review). **Not done:** runtime network capture of the release build; Play Data safety / privacy-manifest updates (EG-18).
+**Founder approval (2026-10-14, founder/ChatGPT review of PR #8):** APPROVED — the 14 `transitiveAddedP35` exact-version Expo/React Native modules above (already present in the Phase 1/2 release AABs) and the first-party `wayvro-fully-drawn` module, which only calls `Activity.reportFullyDrawn()` once per process, stores nothing, sends no network traffic and requests no permission. Recorded on the rows of `infra/ci/android/sdk-inventory.json` (`ref`). This is a native-module approval, **not** FA-09 (the native Urdu/Roman-Urdu language review stays open).
+
+**Not done:** Play Data safety / privacy-manifest updates (EG-18); iOS privacy manifest (no iOS track). Runtime network evidence: see the closure-correction section of `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md`.
