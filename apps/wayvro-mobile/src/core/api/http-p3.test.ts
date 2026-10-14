@@ -127,6 +127,18 @@ describe('P3.5 error kinds (WAYVRO_E_SERVICE_AREA / APP_UPDATE_REQUIRED / MAINTE
     expect(errorFromResponse(503, errorBody('WAYVRO_E_DEPENDENCY_UNAVAILABLE')).kind).toBe('unavailable');
   });
 
+  it('an error code unknown to this build (added by a newer server) keeps the status kind and the hints (COMPAT-N1)', () => {
+    const future = errorFromResponse(429, {
+      error: { code: 'WAYVRO_E_SOME_FUTURE_CODE', message: 'server text', requestId: 'req_synthetic_2', details: { retryAfterSeconds: 7, reasonCodes: ['X'] } },
+    });
+    expect(future.kind).toBe('rate-limited');
+    expect(future.detail.code).toBeNull();
+    expect(future.detail.retryAfterSeconds).toBe(7);
+    expect(future.detail.reasonCodes).toEqual(['X']);
+    expect(errorFromResponse(426, { error: { code: 'WAYVRO_E_SOME_FUTURE_CODE', message: 'x', requestId: 'r' } }).kind).toBe('update-required');
+    expect(errorFromResponse(500, { error: { code: '', message: 'x', requestId: 'r' } }).detail.code).toBeNull();
+  });
+
   it('never auto-retries planned maintenance (the app-policy gate owns that schedule)', async () => {
     const d = deps(() => Promise.resolve(jsonResponse(503, errorBody('WAYVRO_E_MAINTENANCE', { retryAfterSeconds: 2 }))));
     await send(d, { method: 'GET', path: '/v1/x', retry: 'idempotent', schema: null }).catch(() => undefined);

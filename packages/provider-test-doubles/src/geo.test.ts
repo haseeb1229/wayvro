@@ -124,4 +124,21 @@ describe('synthetic geo doubles (local/test only)', () => {
     aborted.abort();
     await expect(d.placesAutocomplete.suggest(input('liberty'), aborted.signal)).rejects.toMatchObject({ name: 'AbortError' });
   });
+
+  it('applies the configured synthetic latency per SKU before the answer or fault, and aborts with the caller', async () => {
+    const d = createGeoTestDoubles({ latencyMs: { ROUTE: 40 } });
+    const route = { origin: { lat: 31.51, lng: 74.341 }, destination: { lat: 31.522, lng: 74.404 }, profile: 'CAR' as const, departAt: new Date() };
+    let started = performance.now();
+    expect((await d.routing.route(route, live())).distanceM).toBeGreaterThan(0);
+    expect(performance.now() - started).toBeGreaterThanOrEqual(35);
+    started = performance.now();
+    expect((await d.placesAutocomplete.suggest(input('liberty'), live())).length).toBeGreaterThan(0);
+    expect(performance.now() - started).toBeLessThan(35);
+    d.control.setFault('ROUTE', { mode: 'UPSTREAM_5XX', times: 1 });
+    started = performance.now();
+    await expect(d.routing.route(route, live())).rejects.toMatchObject({ kind: 'UPSTREAM' });
+    expect(performance.now() - started).toBeGreaterThanOrEqual(35);
+    await expect(d.routing.route(route, AbortSignal.timeout(5))).rejects.toMatchObject({ name: 'AbortError' });
+    expect(d.control.calls('ROUTE')).toBe(3);
+  });
 });

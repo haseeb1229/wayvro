@@ -576,8 +576,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_ARCHITECTURE.md",
-      "bytes": 62856,
-      "sha256": "323ba8244d76b85e805217543249d29f963a2979248d5494e6918ec11733ef37"
+      "bytes": 63562,
+      "sha256": "67a1851df6218b3583e717f70e655e8dae754664f70aed25999482876d2689eb"
     },
     {
       "path": "docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md",
@@ -656,8 +656,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",
-      "bytes": 70866,
-      "sha256": "b6894dad3ab7825f77c9752b93b7569b408f306b2ee8d9c7cb2205c4e33a6108"
+      "bytes": 71808,
+      "sha256": "8d9a014d032ece2eccc9286b2bf8b7fa9e7755bf4e455b26f9cfbe9b5f78313a"
     },
     {
       "path": "docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md",

@@ -41,8 +41,20 @@ const args = new Set(process.argv.slice(2));
 const OUT = join(tmpdir(), `wayvro-artifacts-${randomUUID().slice(0, 8)}`);
 const DEV_ONLY_PACKAGES = ['@wayvro/provider-test-doubles', '@wayvro/test-support'];
 // Phase 3 P3.2 (ADR-045 scope note): the synthetic geo doubles — their provider key, gazetteer, place ids and the
-// straight-line router — and the dev-only SP-04 benchmark harness path must never reach a deployable artefact.
-const GEO_DOUBLE_MARKERS = ['geo-mock', 'SYNTHETIC_GAZETTEER', 'createGeoTestDoubles', 'straightLineRoute', 'syn-lhr-', 'tools/geo-bench'];
+// straight-line router — and the dev-only SP-04 benchmark harness path must never reach a deployable artefact; nor the
+// local runner's geo fault-control / synthetic-latency switches and the local load-harness path (Phase 3 closure).
+const GEO_DOUBLE_MARKERS = [
+  'geo-mock',
+  'SYNTHETIC_GAZETTEER',
+  'createGeoTestDoubles',
+  'straightLineRoute',
+  'syn-lhr-',
+  'tools/geo-bench',
+  'WAYVRO_LOCAL_GEO_CONTROL',
+  'WAYVRO_LOCAL_GEO_LATENCY_MS',
+  'localGeoControl',
+  'tools/load-harness',
+];
 // Phase 3 P3.5 (ADR-052, SP-02 §6.2): markers of the SP-08 E2E variant and of the instrumented driver-module evaluation
 // build (probe symbol, its log prefix, the E2E origin key and network config, the mobile E2E harness path). The mobile
 // release AAB itself is proven free of them by infra/ci/android/check-release-purity.mjs in the Android job.

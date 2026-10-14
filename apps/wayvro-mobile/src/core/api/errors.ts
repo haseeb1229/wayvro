@@ -1,4 +1,5 @@
-import { ErrorEnvelopeSchema, type ErrorCode } from '@wayvro/contracts';
+import { ErrorCodeSchema, ErrorEnvelopeSchema, type ErrorCode } from '@wayvro/contracts';
+import { z } from 'zod';
 
 /**
  * The small set of error kinds the UI understands (CLAUDE.md §13). Raw server messages, provider text and stack traces
@@ -120,13 +121,23 @@ function kindForStatus(status: number): UiErrorKind {
   return 'unknown';
 }
 
+/**
+ * The client reads the envelope's `code` as an opaque string (COMPAT-N1 finding): ERROR_CODES is append-only, and a
+ * code added by a NEWER server must not discard the whole body — an unknown code keeps the HTTP-status kind and still
+ * delivers the retry hints and reason codes. Known codes are typed through ErrorCodeSchema; the server contract stays
+ * closed.
+ */
+const ClientErrorEnvelopeSchema = z.object({ error: ErrorEnvelopeSchema.shape.error.extend({ code: z.string().min(1).max(100) }) });
+
 /** Maps a non-2xx HTTP response (status + parsed JSON body, if any) to an ApiError. */
 export function errorFromResponse(status: number, body: unknown): ApiError {
-  const parsed = ErrorEnvelopeSchema.safeParse(body);
+  const parsed = ClientErrorEnvelopeSchema.safeParse(body);
   const transient = status >= 500;
   if (!parsed.success) return new ApiError(kindForStatus(status), { status, transient });
-  const { code, requestId, details } = parsed.data.error;
-  return new ApiError(KIND_BY_CODE[code] ?? kindForStatus(status), {
+  const { requestId, details } = parsed.data.error;
+  const known = ErrorCodeSchema.safeParse(parsed.data.error.code);
+  const code = known.success ? known.data : null;
+  return new ApiError((code === null ? undefined : KIND_BY_CODE[code]) ?? kindForStatus(status), {
     code,
     status,
     requestId,

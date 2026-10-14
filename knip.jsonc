@@ -6,9 +6,11 @@
   // Disposable spike harnesses have their own package.json/lockfile outside the workspace (tests/spikes/README.md).
   "ignore": ["tests/spikes/**"],
   "workspaces": {
+    // tools/load-harness: the dev-only local load harness / FAULT-GEO soak CLIs (Node built-ins only, no package.json;
+    // never part of a deployable artefact — ART-ISO marker), analysed as non-production root entries.
     ".": {
-      "entry": ["scripts/*.mjs!", "infra/ci/**/*.mjs!", "tests/e2e-web/**/*.spec.ts"],
-      "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!", "tests/e2e-web/**/*.ts"],
+      "entry": ["scripts/*.mjs!", "infra/ci/**/*.mjs!", "tests/e2e-web/**/*.spec.ts", "tools/load-harness/{load,soak}.mjs"],
+      "project": ["scripts/**/*.mjs!", "infra/**/*.mjs!", "tests/e2e-web/**/*.ts", "tools/load-harness/*.mjs"],
     },
     // The local runner (ADR-045) is a non-production entry: it may use the dev-only test doubles.
     "apps/api": { "entry": ["src/main.ts!", "src/bin/staff-bootstrap.ts!", "dev/main.local.ts"], "project": ["src/**/*.ts!", "dev/**/*.ts", "test/**/*.ts"] },
@@ -28,7 +30,7 @@
     "packages/server-runtime": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     "packages/identity-core": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     "packages/config": { "entry": ["src/index.ts!", "src/check-flags.ts!"], "project": ["src/**/*.ts!"] },
-    "packages/contracts": { "entry": ["src/index.ts!", "src/generate-openapi.ts!"], "project": ["src/**/*.ts!"] },
+    "packages/contracts": { "entry": ["src/index.ts!", "src/generate-openapi.ts!", "test/compat/phase2/*.ts"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     "packages/db": { "entry": ["src/index.ts!", "src/bin/migrate.ts!"], "project": ["src/**/*.ts!", "test/**/*.ts"] },
     // The sanitiser's production entry is its container command (infra/sanitiser/Dockerfile → dist/cli.js), ADR-041.
     "packages/image-sanitiser": { "entry": ["src/index.ts!", "src/cli.ts!"], "project": ["src/**/*.ts!"] },

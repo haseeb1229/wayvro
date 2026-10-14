@@ -69,7 +69,7 @@ async function codeFor(baseUrl, phone, since) {
   throw new Error('seed: no OTP was recorded for a seeded phone within 10 s');
 }
 
-async function signUp(baseUrl, phone) {
+export async function signUp(baseUrl, phone) {
   const http = api(baseUrl);
   const installationId = `inst-e2e-seed-${randomBytes(8).toString('hex')}`;
   const since = Date.now() - 1000;
@@ -81,7 +81,7 @@ async function signUp(baseUrl, phone) {
   return session.json.accessToken;
 }
 
-async function acceptPolicies(root, baseUrl, token, keys) {
+export async function acceptPolicies(root, baseUrl, token, keys) {
   const { currentDocument } = await import(fileUrl(root, 'packages/legal-content/dist/index.js'));
   const http = api(baseUrl);
   for (const policyKey of keys) {

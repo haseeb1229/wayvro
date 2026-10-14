@@ -31,7 +31,9 @@
     "infra:status": "node scripts/infra.mjs status",
     "infra:reset": "node scripts/infra.mjs reset",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm depcruise && pnpm knip && pnpm syncpack && pnpm flags:check && pnpm test && pnpm docs:check",
-    "test:e2e:web": "playwright test --config tests/e2e-web/playwright.config.ts"
+    "test:e2e:web": "playwright test --config tests/e2e-web/playwright.config.ts",
+    "load:local": "node --env-file-if-exists=.env tools/load-harness/load.mjs",
+    "soak:fault-geo": "node --env-file-if-exists=.env tools/load-harness/soak.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

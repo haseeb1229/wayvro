@@ -13,7 +13,11 @@
  * values, slow drip, quota (429-equivalent), partial results (route without a duration, fewer suggestions, reverse
  * without locality), empty results, an error whose message echoes the request (the gateway must never log or return
  * it) and — for ROUTE only — a confident (HIGH) route whose distance is `ratio` × the great-circle distance (route
- * sanity checks, T3-06: < 1 is physically impossible, > 3 is an outlier). A fault may be limited to the next N calls. Calls and the inputs the "provider" received are recorded.
+ * sanity checks, T3-06: < 1 is physically impossible, > 3 is an outlier). A fault may be limited to the next N calls.
+ * Calls and the inputs the "provider" received are recorded.
+ *
+ * An optional per-SKU synthetic latency (abortable, applied before the answer or fault) stands in for a provider
+ * round trip in the local load harness (tools/load-harness): a configured value, never a measured provider latency.
  */
 import {
   GeoProviderError,
@@ -104,6 +108,8 @@ export interface GeoTestDoubleOptions {
   /** Price per call for budget accounting (default 1000 micro-USD). */
   readonly microUsdPerCall?: number;
   readonly providerKey?: string;
+  /** Synthetic latency per SKU in ms before every answer or fault (default 0; ends early when the caller aborts). */
+  readonly latencyMs?: Partial<Record<GeoSku, number>>;
 }
 
 const SKUS: readonly GeoSku[] = ['AUTOCOMPLETE', 'GEOCODE', 'REVERSE_GEOCODE', 'PLACE_RESOLVE', 'ROUTE'];
@@ -166,8 +172,10 @@ class GeoDoubleState {
   readonly inputs: Array<{ readonly sku: GeoSku; readonly input: unknown }> = [];
   private readonly faults = new Map<GeoSku, { fault: GeoFault; remaining: number }>();
   readonly licences: Readonly<Record<GeoSku, GeoAdapterLicence>>;
+  private readonly latencyMs: Partial<Record<GeoSku, number>>;
 
   constructor(options: GeoTestDoubleOptions) {
+    this.latencyMs = options.latencyMs ?? {};
     const providerKey = options.providerKey ?? GEO_MOCK_PROVIDER_KEY;
     this.licences = Object.fromEntries(
       SKUS.map((sku) => [
@@ -204,8 +212,10 @@ class GeoDoubleState {
     return f.fault;
   }
 
-  /** Applies the failure-type faults (the value-shaping ones are handled by each port). */
-  async fail(fault: GeoFault, signal: AbortSignal, echo: string): Promise<void> {
+  /** Applies the synthetic latency of `sku`, then the failure-type faults (the value-shaping ones are handled by each port). */
+  async fail(sku: GeoSku, fault: GeoFault, signal: AbortSignal, echo: string): Promise<void> {
+    const latency = this.latencyMs[sku] ?? 0;
+    if (latency > 0) await wait(latency, signal);
     switch (fault.mode) {
       case 'TIMEOUT':
         await wait(MAX_FAULT_WAIT_MS, signal);
@@ -240,7 +250,7 @@ class AutocompleteDouble implements PlacesAutocompleteAdapter, MockBrand {
   }
   async suggest(input: AutocompleteInput, signal: AbortSignal): Promise<readonly PlaceCandidate[]> {
     const fault = this.state.begin('AUTOCOMPLETE', input);
-    await this.state.fail(fault, signal, input.text);
+    await this.state.fail('AUTOCOMPLETE', fault, signal, input.text);
     if (fault.mode === 'EMPTY') return [];
     const hits = SYNTHETIC_GAZETTEER.filter((p) => matches(p, input.text)).map((p) => ({ providerPlaceId: p.id, components: p.components, kind: p.kind }));
     if (fault.mode === 'MALFORMED') return hits.map((h) => ({ ...h, providerPlaceId: '' }));
@@ -259,7 +269,7 @@ class GeocodingDouble implements GeocodingAdapter, MockBrand {
     signal: AbortSignal,
   ): Promise<readonly ResolvedPlace[]> {
     const fault = this.state.begin('GEOCODE', input);
-    await this.state.fail(fault, signal, input.text);
+    await this.state.fail('GEOCODE', fault, signal, input.text);
     if (fault.mode === 'EMPTY') return [];
     const hits = SYNTHETIC_GAZETTEER.filter((p) => matches(p, input.text)).map(resolved);
     if (fault.mode === 'MALFORMED') return hits.map((h) => ({ ...h, point: { lat: 51.5, lng: Number.NaN } }));
@@ -270,7 +280,7 @@ class GeocodingDouble implements GeocodingAdapter, MockBrand {
     signal: AbortSignal,
   ): Promise<ResolvedPlace> {
     const fault = this.state.begin('PLACE_RESOLVE', input);
-    await this.state.fail(fault, signal, input.providerPlaceId);
+    await this.state.fail('PLACE_RESOLVE', fault, signal, input.providerPlaceId);
     const p = SYNTHETIC_GAZETTEER.find((x) => x.id === input.providerPlaceId);
     if (!p || fault.mode === 'EMPTY') throw new GeoProviderError('REJECTED_INPUT');
     if (fault.mode === 'MALFORMED') return { ...resolved(p), point: { lat: 48.85, lng: 2.35 } };
@@ -286,7 +296,7 @@ class ReverseDouble implements ReverseGeocodingAdapter, MockBrand {
   }
   async reverse(input: { readonly point: GeoPoint; readonly locale: GeoLocale }, signal: AbortSignal): Promise<ResolvedPlace | null> {
     const fault = this.state.begin('REVERSE_GEOCODE', input);
-    await this.state.fail(fault, signal, `${String(input.point.lat)},${String(input.point.lng)}`);
+    await this.state.fail('REVERSE_GEOCODE', fault, signal, `${String(input.point.lat)},${String(input.point.lng)}`);
     if (fault.mode === 'EMPTY') return null;
     let best: { p: SyntheticPlace; d: number } | null = null;
     for (const p of SYNTHETIC_GAZETTEER) {
@@ -316,7 +326,7 @@ class RoutingDouble implements RoutingAdapter, MockBrand {
   }
   async route(input: RouteInput, signal: AbortSignal): Promise<RouteResult> {
     const fault = this.state.begin('ROUTE', input);
-    await this.state.fail(fault, signal, `${String(input.origin.lat)},${String(input.origin.lng)}`);
+    await this.state.fail('ROUTE', fault, signal, `${String(input.origin.lat)},${String(input.origin.lng)}`);
     const r = straightLineRoute(input);
     if (fault.mode === 'EMPTY') throw new GeoProviderError('UPSTREAM');
     if (fault.mode === 'MALFORMED') return { ...r, distanceM: -r.distanceM, geometry: [{ lat: 10, lng: 10 }] };
