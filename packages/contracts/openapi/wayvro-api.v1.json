@@ -108124,7 +108124,8 @@
                                   "PICKUP_RESTRICTED",
                                   "OUTSIDE_SERVICE_HOURS",
                                   "ROUTE_TOO_LONG",
-                                  "NO_ACTIVE_RATE_CARD"
+                                  "NO_ACTIVE_RATE_CARD",
+                                  "LEGAL_GATE_DISABLED"
                                 ]
                               },
                               "nextOpenAt": {
@@ -109616,7 +109617,8 @@
                                   "PICKUP_RESTRICTED",
                                   "OUTSIDE_SERVICE_HOURS",
                                   "ROUTE_TOO_LONG",
-                                  "NO_ACTIVE_RATE_CARD"
+                                  "NO_ACTIVE_RATE_CARD",
+                                  "LEGAL_GATE_DISABLED"
                                 ]
                               },
                               "nextOpenAt": {

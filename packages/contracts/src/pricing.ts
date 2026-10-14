@@ -35,8 +35,19 @@ export const QUOTE_COMPONENT_KINDS = [
 ] as const;
 export const QuoteComponentKindSchema = z.enum(QUOTE_COMPONENT_KINDS);
 
-/** Why a product could not be priced for this request (also the 422 `details.reasonCodes` vocabulary). */
-export const QUOTE_UNAVAILABLE_REASONS = ['ZONE_NOT_SERVED', 'PICKUP_RESTRICTED', 'OUTSIDE_SERVICE_HOURS', 'ROUTE_TOO_LONG', 'NO_ACTIVE_RATE_CARD'] as const;
+/**
+ * Why a product could not be priced for this request (also the 422 `details.reasonCodes` vocabulary).
+ * `LEGAL_GATE_DISABLED` (R28): the product is legally gated in the city (BIKE/RICKSHAW until FA-11) and is never priced;
+ * every other product that is not offered in the city is `ZONE_NOT_SERVED` (the lifecycle state is not disclosed).
+ */
+export const QUOTE_UNAVAILABLE_REASONS = [
+  'ZONE_NOT_SERVED',
+  'PICKUP_RESTRICTED',
+  'OUTSIDE_SERVICE_HOURS',
+  'ROUTE_TOO_LONG',
+  'NO_ACTIVE_RATE_CARD',
+  'LEGAL_GATE_DISABLED',
+] as const;
 export const QuoteUnavailableReasonSchema = z.enum(QUOTE_UNAVAILABLE_REASONS);
 
 const QuotePointSchema = z.strictObject({

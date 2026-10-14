@@ -1,12 +1,21 @@
 /**
  * Phase 3 staff request contracts: the cross-field rules (`refine`) each accept a valid body and refuse the invalid
  * one, so a malformed configuration is a 400 at the edge before any service logic (catalog eligibility rules, geo
- * budgets, tax policies, rate-card values, pricing previews, support quote lookups).
+ * budgets, tax policies, rate-card values, pricing previews, support quote lookups) — plus the rider quote's closed
+ * unavailable-reason vocabulary (R28 legal gate).
  */
 import { describe, expect, it } from 'vitest';
 import { EligibilityRuleDraftRequestSchema } from './catalog.js';
 import { GeoBudgetDraftRequestSchema } from './geo.js';
-import { PricingPreviewRequestSchema, QuoteLookupRequestSchema, RateCardValuesSchema, TaxPolicyDraftRequestSchema } from './pricing.js';
+import {
+  PricingPreviewRequestSchema,
+  QUOTE_UNAVAILABLE_REASONS,
+  QuoteGroupSchema,
+  QuoteLookupRequestSchema,
+  QuoteUnavailableReasonSchema,
+  RateCardValuesSchema,
+  TaxPolicyDraftRequestSchema,
+} from './pricing.js';
 
 const UUID_A = '0192f3c4-0000-7000-8000-00000000000a';
 const UUID_B = '0192f3c4-0000-7000-8000-00000000000b';
@@ -83,5 +92,32 @@ describe('pricing staff requests', () => {
     expect(QuoteLookupRequestSchema.safeParse({ quoteId: UUID_A, quoteGroupId: UUID_B, reasonCode: 'FARE_DISPUTE' }).success).toBe(false);
     expect(QuoteLookupRequestSchema.safeParse({ reasonCode: 'FARE_DISPUTE' }).success).toBe(false);
     expect(QuoteLookupRequestSchema.safeParse({ quoteId: UUID_A, reasonCode: 'CURIOSITY' }).success).toBe(false);
+  });
+});
+
+describe('quote unavailable reasons (R28)', () => {
+  it('LEGAL_GATE_DISABLED is added without removing or reordering an existing reason', () => {
+    expect(QUOTE_UNAVAILABLE_REASONS).toEqual([
+      'ZONE_NOT_SERVED',
+      'PICKUP_RESTRICTED',
+      'OUTSIDE_SERVICE_HOURS',
+      'ROUTE_TOO_LONG',
+      'NO_ACTIVE_RATE_CARD',
+      'LEGAL_GATE_DISABLED',
+    ]);
+    expect(QuoteUnavailableReasonSchema.safeParse('LEGAL_GATE_DISABLED').success).toBe(true);
+    // the catalog status name is not a quote reason
+    expect(QuoteUnavailableReasonSchema.safeParse('DISABLED_LEGAL_GATE').success).toBe(false);
+  });
+
+  it('a quote group lists a legal-gated product as unavailable next to a zone refusal', () => {
+    const unavailable = QuoteGroupSchema.shape.unavailable;
+    expect(
+      unavailable.safeParse([
+        { productCode: 'BIKE', reasonCode: 'LEGAL_GATE_DISABLED', nextOpenAt: null },
+        { productCode: 'COMFORT', reasonCode: 'ZONE_NOT_SERVED', nextOpenAt: null },
+      ]).success,
+    ).toBe(true);
+    expect(unavailable.safeParse([{ productCode: 'BIKE', reasonCode: 'LEGAL_GATE', nextOpenAt: null }]).success).toBe(false);
   });
 });

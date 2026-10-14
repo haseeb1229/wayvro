@@ -22,7 +22,7 @@ export const UI_ERROR_KINDS = [
   'feature-disabled',
   /**
    * Phase 3 (422 WAYVRO_E_SERVICE_AREA): nothing can be priced for this pickup/drop-off/time; `detail.reasonCodes` say
-   * why (ZONE_NOT_SERVED, PICKUP_RESTRICTED, OUTSIDE_SERVICE_HOURS, ROUTE_TOO_LONG, NO_ACTIVE_RATE_CARD).
+   * why (ZONE_NOT_SERVED, PICKUP_RESTRICTED, OUTSIDE_SERVICE_HOURS, ROUTE_TOO_LONG, NO_ACTIVE_RATE_CARD, LEGAL_GATE_DISABLED).
    */
   'service-area',
   /** Phase 3 (426 WAYVRO_E_APP_UPDATE_REQUIRED): this build may not continue; the app-policy gate blocks the app. */

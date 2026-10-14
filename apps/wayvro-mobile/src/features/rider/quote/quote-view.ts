@@ -48,7 +48,9 @@ export function quoteRefusal(error: unknown, draft: { readonly pickup: DraftPlac
   const e = toApiError(error);
   switch (e.kind) {
     case 'service-area': {
-      const reason = e.detail.reasonCodes.find(isReason) ?? 'ZONE_NOT_SERVED';
+      // a legal-gated product (R28) explains the refusal only when nothing more actionable (zone, hours …) applies
+      const known = e.detail.reasonCodes.filter(isReason);
+      const reason = known.find((r) => r !== 'LEGAL_GATE_DISABLED') ?? known[0] ?? 'ZONE_NOT_SERVED';
       return {
         kind: 'service-area',
         reason,
@@ -269,6 +271,9 @@ export function refusalCopy(tr: Tr, refusal: QuoteRefusal): RefusalCopy {
         return { title: tr('rider.area.restrictedTitle'), body: tr('rider.area.restrictedBody'), action: 'change-pickup' };
       if (refusal.reason === 'ROUTE_TOO_LONG') return { title: tr('rider.area.tooLongTitle'), body: tr('rider.area.tooLongBody'), action: 'change-dropoff' };
       if (refusal.reason === 'NO_ACTIVE_RATE_CARD') return { title: tr('rider.area.noPricesTitle'), body: tr('rider.area.noPricesBody'), action: 'none' };
+      // R28: the service itself is not offered (legal gate) — no place change helps, and no internal state is named
+      if (refusal.reason === 'LEGAL_GATE_DISABLED')
+        return { title: tr('rider.area.notYetTitle'), body: tr('rider.unavailable.LEGAL_GATE_DISABLED'), action: 'none' };
       const which = refusal.failedEnd ?? 'unknown';
       return {
         title: tr('rider.area.title'),

@@ -179,9 +179,25 @@ describe('POST /v1/quotes — server-authoritative upfront price (B04/B06/E05)',
     const unknown = await postQuote(g.h, rider.accessToken, quoteBody(S.points.inside, S.points.insideOther, { products: ['ECONOMY', 'HOVERCRAFT'] }));
     expect(unknown.statusCode).toBe(400);
     expect(errorOf(unknown)?.details?.reasonCodes).toEqual(['UNKNOWN_PRODUCT']);
-    const bike = group(await postQuote(g.h, rider.accessToken, quoteBody(fresh().pickup, fresh().dropoff, { products: ['ECONOMY', 'BIKE'] })));
+    // R28: BIKE/RICKSHAW are DISABLED_LEGAL_GATE in the city — listed as LEGAL_GATE_DISABLED, never priced
+    const bike = group(await postQuote(g.h, rider.accessToken, quoteBody(fresh().pickup, fresh().dropoff, { products: ['ECONOMY', 'BIKE', 'RICKSHAW'] })));
     expect(bike.options.map((o) => o.productCode)).toEqual(['ECONOMY']);
-    expect(bike.unavailable).toEqual([{ productCode: 'BIKE', reasonCode: 'ZONE_NOT_SERVED', nextOpenAt: null }]);
+    expect(bike.unavailable).toEqual([
+      { productCode: 'BIKE', reasonCode: 'LEGAL_GATE_DISABLED', nextOpenAt: null },
+      { productCode: 'RICKSHAW', reasonCode: 'LEGAL_GATE_DISABLED', nextOpenAt: null },
+    ]);
+    const stored = await g.h.owner.query<{ product_code: string }>(`select product_code from pricing.quotes where quote_group_id = $1`, [bike.quoteGroupId]);
+    expect(stored.rows.map((r) => r.product_code)).toEqual(['ECONOMY']);
+    // only legal-gated products requested: nothing priced, no routing call, 422 with the legal-gate reason
+    const calls = routeCalls();
+    const onlyGated = await postQuote(g.h, rider.accessToken, quoteBody(fresh().pickup, fresh().dropoff, { products: ['BIKE'] }));
+    expect(onlyGated.statusCode).toBe(422);
+    expect(errorOf(onlyGated)).toMatchObject({ code: 'WAYVRO_E_SERVICE_AREA', details: { reasonCodes: ['LEGAL_GATE_DISABLED'] } });
+    expect(routeCalls()).toBe(calls);
+    // a genuine zone failure stays ZONE_NOT_SERVED next to the legal gate
+    const outside = await postQuote(g.h, rider.accessToken, quoteBody(S.points.outside, S.points.inside, { products: ['ECONOMY', 'BIKE'] }));
+    expect(outside.statusCode).toBe(422);
+    expect(errorOf(outside)?.details?.reasonCodes).toEqual(['LEGAL_GATE_DISABLED', 'ZONE_NOT_SERVED']);
   });
 
   it('QT-10 / zones: a pickup outside the service area, in an exclusion or a cityCode without zones answers 422 SERVICE_AREA (an outcome, replayed)', async () => {

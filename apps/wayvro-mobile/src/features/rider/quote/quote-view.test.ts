@@ -93,6 +93,25 @@ describe('quote view adapter (B03/B04/B06 display)', () => {
     expect(karachiTime('nope')).toBeNull();
   });
 
+  it('R28: a legal-gated product says the service is not available yet; a zone refusal keeps its own words', () => {
+    const group = quoteGroup({
+      unavailable: [
+        { productCode: 'BIKE', reasonCode: 'LEGAL_GATE_DISABLED', nextOpenAt: null },
+        { productCode: 'COMFORT', reasonCode: 'ZONE_NOT_SERVED', nextOpenAt: null },
+      ],
+    });
+    expect(pricedView(tr, 'en', group, NO_DRAFT, SERVER_NOW).unavailable).toEqual([
+      { productCode: 'BIKE', title: 'Bike', reason: 'This service is not available yet.' },
+      { productCode: 'COMFORT', title: 'Comfort', reason: 'Not available here yet' },
+    ]);
+    // the Urdu and Roman-Urdu drafts exist (PENDING native review, FA-09) and differ from the zone wording
+    for (const locale of ['ur', 'ur-Latn'] as const) {
+      const rows = pricedView((key, params) => t(locale, key, params), locale, group, NO_DRAFT, SERVER_NOW).unavailable;
+      expect(rows[0]?.reason).toBe(t(locale, 'rider.unavailable.LEGAL_GATE_DISABLED'));
+      expect(rows[0]?.reason).not.toBe(rows[1]?.reason);
+    }
+  });
+
   it('snapped pickup, required attribution, product names and spoken money', () => {
     const group = quoteGroup({
       pickup: {
@@ -156,6 +175,17 @@ describe('quote refusals (E07/CON-P3-08: no price rather than a guess)', () => {
     expect(quoteRefusal(area(['ZONE_NOT_SERVED']), { pickup: place('a', true), dropoff: place('b', false) })).toMatchObject({ failedEnd: 'dropoff' });
     expect(quoteRefusal(area(['ZONE_NOT_SERVED']), { pickup: place('a', false), dropoff: place('b', false) })).toMatchObject({ failedEnd: 'both' });
     expect(quoteRefusal(area(['UNKNOWN_FUTURE_CODE']), NO_DRAFT)).toMatchObject({ reason: 'ZONE_NOT_SERVED', failedEnd: null });
+    // R28: only legal-gated products asked for ⇒ LEGAL_GATE_DISABLED; next to a zone failure the zone (actionable) wins
+    expect(quoteRefusal(area(['LEGAL_GATE_DISABLED']), { pickup: place('a', false), dropoff: place('b', true) })).toEqual({
+      kind: 'service-area',
+      reason: 'LEGAL_GATE_DISABLED',
+      nextOpenAt: null,
+      failedEnd: null,
+    });
+    expect(quoteRefusal(area(['LEGAL_GATE_DISABLED', 'ZONE_NOT_SERVED']), { pickup: place('a', false), dropoff: place('b', true) })).toMatchObject({
+      reason: 'ZONE_NOT_SERVED',
+      failedEnd: 'pickup',
+    });
     expect(quoteRefusal(area(['OUTSIDE_SERVICE_HOURS'], '2026-10-14T01:00:00.000Z'), NO_DRAFT)).toEqual({
       kind: 'service-area',
       reason: 'OUTSIDE_SERVICE_HOURS',
@@ -200,6 +230,11 @@ describe('quote refusals (E07/CON-P3-08: no price rather than a guess)', () => {
     });
     expect(refusalCopy(tr, { kind: 'service-area', reason: 'PICKUP_RESTRICTED', nextOpenAt: null, failedEnd: null })).toMatchObject({
       action: 'change-pickup',
+    });
+    expect(refusalCopy(tr, { kind: 'service-area', reason: 'LEGAL_GATE_DISABLED', nextOpenAt: null, failedEnd: null })).toEqual({
+      title: 'Not available yet',
+      body: 'This service is not available yet.',
+      action: 'none',
     });
     expect(refusalCopy(tr, { kind: 'rate-limited', seconds: 30 }).body).toBe('Too many attempts. Try again in 30 seconds.');
     expect(refusalCopy(tr, { kind: 'disabled', reason: 'ACCOUNT_RESTRICTED' }).action).toBe('appeal');

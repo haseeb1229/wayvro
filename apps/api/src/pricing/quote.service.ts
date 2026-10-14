@@ -238,8 +238,15 @@ export class QuoteService {
       tx,
     );
     if (resolution.unknownProductCodes.length > 0) return failure('WAYVRO_E_VALIDATION', { reasonCodes: ['UNKNOWN_PRODUCT'] });
-    // products requested but not ENABLED in the city are listed, never priced (QT-09, T3-15)
-    const unavailable: Unavailable[] = resolution.notEnabled.map((p) => ({ productCode: p.productCode, reasonCode: 'ZONE_NOT_SERVED', nextOpenAt: null }));
+    // products requested but not ENABLED in the city are listed, never priced (QT-09, T3-15; R28). A legal-gated product
+    // (city status DISABLED_LEGAL_GATE — BIKE/RICKSHAW until FA-11; the database gate keeps it from ever being ENABLED)
+    // is LEGAL_GATE_DISABLED. Every other non-ENABLED state (no city row, NOT_CONFIGURED, CONFIGURED, SUSPENDED) is the
+    // generic ZONE_NOT_SERVED: riders never learn the internal configuration lifecycle or an operational suspension.
+    const unavailable: Unavailable[] = resolution.notEnabled.map((p) => ({
+      productCode: p.productCode,
+      reasonCode: p.cityStatus === 'DISABLED_LEGAL_GATE' ? 'LEGAL_GATE_DISABLED' : 'ZONE_NOT_SERVED',
+      nextOpenAt: null,
+    }));
     const candidates: Priceable[] = [];
     for (const c of resolution.candidates) {
       if (c.decision.kind === 'UNAVAILABLE') {
