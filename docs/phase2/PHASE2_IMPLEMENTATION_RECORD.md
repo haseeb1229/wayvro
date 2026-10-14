@@ -464,3 +464,11 @@ EG-01..EG-23 all remain open. External debt stays deferred, unchanged: productio
 | Logout wipes state | PASS. Confirmation dialog → server session `REVOKED / USER_LOGOUT`; SecureStore keeps only the installation id (device identity by design), the session key is gone; Back stays on sign-in |
 
 **NOT RUN on the emulator:** a real camera capture and upload (emulated camera, not exercised), picking an actual photo, the upload queue and file deletion, the sanitiser/worker path, the district picker, RTL/Urdu rendering, TalkBack, dynamic type, low-end physical hardware and iOS.
+
+## Post-merge fix (2026-10-14) — requirement-set activation under concurrency
+
+Found during the Phase 3 run (the same class of bug as the Phase-3 activations fixed in PR #8). Two activations of requirement sets for one (city, category) were serialised only by their own row locks. A request whose transaction began before a competing activation committed did not see that newly ACTIVE set, so it tripped the `requirement_sets_one_active` index (HTTP 500), and its timestamps came from transaction-start `now()`.
+
+- **Fix** (`apps/api/src/compliance/compliance-admin.service.ts`): an advisory lock per (city, category) is taken before the ACTIVE set is read, and the validity window is stamped with `clock_timestamp()`. No schema change.
+- **Regression test** (`apps/api/test/compliance-admin.integration.test.ts`, deterministic): a competing writer holds the lock and the ACTIVE row while the request waits, then activates another set and commits. Main's original code answers 500; the fix answers 200, retires the competing set and keeps `effective_until ≥ effective_from`.
+- **Also in this change:** `.github/workflows/mobile-full.yml` is bootstrapped on the default branch (manual only, no schedule) so the Phase-3 SP-08 full matrix can be dispatched; on a ref without the SP-08 harness it fails as an unsupported target.

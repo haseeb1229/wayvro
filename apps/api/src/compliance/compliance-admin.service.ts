@@ -88,6 +88,10 @@ const ageView = (a: AgeRow) => ({
   approvedByStaffId: a.approved_by_staff_id,
 });
 
+/** Advisory-lock key serialising requirement-set activations of one (city, category). @internal exported for tests */
+export const requirementSetActivationLockKey = (cityCode: string, serviceCategory: string): string =>
+  `wayvro.requirement-set.activation:${cityCode}:${serviceCategory}`;
+
 export class ComplianceAdminService {
   constructor(
     private readonly db: pg.Pool,
@@ -500,16 +504,25 @@ export class ComplianceAdminService {
     });
   }
 
-  /** APPROVED → ACTIVE (retiring the previous active set); production never activates a placeholder. */
+  /**
+   * APPROVED → ACTIVE (retiring the previous active set); production never activates a placeholder. Activations of one
+   * (city, category) are serialised by an advisory lock taken before the ACTIVE set is read, and the validity window is
+   * stamped with `clock_timestamp()`: a request whose transaction began before a competing activation committed must
+   * see and retire that set, and must not stamp it with its own (earlier) transaction start time.
+   */
   activateSet(staff: StaffPrincipal, id: string, key: string): Promise<IdempotentResult> {
     return this.transitionSet(staff, id, 'requirement-sets.activate', key, { id }, async (tx, s) => {
       if (s.status !== 'APPROVED') return failure('WAYVRO_E_CONFLICT');
       if (s.is_placeholder && this.policy.WAYVRO_ENV === 'production') return failure('WAYVRO_E_CONFLICT');
+      await tx.query(`select pg_advisory_xact_lock(hashtext($1))`, [requirementSetActivationLockKey(s.city_code, s.service_category)]);
       await tx.query(
-        `update compliance.requirement_sets set status = 'RETIRED', effective_until = now(), version_lock = version_lock + 1 where city_code = $1 and service_category = $2 and status = 'ACTIVE'`,
+        `update compliance.requirement_sets set status = 'RETIRED', effective_until = clock_timestamp(), version_lock = version_lock + 1 where city_code = $1 and service_category = $2 and status = 'ACTIVE'`,
         [s.city_code, s.service_category],
       );
-      await tx.query(`update compliance.requirement_sets set status = 'ACTIVE', effective_from = now(), version_lock = version_lock + 1 where id = $1`, [id]);
+      await tx.query(
+        `update compliance.requirement_sets set status = 'ACTIVE', effective_from = clock_timestamp(), version_lock = version_lock + 1 where id = $1`,
+        [id],
+      );
       return 'REQUIREMENT_SET_ACTIVATED';
     });
   }
