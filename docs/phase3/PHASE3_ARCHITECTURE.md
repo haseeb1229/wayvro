@@ -181,7 +181,7 @@ Geo reads are GET (no state change, no Idempotency-Key), session-only, `Cache-Co
 |---|---|---|
 | 1 normalise | zod contract validation; Unicode NFKC, whitespace collapse, case-fold for Latin script, Urdu script kept; landmark alias expansion (`geo.landmark_aliases`, ACTIVE, per city/locale); coordinates range + Pakistan bbox (lat 23.5–37.2, lng 60.8–77.9, coarse) | 400 `WAYVRO_E_VALIDATION` |
 | 2 authz | session required; account not under an ACCOUNT-scope restriction that blocks rider use (existing `blocksRiderUse`); runtime switch for the SKU not DISABLED; `cityCode` ENABLED | 401 / 403 `WAYVRO_E_ACCOUNT_RESTRICTED` / 503 `WAYVRO_E_FEATURE_DISABLED` |
-| 3 rate limit | `RateLimiter.consume` per account (+ per IP prefix for quotes); keys `geo:ac:m:<acct>` etc. | 429 `WAYVRO_E_RATE_LIMITED` (`retryAfterSeconds`); limiter unavailable ⇒ 503 (fail closed, §8) |
+| 3 rate limit | `RateLimiter.consume` per account and per IP prefix in one call (implemented at the Phase 3 closure correction: IPv4 /24, IPv6 /56 of the TRUST_PROXY-resolved `req.ip`, HMAC-hashed prefix keys `geo:{ac\|pr\|rv}:ip:m:<hmac>`); keys `geo:ac:m:<acct>` etc. | 429 `WAYVRO_E_RATE_LIMITED` (`retryAfterSeconds`); limiter unavailable ⇒ 503 (fail closed, §8) |
 | 4 cache lookup | Valkey GET of `wv:geo:<providerKey>:<sku>:v1:<HMAC(normalised key)>` (provider-namespaced, threat model T3-12) — every text- or coordinate-derived key is a keyed HMAC (existing `KeyedHasher`; a dedicated key class `geo_cache` proposed, ADR-047 decision, recommended) so a Valkey dump reveals neither search text nor locations; TTL = min(adapter terms TTL, configured maximum) | miss ⇒ continue; Valkey error ⇒ fail closed (cache and limiter share the dependency) |
 | 5 budget | `consume` on day + month call counters and month cost counter (micro-USD, adapter price table) per (providerKey, sku) against the ACTIVE `geo.provider_budgets` row (cached 60 s); signals at 50/80/100 % | 503 `WAYVRO_E_DEPENDENCY_UNAVAILABLE`, `details.reasonCodes:["GEO_BUDGET_EXHAUSTED"]`; client switches to manual fallback |
 | 6 breaker | per (providerKey, sku) state CLOSED/OPEN/HALF_OPEN (§5.4) | OPEN ⇒ 503 `reasonCodes:["GEO_PROVIDER_UNAVAILABLE"]` without calling |
@@ -485,6 +485,10 @@ Redaction additions (additive to `packages/observability/src/redaction.ts`, test
 | `QUOTES_PER_MINUTE_ACCOUNT` | 20 | 1 | 10000 | |
 | `QUOTES_PER_DAY_ACCOUNT` | 200 | 1 | 100000 | |
 | `QUOTES_PER_MINUTE_IP_PREFIX` | 60 | 1 | 100000 | IPv4 /24, IPv6 /56 (existing `ipPrefix`) |
+| `GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX` | 600 | 1 | 100000 | closure correction; forward geocode counts against it; 10× the account limit (CGNAT-aware, PROPOSED — tune on evidence) |
+| `GEO_RESOLVE_PER_MINUTE_IP_PREFIX` | 300 | 1 | 100000 | closure correction; place resolution |
+| `GEO_REVERSE_PER_MINUTE_IP_PREFIX` | 300 | 1 | 100000 | closure correction; reverse geocode |
+| `ROUTE_RATIO_OUTLIER_MAX` | 3.0 | 1.5 | 10 | T3-06: route distance above this multiple of the great-circle distance ⇒ LOW confidence + `ROUTE_RATIO_OUTLIER` |
 | `QUOTE_IDEMPOTENCY_TTL_SECONDS` | 900 | 60 | 3600 | replay window for quote creation |
 | `PICKUP_SNAP_MAX_METERS` | 300 | 25 | 2000 | restricted/airport zones |
 | `GEO_LOCAL_DAILY_CALLS_PER_SKU` | 5000 | 1 | 1000000 | local/test only; staging/production require an ACTIVE `geo.provider_budgets` row (absent ⇒ SKU refused) |
