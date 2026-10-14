@@ -6,6 +6,7 @@
  */
 import { AgeEligibilityPolicySchema, RequirementSetSchema } from '@wayvro/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { requirementSetActivationLockKey } from '../src/compliance/compliance-admin.service.js';
 import { STAFF_ENV, staffKit, type Staff } from './staff-helpers.js';
 import { bearer, signIn, startApi, type Harness } from './support.js';
 
@@ -94,6 +95,69 @@ describe('requirement sets (K06/R46)', () => {
     await expect(
       h.owner.query(`update compliance.requirement_sets set approved_by_staff_id = drafted_by_staff_id where id = $1`, [set.id]),
     ).rejects.toMatchObject({ code: '23514' });
+  });
+});
+
+describe('requirement-set activation under concurrency', () => {
+  const ITEMS = [
+    { documentType: 'CNIC', mandatory: true, minValidityDaysAtSubmission: 30, renewalLeadDays: 30, appliesToOwnershipTypes: [], licenceClassesAllowed: [] },
+  ];
+  async function approvedSet(serviceCategory: string): Promise<string> {
+    const d = await kit.privileged(ca1, '/v1/admin/requirement-sets', {
+      cityCode: 'LHR',
+      serviceCategory,
+      sourceReference: 'SYNTHETIC TEST REFERENCE — not a legal source',
+      items: ITEMS,
+    });
+    expect(d.statusCode, d.body).toBe(201);
+    const id = RequirementSetSchema.parse(d.json()).id;
+    expect((await kit.privileged(ca1, `/v1/admin/requirement-sets/${id}/submission`, {})).statusCode).toBe(200);
+    expect((await kit.privileged(ca2, `/v1/admin/requirement-sets/${id}/approval`, { decision: 'APPROVE' })).statusCode).toBe(200);
+    return id;
+  }
+
+  // Regression: an activation whose transaction began before a competing activation of the same (city, category)
+  // committed must retire that set (not trip the one-ACTIVE index) and keep effective_until ≥ effective_from.
+  it('an activation that waited behind a competing one retires it, in time order', async () => {
+    const current = await approvedSet('BIKE');
+    expect((await kit.privileged(ca2, `/v1/admin/requirement-sets/${current}/activation`, {})).statusCode).toBe(200);
+    const [x, y] = [await approvedSet('BIKE'), await approvedSet('BIKE')];
+    const competitor = await h.owner.connect();
+    try {
+      // the competitor holds what every activation writer holds: the (city, category) lock and the current ACTIVE row
+      await competitor.query('begin');
+      await competitor.query('select pg_advisory_xact_lock(hashtext($1))', [requirementSetActivationLockKey('LHR', 'BIKE')]);
+      await competitor.query(
+        `select id from compliance.requirement_sets where city_code = 'LHR' and service_category = 'BIKE' and status = 'ACTIVE' for update`,
+      );
+      const pending = kit.privileged(ca2, `/v1/admin/requirement-sets/${y}/activation`, {});
+      // the request's transaction has started and is waiting on the competitor
+      await expect
+        .poll(
+          async () =>
+            (await h.owner.query<{ n: number }>(`select count(*)::int n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'`))
+              .rows[0]?.n,
+          { timeout: 10_000 },
+        )
+        .toBeGreaterThanOrEqual(1);
+      await competitor.query(
+        `update compliance.requirement_sets set status = 'RETIRED', effective_until = clock_timestamp() where city_code = 'LHR' and service_category = 'BIKE' and status = 'ACTIVE'`,
+      );
+      await competitor.query(`update compliance.requirement_sets set status = 'ACTIVE', effective_from = clock_timestamp() where id = $1`, [x]);
+      await competitor.query('commit');
+      const res = await pending;
+      expect(res.statusCode, res.body).toBe(200);
+    } finally {
+      competitor.release();
+    }
+    const rows = await h.owner.query<{ id: string; status: string; ordered: boolean | null }>(
+      `select id, status, effective_until >= effective_from ordered from compliance.requirement_sets where id = any($1::uuid[]) order by version`,
+      [[x, y]],
+    );
+    expect(rows.rows).toEqual([
+      { id: x, status: 'RETIRED', ordered: true },
+      { id: y, status: 'ACTIVE', ordered: null },
+    ]);
   });
 });
 

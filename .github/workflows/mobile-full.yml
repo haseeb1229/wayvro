@@ -1,0 +1,272 @@
+# SP-08 full cross-mode matrix (ADR-052; FA-16 APPROVED 2026-10-12): MANUAL ONLY (`workflow_dispatch`) — on demand
+# during the Phase-3 run and mandatory at Phase-3 final closure. There is deliberately NO `schedule:` trigger while the
+# repository is private (a daily 60-min matrix alone would use most of the monthly Actions allowance); a schedule may be
+# added later only after observing Actions-minute cost (founder decision).
+# Lanes: API 29 and API 35 (parallel) + a low-RAM AVD lane (2 GB, emulator-only — never SP-02 device evidence);
+# property tests at 50,000 runs. Results are EMULATOR evidence only. Third-party actions are pinned to commit SHAs;
+# Maestro and bundletool-free downloads are checksum-verified. No secrets are used.
+#
+# Bootstrap (founder decision 2026-10-14): GitHub dispatches a workflow_dispatch workflow only when the file exists on
+# the default branch, and a dispatch runs the copy of this file on the dispatched ref, checked out at that ref. The
+# `target` job refuses a ref that does not contain the SP-08 harness (for example pre-Phase-3 main) with an explicit
+# "unsupported target" failure, so a run can never report PASS without having run the matrix.
+# Dispatch: gh workflow run mobile-full.yml --ref <branch>
+name: Mobile full matrix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-full-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
+  EXPO_NO_TELEMETRY: '1'
+  DO_NOT_TRACK: '1'
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  MAESTRO_VERSION: 2.11.0
+  MAESTRO_SHA256: 5384593cb4e7a106489e75a821d157dd43f4e438df6bc308b72e82c685e1283a
+  MAESTRO_CLI_NO_ANALYTICS: '1'
+  MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED: 'true'
+  MAESTRO_DISABLE_UPDATE_CHECK: 'true'
+
+jobs:
+  target:
+    name: Target supports the SP-08 matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Refuse a ref without the SP-08 harness (never a PASS without a matrix run)
+        run: |
+          missing=0
+          for f in tests/e2e-mobile/run-flows.mjs tests/e2e-mobile/mobile-stack.mjs tests/e2e-mobile/summarise.mjs tests/e2e-mobile/flows/manifest.mjs apps/api/test/pricing-engine.test.ts; do
+            if [ ! -f "$f" ]; then
+              echo "::error::unsupported target $GITHUB_REF ($GITHUB_SHA): $f is missing — this ref has no SP-08 matrix"
+              missing=1
+            fi
+          done
+          if ! grep -q "'e2e'" scripts/android-build.mjs 2>/dev/null; then
+            echo "::error::unsupported target $GITHUB_REF ($GITHUB_SHA): scripts/android-build.mjs has no e2e mode"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "### Mobile full matrix: UNSUPPORTED TARGET ($GITHUB_REF) — nothing was run" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Target $GITHUB_REF ($GITHUB_SHA) carries the SP-08 harness" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  e2e-apk:
+    name: E2E APK
+    needs: target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Free disk — remove toolchains this job does not use
+        run: |
+          for d in /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL /usr/local/julia* /usr/local/share/boost; do
+            if [ -e "$d" ]; then
+              du -sh "$d"
+              sudo rm -rf "$d"
+            fi
+          done
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - name: Restore Gradle dependency cache (exact key only; the CI Android job owns the save)
+        id: gradle-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+          key: gradle-deps-v2-${{ runner.os }}-jdk17-${{ hashFiles('pnpm-lock.yaml', 'apps/wayvro-mobile/package.json', 'apps/wayvro-mobile/app.config.ts', 'apps/wayvro-mobile/modules/*/android/build.gradle', 'scripts/android-build.mjs') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Build the app's workspace packages
+        run: pnpm turbo run build --filter='@wayvro/wayvro-mobile^...'
+      - name: E2E APK (x86_64, release-mode Hermes bundle + SP-02 §6.2 instrumentation, emulator-loopback origin)
+        env:
+          WAYVRO_JDK17_HOME: ${{ env.JAVA_HOME }}
+        run: |
+          start=$(date +%s)
+          node scripts/android-build.mjs e2e
+          echo "E2E APK build: $(( $(date +%s) - start )) s (Gradle cache hit=${{ steps.gradle-cache.outputs.cache-hit || 'false' }})" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mobile-e2e-apk-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: apps/wayvro-mobile/build-reports/e2e/
+
+  matrix:
+    name: Maestro ${{ matrix.lane }}
+    needs: e2e-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: api-29
+            api: 29
+            ram: 3072M
+          - lane: api-35
+            api: 35
+            ram: 3072M
+          # Low-RAM lane: a 2 GB AVD (google_apis image; no Android Go image is pinned) — emulator-only evidence.
+          - lane: api-35-lowram
+            api: 35
+            ram: 2048M
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Build the API + local runner and the seed packages
+        run: pnpm turbo run build build:local --filter='@wayvro/api...' --filter=@wayvro/test-support
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mobile-e2e-apk-${{ github.sha }}
+          path: apps/wayvro-mobile/build-reports/e2e/
+      - name: Install Maestro ${{ env.MAESTRO_VERSION }} (checksum-verified)
+        run: |
+          curl -sSL -o /tmp/maestro.zip "https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip"
+          echo "${MAESTRO_SHA256}  /tmp/maestro.zip" | sha256sum -c -
+          unzip -q /tmp/maestro.zip -d /tmp
+          /tmp/maestro/bin/maestro --version
+      - name: Start local infrastructure (compose project "wayvro")
+        env:
+          WAYVRO_CLAMAV_NO_FRESHCLAM: 'true'
+        run: pnpm infra:up
+      - name: Mobile E2E stack (throwaway database, synthetic seed, API local runner on :4120)
+        run: |
+          cp .env.example .env
+          mkdir -p build-logs/e2e-mobile
+          nohup node tests/e2e-mobile/mobile-stack.mjs > build-logs/e2e-mobile/stack.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 240); do
+            if [ -f build-logs/e2e-mobile/stack.json ]; then cat build-logs/e2e-mobile/stack.log; exit 0; fi
+            if ! kill -0 "$pid" 2>/dev/null; then cat build-logs/e2e-mobile/stack.log; exit 1; fi
+            sleep 1
+          done
+          cat build-logs/e2e-mobile/stack.log
+          exit 1
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Full-matrix flows on API ${{ matrix.api }} (${{ matrix.lane }}; cold boot, animations off; 60-min Maestro budget)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: ${{ matrix.ram }}
+          disk-size: 6G
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated
+          disable-animations: true
+          script: node tests/e2e-mobile/run-flows.mjs --tier full --lane ${{ matrix.lane }} --api-level ${{ matrix.api }} --apk apps/wayvro-mobile/build-reports/e2e/wayvro-e2e.apk --maestro /tmp/maestro/bin/maestro --budget-seconds 3600
+      - name: Stop local infrastructure
+        if: always()
+        run: pnpm infra:down
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mobile-full-${{ matrix.lane }}-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: build-logs/e2e-mobile/
+
+  property:
+    name: Property tests (50,000 runs)
+    needs: target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: corepack enable pnpm && pnpm --version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build --filter='@wayvro/api...'
+      - name: Property suites that honour WAYVRO_PROPERTY_RUNS (geo domain, geo unit, catalog domain, pricing engine)
+        env:
+          WAYVRO_PROPERTY_RUNS: '50000'
+        run: |
+          start=$(date +%s)
+          pnpm --filter @wayvro/domain exec vitest run src/geo.test.ts
+          pnpm --filter @wayvro/api exec vitest run test/geo-unit.test.ts test/catalog-domain.test.ts test/pricing-engine.test.ts
+          echo "Property tests at 50,000 runs: $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  summary:
+    name: Matrix summary
+    needs: [target, matrix, property]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Unsupported target means no matrix ran (FAIL, never PASS)
+        if: needs.target.result != 'success'
+        run: |
+          echo "### Mobile full matrix: UNSUPPORTED TARGET or target check failed ($GITHUB_REF) — no lane ran" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mobile-full-*-${{ github.sha }}
+          path: matrix-results/
+      - name: Per-flow PASS/FAIL/FLAKY/BLOCKED/SKIPPED summary across lanes
+        env:
+          PROPERTY_RESULT: ${{ needs.property.result }}
+        run: |
+          node tests/e2e-mobile/summarise.mjs matrix-results api-29,api-35,api-35-lowram matrix-summary.md || status=$?
+          cat matrix-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "Property tests (50,000 runs): $PROPERTY_RESULT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$PROPERTY_RESULT" != "success" ]; then exit 1; fi
+          exit "${status:-0}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mobile-full-summary-${{ github.sha }}
+          retention-days: 7
+          path: matrix-summary.md
