@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 140,
+  "file_count_excluding_manifest": 141,
   "files": [
     {
       "path": ".gitattributes",
@@ -698,6 +698,11 @@
       "path": "docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md",
       "bytes": 36427,
       "sha256": "ef29665e6e817b0e9e7ef4040501fba2216a8627f1885f298ace3d932f86abd8"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/SP01_EMULATOR_SUPPLEMENT.md",
+      "bytes": 25973,
+      "sha256": "629bbfb9ebea48e23006d20e9a8e1697469568320c0d88a7677e43a543f238f3"
     },
     {
       "path": "docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md",

@@ -5,7 +5,8 @@
  * Artefact mode (evidence):
  *   node tests/spikes/sp-01-background-location/check-spike-manifest.mjs --aab <spike .aab> --bundletool <jar> [--report out.json]
  *   1. runs infra/ci/android/check-permissions.mjs with --policy spike-permission-allowlist.json (fails on
- *      USE_FULL_SCREEN_INTENT, RECEIVE_BOOT_COMPLETED and every unlisted permission);
+ *      USE_FULL_SCREEN_INTENT and every unlisted permission; RECEIVE_BOOT_COMPLETED is allowed only because
+ *      expo-task-manager persists its jobs — the boot ACTIONS below stay forbidden);
  *   2. checks the merged manifest: package dev.wayvro.spike.sp01, not debuggable, every foreground service is type
  *      `location` and at least one exists, no boot/package-replaced/push receivers, no URL scheme.
  *

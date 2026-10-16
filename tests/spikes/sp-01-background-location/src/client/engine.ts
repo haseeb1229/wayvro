@@ -31,6 +31,7 @@ import {
   type Snapshot,
 } from '../shared/protocol.ts';
 import { RingBuffer } from '../shared/ring-buffer.ts';
+import { decideSnapshot } from '../shared/snapshot-rule.ts';
 import { api } from './api.ts';
 import { DeltaTracker } from './geo-delta.ts';
 import { log } from './log.ts';
@@ -66,6 +67,8 @@ type Session = {
   socketEverConnected: boolean;
   /** False until the receiver accepted this run's go-online; no upload/heartbeat/poll before that. */
   confirmed: boolean;
+  /** Server time of that acceptance; snapshots generated earlier describe a previous run (shared/snapshot-rule.ts). */
+  confirmedServerMs: number | null;
 };
 
 export type EngineStatus = {
@@ -109,6 +112,7 @@ const counts = {
   socketConnects: 0,
   socketDisconnects: 0,
   heartbeats: 0,
+  staleSnapshotsIgnored: 0,
 };
 
 let ready = false;
@@ -229,6 +233,8 @@ async function reconcile(via: 'start' | 'foreground'): Promise<void> {
   const snap = await api.snapshot(cfg, via);
   if (snap.ok) applySnapshot(snap.value, null);
   if (session) {
+    // A go-online still in progress (FGS not started yet, receiver not answered) is not an FGS loss.
+    if (!session.confirmed) return;
     fgsRegistered = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK);
     if (!fgsRegistered) await stopTracking('FGS_LOST', { notifyServer: true, finalFlush: true });
     emit();
@@ -349,6 +355,7 @@ export async function goOnline(trigger: 'user' | 'resume' | 'tc10-background' = 
     socketDownSinceMs: now,
     socketEverConnected: false,
     confirmed: false,
+    confirmedServerMs: null,
   };
   session = s;
   try {
@@ -380,6 +387,7 @@ export async function goOnline(trigger: 'user' | 'resume' | 'tc10-background' = 
     return refuse(online.code === 'RESTRICTED' ? 'RESTRICTED' : 'NETWORK', online.code);
   }
   s.confirmed = true;
+  s.confirmedServerMs = online.value.serverTimeMs;
   applySnapshot(online.value, null);
   fgsRegistered = true;
   await store.setOnlineIntent({ runId: s.runId, sinceDeviceMs: now });
@@ -387,7 +395,8 @@ export async function goOnline(trigger: 'user' | 'resume' | 'tc10-background' = 
   await queueEvent(trigger === 'resume' ? 'RESUMED_BY_USER' : 'FGS_STARTED', trigger.toUpperCase().replace(/-/g, '_'), s.runId);
   log('online', { interval: p.intervalMs, distance: p.distanceM });
   await sampleClock(cfg, s);
-  connectSocket(cfg, s);
+  // A stop during the awaits above (user, watchdog, server) must not leave a socket connected for a finished run.
+  if (session === s) connectSocket(cfg, s);
   void flushEvents(true);
   emit();
   return { ok: true };
@@ -673,11 +682,17 @@ function handleOffer(cfg: ReceiverConfig, o: Offer, channel: OfferChannel): void
 }
 
 function applySnapshot(snap: Snapshot, offerChannel: OfferChannel | null): void {
+  const s = session;
+  const decision = decideSnapshot(s ? { runId: s.runId, confirmedServerMs: s.confirmedServerMs } : null, snap);
+  if (decision === 'ignore-stale') {
+    counts.staleSnapshotsIgnored += 1;
+    log('snapshot_ignored', { stale: true });
+    return;
+  }
   server = snap;
   serverAtMs = Date.now();
   counts.snapshots += 1;
-  const s = session;
-  if (s && (snap.presence === 'OFFLINE' || snap.runId !== s.runId)) {
+  if (s && decision === 'stop') {
     void applyServerOffline(snap.presence === 'OFFLINE' ? snap.offlineReason : 'USER_OFFLINE', offerChannel ?? 'presence');
     return;
   }

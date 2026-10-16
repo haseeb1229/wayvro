@@ -5,8 +5,12 @@
     "version": "0.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "platforms": ["android"],
-    "updates": { "enabled": false },
+    "platforms": [
+      "android"
+    ],
+    "updates": {
+      "enabled": false
+    },
     "plugins": [
       [
         "expo-location",
@@ -23,10 +27,14 @@
       "package": "dev.wayvro.spike.sp01",
       "allowBackup": false,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS", "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
       "blockedPermissions": [
         "android.permission.USE_FULL_SCREEN_INTENT",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",

@@ -4,8 +4,10 @@
  * 1. No automatic resume at boot or after an update (protocol TC-09, role model §6): expo-task-manager's
  *    TaskBroadcastReceiver listens for BOOT_COMPLETED and MY_PACKAGE_REPLACED and then restores persisted tasks, which
  *    for expo-location means restarting location updates and the foreground service without a user action. The
- *    receiver is redeclared with tools:node="replace" keeping only its own internal action; RECEIVE_BOOT_COMPLETED is
- *    also blocked in app.json. check-spike-manifest.mjs verifies both on the built artefact.
+ *    receiver is redeclared with tools:node="replace" keeping only its own internal action. check-spike-manifest.mjs
+ *    verifies on the built artefact that no boot/package-replaced action remains. RECEIVE_BOOT_COMPLETED itself is
+ *    declared (app.json): expo-task-manager delivers every location batch through a persisted JobScheduler job, which
+ *    JobScheduler refuses without it (crash on the first location callback, 2026-10-16 emulator run).
  * 2. Cleartext HTTP to the private-LAN receiver: the spike talks to a Node process on the founder's laptop
  *    (protocol §5.4) over plain HTTP. Only metadata travels (no coordinates, §5.2) with a spike-local-only token.
  *    This applies to the disposable spike ONLY; the release app never enables cleartext (CLAUDE.md §11).
