@@ -54,6 +54,8 @@ apps/wayvro-mobile/i18n-review/
 *.backup
 screenshots/
 device-captures/
+# Laptop evidence sweep (2026-10-16): raw emulator/benchmark captures; only reviewed summaries in docs/phase3/evidence/laptop/ are committed.
+evidence-local/
 
 # Editors and OS
 .idea/

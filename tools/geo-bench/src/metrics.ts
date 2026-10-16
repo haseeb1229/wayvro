@@ -245,28 +245,31 @@ export function computeMetrics(input: MetricInputs): { components: ComponentMetr
       let constraintN = 0;
       for (const rec of run.routes.filter((r) => r.component === c.id)) {
         const leg = routeById.get(rec.caseId);
+        // Field legs always have a truth; a DESK_OSM leg has none (no drive), so only the review and the hard gate apply.
         const truth = input.truths.get(rec.caseId);
-        if (leg === undefined || truth === undefined) continue;
+        if (leg === undefined || (truth === undefined && cases.source === 'FIELD')) continue;
         const peak = input.peakSessions.has(leg.sessionId);
         const review = input.review.get(`${rec.caseId}|${c.id}`);
         let distancePct: number | null = null;
         let etaPct: number | null = null;
         let overlapPct: number | null = null;
         if (rec.errorCode === null && rec.distanceM !== null && rec.durationS !== null) {
-          distancePct = (Math.abs(rec.distanceM - truth.distanceM) / truth.distanceM) * 100;
-          etaPct = ((rec.durationS - leg.actualMinutes * 60) / (leg.actualMinutes * 60)) * 100;
-          if (leg.followedNaturalRoute) {
-            if (truth.flagged) flagged += 1;
-            else {
-              distance.push(distancePct);
-              if (truth.source === 'ODOMETER') odometerOnly += 1;
+          if (truth !== undefined && leg.actualMinutes !== null) {
+            distancePct = (Math.abs(rec.distanceM - truth.distanceM) / truth.distanceM) * 100;
+            etaPct = ((rec.durationS - leg.actualMinutes * 60) / (leg.actualMinutes * 60)) * 100;
+            if (leg.followedNaturalRoute === true) {
+              if (truth.flagged) flagged += 1;
+              else {
+                distance.push(distancePct);
+                if (truth.source === 'ODOMETER') odometerOnly += 1;
+              }
+              (peak ? etaPeak : etaOff).push(etaPct);
             }
-            (peak ? etaPeak : etaOff).push(etaPct);
-          }
-          const overlap = truth.track === null ? null : corridorOverlap(rec.geometry, truth.track);
-          if (overlap !== null) {
-            overlapPct = overlap * 100;
-            overlaps.push(overlapPct);
+            const overlap = truth.track === null ? null : corridorOverlap(rec.geometry, truth.track);
+            if (overlap !== null) {
+              overlapPct = overlap * 100;
+              overlaps.push(overlapPct);
+            }
           }
           if (review === undefined) unreviewed += 1;
           else {

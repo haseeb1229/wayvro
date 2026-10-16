@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { GeoAdapterError } from '@wayvro/geo-adapters';
 import type { GeoLocale, GeoPoint, GeoSku } from '@wayvro/provider-interfaces';
 import { type BudgetBucket, type BudgetGuard, BudgetStopError, stopLimit } from './budget.js';
-import type { PointCase, QueryLanguage, RouteCase } from './cases.js';
+import type { CaseSource, PointCase, QueryLanguage, RouteCase } from './cases.js';
 import type { Component } from './components.js';
 
 const SKU_TIMEOUT_MS: Readonly<Record<GeoSku, number>> = { AUTOCOMPLETE: 1500, GEOCODE: 2000, PLACE_RESOLVE: 2000, REVERSE_GEOCODE: 2000, ROUTE: 2500 };
@@ -21,6 +21,11 @@ const LAHORE_BIAS_CELL: GeoPoint = { lat: 31.52, lng: 74.35 };
 
 interface CallRecord {
   readonly component: string;
+  readonly caseId: string;
+  /** Index of an identical repeated request (0 = first, i.e. cold); null for prefix and resolve calls (not repeated). */
+  readonly repeat: number | null;
+  /** Call start, milliseconds after the run start (timeline of a degraded run). */
+  readonly atMs: number;
   readonly sku: GeoSku;
   readonly latencyMs: number;
   readonly outcome: 'OK' | 'EMPTY' | 'ERROR';
@@ -77,6 +82,8 @@ interface RouteRecord {
 
 export interface RunRecord {
   readonly version: 1;
+  /** DESK_OSM runs are LOCAL_SYNTHETIC_BENCHMARK evidence only (never field ground truth). */
+  readonly caseSource: CaseSource;
   readonly caseListVersion: string;
   readonly startedAt: string;
   readonly finishedAt: string;
@@ -93,6 +100,8 @@ export interface RunRecord {
 }
 
 export interface RunOptions {
+  /** Default FIELD. */
+  readonly caseSource?: CaseSource;
   readonly caseListVersion: string;
   readonly repeats: number;
   readonly concurrency: number;
@@ -180,6 +189,7 @@ export async function runBenchmark(
   const clock = options.clock ?? (() => performance.now());
   const newSession = options.newSessionId ?? (() => randomUUID());
   const startedAt = now().toISOString();
+  const runStart = clock();
   const calls: CallRecord[] = [];
   const autocomplete: AutocompleteRecord[] = [];
   const geocode: GeocodeRecord[] = [];
@@ -190,7 +200,7 @@ export async function runBenchmark(
 
   /** One provider call: budget reservation first, then a timed call; adapter failures are recorded, never hidden. */
   async function call<T>(
-    component: string,
+    { component, caseId, repeat }: { readonly component: string; readonly caseId: string; readonly repeat: number | null },
     sku: GeoSku,
     bucket: BudgetBucket | null,
     units: number,
@@ -210,13 +220,15 @@ export async function runBenchmark(
       }
     }
     const started = clock();
+    const atMs = Math.round(started - runStart);
     try {
       const value = await fn(AbortSignal.timeout(SKU_TIMEOUT_MS[sku]));
-      calls.push({ component, sku, latencyMs: Math.round(clock() - started), outcome: empty(value) ? 'EMPTY' : 'OK', errorCode: null });
+      const latencyMs = Math.round(clock() - started);
+      calls.push({ component, caseId, repeat, atMs, sku, latencyMs, outcome: empty(value) ? 'EMPTY' : 'OK', errorCode: null });
       return { value, errorCode: null };
     } catch (error) {
       if (!(error instanceof GeoAdapterError)) throw error;
-      calls.push({ component, sku, latencyMs: Math.round(clock() - started), outcome: 'ERROR', errorCode: error.code });
+      calls.push({ component, caseId, repeat, atMs, sku, latencyMs: Math.round(clock() - started), outcome: 'ERROR', errorCode: error.code });
       return { value: null, errorCode: error.code };
     }
   }
@@ -231,10 +243,11 @@ export async function runBenchmark(
             const locale = LOCALE[language];
             const prefixes: PrefixResult[] = [];
             let sessionOpened = false;
-            const suggestOnce = async (query: string, prefixLength: number | null): Promise<PrefixResult> => {
+            const suggestOnce = async (query: string, prefixLength: number | null, repeat: number | null): Promise<PrefixResult> => {
+              const meta = { component: c.id, caseId: p.id, repeat };
               if (c.mode === 'geocode-points') {
                 const r = await call(
-                  c.id,
+                  meta,
                   'AUTOCOMPLETE',
                   c.bucket,
                   1,
@@ -252,7 +265,7 @@ export async function runBenchmark(
               }
               const units = c.sessionBilled ? (sessionOpened ? 0 : 1) : 1;
               const r = await call(
-                c.id,
+                meta,
                 'AUTOCOMPLETE',
                 c.suggestBucket,
                 units,
@@ -269,10 +282,10 @@ export async function runBenchmark(
                 errorCode: r.errorCode,
               };
             };
-            for (const n of prefixesOf(text)) prefixes.push(await suggestOnce(Array.from(text).slice(0, n).join(''), n));
+            for (const n of prefixesOf(text)) prefixes.push(await suggestOnce(Array.from(text).slice(0, n).join(''), n, null));
             let full: PrefixResult | null = null;
             for (let i = 0; i < options.repeats; i++) {
-              const r = await suggestOnce(text, null);
+              const r = await suggestOnce(text, null, i);
               full ??= r;
             }
             if (full !== null) prefixes.push(full);
@@ -283,7 +296,7 @@ export async function runBenchmark(
                 const units = c.sessionBilled ? (first ? 0 : 1) : 1;
                 first = false;
                 const r = await call(
-                  c.id,
+                  { component: c.id, caseId: p.id, repeat: null },
                   'PLACE_RESOLVE',
                   c.resolveBucket,
                   units,
@@ -305,7 +318,7 @@ export async function runBenchmark(
           let first: GeocodeRecord | null = null;
           for (let i = 0; i < options.repeats; i++) {
             const r = await call(
-              c.id,
+              { component: c.id, caseId: p.id, repeat: i },
               'GEOCODE',
               c.bucket,
               1,
@@ -323,7 +336,7 @@ export async function runBenchmark(
           let first: ReverseRecord | null = null;
           for (let i = 0; i < options.repeats; i++) {
             const r = await call(
-              c.id,
+              { component: c.id, caseId: p.id, repeat: i },
               'REVERSE_GEOCODE',
               c.bucket,
               1,
@@ -356,10 +369,11 @@ export async function runBenchmark(
         if (origin === undefined || dest === undefined) continue;
         tasks.push(async () => {
           let first: RouteRecord | null = null;
-          const departAt = nextDeparture(leg.date, leg.timeLocal, now());
+          // A DESK_OSM leg has no drive time: depart "now" (the open-stack engines ignore departure time anyway).
+          const departAt = leg.date === null || leg.timeLocal === null ? now() : nextDeparture(leg.date, leg.timeLocal, now());
           for (let i = 0; i < options.repeats; i++) {
             const r = await call(
-              c.id,
+              { component: c.id, caseId: leg.id, repeat: i },
               'ROUTE',
               c.bucket,
               1,
@@ -398,6 +412,7 @@ export async function runBenchmark(
     list.sort((a, b) => a.caseId.localeCompare(b.caseId) || a.component.localeCompare(b.component));
   return {
     version: 1,
+    caseSource: options.caseSource ?? 'FIELD',
     caseListVersion: options.caseListVersion,
     startedAt,
     finishedAt: now().toISOString(),

@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 137,
+  "file_count_excluding_manifest": 140,
   "files": [
     {
       "path": ".gitattributes",
@@ -688,6 +688,21 @@
       "path": "docs/phase3/PHASE3_TEST_STRATEGY.md",
       "bytes": 53465,
       "sha256": "13f545e7002327b709a11a62fbec90a45034491449f5fbfccb5b4c79feafab39"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/FA09_AUTOMATED_PREREVIEW.md",
+      "bytes": 13275,
+      "sha256": "fd6df4037da1318bc42a1f56fbb64fea4636eea2551dfbc094e2cf127ec2dfc9"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md",
+      "bytes": 36427,
+      "sha256": "ef29665e6e817b0e9e7ef4040501fba2216a8627f1885f298ace3d932f86abd8"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md",
+      "bytes": 14925,
+      "sha256": "820bf6f648d23b49ec03a03325c1f3691cea0e7efa99d416f8abccbbe0827006"
     },
     {
       "path": "docs/requirements-register.json",

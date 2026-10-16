@@ -62,6 +62,8 @@ export interface LegTruth {
 export function legTruths(routes: readonly RouteCase[], tracks: ReadonlyMap<string, GpxTrack>): Map<string, LegTruth> {
   const out = new Map<string, LegTruth>();
   for (const leg of routes) {
+    // A DESK_OSM leg has no drive: no D_true (never estimated from the provider or the great-circle distance).
+    if (leg.odometerKm === null) continue;
     const odometerM = leg.odometerKm * 1000;
     const track = tracks.get(leg.id);
     const gpxM = track === undefined ? null : gpxLengthM(track);

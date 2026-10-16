@@ -14,7 +14,7 @@ import type { LegTruth } from './gpx.js';
 import type { RunRecord } from './runner.js';
 
 const BLIND_COLUMNS = ['blind_id', 'case_id', 'option', 'name', 'block', 'area', 'city', 'name_urdu', 'answer_status', 'usefulness_0_3'] as const;
-const REVIEW_COLUMNS = [
+export const REVIEW_COLUMNS = [
   'case_id',
   'component',
   'category',
@@ -86,7 +86,7 @@ export function routeHints(run: RunRecord, cases: ValidationResult, truths: Read
     if (leg === undefined || truth === undefined) continue;
     const hints: string[] = [];
     if (CONSTRAINT_CATEGORIES.has(leg.category)) hints.push('CHECK_CONSTRAINT');
-    if (!leg.followedNaturalRoute) hints.push('DIVERTED_LEG');
+    if (leg.followedNaturalRoute === false) hints.push('DIVERTED_LEG');
     if (truth.source === 'ODOMETER') hints.push('NO_GPX');
     if (truth.flagged) hints.push('GPX_ODOMETER_MISMATCH');
     if (r.distanceM !== null && Math.abs(r.distanceM - truth.distanceM) / truth.distanceM > 0.25) hints.push('DISTANCE_ERROR_GT_25PCT');

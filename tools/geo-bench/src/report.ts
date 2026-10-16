@@ -5,7 +5,8 @@
  * report containing a 4+-decimal number, a key-shaped string, Arabic-script text or any founder free-text value.
  */
 import { PRICE_TABLE_DATE } from '@wayvro/geo-adapters';
-import type { ValidationResult } from './cases.js';
+import type { CaseSource, ValidationResult } from './cases.js';
+import { type DeskSection, renderDeskMarkdown } from './desk.js';
 import type { ComponentMetrics, Evidence } from './metrics.js';
 import type { RunRecord } from './runner.js';
 import type { BundleResult } from './score.js';
@@ -47,6 +48,8 @@ function roundDeep<T>(value: T): T {
 
 export interface AggregateReport {
   readonly title: string;
+  readonly caseSource: CaseSource;
+  readonly desk: DeskSection | null;
   readonly caseListVersion: string;
   readonly runStatus: string;
   readonly stoppedBucket: string | null;
@@ -112,9 +115,14 @@ export function buildReport(input: {
   readonly evidence: Evidence;
   readonly bundles: readonly BundleResult[];
   readonly incompleteBundles: readonly { bundle: string; missing: string[] }[];
+  /** Present only for a DESK_OSM run. */
+  readonly desk?: DeskSection;
 }): AggregateReport {
+  const desk = input.run.caseSource === 'DESK_OSM';
   return roundDeep({
-    title: 'SP-04 Lahore geo benchmark — aggregated metrics (no raw provider content, no coordinates, no founder free text)',
+    title: `${desk ? 'DESK — NOT FIELD · ' : ''}SP-04 Lahore geo benchmark — aggregated metrics (no raw provider content, no coordinates, no founder free text)`,
+    caseSource: input.run.caseSource,
+    desk: input.desk ?? null,
     caseListVersion: input.run.caseListVersion,
     runStatus: input.run.status,
     stoppedBucket: input.run.stoppedBucket,
@@ -144,6 +152,7 @@ const num = (v: number | null | undefined, unit = '') => (v === null || v === un
 export function renderMarkdown(r: AggregateReport): string {
   const lines: string[] = [];
   lines.push(`# ${r.title}`, '');
+  if (r.desk !== null) lines.push(`> **${r.desk.stamp}**`, '');
   lines.push(
     `Case list: ${r.caseListVersion} · run date: ${r.runDate} · run status: **${r.runStatus}**${r.stoppedBucket ? ` (stopped at ${r.stoppedBucket})` : ''} · price table: ${r.priceTableDate} (ESTIMATE) · latency repeats: ${r.latencyRepeats}`,
   );
@@ -201,6 +210,7 @@ export function renderMarkdown(r: AggregateReport): string {
   for (const [bucket, b] of Object.entries(r.budget)) lines.push(`| ${bucket} | ${b.used} | ${b.stopAt} | ${b.allowance} |`);
   lines.push('', '## Assumptions (harness reading of open details)', '', ...r.assumptions.map((a) => `- ${a}`));
   lines.push('', '## Not implemented here', '', ...r.notImplemented.map((a) => `- ${a}`), '');
+  if (r.desk !== null) lines.push(...renderDeskMarkdown(r.desk));
   lines.push('The per-case evidence table and per-category summaries are in the JSON file next to this report.', '');
   return lines.join('\n');
 }

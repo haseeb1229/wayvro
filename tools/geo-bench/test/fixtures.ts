@@ -14,9 +14,9 @@ import type {
   RouteResult,
   RoutingPort,
 } from '@wayvro/provider-interfaces';
-import { CAPTURE_COLUMNS, type CaptureColumn } from '../src/cases.js';
+import { CAPTURE_COLUMNS, type CaptureColumn, DESK_NA_COLUMNS } from '../src/cases.js';
 import type { Component } from '../src/components.js';
-import { toCsv } from '../src/csv.js';
+import { parseCsv, toCsv } from '../src/csv.js';
 
 function syntheticPoint(i: number): GeoPoint {
   return { lat: 31.4 + i * 0.01, lng: 74.2 + i * 0.01 };
@@ -178,4 +178,11 @@ export function fakeComponents(
     { id: id('rev'), bundle, kind: 'REVERSE_GEOCODE', adapter: reverse, bucket: null },
     { id: id('route'), bundle, kind: 'ROUTE', adapter: routing, bucket: null },
   ];
+}
+
+/** The synthetic sheet as a DESK_OSM sheet: LHR-DESK ids/sessions, captured_by DESK_OSM, field-only columns N/A. */
+export function deskCsv(points = 8, routes = 4): string {
+  const [header = [], ...rows] = parseCsv(syntheticCsv(points, routes).replaceAll('LHR-SP04-', 'LHR-DESK-'));
+  const na = new Set<string>(DESK_NA_COLUMNS);
+  return toCsv([header, ...rows.map((r) => r.map((v, i) => (na.has(header[i] ?? '') ? 'N/A' : header[i] === 'captured_by' ? 'DESK_OSM' : v)))]);
 }

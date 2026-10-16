@@ -7,6 +7,7 @@ import { syntheticCsv } from '../test/fixtures.js';
 
 const run: RunRecord = {
   version: 1,
+  caseSource: 'FIELD',
   caseListVersion: 'TEST',
   startedAt: '2026-10-13T06:00:00.000Z',
   finishedAt: '2026-10-13T06:01:00.000Z',

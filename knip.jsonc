@@ -23,7 +23,9 @@
     // The SP-02 instrumentation transformer is referenced by path from metro.config.cjs (ADR-052); the E2E build only.
     // The FA-09 native-review tools (scripts/i18n/, P3.9) are developer CLIs, analysed like the root scripts/*.mjs! entries;
     // they are not part of the app bundle (Metro bundles only what the app imports).
-    "apps/wayvro-mobile": { "entry": ["plugins/*.mjs!", "build-tools/*.cjs!", "scripts/i18n/{export,import-review}.ts!", "scripts/i18n/*.mjs!"] },
+    "apps/wayvro-mobile": {
+      "entry": ["plugins/*.mjs!", "build-tools/*.cjs!", "scripts/i18n/{export,import-review,prereview-export}.ts!", "scripts/i18n/*.mjs!"],
+    },
     "apps/web-public": { "project": ["src/**/*.{ts,tsx}!"] },
     "apps/web-ops": { "project": ["src/**/*.{ts,tsx}!"] },
     "packages/*": { "entry": ["src/index.ts!"], "project": ["src/**/*.ts!"] },

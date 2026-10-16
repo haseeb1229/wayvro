@@ -15,6 +15,7 @@ import {
 } from '@wayvro/geo-adapters';
 import type { GeocodingPort, PlacesAutocompletePort, ReverseGeocodingPort, RoutingPort } from '@wayvro/provider-interfaces';
 import type { BudgetBucket } from './budget.js';
+import { nominatimSearchPort } from './nominatim-search.js';
 
 export type BundleId = 'S1' | 'S2' | 'S3';
 
@@ -146,5 +147,14 @@ export function componentsFromEnv(env: GeoEnv, fetchFor: FetchFactory): Componen
     out.push({ id: 'S3-nominatim-reverse', bundle: 'S3', kind: 'REVERSE_GEOCODE', adapter: open.nominatimReverse, bucket: null });
   if (open.osrm !== null) out.push({ id: 'S3-osrm', bundle: 'S3', kind: 'ROUTE', adapter: open.osrm, bucket: null });
   if (open.valhalla !== null) out.push({ id: 'S3-valhalla', bundle: 'S3', kind: 'ROUTE', adapter: open.valhalla, bucket: null });
+  // Desk-only, explicit opt-in: self-hosted Nominatim /search as a comparison when Photon is absent (NOT autocomplete).
+  const nominatimUrl = env['GEO_NOMINATIM_URL'];
+  if (env['GEO_BENCH_NOMINATIM_SEARCH'] === 'desk' && nominatimUrl !== undefined && nominatimUrl !== '') {
+    const search = nominatimSearchPort(nominatimUrl, fetchFor('S3'));
+    out.push(
+      { id: 'S3-nominatim-search-prefix', bundle: 'S3', kind: 'AUTOCOMPLETE', mode: 'geocode-points', geocoder: search, bucket: null },
+      { id: 'S3-nominatim-search', bundle: 'S3', kind: 'GEOCODE', adapter: search, bucket: null },
+    );
+  }
   return out;
 }

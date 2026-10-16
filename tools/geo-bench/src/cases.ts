@@ -67,26 +67,54 @@ const MIN_PER_CATEGORY: Readonly<Record<Category, number>> = { C01: 5, C02: 5, C
 export type QueryLanguage = 'en' | 'roman_urdu' | 'urdu';
 type TrafficLevel = 'FREE' | 'MODERATE' | 'HEAVY' | 'STOP_GO';
 
+/**
+ * Where the cases come from. FIELD = the founder's SP-04 capture (the only source that can ever close FA-05/SP-04).
+ * DESK_OSM = desk/open-data cases derived from an OpenStreetMap extract (LOCAL_SYNTHETIC_BENCHMARK only): ids
+ * `LHR-DESK-NNN`, sessions `LHR-DESK-Sn`, `captured_by` = DESK_OSM and every field-only column literally `N/A` — no
+ * GPS accuracy, drive time, odometer, traffic, GPX, photo or founder text is ever invented. The two sources never mix:
+ * a desk row fails a FIELD validation and a field row fails a DESK_OSM validation.
+ */
+export type CaseSource = 'FIELD' | 'DESK_OSM';
+
+/** Columns that only a field capture can fill; a DESK_OSM row must carry exactly `N/A` in each. */
+/** @internal exported for unit tests */
+export const DESK_NA_COLUMNS: readonly CaptureColumn[] = [
+  'date',
+  'time_local',
+  'traffic_level',
+  'gps_accuracy_m',
+  'pickup_instruction_text',
+  'odometer_km',
+  'actual_drive_minutes',
+  'followed_natural_route',
+  'gpx_file_ref',
+  'photo_ref_local',
+];
+const NA = 'N/A';
+
 export interface PointCase {
   readonly id: string;
   readonly category: Category;
   readonly sessionId: string;
   readonly queries: Readonly<Partial<Record<QueryLanguage, string>>>;
   readonly truth: GeoPoint;
+  /** What a useful reverse-geocode answer must mention (local only; never copied into aggregates). */
+  readonly expectedArea: string;
 }
 
+/** Field-only values are null for DESK_OSM cases (never invented). */
 export interface RouteCase {
   readonly id: string;
   readonly category: Category;
   readonly sessionId: string;
-  readonly date: string;
-  readonly timeLocal: string;
-  readonly trafficLevel: TrafficLevel;
+  readonly date: string | null;
+  readonly timeLocal: string | null;
+  readonly trafficLevel: TrafficLevel | null;
   readonly originId: string;
   readonly destId: string;
-  readonly odometerKm: number;
-  readonly actualMinutes: number;
-  readonly followedNaturalRoute: boolean;
+  readonly odometerKm: number | null;
+  readonly actualMinutes: number | null;
+  readonly followedNaturalRoute: boolean | null;
   /** Founder's constraint code (local only; never copied into aggregates). */
   readonly constraintObserved: string | null;
   readonly gpxFileRef: string | null;
@@ -100,6 +128,7 @@ interface Finding {
 }
 
 export interface ValidationResult {
+  readonly source: CaseSource;
   readonly points: readonly PointCase[];
   readonly routes: readonly RouteCase[];
   readonly errors: readonly Finding[];
@@ -108,8 +137,10 @@ export interface ValidationResult {
   readonly freeTextValues: readonly string[];
 }
 
-const CASE_ID = /^LHR-SP04-\d{3}$/;
-const SESSION_ID = /^LHR-SP04-S\d$/;
+const IDS: Readonly<Record<CaseSource, { readonly caseId: RegExp; readonly session: RegExp; readonly caseHint: string; readonly sessionHint: string }>> = {
+  FIELD: { caseId: /^LHR-SP04-\d{3}$/, session: /^LHR-SP04-S\d$/, caseHint: 'LHR-SP04-NNN', sessionHint: 'LHR-SP04-Sn' },
+  DESK_OSM: { caseId: /^LHR-DESK-\d{3}$/, session: /^LHR-DESK-S\d$/, caseHint: 'LHR-DESK-NNN', sessionHint: 'LHR-DESK-Sn' },
+};
 const TRAFFIC: ReadonlySet<string> = new Set(['FREE', 'MODERATE', 'HEAVY', 'STOP_GO']);
 
 function validDate(value: string): boolean {
@@ -123,8 +154,14 @@ function decimal(value: string): number | null {
   return /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : null;
 }
 
-/** Validates the founder's working CSV. Never throws for content problems: they are returned as findings. */
-export function validateCapture(text: string): ValidationResult {
+/**
+ * Validates the founder's working CSV (default, FIELD) or a desk sheet (`source: 'DESK_OSM'`). Never throws for
+ * content problems: they are returned as findings.
+ */
+export function validateCapture(text: string, options: { readonly source?: CaseSource } = {}): ValidationResult {
+  const source = options.source ?? 'FIELD';
+  const desk = source === 'DESK_OSM';
+  const ids = IDS[source];
   const errors: Finding[] = [];
   const warnings: Finding[] = [];
   const freeTextValues: string[] = [];
@@ -133,6 +170,7 @@ export function validateCapture(text: string): ValidationResult {
     rows = parseCsv(text);
   } catch {
     return {
+      source,
       points: [],
       routes: [],
       errors: [{ row: 0, caseId: '-', field: '-', message: 'the file is not valid CSV (unterminated quote)' }],
@@ -143,6 +181,7 @@ export function validateCapture(text: string): ValidationResult {
   const header = rows[0] ?? [];
   if (header.length !== CAPTURE_COLUMNS.length || header.some((h, i) => h.trim() !== CAPTURE_COLUMNS[i])) {
     return {
+      source,
       points: [],
       routes: [],
       errors: [{ row: 1, caseId: '-', field: '-', message: 'header does not match PHASE3_SP04_FIELD_CAPTURE_TEMPLATE.csv exactly' }],
@@ -176,7 +215,7 @@ export function validateCapture(text: string): ValidationResult {
       err('-', 'EXAMPLE row present: the template rows are synthetic and must be deleted before use');
       continue;
     }
-    if (!CASE_ID.test(id)) err('case_id', 'must be LHR-SP04-NNN');
+    if (!ids.caseId.test(id)) err('case_id', `must be ${ids.caseHint}`);
     else if (seen.has(id)) {
       err('case_id', 'duplicate case id');
       continue;
@@ -189,7 +228,10 @@ export function validateCapture(text: string): ValidationResult {
       const kinds = scanForPii(value);
       if (kinds.length > 0) warn(column, `possible personal data (${kinds.join(', ')}) — review and remove before running`);
     }
-    if (r.captured_by !== 'FOUNDER' && r.captured_by !== 'PASSENGER_HELPER') err('captured_by', 'must be FOUNDER or PASSENGER_HELPER');
+    if (desk) {
+      if (r.captured_by !== 'DESK_OSM') err('captured_by', 'a desk sheet accepts only DESK_OSM cases (field captures are validated without --desk)');
+      for (const column of DESK_NA_COLUMNS) if (r[column] !== NA) err(column, 'field-only value: must be N/A in a desk sheet (never invented)');
+    } else if (r.captured_by !== 'FOUNDER' && r.captured_by !== 'PASSENGER_HELPER') err('captured_by', 'must be FOUNDER or PASSENGER_HELPER');
     if (r.case_status === 'DISCARDED') {
       if (r.notes_no_pii === '') warn('notes_no_pii', 'DISCARDED case without a reason');
       continue;
@@ -199,15 +241,15 @@ export function validateCapture(text: string): ValidationResult {
       continue;
     }
     if (!/^C(0[1-9]|1[0-2])$/.test(r.category)) err('category', 'must be C01…C12');
-    if (!SESSION_ID.test(r.session_id)) err('session_id', 'must be LHR-SP04-Sn');
-    if (!validDate(r.date)) err('date', 'must be a valid YYYY-MM-DD date');
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time_local)) err('time_local', 'must be HH:MM (Asia/Karachi)');
+    if (!ids.session.test(r.session_id)) err('session_id', `must be ${ids.sessionHint}`);
+    if (!desk && !validDate(r.date)) err('date', 'must be a valid YYYY-MM-DD date');
+    if (!desk && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time_local)) err('time_local', 'must be HH:MM (Asia/Karachi)');
     if (r.case_kind === 'POINT') {
       if (!POINT_CATEGORIES.has(r.category)) err('category', 'not a POINT category (C06/C07/C11/C12 are ROUTE categories)');
       if (r.is_public_place !== 'Y') err('is_public_place', 'must be Y: a non-public place is invalid and must be deleted');
       if (r.true_place_name === '') err('true_place_name', 'required for POINT cases');
       if (r.reverse_geocode_expected_area === '') err('reverse_geocode_expected_area', 'required for POINT cases');
-      if (r.pickup_instruction_text === '') warn('pickup_instruction_text', 'missing pickup instruction');
+      if (!desk && r.pickup_instruction_text === '') warn('pickup_instruction_text', 'missing pickup instruction');
       if (r.query_text_en === '' && r.query_text_roman_urdu === '' && r.query_text_urdu === '') err('query_text_en', 'at least one query text is required');
       const lat = decimal(r.true_point_lat_5dp);
       const lng = decimal(r.true_point_lng_5dp);
@@ -217,10 +259,15 @@ export function validateCapture(text: string): ValidationResult {
         if (!/\.\d{5}$/.test(r.true_point_lat_5dp) || !/\.\d{5}$/.test(r.true_point_lng_5dp))
           warn('true_point_lat_5dp', 'coordinates should carry exactly 5 decimals');
       }
-      const accuracy = decimal(r.gps_accuracy_m);
-      if (accuracy === null || accuracy < 0) err('gps_accuracy_m', 'required non-negative number');
-      else if (accuracy > 10) err('gps_accuracy_m', 'accuracy above 10 m: retake the point (§4.4)');
+      // A desk point has no GPS fix (gps_accuracy_m = N/A, checked above).
+      if (!desk) {
+        const accuracy = decimal(r.gps_accuracy_m);
+        if (accuracy === null || accuracy < 0) err('gps_accuracy_m', 'required non-negative number');
+        else if (accuracy > 10) err('gps_accuracy_m', 'accuracy above 10 m: retake the point (§4.4)');
+      }
       pointRows.set(id, r);
+    } else if (r.case_kind === 'ROUTE' && desk) {
+      if (r.route_origin_case_id === '' || r.route_dest_case_id === '') err('route_origin_case_id', 'origin and destination POINT case ids are required');
     } else if (r.case_kind === 'ROUTE') {
       if (!TRAFFIC.has(r.traffic_level)) err('traffic_level', 'must be FREE, MODERATE, HEAVY or STOP_GO');
       const odometer = decimal(r.odometer_km);
@@ -252,6 +299,7 @@ export function validateCapture(text: string): ValidationResult {
         sessionId: r.session_id,
         queries,
         truth: { lat: Number(r.true_point_lat_5dp), lng: Number(r.true_point_lng_5dp) },
+        expectedArea: r.reverse_geocode_expected_area,
       });
     } else if (r.case_kind === 'ROUTE') {
       for (const [field, ref] of [
@@ -265,21 +313,21 @@ export function validateCapture(text: string): ValidationResult {
         id: r.case_id,
         category: r.category as Category,
         sessionId: r.session_id,
-        date: r.date,
-        timeLocal: r.time_local,
-        trafficLevel: r.traffic_level as TrafficLevel,
+        date: desk ? null : r.date,
+        timeLocal: desk ? null : r.time_local,
+        trafficLevel: desk ? null : (r.traffic_level as TrafficLevel),
         originId: r.route_origin_case_id,
         destId: r.route_dest_case_id,
-        odometerKm: Number(r.odometer_km),
-        actualMinutes: Number(r.actual_drive_minutes),
-        followedNaturalRoute: r.followed_natural_route === 'Y',
+        odometerKm: desk ? null : Number(r.odometer_km),
+        actualMinutes: desk ? null : Number(r.actual_drive_minutes),
+        followedNaturalRoute: desk ? null : r.followed_natural_route === 'Y',
         constraintObserved: r.constraint_observed === '' ? null : r.constraint_observed,
-        gpxFileRef: r.gpx_file_ref === '' ? null : r.gpx_file_ref,
+        gpxFileRef: desk || r.gpx_file_ref === '' ? null : r.gpx_file_ref,
       });
     }
   }
   minimumWarnings(points, routes, warnings);
-  return { points, routes, errors, warnings, freeTextValues };
+  return { source, points, routes, errors, warnings, freeTextValues };
 }
 
 /** §2.2/§2.3 completeness minimums: reported as warnings (the founder decides whether to capture more). */

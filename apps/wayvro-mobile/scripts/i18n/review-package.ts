@@ -241,34 +241,37 @@ const ALIAS_COLUMNS = ['export_id', 'locale', 'alias', 'canonical_query', 'place
 const cell = (value: string): string => (/[",\r\n]/.test(value) || value !== value.trim() ? `"${value.replace(/"/g, '""')}"` : value);
 const line = (values: readonly string[]): string => values.map(cell).join(',');
 
+/** A CSV document: UTF-8 BOM, the header line, one line per row, CRLF line ends (also used by the pre-review pack). */
+export function csvDocument(header: readonly string[], rows: readonly (readonly string[])[]): string {
+  return `${BOM}${[line(header), ...rows.map(line)].join('\r\n')}\r\n`;
+}
+
 export function stringsCsv(pkg: ReviewPackage): string {
-  const body = pkg.rows.map((r) =>
-    line([
-      pkg.exportId,
-      r.catalogue,
-      r.key,
-      r.context,
-      r.screens.join(' '),
-      r.flags.join(' '),
-      String(r.maxLength),
-      r.placeholders.join(' '),
-      r.en,
-      r.ur,
-      r.urLatn,
-      r.urStatus,
-      r.urLatnStatus,
-      '',
-      '',
-      '',
-      '',
-    ]),
-  );
-  return `${BOM}${[line(STRING_COLUMNS), ...body].join('\r\n')}\r\n`;
+  const body = pkg.rows.map((r) => [
+    pkg.exportId,
+    r.catalogue,
+    r.key,
+    r.context,
+    r.screens.join(' '),
+    r.flags.join(' '),
+    String(r.maxLength),
+    r.placeholders.join(' '),
+    r.en,
+    r.ur,
+    r.urLatn,
+    r.urStatus,
+    r.urLatnStatus,
+    '',
+    '',
+    '',
+    '',
+  ]);
+  return csvDocument(STRING_COLUMNS, body);
 }
 
 export function aliasesCsv(pkg: ReviewPackage): string {
-  const body = pkg.aliases.map((a) => line([pkg.exportId, a.locale, a.alias, a.canonicalQuery, a.place, a.status, '', '', '']));
-  return `${BOM}${[line(ALIAS_COLUMNS), ...body].join('\r\n')}\r\n`;
+  const body = pkg.aliases.map((a) => [pkg.exportId, a.locale, a.alias, a.canonicalQuery, a.place, a.status, '', '', '']);
+  return csvDocument(ALIAS_COLUMNS, body);
 }
 
 /** Parses RFC 4180 CSV (quoted fields, doubled quotes, CRLF or LF, optional BOM) into rows of cells. @internal exported for unit tests */

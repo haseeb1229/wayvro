@@ -6,7 +6,8 @@ Implements the desk steps of `docs/phase3/PHASE3_SP04_LAHORE_FIELD_BENCHMARK.md`
 Knip and Vitest setup; it is never a dependency of a deployable app (dependency-cruiser `geo-bench-dev-only`), so it
 cannot enter an api/worker/realtime artefact (ADR-045 ART-ISO).
 
-**Status: SP-04 NOT RUN.** No field data (FA-05) and no evaluation keys (FA-06) exist. Unit tests use a synthetic
+**Status: SP-04 NOT RUN.** No field data (FA-05) and no evaluation keys (FA-06) exist (a DESK/open-data run of the
+self-hosted open stack exists — LOCAL_SYNTHETIC_BENCHMARK, not field evidence; see the open-stack section). Unit tests use a synthetic
 sheet and fake adapters only.
 
 ## What stays local and what may be committed
@@ -119,23 +120,51 @@ listed under `assumptions` in every report (A1–A9). Paired tests (§9) and the
    deletion date in the evidence record. Keep GPX/photos private; delete raw tracks within 30 days of the ADR-006
    freeze (threat model T3-32).
 
-## Open-stack benchmark services (CON-P3-14) — compose profile NOT DONE
+## Open-stack benchmark services (CON-P3-14) — compose profile PARTIAL (desk run only)
 
-The optional `infra/docker/geo-bench.compose.yaml` was **not created**: its images must be pinned by digest and the
-digests could not be verified from this environment (no registry access was attempted, Docker is owned by other
-work). Procedure for the founder/a later step, never started by any script automatically:
+`infra/docker/geo-bench.compose.yaml` exists (evaluation/dev-only; never started by any other script). State on
+2026-10-16: **Nominatim 5.3.2 and OSRM v26.10.0 built and run** on a Lahore clip of the Geofabrik Pakistan extract;
+**Photon 1.3.0 and Valhalla 3.9.1 NOT RUN** (the release jar / image could not be downloaded over the available
+bandwidth; their compose services are written but UNVERIFIED). Desk results, sizing, digests and limitations:
+`docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md` — LOCAL_SYNTHETIC_BENCHMARK, desk/open-data, **not
+field evidence**; it does not close FA-05/SP-04 and freezes nothing.
 
-1. Choose releases (evaluation doc §3: OSRM v26.10.0, Valhalla 3.9.1, Photon 1.3.0, Nominatim 5.3.2 — prefer a patch
-   release for OSRM) and their official images where they exist (OSRM `ghcr.io/project-osrm/osrm-backend`, Valhalla
-   `ghcr.io/valhalla/valhalla`; Photon publishes release jars — build a local image from the jar; Nominatim's official
-   project images or a reviewed, pinned community image). Resolve each tag to a digest
-   (`docker buildx imagetools inspect <image>:<tag>`) and pin `image: <image>@sha256:<digest>`.
-2. Compose project name `wayvro-geo-bench`, named volumes `wayvro-geo-bench-*`, ports bound to `127.0.0.1` only
-   (2322 Photon, 8088 Nominatim, 5000 OSRM, 8002 Valhalla), separate from the default stack (`infra/docker`), started
-   only by an explicit `docker compose -p wayvro-geo-bench -f infra/docker/geo-bench.compose.yaml up`.
-3. Pakistan OSM extract: download a regional extract (e.g. a Geofabrik Pakistan `.osm.pbf`), verify its checksum,
-   record the extract date (ODbL data — attribution "© OpenStreetMap contributors", share-alike for any derivative
-   database; licence of the extract service to verify). Pre-process locally: OSRM `extract → partition → customize`
-   (car profile, MLD), Valhalla tile build, Photon import (Pakistan-limited; languages default/en), Nominatim import.
-   RAM/disk sizing for Pakistan is NF — measure and record it.
-4. Never point the harness at the public demo/community servers (refused by the config loader).
+Rules: compose project `wayvro-geo-bench`, named volumes `wayvro-geo-bench-*`, ports bound to `127.0.0.1` only (2322
+Photon, 8088 Nominatim, 5000 OSRM, 8002 Valhalla), images pinned by digest (listed in the compose header), memory
+limits set, all data under the git-ignored `tools/geo-bench/.local/`. Never point the harness at public
+demo/community servers (refused by the config loader).
+
+### Reproduce (from the repository root, Git Bash; one heavy step at a time)
+
+1. Data (ODbL — "© OpenStreetMap contributors"): download the dated Geofabrik extract the `pakistan-latest` link
+   redirects to (e.g. `asia/pakistan-261015.osm.pbf`) and its `.md5` into `tools/geo-bench/.local/data/`; check
+   `md5sum`.
+2. Clip to the Lahore bbox `74.10,31.25,74.62,31.72` with complete ways, then export named features and the
+   one-way/access-restricted highway ways (pyosmium 3.7 from the pinned Nominatim image; scripts in `desk-osm/`):
+
+   ```
+   IMG=mediagis/nominatim@sha256:7923a8e67197fc6d4f4ecb7c0e8bbedffeddcfdf4519596fe946e46a28f5a9f8
+   V="-v C:/Dev/Wayvro/tools/geo-bench/.local/data:/data -v C:/Dev/Wayvro/tools/geo-bench/desk-osm:/scripts:ro"
+   MSYS_NO_PATHCONV=1 docker run --rm --memory 2g --entrypoint python3 $V $IMG /scripts/clip.py \
+     /data/pakistan-261015.osm.pbf /data/lahore-261015.osm.pbf 74.10 31.25 74.62 31.72
+   MSYS_NO_PATHCONV=1 docker run --rm --memory 1500m --entrypoint python3 $V $IMG /scripts/export.py \
+     /data/lahore-261015.osm.pbf /data/work/lahore-named.geojsonseq /data/work/lahore-restrictions.jsonl
+   ```
+3. Env file `tools/geo-bench/.local/geo-bench.env` (git-ignored): `GEO_BENCH_PBF=lahore-261015.osm.pbf` and a random
+   local-only `GEO_BENCH_PG_PASSWORD`. Then (`C="docker compose -p wayvro-geo-bench -f infra/docker/geo-bench.compose.yaml --env-file tools/geo-bench/.local/geo-bench.env"`):
+   `$C --profile prep run --rm osrm-prep`, then `$C up -d nominatim` (first start imports, ≈ 12 min on the clip),
+   then `$C up -d osrm`. Photon/Valhalla (after verifying the jar sha256 / pulling the image): `$C --profile prep run --rm valhalla-prep`,
+   `$C --profile prep run --rm photon-import`, `$C up -d photon valhalla`.
+4. Desk cases: `node tools/geo-bench/desk-osm/gen-desk-cases.mjs tools/geo-bench/.local/data/work/lahore-named.geojsonseq tools/geo-bench/.local/input/lhr-desk-cases-v2.csv tools/geo-bench/.local/input/match-report.json`.
+5. Harness (`--desk` = DESK_OSM source; output stamped "DESK — NOT FIELD"): `validate --desk`, then
+   `node --env-file=<env with GEO_NOMINATIM_URL/GEO_OSRM_URL[/GEO_PHOTON_URL/GEO_VALHALLA_URL]> dist/cli.js run --desk …`
+   (`GEO_BENCH_NOMINATIM_SEARCH=desk` adds the desk-only Nominatim `/search` comparison, labelled NOT autocomplete,
+   for runs without Photon), then `score --desk --review <run>/route-review.desk-auto.csv` (automated T3-06 review)
+   or a reviewed copy. `desk-osm/oneway-check.mjs` checks local OSRM routes against the extract's one-way and
+   private/no-access ways (input to the desk route review).
+6. Stop, keep data: `$C stop`. Remove only when no longer needed: `$C down` then
+   `docker volume rm wayvro-geo-bench-nominatim wayvro-geo-bench-osrm wayvro-geo-bench-photon wayvro-geo-bench-valhalla`
+   (never a prune), and delete `tools/geo-bench/.local/data/`.
+
+Measured on the Lahore clip (laptop, 2026-10-16): OSRM extract peak ≈ 0.5 GB RAM, ≈ 1.5 min, volume ≈ 0.18 GB;
+Nominatim import ≈ 12 min, ≈ 0.7 GB RAM serving, volume ≈ 0.9 GB. Pakistan-wide sizing is still NOT MEASURED.

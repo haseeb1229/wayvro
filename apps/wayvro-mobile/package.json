@@ -10,6 +10,7 @@
     "test": "vitest run",
     "i18n:export": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/export.ts",
     "i18n:import-review": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/import-review.ts",
+    "i18n:prereview": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/prereview-export.ts",
     "android:prebuild": "expo prebuild --platform android --clean --no-install",
     "android:debug": "node ../../scripts/android-build.mjs debug",
     "android:release": "node ../../scripts/android-build.mjs release"
