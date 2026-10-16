@@ -367,6 +367,7 @@ The repository was made PUBLIC by the founder to restore GitHub Actions; no work
 | `b7dbb38` | 38623258117: all success incl. Mobile E2E 14/14 PASS | 38623262811: all success, 14/14 PASS | first real-CI proof of the 4-shard design + free-disk fix; shards 196–311 s of 900 |
 | `0962861` | 38635172209 attempt 2: all success, 14/14 PASS | 38635182862: all success (13 PASS + pr-03 FLAKY: first attempt lost the adb transport, the retry passed) | attempt 1 of the push run: the E2E APK job failed downloading NDK 27.1 (infrastructure) — one rerun |
 | `aff4f40` | 38643691564: all success, 14/14 PASS first attempt (shards 197–261 s) | 38643700388 attempt 2: all success, 14/14 PASS | attempt 1: shard 4 hit a corrupt system-image download (infrastructure) — one rerun |
+| `4bf4803` | 38855393762: all success, 14/14 PASS first attempt (shards 160–313 s) | 38855400225: all success, 14/14 PASS first attempt (shards 173–487 s) | SP-08 coverage closure + release-state race fix |
 
 ### Full matrix (manual workflow_dispatch from the default branch)
 - **Run 38623281968** (`b7dbb38`) — **FAILED**, and the failures were real:
@@ -397,16 +398,74 @@ The repository was made PUBLIC by the founder to restore GitHub Actions; no work
   - `pagead2.googlesyndication.com` and `update.googleapis.com` are in the BASELINE window, before the Wayvro APK was installed, so they are OS / Google Play services traffic on the `google_apis` image.
   - Per-app UID attribution reported "not available" on that run. The parser stopped at the `mAppUidStatsMap: OK` status line, not the content section. This was verified against a real API-35 `dumpsys netstats` on a throwaway local AVD and fixed in the closure commit, with a regression fixture.
 
-### Coverage audit after the green matrix — repository-owned gaps found
-Before reclassifying, every strategy-named Maestro case and every SP-08 row was compared with `tests/e2e-mobile/flows/manifest.mjs`. The manifest's claim that every SP-08 row is accounted for did **not** hold:
-- **SP-08 #6 / NAV-04 internal intent routing:** no flow.
-- **#21 version policy:** only HARD is covered (pr-13); SOFT (UPD-01) and MAINTENANCE → retry (MAINT-01) have no flow.
-- **#16 refusal states:** only outside-area is covered (n-09); pickup-restricted, routing-unavailable and outside-hours are not.
-- **No flows at all:** PIN-01..03, SRCH-02..04, ONB-03 and LOC-04.
+### Coverage audit after the green matrix — gaps found and closed (`4bf4803`)
+Before reclassifying, every strategy-named Maestro case and every SP-08 row was compared with `tests/e2e-mobile/flows/manifest.mjs`. The manifest's claim that every SP-08 row was accounted for did **not** hold on `aff4f40`:
+- SP-08 #6 / NAV-04 internal intent routing had no flow;
+- #21 version policy covered only HARD (pr-13), not SOFT (UPD-01) or MAINTENANCE → retry (MAINT-01);
+- #16 refusal states covered only outside-area (n-09);
+- PIN-01..03, SRCH-02..04, ONB-03 and LOC-04 had no flows.
 
-These are repository-owned gaps, not external ones. They affect **A01, A07, B01, B02, K19 and V08**, which therefore cannot be ENGINEERING_SATISFIED or PARTIAL_EXTERNAL_GATED yet. Work to close them is in progress: missing flows built and validated on a local emulator, then confirmed in CI.
+These were repository-owned gaps (affecting A01, A07, B01, B02, K19, V08). They were closed in `4bf4803` with new full-tier flows, each validated on a local API-35 emulator and then in the CI matrix:
+- **n-18, n-19a–e:** internal intents / NAV-04 (signed-out, Rider, Driver, unknown and stale intents resolved by server state);
+- **n-20a–c:** SOFT update prompt, dismiss and continue (UPD-01);
+- **n-21a–c:** MAINTENANCE screen, retry while still in maintenance, recovery (MAINT-01);
+- **n-22a–c:** pickup restricted, routing unavailable, routing recovered (#16);
+- **n-23a/b:** pin and search fallback (PIN-01, PIN-03, SRCH-02, SRCH-04);
+- **n-24:** location permission denied permanently → settings path (LOC-04);
+- **n-25:** pin accuracy (PIN-02);
+- **n-26:** Roman-Urdu place alias (SRCH-03).
 
-### Repository-owned engineering closure: **FIX REQUIRED** (the coverage gaps above). Macro Phase 3: **EXTERNAL BLOCKED** (SP-01, SP-02, SP-04, FA-09; FA-19 only if Mapbox remains a candidate). The final classification follows the coverage work.
+Writing n-21 exposed a real defect: the release-state cache answered a concurrent caller with the old snapshot while a refresh was in flight, so the app missed the maintenance state. `apps/api/src/platform/release/state.ts` now awaits the in-flight refresh, with a regression test in `apps/api/test/app-config-service.test.ts`.
+
+Documented exceptions (not counted as passes):
+- **n-22x outside hours — NOT TESTABLE in Maestro:** the stack seeds all-day service hours so quote flows never depend on the wall clock, and an ACTIVE zone set is immutable; the HOURS refusal is covered by the API integration tests.
+- **n-27 ONB-03 capture resume — NOT RUN:** the resumable capture intent is an evidence file in the persisted upload queue, which needs a camera capture or gallery image on the emulator; the queue's persistence and resume logic is covered by unit tests.
+- **n-14 KYC upload — NOT RUN** (manual-only); **n-16, n-17 — NOT TESTABLE** (static flag registry; no external URL scheme in release builds).
+
+### Final CI evidence on `4bf4803`
+- **Push CI 38855393762 and PR CI 38855400225:** Quality, Integration, Security, Android, Web E2E, E2E APK, four shards and the Mobile E2E aggregate all success, first attempt; aggregate 14 expected · PASS 14.
+- **Full matrix 38855394910 (workflow_dispatch from main, target `phase-3/maps-quotes-unified-ux`): SUCCESS on every job.**
+  - **API 29:** PASS 31, SKIPPED 6 (system-dialog flows run on API 35 only), NOT RUN 2, NOT TESTABLE 3.
+  - **API 35:** PASS 35, FLAKY 2 (n-06, n-26: first attempt failed, the single retry passed), NOT RUN 2, NOT TESTABLE 3.
+  - **API 35 low-RAM:** PASS 36, FLAKY 1 (n-26), NOT RUN 2, NOT TESTABLE 3.
+  - **Totals:** PASS 102 · SKIPPED 6 · FLAKY 3 · NOT RUN 6 · NOT TESTABLE 9 · FAIL 0 · BLOCKED 0.
+  - **50,000-run property tier:** success. **Load harness + 600 s FAULT-GEO soak:** success.
+- **Network inventory (API 35): PASS.** Netsim Wi-Fi pcap, 233,354 packets. No analytics, ads, crash-reporting or update host first seen during the app session; `pagead2.googlesyndication.com` is BASELINE (seen before the APK was installed). **Per-app attribution** (`dumpsys netstats`, app UID 10209): the app exchanged 724,706 B and the capture saw 727,790 B to the synthetic API (tolerance 444,092 B), so the app's traffic is accounted for by the synthetic API.
+- The closure documentation commit after `4bf4803` changes documentation only; the matrix evidence stays on the code-identical `4bf4803`.
+
+### Final requirement classification (29 IDs)
+All repository-owned Maestro evidence is green in CI (sharded PR tier and full matrix), and the SP-08 coverage gaps are closed.
+- **ENGINEERING_SATISFIED (8):**
+  - B04 (QUOTE-01 pr-10 green);
+  - B06; E05; E08; H06;
+  - H10 (driver readiness flows green);
+  - R28 (`LEGAL_GATE_DISABLED`);
+  - V08 (NAV flows incl. n-03 back stack and n-18/n-19 intents green; external deep links out of Phase-3 scope).
+- **PARTIAL_EXTERNAL_GATED (21):**
+  - A01 (store link, EG-18);
+  - A06 (FA-09, SP-04 Roman-Urdu metric);
+  - A07 (SP-01 OEM devices);
+  - A08 (TalkBack walkthrough FA-14, VoiceOver FA-13);
+  - B01 (renderer freeze, SP-04);
+  - B02 (SP-04, ADR-006);
+  - B03 (SP-04, rendered polyline);
+  - E06 (production adapter per SKU, FA-05/06/19);
+  - E07 (production TTLs with ADR-006);
+  - I11 (FA-06 console caps, EG-21);
+  - K19 (FA-09, physical TalkBack);
+  - L08 (SP-02 device data);
+  - P18 (FA-09);
+  - Q26 (SP-02/SP-01 device numbers, staging);
+  - Q27 (physical low-end devices, FA-04);
+  - Q31 (iOS minimum unfrozen);
+  - U04 (renderer row at P3.7, EG-18, iOS privacy manifest);
+  - U05 (background-location justification, SP-01);
+  - V05 (SP-01 physical OEM rider-hygiene check);
+  - V10 (physical-device release subset; making Mobile E2E a required check is a founder action);
+  - V11 (SP-02 device measurements).
+- **BLOCKED: 0.**
+
+### Repository-owned engineering closure: **PASS**. Macro Phase 3: **EXTERNAL BLOCKED** (SP-01 real OEM devices, SP-02 low-end device, SP-04 Lahore field/provider benchmark, FA-09 native Urdu/Roman-Urdu review; FA-19 only if Mapbox remains a candidate). Phase 3 is not complete and PR #8 is not merged; Phase 4 has not started.
 
 ### Founder preview APK (synthetic, non-performance, laptop-required)
 - **File:** `C:\Dev\wayvro-founder-artifacts\wayvro-phase3-preview-arm64.apk` (outside Git).
