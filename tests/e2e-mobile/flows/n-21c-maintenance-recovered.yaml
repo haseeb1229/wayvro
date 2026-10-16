@@ -1,0 +1,17 @@
+# SP-08 #21 MAINTENANCE / MAINT-01, part 3 of 3 (N): maintenance has ended on the server; "Try again" (no restart)
+# recovers the app to Rider home. The server switch cache is 1 s in the E2E stack, so the tap is retried a bounded
+# number of times (Maestro retry, no sleep).
+appId: dev.wayvro.app
+name: n-21c-maintenance-recovered
+tags: [full]
+---
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: 'Try again'
+      - extendedWaitUntil:
+          visible:
+            id: rider-home-where-to
+          timeout: 15000
+- assertNotVisible: 'Planned maintenance is in progress. Please try again a little later.'
+- takeScreenshot: n-21-recovered

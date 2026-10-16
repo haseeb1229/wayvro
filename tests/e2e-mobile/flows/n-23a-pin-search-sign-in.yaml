@@ -1,0 +1,15 @@
+# PIN-01/03, SRCH-02/04 part 1 of 2 (N): rider A signed in (never-asked permissions). run-flows.mjs then makes every
+# AUTOCOMPLETE call of the synthetic geo doubles fail (geocode, place resolve and reverse geocode stay healthy).
+appId: dev.wayvro.app
+name: n-23a-pin-search-sign-in
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000

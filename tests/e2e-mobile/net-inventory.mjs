@@ -905,7 +905,13 @@ function selfTest() {
   const dump = [
     'Dev:',
     '  ...',
-    'mAppUidStatsMap:',
+    // the real API 35 dump lists the map first under "BPF map status" (regression: the parser stopped there)
+    'BPF map status:',
+    '  mAppUidStatsMap: OK',
+    '  mStatsMapA: OK',
+    '',
+    'BPF map content:',
+    '  mAppUidStatsMap:',
     'uid rxBytes rxPackets txBytes txPackets',
     '10149 5 1 6 1',
     '10150 1200 9 800 7',

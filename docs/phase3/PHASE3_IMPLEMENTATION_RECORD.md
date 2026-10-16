@@ -346,3 +346,71 @@ Unchanged totals: **ENGINEERING_SATISFIED 5 · PARTIAL_EXTERNAL_GATED 10 · BLOC
 
 ### Repository-owned engineering closure
 **NOT PASS — BLOCKED on two founder actions:** (1) merge PR #9; (2) restore GitHub Actions (billing/spending limit). The code for every repository-owned item of the correction is complete and passes locally. The CI evidence the correction requires (sharded PR tier green, full matrix, CI 50k, CI load/soak) has not been produced. **Macro Phase 3: EXTERNAL BLOCKED** (SP-01, SP-02, SP-04, FA-09 unchanged).
+
+## Closure — CI evidence (founder authorisation 2026-10-15, `WAYVRO_PHASE3_CLAUDE_DO_EVERYTHING_POSSIBLE`)
+
+The repository was made PUBLIC by the founder to restore GitHub Actions; no workflow, runner or architecture was changed for that. Public-repo safety preflight:
+- no `pull_request_target` trigger;
+- no `secrets.*` reference, and the repository has 0 Actions secrets;
+- `permissions: contents: read`, and the default workflow permissions are read;
+- standard `ubuntu-24.04` runners only;
+- artefact retention 7 days;
+- gitleaks full history clean.
+
+**PR #9 merged** by a normal merge commit **`c2d8ac789ad4d5e8253372c0bd4eb167cd30cea8`** (parents `b1a1986` main, `c05ee74` PR head). **Main push CI 38620534896:** Quality, Integration, Security, Android and Web E2E all success.
+
+**Main merged into this branch** by a normal merge commit `b7dbb38` (parents `50f4ec0`, `c2d8ac7`). Conflict: `mobile-full.yml` (added on both sides), resolved to the branch version, which is a superset of main's bootstrap.
+
+### CI on the branch
+| SHA | Push run | PR run | Notes |
+|---|---|---|---|
+| `b7dbb38` | 38623258117: all success incl. Mobile E2E 14/14 PASS | 38623262811: all success, 14/14 PASS | first real-CI proof of the 4-shard design + free-disk fix; shards 196–311 s of 900 |
+| `0962861` | 38635172209 attempt 2: all success, 14/14 PASS | 38635182862: all success (13 PASS + pr-03 FLAKY: first attempt lost the adb transport, the retry passed) | attempt 1 of the push run: the E2E APK job failed downloading NDK 27.1 (infrastructure) — one rerun |
+| `aff4f40` | 38643691564: all success, 14/14 PASS first attempt (shards 197–261 s) | 38643700388 attempt 2: all success, 14/14 PASS | attempt 1: shard 4 hit a corrupt system-image download (infrastructure) — one rerun |
+
+### Full matrix (manual workflow_dispatch from the default branch)
+- **Run 38623281968** (`b7dbb38`) — **FAILED**, and the failures were real:
+  - **n-03 (app defect, V08):** a successful sign-in left `/sign-in` beneath the mode home, so hardware back could never leave the app.
+  - **n-10 (server defect, A01):** a RIDER-scoped `rider.quotes` stop was enforced, but never reached `GET /v1/app/config`.
+  - **n-02, n-09, n-15:** stale flows written before P3.8/P9.
+  - **Network inventory:** the netsim capture was not found.
+  - Fixed in `0962861`.
+- **Run 38635173646** (`0962861`) — **FAILED**, but confirmed n-02, n-03 and n-10 on every lane. Still failing:
+  - **n-15:** tapped the pickup's helper text instead of the suggestion;
+  - **n-09:** `.*Rs.*` also matched ordinary copy;
+  - **n-05 (low-RAM lane):** depended on n-04's leftover location fix;
+  - **Network inventory:** captured but BLOCKED, because the netsim Wi-Fi capture starts after the install began, so there was no baseline window.
+  - Fixed in `aff4f40`: a 120 s idle baseline on the API-35 lane, plus per-app UID attribution.
+- **Run 38643695206** (`aff4f40`) — **SUCCESS on every job**:
+  - target guard;
+  - E2E APK;
+  - **50,000-run property tier**;
+  - **load harness + 600 s FAULT-GEO soak**;
+  - **Maestro API 29: PASS** (24 PASS, 4 SKIPPED by design (system-dialog flows run on API 35 only), 1 NOT RUN (n-14 manual-only), 2 NOT TESTABLE);
+  - **API 35: PASS** (28 PASS, 1 NOT RUN, 2 NOT TESTABLE);
+  - **API 35 low-RAM: PASS** (28 PASS, 1 NOT RUN, 2 NOT TESTABLE);
+  - Matrix summary success.
+  - **Totals:** PASS 80, FAIL 0, BLOCKED 0, FLAKY 0.
+- **Network inventory (API 35, `aff4f40`): PASS.**
+  - Source: the netsim Wi-Fi pcap (`/tmp/android-runner/netsimd/pcaps`), 242,430 packets.
+  - No analytics, ads, crash-reporting or update host was first seen during the app session.
+  - `pagead2.googlesyndication.com` and `update.googleapis.com` are in the BASELINE window, before the Wayvro APK was installed, so they are OS / Google Play services traffic on the `google_apis` image.
+  - Per-app UID attribution reported "not available" on that run. The parser stopped at the `mAppUidStatsMap: OK` status line, not the content section. This was verified against a real API-35 `dumpsys netstats` on a throwaway local AVD and fixed in the closure commit, with a regression fixture.
+
+### Coverage audit after the green matrix — repository-owned gaps found
+Before reclassifying, every strategy-named Maestro case and every SP-08 row was compared with `tests/e2e-mobile/flows/manifest.mjs`. The manifest's claim that every SP-08 row is accounted for did **not** hold:
+- **SP-08 #6 / NAV-04 internal intent routing:** no flow.
+- **#21 version policy:** only HARD is covered (pr-13); SOFT (UPD-01) and MAINTENANCE → retry (MAINT-01) have no flow.
+- **#16 refusal states:** only outside-area is covered (n-09); pickup-restricted, routing-unavailable and outside-hours are not.
+- **No flows at all:** PIN-01..03, SRCH-02..04, ONB-03 and LOC-04.
+
+These are repository-owned gaps, not external ones. They affect **A01, A07, B01, B02, K19 and V08**, which therefore cannot be ENGINEERING_SATISFIED or PARTIAL_EXTERNAL_GATED yet. Work to close them is in progress: missing flows built and validated on a local emulator, then confirmed in CI.
+
+### Repository-owned engineering closure: **FIX REQUIRED** (the coverage gaps above). Macro Phase 3: **EXTERNAL BLOCKED** (SP-01, SP-02, SP-04, FA-09; FA-19 only if Mapbox remains a candidate). The final classification follows the coverage work.
+
+### Founder preview APK (synthetic, non-performance, laptop-required)
+- **File:** `C:\Dev\wayvro-founder-artifacts\wayvro-phase3-preview-arm64.apk` (outside Git).
+- **SHA-256:** `b1fe23834cc220a07da2aab4ed4812c2a034cb5f9d0ad90e9eae3859750600a5`.
+- **Build:** a debug development client (arm64-v8a + x86_64) whose API origin is the laptop's LAN address `http://192.168.100.69:4120`.
+- **Use:** `start-preview.ps1` starts the synthetic stack (throwaway DB) and Metro; `README.txt` holds the steps.
+- **Not taken — release-like FA-17 HTTPS build:** an account-free quick tunnel gets a new random hostname on every start, so an APK built against it would stop working at teardown. A stable hostname needs a tunnel account (founder action).

@@ -7,7 +7,8 @@
  */
 export function appUidBytes(dump, uid) {
   const lines = dump.replaceAll('\r\n', '\n').split('\n');
-  const start = lines.findIndex((l) => l.trim().startsWith('mAppUidStatsMap'));
+  // the dump lists the map twice: `mAppUidStatsMap: OK` under "BPF map status", then the content header `mAppUidStatsMap:`
+  const start = lines.findIndex((l) => l.trim() === 'mAppUidStatsMap:');
   if (start < 0) return null;
   for (const line of lines.slice(start + 1)) {
     const t = line.trim();

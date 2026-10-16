@@ -113,6 +113,21 @@ async function sql(text, values) {
     await client.end();
   }
 }
+/** Sets (or, with mode NONE, clears) the synthetic geo doubles' fault through the local-runner-only control route. */
+async function geoFault(body) {
+  const res = await fetch(`${stack.apiBaseUrl}/__local/geo-control/fault`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (res.status !== 204)
+    throw new Error(`geo-control fault ${JSON.stringify(body)} answered ${String(res.status)} (stack started without WAYVRO_LOCAL_GEO_CONTROL?)`);
+}
+/** Cold start of the app with `uri` as its initial URL (ACTION_VIEW on the exported launcher activity). */
+function deliverPath(uri) {
+  adb(['shell', 'am', 'force-stop', APP_ID]);
+  adb(['shell', 'am', 'start', '-W', '-n', `${APP_ID}/.MainActivity`, '-a', 'android.intent.action.VIEW', '-d', `'${uri}'`]);
+}
 const hooks = {
   /** #21 HARD: an ACTIVE Android version policy whose minimum supported build (2) is above the E2E build (1). */
   async activateHardUpdatePolicy() {
@@ -121,6 +136,16 @@ const hooks = {
       `insert into platform.app_version_policies (id, platform, version, status, min_supported_build, recommended_build, soft_message_key, hard_message_key,
                                                  effective_from, drafted_by_staff_id, approved_by_staff_id)
        values (gen_random_uuid(), 'ANDROID', $1, 'ACTIVE', 2, 2, 'app.softUpdate.body', 'app.update.reason.MINIMUM_BUILD', now(), $2, $3)`,
+      [version, stack.staffIds[0], stack.staffIds[1]],
+    );
+  },
+  /** #21 SOFT / UPD-01: an ACTIVE policy the E2E build (1) still satisfies (minimum 1) but is below (recommended 2). */
+  async activateSoftUpdatePolicy() {
+    const version = (await sql(`select coalesce(max(version), 0) + 1 as v from platform.app_version_policies where platform = 'ANDROID'`)).rows[0].v;
+    await sql(
+      `insert into platform.app_version_policies (id, platform, version, status, min_supported_build, recommended_build, soft_message_key, hard_message_key,
+                                                 effective_from, drafted_by_staff_id, approved_by_staff_id)
+       values (gen_random_uuid(), 'ANDROID', $1, 'ACTIVE', 1, 2, 'app.softUpdate.body', 'app.update.reason.MINIMUM_BUILD', now(), $2, $3)`,
       [version, stack.staffIds[0], stack.staffIds[1]],
     );
   },
@@ -141,6 +166,53 @@ const hooks = {
       `update platform.runtime_switches set state = 'ENABLED', approved_by_staff_id = $1, version = version + 1, updated_at = now() where key = 'rider.quotes'`,
       [stack.staffIds[1]],
     );
+  },
+  /**
+   * #21 MAINTENANCE / MAINT-01: `platform.maintenance` moved to its safe state (ENABLED = maintenance in progress; one
+   * staff member, the TO_SAFE direction) and ended again with a DIFFERENT approver (FROM_SAFE maker-checker; the table
+   * CHECK refuses approver = changer). Ending is a no-op when maintenance is not on, so it is safe as an `after` hook.
+   */
+  async startMaintenance() {
+    await sql(
+      `insert into platform.runtime_switches (id, key, scope, city_code, state, reason_code, changed_by_staff_id)
+       values (gen_random_uuid(), 'platform.maintenance', 'ALL', null, 'ENABLED', 'E2E_MAINTENANCE_TEST', $1)
+       on conflict on constraint runtime_switches_target do update set state = 'ENABLED', reason_code = 'E2E_MAINTENANCE_TEST', changed_by_staff_id = $1,
+         approved_by_staff_id = null, version = platform.runtime_switches.version + 1, updated_at = now()`,
+      [stack.staffIds[0]],
+    );
+  },
+  async endMaintenance() {
+    await sql(
+      `update platform.runtime_switches set state = 'DISABLED', approved_by_staff_id = $1, version = version + 1, updated_at = now()
+        where key = 'platform.maintenance' and scope = 'ALL' and city_code is null and state = 'ENABLED'`,
+      [stack.staffIds[1]],
+    );
+  },
+  /** #16 routing unavailable: every ROUTE call of the synthetic doubles fails upstream (local-runner fault control). */
+  async routeFault() {
+    await geoFault({ sku: 'ROUTE', mode: 'UPSTREAM_5XX', times: 1000 });
+  },
+  /** SRCH-02: every AUTOCOMPLETE call fails upstream (geocode, place resolve and reverse stay healthy). */
+  async autocompleteFault() {
+    await geoFault({ sku: 'AUTOCOMPLETE', mode: 'UPSTREAM_5XX', times: 1000 });
+  },
+  async clearGeoFaults() {
+    await geoFault({ sku: 'ALL', mode: 'NONE' });
+  },
+  /**
+   * #6 / NAV-04: a system-delivered path through the app's exported launcher activity (explicit component, so no URL
+   * scheme or intent filter is involved — release builds register none, CON-P3-07). The app is stopped first, so the
+   * path arrives as the initial URL of a cold start and goes through `+native-intent` → the intent allowlist.
+   */
+  deliverDriverHomePath() {
+    deliverPath('wayvro-e2e://intent/drive');
+  },
+  deliverCompliancePath() {
+    deliverPath('wayvro-e2e://intent/earn/compliance');
+  },
+  /** Not on the allowlist (an unknown parameter): rejected by the parser, the app lands on the mode home. */
+  deliverMalformedPath() {
+    deliverPath('wayvro-e2e://intent/drive?next=admin');
   },
   /** #26 / A11Y-01: 200 % font scale for the capture pass, reset afterwards. */
   fontScale200() {
@@ -188,7 +260,20 @@ function riderHygiene(opts) {
   if (/time=|duration=|Access:/i.test(camera)) problems.push(`CAMERA app-op shows access: ${camera.trim()}`);
   return { problems, evidence: { runtime: Object.fromEntries(runtime), requested: [...requested], cameraAppOp: camera.trim() } };
 }
-const checks = { riderHygiene };
+/**
+ * UPD-01 positive control: when the dismissed banner stays hidden after the relaunch, the server must STILL answer this
+ * build with SOFT_UPDATE — otherwise "no banner" would prove nothing about the persisted dismissal.
+ */
+async function serverSoftUpdate() {
+  const res = await fetch(`${stack.apiBaseUrl}/v1/app/config`, { headers: { 'x-wayvro-platform': 'ANDROID', 'x-wayvro-app-build': '1' } });
+  const body = res.ok ? await res.json() : null;
+  const state = body?.client?.state ?? null;
+  return {
+    problems: state === 'SOFT_UPDATE' ? [] : [`GET /v1/app/config answered ${String(res.status)} with client state ${String(state)}, expected SOFT_UPDATE`],
+    evidence: { status: res.status, client: body?.client ?? null },
+  };
+}
+const checks = { riderHygiene, serverSoftUpdate };
 
 // ── Maestro ──────────────────────────────────────────────────────────────────────────────────────────────────────
 const flowEnv = ['-e', `API=${stack.apiBaseUrl}`];
@@ -281,7 +366,7 @@ async function attempt(flow, dir) {
     }
     if (problems.length === 0)
       for (const c of flow.checks ?? []) {
-        const r = checks[c.name](c);
+        const r = await checks[c.name](c);
         writeFileSync(join(dir, `${c.name}.json`), JSON.stringify(r, null, 2));
         problems.push(...r.problems.map((p) => `${c.name}: ${p}`));
       }

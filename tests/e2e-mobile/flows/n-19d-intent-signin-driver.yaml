@@ -1,0 +1,15 @@
+# SP-08 #6 / NAV-04, part 4 of 5 (N): approved driver C signed in, starting in Rider mode (the sign-in clears the mode
+# preference). run-flows.mjs then cold-starts the app with the system path `/earn/compliance`.
+appId: dev.wayvro.app
+name: n-19d-intent-signin-driver
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_C}
+      PHONE_LOCAL: ${PHONE_LOCAL_C}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000

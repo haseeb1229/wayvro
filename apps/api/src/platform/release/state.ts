@@ -77,14 +77,21 @@ export class ReleaseStateCache {
     this.now = options.now ?? Date.now;
   }
 
-  /** The current snapshot, refreshed when the TTL elapsed. Never throws. */
+  /**
+   * The current snapshot, refreshed when the TTL elapsed. Never throws. A caller arriving while a refresh is in flight
+   * waits for that refresh too: `refresh()` moves `nextRefreshAt` forward before its query returns, so without this a
+   * concurrent caller was answered from the snapshot being replaced — however old it was — and two reads of one
+   * moment could disagree (SP-08 MAINT-01: `GET /v1/app/config` said "no maintenance" while the enforcement hook
+   * answered the parallel account-state call with 503, so the app showed a generic error instead of the
+   * maintenance screen).
+   */
   async get(): Promise<ReleaseSnapshot> {
     if (this.now() >= this.nextRefreshAt) {
       this.inflight ??= this.refresh().finally(() => {
         this.inflight = null;
       });
-      await this.inflight;
     }
+    if (this.inflight !== null) await this.inflight;
     return this.snapshot;
   }
 

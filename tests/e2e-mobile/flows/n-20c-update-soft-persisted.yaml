@@ -1,0 +1,16 @@
+# SP-08 #21 SOFT / UPD-01, part 3 of 3 (N): the dismissal persists across a relaunch — the banner stays hidden although
+# the cached policy (loaded before the first render) still says SOFT_UPDATE; run-flows.mjs then checks that the server
+# still answers this build with SOFT_UPDATE (positive control) and retires the policy.
+appId: dev.wayvro.app
+name: n-20c-update-soft-persisted
+tags: [full]
+---
+- stopApp
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible: 'A newer version of Wayvro is available.*'
+- takeScreenshot: n-20-after-relaunch

@@ -1,0 +1,94 @@
+# PIN-01/03, SRCH-02/04 part 2 of 2 (N) — B01, B02, A07:
+#  SRCH-02  suggestions failing upstream ⇒ the degrade copy "Search is busy…" with "Search the full address" (GEOCODE,
+#           a different provider SKU) as the working fallback;
+#  SRCH-04  "Use current location" on the search screen opens the text-first pin;
+#  PIN-01   the precise fix is reverse-geocoded and offered as "Is this your pickup?" — the rider confirms it;
+#  PIN-03   the rider overrides that pickup manually through search.
+# Foreground precise location is granted at launch (SP-08 §6: permission states set by the harness, not OS-dialog
+# taps), so this flow also runs on API 29; the fix is a synthetic point next to the synthetic Liberty Market.
+appId: dev.wayvro.app
+name: n-23b-pin-search-fallback
+tags: [full]
+---
+- setLocation:
+    latitude: 31.5104
+    longitude: 74.3416
+- stopApp
+- launchApp:
+    stopApp: true
+    permissions:
+      all: deny
+      location: allow
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- tapOn:
+    id: search-pickup
+# SRCH-02: provider failure on suggestions ⇒ degrade copy, never invented results
+- inputText: 'Kalma'
+- extendedWaitUntil:
+    visible: 'Search is busy. Type the full address instead.'
+    timeout: 30000
+- assertNotVisible: 'Kalma Chowk.*'
+- takeScreenshot: n-23-search-degraded
+- tapOn: 'Search the full address'
+- extendedWaitUntil:
+    visible: 'Kalma Chowk.*'
+    timeout: 30000
+- takeScreenshot: n-23-full-address-fallback
+# SRCH-04: the pin fallback from search
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible: 'Set your pickup'
+    timeout: 30000
+# PIN-01: text-first pin — the fix becomes an address the rider confirms (never used silently)
+- extendedWaitUntil:
+    visible: 'Is this your pickup?'
+    timeout: 60000
+- assertVisible: 'Liberty Market'
+- assertVisible: 'Search for an address instead'
+- takeScreenshot: n-23-pin-confirm
+- tapOn: 'Use this point'
+- extendedWaitUntil:
+    visible:
+      id: search-pickup
+    timeout: 30000
+# the header's up button (a hardware back would first only close the keyboard when it is open)
+- tapOn: 'Navigate up'
+- extendedWaitUntil:
+    visible: 'Pickup: Liberty Market.*'
+    timeout: 30000
+# PIN-03: the rider overrides the confirmed current-location pickup manually
+- scrollUntilVisible:
+    element: 'Change pickup'
+    direction: DOWN
+- tapOn: 'Change pickup'
+- extendedWaitUntil:
+    visible:
+      id: search-pickup
+    timeout: 30000
+- inputText: 'Kalma'
+- extendedWaitUntil:
+    visible: 'Search the full address'
+    timeout: 30000
+- tapOn: 'Search the full address'
+- extendedWaitUntil:
+    visible: 'Kalma Chowk.*'
+    timeout: 30000
+- tapOn: 'Kalma Chowk.*'
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+# the header's up button (a hardware back would first only close the keyboard when it is open)
+- tapOn: 'Navigate up'
+- extendedWaitUntil:
+    visible: 'Pickup: Kalma Chowk.*'
+    timeout: 30000
+- assertNotVisible: 'Pickup: Liberty Market.*'
+- takeScreenshot: n-23-pickup-overridden

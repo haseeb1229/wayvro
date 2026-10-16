@@ -5,7 +5,7 @@ Black-box flows for the ONE Wayvro app (`docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.
 
 | Path | Purpose |
 |---|---|
-| `mobile-stack.mjs` | throwaway DB `wayvro_e2e_mobile` (recreated each run), migrations, 2 bootstrap STAFF_ADMINs, synthetic catalog + synthetic rate cards (60 s quote TTL), API local runner on `:4120`, accounts A–G + APPLICANT; writes `build-logs/e2e-mobile/stack.json` |
+| `mobile-stack.mjs` | throwaway DB `wayvro_e2e_mobile` (recreated each run), migrations, 2 bootstrap STAFF_ADMINs, synthetic catalog + synthetic rate cards (60 s quote TTL), synthetic landmark aliases (PROPOSED; one ur-Latn alias approved by a seeded staff admin for SRCH-03), API local runner on `:4120` with the local-only geo fault control (`WAYVRO_LOCAL_GEO_CONTROL=1`), accounts A–G + APPLICANT + R (Roman Urdu); writes `build-logs/e2e-mobile/stack.json` |
 | `seed-accounts.mjs` | accounts through the PUBLIC sign-in / consent / age endpoints; Driver/Partner states by SQL in the shapes the review service and worker write |
 | `run-flows.mjs` | one tier on one emulator: hooks, checks, flake policy, summaries |
 | `flows/manifest.mjs` | the matrix: every SP-08 row with its tier, accounts, hooks, checks, prerequisites — or its NOT TESTABLE / NOT RUN reason |
@@ -29,6 +29,10 @@ Black-box flows for the ONE Wayvro app (`docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.
 - **Flake policy (§6)**: one automatic retry; pass-on-retry = FLAKY (never PASS); INV-07 flows are never quarantined and
   FLAKY fails the run; a flow that cannot run is BLOCKED with its cause; budget exhaustion BLOCKS the remaining flows;
   no sleep-based waits (Maestro element waits and bounded `retry` only).
+- **Faults and system paths**: geo outages (routing unavailable, failing suggestions) are set and cleared by run-flows
+  hooks through the local-runner-only `/__local/geo-control` route (ADR-045; absent from release artefacts). System
+  paths for the intent router (#6) are delivered as the initial URL of a cold start through the exported launcher
+  activity (explicit component — no URL scheme or intent filter exists in release builds, so this is not #7).
 - **Pricing**: quote flows need ACTIVE synthetic rate cards. `seedSyntheticCatalog` (`@wayvro/test-support`) seeds them
   with `quoteTtlSeconds: 60` (the rate card CHECK minimum) so expiry is testable. If the seed produced no ACTIVE card,
   the quote flows are reported **NOT RUN** with that reason — never PASS.

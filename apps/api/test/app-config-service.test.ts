@@ -131,3 +131,48 @@ describe('app config assembly', () => {
     await expect(broken.service.admit('203.0.113.7')).rejects.toThrow('programming error');
   });
 });
+
+describe('release state cache — concurrent reads during a refresh', () => {
+  it('a caller arriving while a refresh is in flight gets the refreshed state, never the snapshot being replaced', async () => {
+    let now = Date.parse('2026-10-15T00:00:00Z');
+    const maintenanceOn = {
+      id: 's1',
+      key: 'platform.maintenance',
+      scope: 'ALL',
+      city_code: null,
+      state: 'ENABLED',
+      message_key: null,
+      expected_end: null,
+    };
+    let switchRows: unknown[] = [];
+    let hold: Promise<void> = Promise.resolve();
+    const db = {
+      query: async (sql: string) => {
+        if (sql.includes('app_version_policies')) return { rows: [] };
+        const rows = switchRows;
+        await hold;
+        return { rows };
+      },
+    } as unknown as Queryable;
+    const state = new ReleaseStateCache(db, { ttlMs: 1000, log, now: () => now });
+    const switches = new RuntimeSwitchStore(state, 'test');
+    expect(switches.maintenanceOf((await state.get()).switches).active).toBe(false);
+
+    // maintenance starts; the TTL elapses; the next refresh's query is slow
+    switchRows = [maintenanceOn];
+    now += 1000;
+    let release = (): void => undefined;
+    hold = new Promise((resolve) => {
+      release = resolve;
+    });
+    const first = state.get(); // starts the refresh (e.g. the enforcement hook of an account-state call)
+    const second = state.get(); // arrives meanwhile (e.g. GET /v1/app/config of the same app start)
+    release();
+    const [a, b] = await Promise.all([first, second]);
+    expect(switches.maintenanceOf(a.switches).active).toBe(true);
+    expect(switches.maintenanceOf(b.switches).active).toBe(true);
+    // single-flight is kept: within the TTL no further query runs
+    switchRows = [];
+    expect(switches.maintenanceOf((await state.get()).switches).active).toBe(true);
+  });
+});

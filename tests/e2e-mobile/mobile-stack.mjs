@@ -4,8 +4,9 @@
  * tests/e2e-web/ops-stack.mjs: a throwaway database `wayvro_e2e_mobile` (dropped and recreated on every run, owned by
  * this script only), migrations, two bootstrap STAFF_ADMINs (makers/approvers of the seeded release-control rows), the
  * synthetic catalog and its synthetic rate cards (60 s quote TTL), the API local runner
- * (ADR-045: dist-dev, recording OTP sink, synthetic geo doubles) on its own port, then accounts A–G + APPLICANT through
- * the public sign-in/consent endpoints (tests/e2e-mobile/seed-accounts.mjs). Writes build-logs/e2e-mobile/stack.json for
+ * (ADR-045: dist-dev, recording OTP sink, synthetic geo doubles with the local-only `/__local/geo-control` fault route)
+ * on its own port, the synthetic landmark aliases (one ur-Latn alias approved by a seeded staff admin), then accounts
+ * A–G + APPLICANT + R through the public sign-in/consent endpoints (tests/e2e-mobile/seed-accounts.mjs). Writes build-logs/e2e-mobile/stack.json for
  * tests/e2e-mobile/run-flows.mjs and keeps the API running until SIGINT/SIGTERM.
  *
  * Prerequisites: compose infrastructure up (`pnpm infra:up`), `pnpm build`, `pnpm build:local`. Synthetic data only.
@@ -82,6 +83,20 @@ const pricing =
     : { seeded: false, reason: 'the synthetic seed produced no ACTIVE rate card' };
 say(`pricing: ${pricing.seeded ? `seeded (${String(activeCards)} ACTIVE synthetic rate cards)` : pricing.reason}`);
 
+// SRCH-03 (A06): the synthetic landmark aliases are seeded PROPOSED by an inert OFFBOARDED proposer; ONE Roman-Urdu
+// alias is then approved by a seeded STAFF_ADMIN (approver ≠ creator — the database maker-checker CHECK and guard
+// trigger enforce it; nothing is bypassed). Its sibling spelling stays PROPOSED as the flow's negative control.
+// Done before the API starts, so its 60 s alias cache never holds a pre-approval state.
+const { seedSyntheticLandmarkAliases } = await import(fileUrl('packages/test-support/dist/index.js'));
+await seedSyntheticLandmarkAliases({ env: 'local', databaseUrl: dbUrl, log: (line) => say(`aliases: ${line}`) });
+const ACTIVE_ALIAS = 'badshai masjid';
+const approved = await pool.query(
+  `update geo.landmark_aliases set status = 'ACTIVE', approved_by_staff_id = $1 where city_code = 'LHR' and locale = 'ur-Latn' and alias_normalised = $2 and status = 'PROPOSED'`,
+  [staff[1].staffId, ACTIVE_ALIAS],
+);
+if (approved.rowCount !== 1) throw new Error(`mobile-stack: the synthetic alias '${ACTIVE_ALIAS}' was not approved`);
+say(`aliases: '${ACTIVE_ALIAS}' (ur-Latn) ACTIVE (approved by a seeded staff admin; every other synthetic alias stays PROPOSED)`);
+
 // Vault pool of the API runner: a LOGIN member of wayvro_vault (local only; reused across runs, never an owner).
 const VAULT_PASSWORD = 'e2e-local-only';
 await pool.query(
@@ -135,6 +150,9 @@ const api = spawn(process.execPath, [join(ROOT, 'apps/api/dist-dev/dev/main.loca
     // n-15 (SP-08 #17) must reach the account quote limit from a UI loop; no other flow creates more than 2 quotes in
     // any minute of a lane (pr-10, pr-11, n-08 and n-09 are separated by sign-ins), so 3/min only affects n-15.
     QUOTES_PER_MINUTE_ACCOUNT: '3',
+    // SP-08 #16 routing-unavailable and SRCH-02 provider failure: the local-runner-only fault control of the synthetic
+    // geo doubles (`/__local/geo-control`, apps/api/dev/geo-control.ts), set and cleared by run-flows.mjs hooks.
+    WAYVRO_LOCAL_GEO_CONTROL: '1',
     ...S3,
   },
   stdio: ['ignore', 'inherit', 'inherit'],
@@ -179,6 +197,7 @@ const stack = {
   staffIds: staff.map((s) => s.staffId),
   catalog: { zoneSetId: catalog.zoneSetId, zoneSetVersion: catalog.zoneSetVersion },
   pricing,
+  aliases: { active: [ACTIVE_ALIAS] },
   accounts,
 };
 writeFileSync(join(OUT_DIR, 'stack.json'), JSON.stringify(stack, null, 2) + '\n');

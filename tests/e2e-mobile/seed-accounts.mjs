@@ -51,7 +51,11 @@ function api(baseUrl) {
     const text = await res.text();
     return { status: res.status, json: text === '' ? null : JSON.parse(text) };
   };
-  return { post: (path, body, token) => call('POST', path, body, token), get: (path, token) => call('GET', path, undefined, token) };
+  return {
+    post: (path, body, token) => call('POST', path, body, token),
+    patch: (path, body, token) => call('PATCH', path, body, token),
+    get: (path, token) => call('GET', path, undefined, token),
+  };
 }
 
 /** Newest OTP for `phone` recorded after `since` (the recording sink is fed by the in-process otp.deliver job). */
@@ -209,7 +213,8 @@ async function restriction(client, target) {
  * Creates the accounts and returns { key: { phone, localPhone, accountId } }. `phones` (a Set) keeps numbers unique.
  * Shapes follow SP-08 §4: A rider-only; B approved driver; C approved driver (switching flows); D driver-role
  * restriction; E account-wide restriction with a driver profile; F application in MANUAL_REVIEW; G expired document;
- * APPLICANT rider-only (onboarding flows #18/#19, so A stays an applicant-free rider).
+ * APPLICANT rider-only (onboarding flows #18/#19, so A stays an applicant-free rider); R rider-only with Roman Urdu as
+ * its preferred language (SRCH-03).
  */
 export async function seedAccounts({ root, pool, baseUrl, keySeed }) {
   const { FieldCipher, localKeyRing } = await import(fileUrl(root, 'packages/field-crypto/dist/index.js'));
@@ -231,12 +236,20 @@ export async function seedAccounts({ root, pool, baseUrl, keySeed }) {
     },
     F: { driver: { application: 'MANUAL_REVIEW' } },
     G: { driver: { application: 'VERIFIED', profile: 'EXPIRED', licenceExpired: true } },
+    // SRCH-03: rider-only, preferred language Roman Urdu (set through the public profile endpoint), so its searches
+    // carry locale ur-Latn and reach the ur-Latn landmark aliases; A keeps English for every other flow.
+    R: { driver: null, preferredLocale: 'ur-Latn' },
   };
   const out = {};
   for (const [key, shape] of Object.entries(shapes)) {
     const phone = syntheticPhone(used);
     const token = await signUp(baseUrl, phone);
     const accountId = await acceptPolicies(root, baseUrl, token, shape.driver ? [...RIDER_POLICIES, ...DRIVER_POLICIES] : RIDER_POLICIES);
+    if (shape.preferredLocale) {
+      const r = await api(baseUrl).patch('/v1/account/profile', { preferredLocale: shape.preferredLocale }, token);
+      if (r.status !== 200 || r.json?.preferredLocale !== shape.preferredLocale)
+        throw new Error(`seed: account ${key} preferred-locale update failed with ${String(r.status)}`);
+    }
     let profileId = null;
     if (shape.driver) {
       const client = await pool.connect();

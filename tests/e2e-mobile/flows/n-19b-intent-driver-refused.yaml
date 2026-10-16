@@ -1,0 +1,20 @@
+# SP-08 #6 / NAV-04, part 2 of 5 (N) — V08: a Driver/Partner intent for rider-only A is REFUSED (MODE_NOT_AVAILABLE in
+# resolveIntent; the app shows its one-line LINK_UNAVAILABLE notice) and Rider home is kept — the driver graph is never
+# entered. run-flows.mjs then delivers a malformed path (part 3).
+appId: dev.wayvro.app
+name: n-19b-intent-driver-refused
+tags: [full]
+---
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "That link can't be opened here."
+    timeout: 30000
+- assertNotVisible: 'Riding with Wayvro is not affected.'
+- takeScreenshot: n-19-driver-intent-refused
+- tapOn: 'OK'
+- assertNotVisible: "That link can't be opened here."
+- assertVisible:
+    id: rider-home-where-to
