@@ -573,4 +573,28 @@ The first refreshed full matrix (run 39039135285 on `6832ad4`) had API 29, API 3
 - Any hook that still throws marks only that flow **BLOCKED**, with the reason, instead of crashing the runner; cleanup hooks still run.
 
 ### 9. CI, full matrix and ruleset
-Pending in this commit; recorded in the closure commit that follows.
+Final code SHA **`af5d8e2`**. The later closure commit changes documentation only. It touches no file under apps/, packages/, tools/, tests/, infra/ or .github/, which `git diff --stat af5d8e2 HEAD -- apps packages tools tests infra .github` proves to be empty.
+- **CI on `6832ad4`.** Push run 39036576380 and PR run 39036580711: all jobs success. The Android job ran the new FOREGROUND-SERVICE rule against the release AAB; the Quality self-test has 7 cases. All four Mobile E2E shards were green.
+- **First refreshed full matrix.** Run 39039135285 on `6832ad4`: the API 35 low-RAM lane crashed on the runner defect described in §8. The other lanes, the 50k property tier and load + soak were green.
+- **CI on `af5d8e2`.** Push run 39045490954 and PR run 39045495235: Quality, Integration, Security, Android, Web E2E, E2E APK, four shards and the Mobile E2E aggregate all success. The aggregate reports "Flows: 14 expected · PASS 14 · Aggregate: PASS".
+- **Full matrix 39045502501 on `af5d8e2` (final code): SUCCESS on every job.** Jobs: target guard, E2E APK, Maestro API 29, API 35, API 35 low-RAM, 50,000-run property tier, load harness + 600 s FAULT-GEO soak, and matrix summary.
+  - API 29: PASS 31, SKIPPED 6, NOT RUN 2, NOT TESTABLE 3.
+  - API 35: PASS 37, NOT RUN 2, NOT TESTABLE 3.
+  - API 35 low-RAM: PASS 37, NOT RUN 2, NOT TESTABLE 3.
+  - **Totals: PASS 105 · SKIPPED 6 · NOT RUN 6 (n-14, n-27) · NOT TESTABLE 9 · FLAKY 0 · FAIL 0 · BLOCKED 0.**
+- **Network inventory (API 35): PASS.** 272,454 packets. The 5 hosts first seen during the app session are Google OS / Play-services endpoints (`update.googleapis.com`, `accounts.google.com`, `clientservices.googleapis.com`, `infinitedata-pa.googleapis.com`, `android-context-data.googleapis.com`). Per-app attribution (`dumpsys netstats`, app UID 10209): the app exchanged 713,832 B, and the capture saw 713,912 B to the synthetic API, so the app's own traffic is the synthetic API.
+- **Ruleset 24837051.** The update adding `Mobile E2E` as the sixth required context (existing five unchanged, no bypass) was prepared (`evidence-local/fix/ruleset-after.json`) but the call was **refused by this session's permission policy**. It is NOT applied; it is a founder action. The ruleset still requires the original five contexts.
+
+### Classification after the correction
+29 IDs: **ENGINEERING_SATISFIED 8** (B04, B06, E05, E08, H06, H10, R28, V08), **PARTIAL_EXTERNAL_GATED 21**, **BLOCKED 0** — unchanged, because every remaining item is external.
+
+### Repository-owned engineering closure: **PASS**. All of the following hold:
+- the masked-number finding is resolved (withdrawn, with proof);
+- the adapter error translation is fixed and proven;
+- `LocationTaskService` is removed and gated;
+- SP02-F1's app-owned inefficiency is fixed, with the residual classified REAL_DEVICE_REQUIRED;
+- normal CI is green;
+- Mobile E2E is green;
+- the full matrix is green on the final code SHA.
+
+Macro Phase 3 stays **EXTERNAL BLOCKED**. PR #8 is open and unmerged; Phase 4 has not started.
