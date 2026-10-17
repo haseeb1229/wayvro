@@ -174,3 +174,9 @@ The pack is in `C:\Dev\Wayvro\evidence-local\fa09-prereview-pack\` (git-ignored,
 - The length budget counts characters. It does not measure glyph width or the actual screen layout.
 - The term renderings come from the AI-drafted text. Listing them measures consistency; it does not approve any
   terminology.
+
+## Addendum (2026-10-17, emulator screenshots)
+
+- The predicted `phone.hint` reordering was **observed** on the API-35 emulator ("+92 3XX XXXXXXX" shown as "3XX XXXXXXX 92+"), and so was the masked number in `otp.body` ("+92 3** *** **43" shown as "43** *** **3 92+"). Fixed in code: the format examples are now inserted values (`PHONE_FORMAT_EXAMPLES`), and `isolate()` uses an explicit LEFT-TO-RIGHT ISOLATE for values without letters (`apps/wayvro-mobile/src/core/i18n/bidi.ts`, tests in `bidi.test.ts`). The three `phone.hint` texts changed (placeholders only) and stay PENDING_NATIVE_REVIEW.
+- English "1 suggestions" (and the Urdu/Roman-Urdu equivalents) on the search screen: a new singular key `rider.search.countOne` (PENDING_NATIVE_REVIEW). The export now has **934** strings (app 472, driver 462); 0 REVIEWED.
+- Not observed on screen (screens not reachable on the emulator in the time-box): the three `security.event.*OIDC*` rows, `SESSIONS_REVOKED_BY_SUPPORT`, the two driver "10 MB" rows and the OSM "©" attribution. They stay predictions for the native reviewer.

@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useI18n } from '../../../core/i18n/I18nProvider';
-import type { UiLocale } from '../../../core/i18n/strings';
+import { PHONE_FORMAT_EXAMPLES, type UiLocale } from '../../../core/i18n/strings';
 import { useServices, useSessionState, useSignInNotice } from '../../../core/services/ServicesProvider';
 import { Banner, Body, Button, ErrorBanner, RadioGroup, Screen, TextField, Title } from '../../../core/ui/primitives';
 import { FullyDrawnMarker } from '../../../platform/perf/fully-drawn';
@@ -55,7 +55,7 @@ export function PhoneEntryScreen() {
       <TextField
         testID="phone-number"
         label={t('phone.label')}
-        hint={t('phone.hint')}
+        hint={t('phone.hint', PHONE_FORMAT_EXAMPLES)}
         value={phone}
         onChangeText={(value) => {
           setPhone(value);

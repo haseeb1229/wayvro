@@ -12,6 +12,7 @@
  * Isolation marks are default-ignorable code points: they are not drawn and screen readers do not speak them. They are
  * built from code points (never typed as invisible characters in source).
  */
+const LRI = String.fromCodePoint(0x2066);
 const FSI = String.fromCodePoint(0x2068);
 const PDI = String.fromCodePoint(0x2069);
 
@@ -25,9 +26,16 @@ export function hasRtlLetters(text: string): boolean {
   return RTL_LETTER.test(text);
 }
 
-/** `value` as a first-strong isolate (an empty value stays empty). */
+/**
+ * `value` as a bidi isolate (an empty value stays empty): FIRST STRONG ISOLATE when it contains a letter, otherwise an
+ * explicit LEFT-TO-RIGHT ISOLATE (U+2066). Unicode resolves a first-strong isolate without letters to left-to-right,
+ * but the API-35 emulator laid such runs out right-to-left inside Urdu sentences ("+92 3** *** **43" shown as
+ * "43** *** **3 92+"; docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md), so numbers, codes and masked phones
+ * get the explicit direction.
+ */
 export function isolate(value: string): string {
-  return value === '' ? value : `${FSI}${value}${PDI}`;
+  if (value === '') return value;
+  return `${STRONG_LETTER.test(value) ? FSI : LRI}${value}${PDI}`;
 }
 
 /**

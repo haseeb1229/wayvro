@@ -17,7 +17,7 @@ import { useRiderFlow } from '../flow/RiderFlowProvider';
 import { startCurrentLocation } from '../location/start-location';
 import { placeLine } from '../quote/quote-view';
 import { SearchController, type SearchState, type SearchTuning, type Suggestion } from './search-controller';
-import { searchFieldParam, suggestionLabel } from './search-view';
+import { resultCountKey, searchFieldParam, suggestionLabel } from './search-view';
 
 /**
  * Where-to search `/ride/search` (B02; UX doc §8.2): Pickup and Drop-off fields, server suggestions (at most one request
@@ -230,7 +230,7 @@ function SearchBody(props: {
     case 'results':
       return (
         <View>
-          <Banner tone="info" text={t('rider.search.count', { count: state.suggestions.length })} announce="search-results" />
+          <Banner tone="info" text={t(resultCountKey(state.suggestions.length), { count: state.suggestions.length })} announce="search-results" />
           {state.stale ? <StaleIndicator text={t('rider.search.stale')} /> : null}
           {state.suggestions.map((s) => (
             <PlaceRow

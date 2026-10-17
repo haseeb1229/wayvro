@@ -58,7 +58,7 @@ const en = {
   'phone.title': 'Sign in or create an account',
   'phone.body': "Enter your Pakistani mobile number. We'll send a 6-digit code by SMS.",
   'phone.label': 'Mobile number',
-  'phone.hint': 'Format: 03XX XXXXXXX or +92 3XX XXXXXXX',
+  'phone.hint': 'Format: {local} or {intl}',
   'phone.invalid': 'Enter a Pakistani mobile number, for example 03XX XXXXXXX.',
   'phone.submit': 'Send code',
   'phone.sending': 'Sending code…',
@@ -438,6 +438,7 @@ const en = {
   'rider.search.degraded': 'Search is busy. Type the full address instead.',
   'rider.search.error': "Search didn't work. Please try again.",
   'rider.search.count': '{count} suggestions',
+  'rider.search.countOne': '1 suggestion',
   'rider.search.stale': 'Suggestions may be out of date.',
   'rider.search.fullAddress': 'Search the full address',
   'rider.search.recentLabel': 'Recent: {place}',
@@ -561,7 +562,7 @@ const ur: Catalogue = {
   'phone.title': 'سائن اِن کریں یا نیا اکاؤنٹ بنائیں',
   'phone.body': 'اپنا پاکستانی موبائل نمبر درج کریں۔ ہم ایس ایم ایس کے ذریعے 6 ہندسوں کا کوڈ بھیجیں گے۔',
   'phone.label': 'موبائل نمبر',
-  'phone.hint': 'طریقہ: 03XX XXXXXXX یا +92 3XX XXXXXXX',
+  'phone.hint': 'طریقہ: {local} یا {intl}',
   'phone.invalid': 'پاکستانی موبائل نمبر درج کریں، مثلاً 03XX XXXXXXX۔',
   'phone.submit': 'کوڈ بھیجیں',
   'phone.sending': 'کوڈ بھیجا جا رہا ہے…',
@@ -941,6 +942,7 @@ const ur: Catalogue = {
   'rider.search.degraded': 'تلاش ابھی مصروف ہے۔ اس کی بجائے پورا پتہ لکھیں۔',
   'rider.search.error': 'تلاش کام نہیں کر سکی۔ دوبارہ کوشش کریں۔',
   'rider.search.count': '{count} تجاویز',
+  'rider.search.countOne': '1 تجویز',
   'rider.search.stale': 'تجاویز پرانی ہو سکتی ہیں۔',
   'rider.search.fullAddress': 'پورا پتہ تلاش کریں',
   'rider.search.recentLabel': 'حالیہ: {place}',
@@ -1062,7 +1064,7 @@ const urLatn: Catalogue = {
   'phone.title': 'Sign in karein ya naya account banayein',
   'phone.body': 'Apna Pakistani mobile number darj karein. Hum SMS ke zariye 6 hindson ka code bhejein ge.',
   'phone.label': 'Mobile number',
-  'phone.hint': 'Tareeqa: 03XX XXXXXXX ya +92 3XX XXXXXXX',
+  'phone.hint': 'Tareeqa: {local} ya {intl}',
   'phone.invalid': 'Pakistani mobile number darj karein, maslan 03XX XXXXXXX.',
   'phone.submit': 'Code bhejein',
   'phone.sending': 'Code bheja ja raha hai…',
@@ -1449,6 +1451,7 @@ const urLatn: Catalogue = {
   'rider.search.degraded': 'Talash abhi masroof hai. Is ki bajaye poora pata likhein.',
   'rider.search.error': 'Talash kaam nahin kar saki. Dobara koshish karein.',
   'rider.search.count': '{count} tajaweez',
+  'rider.search.countOne': '1 tajweez',
   'rider.search.stale': 'Tajaweez purani ho sakti hain.',
   'rider.search.fullAddress': 'Poora pata talash karein',
   'rider.search.recentLabel': 'Haaliya: {place}',
@@ -1554,6 +1557,12 @@ export function interpolate(locale: UiLocale, template: string, params?: Transla
     return rtl || hasRtlLetters(text) ? isolate(text) : text;
   });
 }
+
+/**
+ * The phone-number format examples shown in `phone.hint`. They are inserted values (not catalogue text) so the Urdu
+ * sentence isolates them and "+92" stays in front of the number in right-to-left layout.
+ */
+export const PHONE_FORMAT_EXAMPLES = { local: '03XX XXXXXXX', intl: '+92 3XX XXXXXXX' } as const;
 
 /** Looks up `key` and fills `{name}` placeholders. */
 export function t(locale: UiLocale, key: StringKey, params?: TranslationParams): string {

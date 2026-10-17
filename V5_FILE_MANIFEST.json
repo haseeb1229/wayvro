@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 141,
+  "file_count_excluding_manifest": 143,
   "files": [
     {
       "path": ".gitattributes",
@@ -690,9 +690,14 @@
       "sha256": "13f545e7002327b709a11a62fbec90a45034491449f5fbfccb5b4c79feafab39"
     },
     {
+      "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",
+      "bytes": 827,
+      "sha256": "df145ff915790ff4f4e8b819c86c620d3145aa57d2c1e26b8ceab4190a427e82"
+    },
+    {
       "path": "docs/phase3/evidence/laptop/FA09_AUTOMATED_PREREVIEW.md",
-      "bytes": 13275,
-      "sha256": "fd6df4037da1318bc42a1f56fbb64fea4636eea2551dfbc094e2cf127ec2dfc9"
+      "bytes": 14355,
+      "sha256": "05ce2a27e5e1a83b3d19a6141021e6cebd5f55c9732646fa67b59323eaeab436"
     },
     {
       "path": "docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md",
@@ -703,6 +708,11 @@
       "path": "docs/phase3/evidence/laptop/SP01_EMULATOR_SUPPLEMENT.md",
       "bytes": 25973,
       "sha256": "629bbfb9ebea48e23006d20e9a8e1697469568320c0d88a7677e43a543f238f3"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/SP02_LOW_RAM_AVD_SUPPLEMENT.md",
+      "bytes": 10707,
+      "sha256": "da6502e591a191af9d67c11775489319db3ab1fc70e373d35e80eed901f64ab7"
     },
     {
       "path": "docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md",

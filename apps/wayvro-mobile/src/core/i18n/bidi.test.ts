@@ -3,6 +3,7 @@ import { contentDirection, hasRtlLetters, isolate } from './bidi';
 import { formatPkr } from './money';
 import { t } from './strings';
 
+const LRI = String.fromCodePoint(0x2066);
 const FSI = String.fromCodePoint(0x2068);
 const PDI = String.fromCodePoint(0x2069);
 
@@ -10,6 +11,12 @@ describe('bidi isolation of values inside sentences (P18/A06 RTL)', () => {
   it('isolates with first-strong isolate marks and leaves an empty value empty', () => {
     expect(isolate('Rs 640')).toBe(`${FSI}Rs 640${PDI}`);
     expect(isolate('')).toBe('');
+  });
+
+  it('isolates letter-free values (numbers, codes, masked phones) with an explicit left-to-right isolate', () => {
+    expect(isolate('+92 3** *** **43')).toBe(`${LRI}+92 3** *** **43${PDI}`);
+    expect(isolate('16')).toBe(`${LRI}16${PDI}`);
+    expect(t('ur', 'otp.body', { destination: '+92 3** *** **43' })).toContain(`${LRI}+92 3** *** **43${PDI}`);
   });
 
   it('detects right-to-left letters (Urdu script) but not Latin, digits or symbols', () => {
@@ -21,9 +28,9 @@ describe('bidi isolation of values inside sentences (P18/A06 RTL)', () => {
   it('every value inserted into an Urdu sentence is isolated: prices, numbers, Latin addresses and Urdu names', () => {
     const price = formatPkr({ currency: 'PKR', minor: '125000' }) ?? '';
     expect(t('ur', 'fare.taxIncluded', { rate: '16', amount: price })).toContain(`${FSI}Rs 1,250${PDI}`);
-    expect(t('ur', 'fare.taxIncluded', { rate: '16', amount: price })).toContain(`${FSI}16${PDI}`);
+    expect(t('ur', 'fare.taxIncluded', { rate: '16', amount: price })).toContain(`${LRI}16${PDI}`);
     expect(t('ur', 'rider.quote.from', { place: 'Liberty Market' })).toContain(`${FSI}Liberty Market${PDI}`);
-    expect(t('ur', 'error.rateLimited', { seconds: 30 })).toContain(`${FSI}30${PDI}`);
+    expect(t('ur', 'error.rateLimited', { seconds: 30 })).toContain(`${LRI}30${PDI}`);
   });
 
   it('in English and Roman Urdu only right-to-left values are isolated; Latin values and numbers are unchanged', () => {

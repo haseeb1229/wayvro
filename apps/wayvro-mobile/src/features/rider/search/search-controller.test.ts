@@ -4,7 +4,7 @@ import { autocompleteResult } from '../../../__mocks__/p3-fixtures';
 import { ApiError } from '../../../core/api/errors';
 import { RequestCancelledError } from '../../../core/api/http';
 import { SearchController, searchFailure, type SearchDeps } from './search-controller';
-import { searchFieldParam, suggestionLabel } from './search-view';
+import { resultCountKey, searchFieldParam, suggestionLabel } from './search-view';
 
 interface Ctx {
   readonly minChars: number;
@@ -176,5 +176,14 @@ describe('search view helpers', () => {
     expect(searchFieldParam(['pickup'])).toBe('dropoff');
     expect(suggestionLabel('Liberty Market', 'Gulberg III')).toBe('Liberty Market, Gulberg III');
     expect(suggestionLabel('Liberty Market', null)).toBe('Liberty Market');
+  });
+});
+
+describe('results-count announcement', () => {
+  it('uses the singular string for exactly one result and the counted string otherwise', () => {
+    expect(resultCountKey(1)).toBe('rider.search.countOne');
+    expect(resultCountKey(0)).toBe('rider.search.count');
+    expect(resultCountKey(2)).toBe('rider.search.count');
+    expect(resultCountKey(8)).toBe('rider.search.count');
   });
 });
