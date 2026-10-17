@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 68052,
-      "sha256": "054d29aec27f5d2c5327aa996275d091a529d050cb421eadec781033b379b8cd"
+      "bytes": 77123,
+      "sha256": "b88c5f7ed82b52c9524c05b7e219fc42257c62fcf332ba8a11217712907e4fd4"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -706,8 +706,8 @@
     },
     {
       "path": "docs/phase3/evidence/laptop/SP01_EMULATOR_SUPPLEMENT.md",
-      "bytes": 25973,
-      "sha256": "629bbfb9ebea48e23006d20e9a8e1697469568320c0d88a7677e43a543f238f3"
+      "bytes": 40594,
+      "sha256": "3ac8486a4895a2f3f1c7babac33b0dac6b993354d6bc02f7577f76d4c59ca662"
     },
     {
       "path": "docs/phase3/evidence/laptop/SP02_LOW_RAM_AVD_SUPPLEMENT.md",

@@ -503,3 +503,74 @@ Classes used: `REPOSITORY_CI`, `LOCAL_EMULATOR_SUPPLEMENTARY`, `LOCAL_SYNTHETIC_
 Unchanged: **ENGINEERING_SATISFIED 8**, **PARTIAL_EXTERNAL_GATED 21**, **BLOCKED 0**. Laptop evidence is recorded as supplementary against: A07, U05, V05 (SP-01 emulator); Q26, Q27, L08, V11 (SP-02 AVD); B01, B02, B03 (open-stack desk benchmark); E06, E07, I11 (account-free contracts); A08, K19 (emulator accessibility); A06, P18, K19 (automated pre-review). None of them becomes ENGINEERING_SATISFIED from laptop evidence: each remaining item is a real device, field data, a human reviewer, a provider account/terms, or a legal/commercial answer.
 
 ### Repository-owned engineering closure: **PASS** (re-confirmed in CI after the sweep's code changes). Macro Phase 3: **EXTERNAL BLOCKED**. PR #8 stays open and unmerged; Phase 4 has not started.
+
+## Targeted engineering correction (founder review of the laptop sweep, 2026-10-17, `WAYVRO_PHASE3_FINAL_LAPTOP_ENGINEERING_CORRECTION`)
+
+Reviewer verdict on `9647d80`: TARGETED ENGINEERING CORRECTION REQUIRED. Starting state: main `c2d8ac7`, PR #8 open and mergeable at `9647d80`, push run 39016829364 and PR run 39016832712 green. The last full matrix (38855394910) was on `4bf4803`. Product/mobile code changed between `4bf4803` and `9647d80`: `strings.ts`, the three phone-hint screens, the search count and the `search-view.ts` helper, plus tool/test code (geo-bench, geo-adapter contract tests, the SP-01 spike). That old matrix therefore cannot prove the final code.
+
+### 1. Urdu masked phone number (OTP, step-up, phone change) — no defect; the earlier finding is withdrawn
+- **Finding withdrawn.** The masked-number "reversal" reported by the laptop sweep was a misreading of full-line screenshots, not a rendering defect.
+- **Proof with number-only pixel crops** on the unchanged rendering code (the original CI APK; the final code renders these sentences identically):
+  - `otp.body`: "+92 3** *** **01";
+  - `stepUp.sent`: "…92 3** *** **01" (the "+" just outside the crop);
+  - `phoneChange.codeBody`: "+92 3** *** **02";
+  - all in left-to-right order inside the Urdu sentence.
+- **Diagnostic changes reverted.** The LRI/LRE/LRM marks, the split rendering and the per-character rendering were all reverted; no rendering code changed for these sentences.
+- **Real defect, kept fixed.** `phone.hint` was a real defect: crops show "3XX XXXXXXX 92+" before and "+92 3XX XXXXXXX" after the fix in `9647d80`.
+- **Other checks.**
+  - English and Roman Urdu are unaffected (left-to-right sentences; walks PASS).
+  - The Urdu Rider walk at 1.0 font and the English walk at 200 % show no clipping.
+  - An Urdu walk at 200 % font was NOT RUN.
+- **Evidence and lesson.** Evidence: `docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md` §5. Lesson: mixed-direction rendering is judged only from number-only crops or view geometry.
+
+### 2. SP02-F1 (signed-in cold start) — instrumented
+`docs/phase3/evidence/laptop/SP02_LOW_RAM_AVD_SUPPLEMENT.md` §5 (cohorts A/B/C/D, device logcat plus API request log on one timeline). With a fresh token, the account-state and app-policy requests already run in parallel; fully drawn was p50 2.97 s / p90 3.29 s on a less loaded host. The 7.1 s of the sweep was host saturation.
+
+**App-owned inefficiency fixed:** with an expired access token, every cold start first sent a request that could only answer 401. `SessionManager.refreshDueAtFirstUse` now refreshes first, at most once per process, through the unchanged single-flight refresh. After the fix: 0 of 9 samples with a 401 (before: 9 of 9).
+
+**Security invariants unchanged:** access TTL 900 s, idle/absolute lifetimes, refresh rotation and replay protection (persisted idempotency key), secure storage, server authority.
+
+**Status:** remaining startup time is native/Hermes bootstrap and render on the emulator, so **REAL_DEVICE_REQUIRED** (FA-04). The 3 GB AVD, Lite cold/warm and quote-cycle memory checks were NOT RUN (time).
+
+### 3. Geo adapter ↔ gateway error semantics (fixed)
+- **Design.** `GeoAdapterError` now extends `GeoProviderError`. Its `kind` comes from one exhaustive table (`packages/geo-adapters/src/errors.ts`).
+- **Taxonomy.** `GeoProviderFailure` gains `AUTH` and `NO_RESULT`; nothing is renamed or removed.
+- **Google bad keys.** Google 4xx answers are classified by `google.rpc.ErrorInfo.reason` (the bad-key reason maps to AUTH).
+- **Retry-After.** It is parsed in delta-seconds and HTTP-date forms against an injected server clock. Malformed or past values are dropped, and valid ones are clamped to 1–3600 s. Applied on QUOTA only.
+- **Gateway.** It reads only `kind`. The cool-down uses `Retry-After` when valid, else 60 s.
+- **Tests.** geo-adapters 684/684 (coverage 99.42 % statements), apps/api geo unit 51/51, geo integration 99/99 (real PostgreSQL/Valkey, throwaway DBs), quotes 30/30.
+- **Docs.** `docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md` §8, `PHASE3_ARCHITECTURE.md` §5.4.
+
+### 4. Release `LocationTaskService` (removed)
+- **Why it is unused.** expo-location 57.0.20 starts the service only from `LocationTaskConsumer` (`startLocationUpdatesAsync` with a foreground-service option). Wayvro uses only foreground permission and position APIs; a test bans the background/task APIs in app source.
+- **Removal.** `apps/wayvro-mobile/plugins/no-location-task-service.mjs` removes the service from the merged manifest of every variant with `tools:node="remove"`, without modifying the upstream package.
+- **Release gate.** `infra/ci/android/check-intent-filters.mjs` now fails any service declaring `foregroundServiceType` unless `component-allowlist.json` `foregroundServices` lists it. The list is empty in Phase 3; the self-test has a negative case.
+- **Evidence.** In the merged manifest of the locally built E2E APK: 0 `LocationTaskService`, 0 `foregroundServiceType`, permissions unchanged (COARSE, FINE, CAMERA, INTERNET). The release AAB is proven by the CI Android job (below).
+- **Spike.** The SP-01 spike keeps its own service; it is a separate app.
+
+### 5. SP-01 spike
+The R8 keep rule for `RNHeadlessAppLoader` (`tests/spikes/sp-01-background-location/plugins/spike-proguard.mjs`, with a test) is applied by prebuild. In the R8 mapping of build r5 the class is kept under its original name. Correction re-run on API 35 with build r5 (`docs/phase3/evidence/laptop/SP01_EMULATOR_SUPPLEMENT.md` §7), LOCAL_EMULATOR_SUPPLEMENTARY:
+- **Headless starts: PASS.** 4 process starts without an activity; 0 ClassNotFoundException.
+- **TC-06: FAIL** on the informational < 5 s reconnect target. Reconnect + snapshot p50 19.4 s, p95 34.0 s; 2 of 4 offers lost while the socket was down; 0 duplicates.
+- **TC-11 and TC-15: FAIL.** Detection passes, but the location FGS stays for the life of the process. The earlier "~60 s" was only the observation window.
+- **Root cause (cited source lines).** expo-location `LocationTaskService.onStartCommand` returns START_REDELIVER_INTENT and never stops itself. Android restarts the crashed sticky service as foreground. On restore, `LocationTaskConsumer` cannot bind while the app is not yet foregrounded, so `stopLocationUpdatesAsync` reaches a null service.
+- **Not fixable in spike JS.** This is a Phase-4 input for ADR-029/ADR-033: native FGS lifecycle control (stop on a restarted start without a user session, or START_NOT_STICKY, or candidate B after FA-08), a permission re-check before running as foreground again, and on-device re-measurement.
+- **Release app not affected.** It no longer declares the service (§4).
+- **NOT RUN:** API 29 and low-RAM lanes, TC-21 on r5, the long session.
+
+### 6. Open-stack S3 airport hard gate (root-caused, no change)
+- **Cause.** The desk endpoint (the aerodrome polygon's vertex mean) is airside: classification C, with B contributing. Untagged stub way 1488381974 is the snap target, and the route then follows the private perimeter chain 232121109 / 105840612 / 946418464.
+- **Profile.** The OSRM car profile treats `access=private` service ways as destination-only, not as through roads. No profile change was made.
+- **Diagnostic.** A separately labelled landside endpoint gives the same four legs 0 restricted ways.
+- **Status.** S3 desk hard gate **FAIL / FIELD_REQUIRED**. Cases FL-AIR-1..4 are added to the SP-04 field list (`SP04_OPEN_STACK_DESK_BENCHMARK.md` §6a).
+
+### 7. n-14 / n-27
+One bounded attempt (synthetic "SYNTHETIC TEST DOCUMENT" images pushed to the emulator gallery and media-scanned; seeded applicant account) did not reach the system Photo Picker. The drafted applicant-details flow cannot fill the date-of-birth fields on the 720×1600 AVD (keyboard over the fields). No deterministic picker or camera automation was demonstrated, so **n-14 and n-27 stay NOT RUN**. Existing coverage: the CI flow pr-12 (onboarding form on the CI emulator), the upload-queue and capture unit tests, and the evidence pipeline integration tests. No KYC, liveness or face claim.
+
+### 8. Full-matrix harness defect found and fixed
+The first refreshed full matrix (run 39039135285 on `6832ad4`) had API 29, API 35, the 50k property tier and load + FAULT-GEO soak all green. The **API 35 low-RAM lane crashed**: after n-22 passed, the `run-flows` process died with an unhandled `fetch failed: other side closed` (UND_ERR_SOCKET) from the n-23 hook's local geo-control PUT. That is a keep-alive socket closed by the API under load; the API itself did not exit. One transient socket close should not end a lane.
+- **Fix** (`tests/e2e-mobile/run-flows.mjs`): the idempotent control PUT retries once on a network-level failure (UND_ERR_SOCKET / ECONNRESET / UND_ERR_CLOSED).
+- Any hook that still throws marks only that flow **BLOCKED**, with the reason, instead of crashing the runner; cleanup hooks still run.
+
+### 9. CI, full matrix and ruleset
+Pending in this commit; recorded in the closure commit that follows.

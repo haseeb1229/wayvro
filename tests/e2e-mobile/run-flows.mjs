@@ -113,9 +113,23 @@ async function sql(text, values) {
     await client.end();
   }
 }
+/**
+ * A local control call that a pooled keep-alive socket can lose before any byte of the answer (undici "other side
+ * closed" / reset: matrix run 39039135285, low-RAM lane). Only idempotent PUTs go through here, so one retry is safe.
+ */
+async function fetchRetryOnce(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    const code = error?.cause?.code;
+    if (code !== 'UND_ERR_SOCKET' && code !== 'ECONNRESET' && code !== 'UND_ERR_CLOSED') throw error;
+    say(`local control call retried once after ${String(code)}`);
+    return fetch(url, init);
+  }
+}
 /** Sets (or, with mode NONE, clears) the synthetic geo doubles' fault through the local-runner-only control route. */
 async function geoFault(body) {
-  const res = await fetch(`${stack.apiBaseUrl}/__local/geo-control/fault`, {
+  const res = await fetchRetryOnce(`${stack.apiBaseUrl}/__local/geo-control/fault`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
@@ -347,10 +361,14 @@ async function attempt(flow, dir) {
   const steps = flow.sequence ?? [{ maestro: flow.file }];
   const problems = [];
   try {
-    for (const h of flow.before ?? []) await hooks[h]();
+    for (const h of flow.before ?? []) {
+      const failed = await runHook(h);
+      if (failed) return { ok: false, blocked: failed };
+    }
     for (const step of steps) {
       if (step.hook) {
-        await hooks[step.hook]();
+        const failed = await runHook(step.hook);
+        if (failed) return { ok: false, blocked: failed };
         continue;
       }
       if (!deviceReady()) return { ok: false, blocked: `device ${device} not reachable/booted (adb transport lost)` };
@@ -371,9 +389,22 @@ async function attempt(flow, dir) {
         problems.push(...r.problems.map((p) => `${c.name}: ${p}`));
       }
   } finally {
-    for (const h of flow.after ?? []) await hooks[h]();
+    for (const h of flow.after ?? []) {
+      const failed = await runHook(h);
+      if (failed) problems.push(failed);
+    }
   }
   return { ok: problems.length === 0, problems };
+}
+
+/** Runs one hook; a thrown error (control route/database unreachable) becomes a reason instead of ending the run. */
+async function runHook(name) {
+  try {
+    await hooks[name]();
+    return null;
+  } catch (error) {
+    return `hook ${name} failed: ${error instanceof Error ? error.message : String(error)} (infrastructure)`;
+  }
 }
 
 // ── run ─────────────────────────────────────────────────────────────────────────────────────────────────────────

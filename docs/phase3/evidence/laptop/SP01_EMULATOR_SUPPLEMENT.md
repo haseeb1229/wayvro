@@ -210,3 +210,125 @@ Requires real devices (FA-03), in every case:
 - `tests/spikes/sp-01-background-location/src/client/engine.ts`, `src/shared/snapshot-rule.ts` — defect 2.
 - `tests/spikes/sp-01-background-location/test/task-manager-permissions.test.ts`, `test/snapshot-rule.test.ts` — tests.
 - This file.
+
+## 7. Correction re-run (2026-10-17)
+
+> **LOCAL_EMULATOR_SUPPLEMENTARY — DOES NOT CLOSE SP-01 / FA-03 (REAL_DEVICE_REQUIRED).** This section re-runs the
+> cases that defects 3 and 4 affected, on one API 35 emulator. It is not OEM or real-device evidence; nothing here
+> changes the status of SP-01, ADR-029 or ADR-033.
+
+- **Date:** 2026-10-17 (founder correction §6). **Branch:** `phase-3/maps-quotes-unified-ux`, HEAD `9647d80` at the start;
+  the lead committed `6832ad4` (which contains the keep rule below) during the run. No spike code was changed in this
+  re-run.
+- **Emulator:** `emulator-5554`, AVD `wayvro-sp02-api35-2g` (the lead's SP-02 AVD, already booted and handed over;
+  `system-images;android-35;google_apis;x86_64`, guest MemTotal 2.53 GB, `ro.config.low_ram` not set, 720 × 1600). This is
+  not the §1 `wayvro-sp01-api35` AVD; it uses the same image family. The host was loaded by the lead's builds, so timings
+  are noisy. API 29 and the low-RAM AVD: **NOT RUN** (one emulator, time).
+- **Harness:** as in §1 — receiver on `127.0.0.1:8787` reached through `10.0.2.2`, a new spike-local-only run token,
+  the synthetic 1 Hz circle feed, aggregator. Raw evidence (git-ignored): `evidence-local/fix/sp01/` (case logs, `agg/`).
+  The logcat extracts and the receiver rows stayed in the session scratch directory. The rows file was deleted after
+  aggregation (protocol §15).
+
+### 7.1 Build r5 and the keep-rule evidence
+
+| Item | Value |
+|---|---|
+| Build | r5, built by the lead (`evidence-local/fix/build-spike-r5.ps1`): `expo prebuild --clean` with `plugins/spike-proguard.mjs`, `assembleRelease`, R8 minify on, **x86_64 only**, JDK 17. Build log: `PREBUILD=0`, `KEEP-RULE: 1` (rule present once in the generated `android/app/proguard-rules.pro`), source manifest check PASS, `BUILD SUCCESSFUL`, `EXIT=0` |
+| Artefact | `sp01-r5.apk`, sha256 `8860ca67…4fbebc8`. No AAB was built, so the TC-21 gates (16 KB, artefact manifest check, targetSdk) were **NOT RUN on r5**. The r3/r4 results in §2 still stand for the manifest; the keep rule changes only R8 |
+| Keep rule | `-keep class expo.modules.adapters.react.apploader.RNHeadlessAppLoader { *; }` (`plugins/spike-proguard.mjs`, test `test/proguard-keep.test.ts`) |
+| R8 mapping | `mapping-r5.txt` line 153297: `expo.modules.adapters.react.apploader.RNHeadlessAppLoader -> expo.modules.adapters.react.apploader.RNHeadlessAppLoader` (kept under its original name) |
+| Dex check (independent of the mapping) | `dexdump` of r5 `classes.dex`: 13 references to `Lexpo/modules/adapters/react/apploader/RNHeadlessAppLoader;`. Negative control, the r3 APK (`3311fb27…1568`): **0**. The manifest meta-data `org.unimodules.core.AppLoader#react-native-headless` names that class in both builds |
+
+### 7.2 Results on API 35 (build r5)
+
+| Case | What was run | Result |
+|---|---|---|
+| **Headless start** (defect 4) | Four process starts without an activity: three after a background-location revoke (`Start proc … for broadcast {…/expo.modules.taskManager.TaskBroadcastReceiver}` 0.13–0.61 s after Android's "permissions revoked" kill, screen off) and one after a native crash with no reopen (`Start proc … for service {…/LocationTaskService}`, the sticky restart, 329 s after the crash). In each one the persisted job ran a headless JS task (`TaskService: Started headless task 1`) and the spike's orphan path ran and uploaded `ORPHAN_TASK_STOPPED` (`HEADLESS_OR_RESTORED`) to the receiver 2.2–5.0 s after the revoke | **PASS (emulator)** — defect 4 fixed. There were 0 `ClassNotFoundException` and 0 `RNHeadlessAppLoader` lines in any of the r5 case logcat captures. The only `FATAL EXCEPTION` lines are the `CrashedByAdbException: shell-induced crash` that `am crash` causes on purpose |
+| **TC-06** Socket loss | Run `mvcfcri8`, screen off: `admin restart-gateway 3000` × 5 (45 s apart), then network off (`svc wifi` + `svc data`) for **90 s** × 2 (not 120 s, because `T_offline` = 120 s ends the run by design) | **FAIL (emulator) on the informational < 5 s target; no duplicates.** The socket came back after every gateway restart (no permanent loss as in the confounded r2 run). It reconnected 11–43 s after the gateway was up again (restart 1: 42.6 s; restart 2: not up before restart 3; restart 3: 11.4 s; 4: 25.9 s; 5: 30.8 s) and 19.3 s after the first network return. Aggregator reconnect + snapshot p50 / p95: **19.4 s / 34.0 s**, 6 samples, 1 unrecovered (the second network loss ended at OFFLINE `TRACKING_LOST` 113.4 s after net-off, 0.5 s before the socket reconnected 19.8 s after net-on; the client then stopped as designed). An unprompted `transport close` 36 s after the first reconnect left the socket down until the end of the second loss. While the socket was down the 15 s poll kept running in the background. Duplicates stored **0**, buffer drops 0, rejected after OFFLINE 0. Offers: 4 emitted, 1 live by socket (4.5 s), 1 by poll (10.6 s), **2 lost** (emitted during the socket-down periods). Server STALE after net-off: 21.8 s and 13.5 s. Completeness over the 10-min window: 89.2 % (107/120) |
+| **TC-11** Background-location revoke | Three runs (`mvcied4t`, `mvciswpp`, `mvcj7ahp`), screen off: mark `revoke-bg` → `pm revoke … ACCESS_BACKGROUND_LOCATION` → open the app after 45 s → observe the FGS for 7 min | **Detection PASS, "no FGS without permission" FAIL (emulator) — defect 3 still open.** Android killed the process each time (`Killing …: permissions revoked`). The headless orphan path ran (above), server STALE after 18.4 / 16.4 / 13.1 s (≤ 30 s), server OFFLINE `PERMISSION_REVOKED` after 59.7 / 50.4 / 49.6 s, sent on the next open (`PERMISSION_REVOKED:ON_NEXT_OPEN`, which the pass rule allows). The recovery notice with the Settings link was shown. But a **location FGS with its notification stayed for ≥ 425 / ≥ 421 / ≥ 420 s** (§7.3) while the app held no background-location permission. 0 duplicates stored |
+| **TC-15** Native crash | Five valid runs: `am crash` while online, then (a) reopen after 16 s and stay in the foreground (`mvcfuipl`, `mvcgj937`, `mvci3var`); (b) reopen, then Home (`mvchl43d`); (c) no reopen (`mvch4hf6`, the headless case above). A sixth run was **invalid** (the go-online UI step failed, so the crash happened while offline; not counted) | **FAIL (emulator) — defect 3 still open.** Server STALE after 19.1 / 24.2 / 16.0 / 20.4 / 19.3 s, OFFLINE `TRACKING_LOST` after 116–124 s. On reopen the app stopped the restored task (`STALE_FGS_STOPPED`) and showed "Tracking stopped — go online again" (correct). The location FGS and notification stayed for **≥ 602 / ≥ 314 / ≥ 307 s** (a), **≥ 606 s** (b) and **≥ 485 s** (c, present from the sticky restart at +329 s to the end). ≤ 1 FGS record; 0 duplicates stored. JS-crash button: NOT RUN |
+| Long session | — | **NOT RUN (skipped).** A 30-min run could not finish reliably in the remaining emulator window, and the cases above came first. The §3.1 interrupted 53-min run is still the only long-session data |
+
+### 7.3 The lingering location FGS (defect 3): root cause and measured durations
+
+**Measured.** dumpsys `activity services` and `notification` were polled every 5–10 s from the host action. In **none of
+the 8 valid samples** did Android remove the service or the notification. Each one was still `isForeground=true`,
+type `0x00000008` (location), with the "location on while online" notification, when the observation window ended. The
+case script then cleaned up with `am force-stop`, which removed it at once.
+
+| Trigger | Samples | FGS + notification present at end of observation | Ended by |
+|---|---|---|---|
+| Native crash, reopen, app in foreground | 3 | ≥ 602 s, ≥ 314 s, ≥ 307 s | `force-stop` (cleanup) |
+| Native crash, reopen, then Home | 1 | ≥ 606 s | `force-stop` |
+| Native crash, no reopen (headless) | 1 | ≥ 485 s after the crash (≥ 156 s after the OS restart at +329 s) | `force-stop` |
+| Background-location revoke (Android kills the process) | 3 | ≥ 425 s, ≥ 421 s, ≥ 420 s | `force-stop` |
+
+So the "≥ 58–60 s" in §3 / §4 was only the length of the earlier observation window. Not one of the 8 samples showed
+the OS removing the service later (no `Stopping service due to app idle` line in any capture). On this image the orphan
+FGS lasts as long as the process does. It is **not delayed OS cleanup** and **not spike-app code**. It is the
+`expo-location` 57.0.20 / `expo-task-manager` 57.0.21 service lifecycle together with Android's restart of crashed
+started services.
+
+**Mechanism** (source lines are from `tests/spikes/sp-01-background-location/node_modules`; the OS side is as observed
+in logcat and dumpsys on this image, not checked against AOSP source):
+
+1. `expo-location/android/src/main/java/expo/modules/location/services/LocationTaskService.kt:35-42` —
+   `onStartCommand` only reads the extras and returns **`START_REDELIVER_INTENT`** (line 41). It never calls
+   `startForeground` or `stopSelf` itself. When the process dies (crash, or the kill on a permission revoke), Android
+   keeps the start request and schedules a restart (`Scheduling restart of crashed service …/LocationTaskService in
+   125126–1794438 ms for start-requested`). The ServiceRecord keeps `isForeground=true` and its `foregroundNoti` while
+   no process exists (dumpsys: `pid=none`, foreground flag set, no notification posted). When a new process attaches,
+   Android starts the pending service in it at once. This happens whether the process starts for the activity, for the
+   FLP location broadcast (`TaskBroadcastReceiver`), or for the delayed restart. Android then posts the location FGS
+   notification again (`createdFromFg=false`, `restartCount=1`, `startRequested=true`, `stopIfKilled=true`,
+   `lastStartId=1`), without any `startForeground` call from the app (no `Background started FGS` line for these
+   restarts).
+2. `expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskService.java:83-91` (constructor →
+   `restoreTasks()`, line 90), `:550-592` (`restoreTasks` → `internalRegisterTask`, line 574), `:454-479`
+   (`consumer.didRegister(task)`, line 478). The new process restores the persisted location task.
+   `TaskBroadcastReceiver.java:11-15` also builds a `TaskService` on every location broadcast, which is how the revoke
+   case restarts the process.
+3. `expo-location/…/taskConsumers/LocationTaskConsumer.kt:56-60` (`didRegister` → `maybeStartForegroundService`) and
+   **`:181-184`**: `AppForegroundedSingleton.isForegrounded` is still false when the task is restored. This was so in
+   every sample, including the activity launches, because the restore runs before `OnActivityEntersForeground`
+   (`LocationModule.kt:373-374`). So the consumer logs `Foreground location task cannot be started while the app is in
+   the background!` and returns. It never calls `bindService` (`:204-232`), so `mService` stays `null`.
+4. The spike then stops the restored task correctly: `src/client/engine.ts` `init()` (`STALE_FGS_STOPPED`) or
+   `onLocationTask` (`ORPHAN_TASK_STOPPED`) → `Location.stopLocationUpdatesAsync` → `LocationModule.kt:338-339` →
+   `TaskService.java:122-142` (`didUnregister`, line 140) → `LocationTaskConsumer.kt:62-68` → **`:239-241`
+   `stopForegroundService()` = `mService?.stop()`, a no-op while `mService == null`**.
+   `LocationTaskService.stop()` (`LocationTaskService.kt:50-53`: `stopForeground(true)` + `stopSelf()`) is the only
+   code in expo-location that ends the service (`grep stopSelf|stopForeground`), and it is never reached for the
+   instance Android restarted. `onTaskRemoved` (`:55-60`) acts only with `killServiceOnDestroy` (false in the spike,
+   design decision 9) and only on swipe-away, so it plays no part here.
+
+The spike cannot fix this from JS: no public expo-location API reaches a service instance the consumer never bound to.
+Re-registering the task to force a bind is racy (`didUnregister` can run before `onServiceConnected`, and
+`onServiceConnected` then calls `startForeground`). It is also impossible after a revoke. No spike code was changed.
+
+**Classification:** defect 3 = **third-party library lifecycle (candidate A) + Android sticky-service restart**, not a
+spike-app defect and not delayed OS cleanup. Defect 4 = **fixed** by the keep rule (headless start PASS (emulator)).
+TC-11 and TC-15 stay **FAIL (emulator)** on "no FGS without permission / ≤ 1 FGS while offline", and still need devices.
+TC-06 is **FAIL (emulator)** on the informational reconnect target, with zero duplicates. None of this is SP-01
+evidence.
+
+**Phase-4 architecture implication (ADR-029 / ADR-033 input; no Phase-3 change):**
+- Candidate A as shipped cannot meet "no FGS without permission" or "no orphan FGS after a crash". A Phase-4 driver
+  location service needs native ownership of the FGS lifecycle. Options: a patched or owned service that stops itself in
+  `onStartCommand` when there is no active user-started session (for example on a redelivered or restarted start with no
+  bound consumer), or that returns `START_NOT_STICKY`; or a different SDK (candidate B, only after an FA-08 decision).
+  Whichever is chosen, the restart path must not need JS. It must also check the location permission before the
+  service can be foreground again, because Android restored a location-type FGS here **without** the background-location
+  permission.
+- Each candidate must be re-measured on the three OEM classes for: crash, permission revoke, `am kill`, swipe-away and
+  reboot. The measure is the presence of the FGS and its notification over ≥ 10 min, not 60 s.
+- The release app is not affected in Phase 3. As of `6832ad4` it has no `LocationTaskService` in its merged manifest and
+  no FGS type. Whoever adds a driver FGS in Phase 4 inherits this finding, together with the R8 keep rule for the
+  headless app loader (defect 4) if headless JS tasks are used.
+- ADR-033: background socket reconnect stays slow (11–43 s; p95 34 s here) and a socket loss without a host action was
+  seen. The offer path inside the FGS must keep a poll or snapshot fallback, and its lost-offer rate must be measured on
+  devices (2 of 4 lost here, both while the socket was down).
+
+**Emulator state after the run:** spike uninstalled, receiver and feed stopped, the emulator left running. Wi-Fi, data
+and location were back on. Logcat buffer at 16 MB, `stay_on_while_plugged_in` = 15 (set by the screen helper). The
+generated `tests/spikes/sp-01-background-location/android/` was deleted (git-ignored, regenerated by prebuild).
