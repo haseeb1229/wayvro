@@ -1,0 +1,33 @@
+{
+  "name": "sp-01-background-location",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DISPOSABLE Phase-3 spike SP-01 (candidate A: expo-location + expo-task-manager location FGS, socket/poll offer path without push) plus its LAN receiver and aggregator. Evidence harness only: never distributed, never uploaded to a store, not a second Wayvro app.",
+  "main": "index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.ts",
+    "receiver": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON receiver/server.ts",
+    "admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON receiver/admin.ts",
+    "aggregate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON receiver/aggregate.ts",
+    "check:manifest": "node check-spike-manifest.mjs",
+    "android:prebuild": "expo prebuild --platform android --clean --no-install"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "57.0.27",
+    "expo-battery": "57.0.3",
+    "expo-intent-launcher": "57.0.1",
+    "expo-location": "57.0.20",
+    "expo-task-manager": "57.0.21",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "socket.io-client": "4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/react": "19.2.18",
+    "socket.io": "4.8.3",
+    "typescript": "6.0.3"
+  }
+}

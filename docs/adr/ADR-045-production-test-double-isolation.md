@@ -51,3 +51,6 @@ Boot smoke (`scripts/boot-smoke.mjs`) adds: development builds of api/worker/rea
 
 ## Reversal path
 None intended. If `pnpm deploy` regresses with a future pnpm, switch the builder to the prune-based fallback; the checks are independent of how the directory is produced.
+
+## Scope note — Phase 3 P3.2 geo doubles (2026-10-13)
+The synthetic geo doubles (`packages/provider-test-doubles/src/geo.ts`: MOCK-branded autocomplete/geocoding/reverse/routing doubles with provider key `geo-mock`, a fixed synthetic Lahore gazetteer and the straight-line router — the ONLY place a distance/ETA is ever estimated) join this decision unchanged: dev-only package, bound only by `apps/api/dev/main.local.ts` and tests, refused by `bindProviders()` outside `local`/`test` (BOOT-NEG test in `apps/api/test/geo-unit.test.ts`). `scripts/artifact-isolation.mjs` check 03 now also forbids the geo markers (`geo-mock`, `SYNTHETIC_GAZETTEER`, `createGeoTestDoubles`, `straightLineRoute`, `syn-lhr-`) and the SP-04 harness path `tools/geo-bench` in the api/worker/realtime artefacts, with a negative control (03c: a planted file carrying every geo marker must be detected). Real geo adapters (`packages/geo-adapters`, ADR-006) are production code and are not covered by this note.

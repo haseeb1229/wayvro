@@ -38,6 +38,13 @@ export const ERROR_CODES = [
   // P2.10 (additive): generic OIDC outcomes (never reveal which account an identity belongs to)
   'WAYVRO_E_OIDC_NOT_LINKED',
   'WAYVRO_E_OIDC_LINK_CONFLICT',
+  // Phase 3 (additive): no product can be quoted for this pickup/drop-off/time (details.reasonCodes say why: ZONE_NOT_SERVED,
+  // PICKUP_RESTRICTED, OUTSIDE_SERVICE_HOURS, ROUTE_TOO_LONG, NO_ACTIVE_RATE_CARD)
+  'WAYVRO_E_SERVICE_AREA',
+  // Phase 3 (additive): the calling app build is below the supported minimum or in a blocked range (HTTP 426)
+  'WAYVRO_E_APP_UPDATE_REQUIRED',
+  // Phase 3 (additive): planned maintenance; staff routes stay available (HTTP 503)
+  'WAYVRO_E_MAINTENANCE',
 ] as const;
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);
@@ -50,6 +57,8 @@ export const ErrorDetailsSchema = z.object({
   requiredActions: z.array(z.string()).optional(),
   /** P2.5: reason codes of the restriction(s) that caused the refusal (localised by the client). */
   reasonCodes: z.array(z.string()).optional(),
+  /** Phase 3 (additive): with SERVICE_AREA / OUTSIDE_SERVICE_HOURS — the next opening instant on server time. */
+  nextOpenAt: z.iso.datetime({ offset: true }).optional(),
 });
 export type ErrorDetails = z.infer<typeof ErrorDetailsSchema>;
 

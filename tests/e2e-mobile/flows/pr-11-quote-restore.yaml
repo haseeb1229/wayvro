@@ -1,0 +1,42 @@
+# SP-08 #3 / NAV-03 (PR per PHASE3_TEST_STRATEGY §4.14, N) — V08, L08: process death while backgrounded on a quote →
+# relaunch offers the last price check by SERVER state ("Continue with your last price check" or "Prices have been
+# updated"); no coordinates are restored from the device.
+# REQUIRES ACTIVE synthetic rate cards (seeded by mobile-stack.mjs): NOT RUN with the reason otherwise.
+appId: dev.wayvro.app
+name: pr-11-quote-restore
+tags: [pr, full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Liberty'
+- tapOn: 'Liberty Market.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- extendedWaitUntil:
+    visible: '.*Economy.*'
+    timeout: 60000
+- pressKey: Home
+- killApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- extendedWaitUntil:
+    visible: '(Continue with your last price check|Prices have been updated\.)'
+    timeout: 30000
+- takeScreenshot: pr-11-restored-last-price

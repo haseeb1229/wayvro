@@ -127,6 +127,7 @@ function EvidenceRow(props: {
       <Body muted>{dt(stateKey(display))}</Body>
       {display.state === 'rejected' ? <Banner tone="warning" text={dt(`evidence.reject.${display.rejection}`)} /> : null}
       {display.state === 'failed' ? <Banner tone="error" text={dt(`evidence.fail.${display.failure}`)} /> : null}
+      {display.state === 'retrying' && display.failure === 'offline' ? <Banner tone="offline" text={dt('evidence.fail.offline')} /> : null}
       {notice === null ? null : <Banner tone={notice === 'evidence.added' ? 'info' : 'warning'} text={dt(notice)} />}
       <DriverErrorBanner error={importPhoto.error === null ? null : driverErrorView(importPhoto.error)} />
       {removeServer.error === null ? null : (
@@ -148,7 +149,7 @@ function EvidenceRow(props: {
           {localRemove(display.localId)}
         </>
       ) : null}
-      {display.state === 'queued' || display.state === 'uploading' ? localRemove(display.localId) : null}
+      {display.state === 'queued' || display.state === 'uploading' || display.state === 'retrying' ? localRemove(display.localId) : null}
       {display.state === 'processing' ? (
         <Button
           variant="secondary"

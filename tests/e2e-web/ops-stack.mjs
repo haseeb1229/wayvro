@@ -10,6 +10,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { seedCatalog } from './seed-catalog.mjs';
+import { seedGeo } from './seed-geo.mjs';
+import { seedPricing } from './seed-pricing.mjs';
+import { seedRelease } from './seed-release.mjs';
 import { seedReview } from './seed-review.mjs';
 import { seedSupport } from './seed-support.mjs';
 
@@ -20,7 +24,9 @@ const ADMIN_URL = process.env.DATABASE_URL ?? 'postgres://wayvro:wayvro-local-on
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://127.0.0.1:26379';
 const OPS_PORT = process.env.WAYVRO_E2E_OPS_PORT ?? '3310';
 const API_PORT = process.env.WAYVRO_E2E_API_PORT ?? '4100';
-const DB = 'wayvro_e2e_ops';
+// Optional override so parallel local checkouts never drop each other's throwaway database (default unchanged).
+const DB = process.env.WAYVRO_E2E_OPS_DB ?? 'wayvro_e2e_ops';
+if (!/^wayvro_e2e_[a-z0-9_]{1,40}$/.test(DB)) throw new Error('WAYVRO_E2E_OPS_DB must match wayvro_e2e_<name>');
 const dbUrl = (() => {
   const u = new URL(ADMIN_URL);
   u.pathname = `/${DB}`;
@@ -70,6 +76,10 @@ const s3 = {
 };
 const review = await seedReview({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED, s3 });
 const support = await seedSupport({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId), keySeed: KEY_SEED });
+const catalog = await seedCatalog({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
+const release = await seedRelease({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
+const pricing = await seedPricing({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
+const geo = await seedGeo({ root: ROOT, pool, adminIds: issued.map((i) => i.staffId) });
 await pool.end();
 mkdirSync(join(ROOT, 'build-logs'), { recursive: true });
 writeFileSync(
@@ -80,6 +90,10 @@ writeFileSync(
     reviewerInvitation: review.reviewerInvitation,
     caseId: review.caseId,
     support,
+    catalog,
+    release,
+    pricing,
+    geo,
   }),
 );
 

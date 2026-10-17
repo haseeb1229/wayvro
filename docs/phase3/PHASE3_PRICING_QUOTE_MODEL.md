@@ -202,6 +202,7 @@ Both examples become golden unit tests of `pe-v1` (with the same synthetic input
 | PRICED | EXPIRED | `now ≥ expires_at` | computed lazily on read (`status` reported as EXPIRED), persisted in bounded batches by `maintenance.purge` |
 | PRICED | SUPERSEDED | the same account creates a new quote group | same transaction as the new group (advisory lock per account ⇒ at most one live group per account) |
 | EXPIRED / SUPERSEDED | (deleted) | retention (30 days placeholder, EG-16) | `maintenance.purge` |
+| EXPIRED / SUPERSEDED | (deleted, with components and route snapshots) | the account's deletion completes (Phase-2 U06 model; quotes are not a retention exception) | `identity.deletion-processing`, inside the pseudonymisation transaction; a still-live quote defers completion to the next run |
 
 `DRAFT` is not persisted (a quote exists only once priced). `ACCEPTED` (bound to a ride request) is added additively in Phase 4; Phase 4 accepts only `PRICED`, unexpired, non-superseded quotes and binds exactly one quote version (SM-2 invariant).
 
@@ -271,7 +272,7 @@ Errors:
 | 401 | `WAYVRO_E_UNAUTHENTICATED` | — | no session |
 | 403 | `WAYVRO_E_ACCOUNT_RESTRICTED` | restriction reason codes (existing) | account-wide restriction |
 | 409 | `WAYVRO_E_IDEMPOTENCY_CONFLICT` | — | same key, different body |
-| 422 | `WAYVRO_E_SERVICE_AREA` (NEW, proposed) | `ZONE_NOT_SERVED`, `PICKUP_RESTRICTED`, `OUTSIDE_SERVICE_HOURS`, `ROUTE_TOO_LONG`, `NO_ACTIVE_RATE_CARD` | no product can be quoted |
+| 422 | `WAYVRO_E_SERVICE_AREA` (NEW, proposed) | `ZONE_NOT_SERVED`, `PICKUP_RESTRICTED`, `OUTSIDE_SERVICE_HOURS`, `ROUTE_TOO_LONG`, `NO_ACTIVE_RATE_CARD`, `LEGAL_GATE_DISABLED` (R28: a requested product whose city status is DISABLED_LEGAL_GATE; any other non-ENABLED product is `ZONE_NOT_SERVED`) | no product can be quoted |
 | 426 | `WAYVRO_E_APP_UPDATE_REQUIRED` (NEW, proposed) | — | app-version gate |
 | 429 | `WAYVRO_E_RATE_LIMITED` | `QUOTE_RATE_LIMITED` | limits; `retryAfterSeconds` |
 | 503 | `WAYVRO_E_DEPENDENCY_UNAVAILABLE` | `ROUTING_UNAVAILABLE` | routing unbound/down/over budget/timed out, overall quote deadline exceeded, limiter down |

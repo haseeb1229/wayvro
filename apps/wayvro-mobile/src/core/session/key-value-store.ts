@@ -18,4 +18,12 @@ export const STORAGE_KEYS = {
   uiLocale: 'wayvro.ui-locale.v1',
   /** P2.8 evidence upload queue: metadata only (ids, local file name, size, state) — never image bytes. */
   evidenceQueue: 'wayvro.evidence-queue.v1',
+  /** P3.5 (A01/Q31): last app policy from GET /v1/app/config — installation-scoped, kept on sign-out. */
+  appPolicy: 'wayvro.app-policy.v1',
+  /** P3.5 (L08): Lite-mode preference — installation-scoped, kept on sign-out. */
+  liteMode: 'wayvro.lite-mode.v1',
+  /** P3.5 (V08, ADR-048): mode preference bound to an account id — a navigation HINT only, wiped on sign-out/expiry. */
+  modePreference: 'wayvro.mode-preference.v1',
+  /** P3.5 (V08): last quote group id + server expiry only (no coordinates, no prices) — wiped on sign-out/expiry. */
+  lastQuoteGroup: 'wayvro.last-quote-group.v1',
 } as const;

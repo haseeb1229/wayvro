@@ -444,6 +444,9 @@ importers:
       expo-linking:
         specifier: 57.0.12
         version: 57.0.12(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.2.18)(react@19.2.3)(supports-color@7.2.0))(react@19.2.3)(supports-color@7.2.0)
+      expo-location:
+        specifier: 57.0.20
+        version: 57.0.20(expo@57.0.27)(supports-color@7.2.0)(typescript@6.0.3)
       expo-router:
         specifier: 57.0.25
         version: 57.0.25(3c4385919e230445387640da658bdd5f)
@@ -717,6 +720,28 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/geo-adapters:
+    dependencies:
+      '@wayvro/provider-interfaces':
+        specifier: workspace:*
+        version: link:../provider-interfaces
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/identity-core:
     dependencies:
       '@wayvro/field-crypto':
@@ -966,6 +991,31 @@ importers:
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/web-security:
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  tools/geo-bench:
+    dependencies:
+      '@wayvro/geo-adapters':
+        specifier: workspace:*
+        version: link:../../packages/geo-adapters
+      '@wayvro/provider-interfaces':
+        specifier: workspace:*
+        version: link:../../packages/provider-interfaces
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/node':
         specifier: 24.19.1
@@ -4565,6 +4615,11 @@ packages:
     peerDependencies:
       react: '*'
       react-native: '*'
+
+  expo-location@57.0.20:
+    resolution: {integrity: sha512-E9cr7A5eQS91bm3McMx3FiWy7SCorVTPLq9gLFFW+7dfuSqQp5FLNBZQ6NFJaS8tVhCyl2WyKMFh0TAo/+7K9Q==}
+    peerDependencies:
+      expo: '*'
 
   expo-manifests@57.0.2:
     resolution: {integrity: sha512-pPIIcKR73OShwlWMg8H90WRzKUd2krDdKlKAwuQV1FtUwE7H3hQEFw0ePFQY9yFoGMF/77ryYwNKfI5umMcCog==}
@@ -10529,6 +10584,14 @@ snapshots:
     transitivePeerDependencies:
       - expo
       - supports-color
+
+  expo-location@57.0.20(expo@57.0.27)(supports-color@7.2.0)(typescript@6.0.3):
+    dependencies:
+      '@expo/image-utils': 0.11.6(supports-color@7.2.0)(typescript@6.0.3)
+      expo: 57.0.27(@babel/core@7.29.7(supports-color@7.2.0))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.13.0(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.2.18)(react@19.2.3)(supports-color@7.2.0))(react@19.2.3)(supports-color@7.2.0))(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.2.18)(react@19.2.3)(supports-color@7.2.0))(react@19.2.3)(supports-color@7.2.0)(typescript@6.0.3)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
 
   expo-manifests@57.0.2(expo@57.0.27):
     dependencies:

@@ -1,0 +1,29 @@
+# SRCH-01 (PR, N) — B01/B02 (search part of SP-08 #14): "Where to?" opens text-first search; fewer than 3 characters
+# asks for more, 3+ characters return synthetic gazetteer suggestions through the API (MOCK geo doubles, ADR-045).
+appId: dev.wayvro.app
+name: pr-08-search-autocomplete
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Li'
+- extendedWaitUntil:
+    visible: 'Type at least 3 characters.'
+    timeout: 15000
+- inputText: 'berty'
+- extendedWaitUntil:
+    visible: 'Liberty Market.*'
+    timeout: 30000
+- takeScreenshot: pr-08-suggestions

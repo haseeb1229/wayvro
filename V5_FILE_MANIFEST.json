@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 127,
+  "file_count_excluding_manifest": 143,
   "files": [
     {
       "path": ".gitattributes",
@@ -26,8 +26,8 @@
     },
     {
       "path": "ALL_FILES_INDEX.md",
-      "bytes": 12327,
-      "sha256": "49f04c6ad2ebceb5aead8d53b59c5547df84c09687095116f5363a08cfc918c6"
+      "bytes": 13660,
+      "sha256": "85ede41888ebfe574b603adb5e99f2421f4f712d3e76d7b91fdcdcd76ae4c04b"
     },
     {
       "path": "CLAUDE.md",
@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8717,
-      "sha256": "d18fb3841c94b328be5dfbc1b96708ba78181e75cabdfe9d480d92c5c1daf4d7"
+      "bytes": 9660,
+      "sha256": "f3f611d093b096885f7df61d8fd1f91ef7072df1ebac49b595a6c5ec38f02f88"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 9360,
-      "sha256": "05ad0ae4e4ebd5ee55e224c05b6527c5951ca34115cee49f76675585fd4fb7c1"
+      "bytes": 12266,
+      "sha256": "de630e32660db7d6eed6f7684fab9313bf033d64d255ca2ee1aa39056b8e6020"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -210,9 +210,19 @@
       "sha256": "ff6fb833ddc9d9ffee281c888d1c3cffc2314787202253cb21d6f48087e30c0a"
     },
     {
+      "path": "docs/adr/ADR-013-pricing-quote-domain.md",
+      "bytes": 10840,
+      "sha256": "f80a9f1af008cf4caa22edf64b3ad2e672c14fdc72554405261dfc5cdfc0cb7d"
+    },
+    {
+      "path": "docs/adr/ADR-019-lite-mode.md",
+      "bytes": 3153,
+      "sha256": "07a1c48a205a26a904518080ca11b125d682b6a80d18ba4df83b755260e80f42"
+    },
+    {
       "path": "docs/adr/ADR-027-ci-quality-and-dead-code-tooling.md",
-      "bytes": 6372,
-      "sha256": "088436d966408c7594c4479f627d52fb01fe7d42ac1fe3da880b15b1cb1a1783"
+      "bytes": 7433,
+      "sha256": "9c13942258e6a039dc01c0c3a5b7445a6589ff2c6128d52210224b86e0198807"
     },
     {
       "path": "docs/adr/ADR-030-web-framework-and-version-maturity.md",
@@ -261,8 +271,8 @@
     },
     {
       "path": "docs/adr/ADR-043-mobile-platform-additions.md",
-      "bytes": 9081,
-      "sha256": "e75c7c91b37f850f538c6dea0e04a930edffdb16a473b45bc6196d30547c7d3d"
+      "bytes": 16376,
+      "sha256": "6d7d6ad3328e430e8695daa4dca3e6c0d9ba4916776eff2cbc34f899e8c39499"
     },
     {
       "path": "docs/adr/ADR-044-policy-content-package.md",
@@ -271,13 +281,43 @@
     },
     {
       "path": "docs/adr/ADR-045-production-test-double-isolation.md",
-      "bytes": 6425,
-      "sha256": "4f2cbb514e249ba3ab9750d391bba597b84777a00b7f1a773f1ef195026954e4"
+      "bytes": 7416,
+      "sha256": "6985801ab157ee2ecf7383bdb67f0408b0ffcfd7c3e467af49a0d12268de73c2"
+    },
+    {
+      "path": "docs/adr/ADR-047-geo-gateway.md",
+      "bytes": 8609,
+      "sha256": "9270b70bdfb7cfb999ed2113770a8b5645ca82a473840f51c4839ec0b18d3c6f"
+    },
+    {
+      "path": "docs/adr/ADR-048-unified-app-mode-navigation.md",
+      "bytes": 6520,
+      "sha256": "2bdee113db238fc3907aab654cc8ceee11b8491361341dd854608944cbeeeaa9"
+    },
+    {
+      "path": "docs/adr/ADR-049-app-version-maintenance-runtime-switches.md",
+      "bytes": 10917,
+      "sha256": "44bb71c991f6e228089c909fb262134ed6d58677ce9afce9229f8e8242f13f7e"
+    },
+    {
+      "path": "docs/adr/ADR-050-phase3-performance-budgets.md",
+      "bytes": 4352,
+      "sha256": "61abcdf3293db7a543c9fe284c4f8d2183a937ba72ddf04ffec90111dbf0821e"
+    },
+    {
+      "path": "docs/adr/ADR-051-service-products-zones-lifecycle.md",
+      "bytes": 11897,
+      "sha256": "8b174dec374c0ad035cbb1654bce36c5c9563ab0fbd91de34e1258795adf283e"
+    },
+    {
+      "path": "docs/adr/ADR-052-mobile-e2e-tooling.md",
+      "bytes": 10830,
+      "sha256": "7a7c1f893814b268037218131b8a52b59d71c902cf9e2228264750b891c36830"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 5851,
-      "sha256": "8d6d8aa6e942f37be49fc4aa558c01756cb6faa1dc0971e241aefe515c9c4860"
+      "bytes": 8890,
+      "sha256": "1ca7e73668b9259e3eab4b6e1d2b419ce0b9c3c82fa224fbd3b74b80ab49ea64"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -536,18 +576,23 @@
     },
     {
       "path": "docs/phase3/PHASE3_ARCHITECTURE.md",
-      "bytes": 62856,
-      "sha256": "323ba8244d76b85e805217543249d29f963a2979248d5494e6918ec11733ef37"
+      "bytes": 64266,
+      "sha256": "73bcad3f5ae50b5bfe019b2153df223c57abd66b873ac494c172425757a974ce"
     },
     {
       "path": "docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md",
-      "bytes": 49512,
-      "sha256": "bb937dedfd2007fa046f9a9157c3bd6c400d3e4513e78117602d875f6632146c"
+      "bytes": 49769,
+      "sha256": "110dbf12be14655bbc66d6fc4a226c725a45ba30a3e36fb3bc4b7f5960afb23d"
     },
     {
       "path": "docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md",
       "bytes": 35005,
       "sha256": "98a1fb817c72bb47628ad3691616c2d40359f52653150ad6d79f19eb19cfe8b7"
+    },
+    {
+      "path": "docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md",
+      "bytes": 13408,
+      "sha256": "1ee071d831ed4e7976635f9db353c89f8567644bdf6294ff29ade29d4964ca12"
     },
     {
       "path": "docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md",
@@ -563,6 +608,11 @@
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md",
       "bytes": 11790,
       "sha256": "a299e0a817f9e9e1773137447d3c5673dd35b485d9d12dc1b8088743c060f998"
+    },
+    {
+      "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
+      "bytes": 83522,
+      "sha256": "0e744ceb04d5f9877815a5dd16d1dc4fefdebbc101bbb184726ee3acd35deeca"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -591,8 +641,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_PRICING_QUOTE_MODEL.md",
-      "bytes": 31866,
-      "sha256": "eca8d63af2023f3be0a7948dfbfc4f82eab1bd0a49cee88aa990b184d68ab920"
+      "bytes": 32304,
+      "sha256": "f89af8a4caaccb90b78f558738291174c58e361068467ca1dd5789c5b3ca6859"
     },
     {
       "path": "docs/phase3/PHASE3_REQUIREMENT_MATRIX.md",
@@ -601,13 +651,13 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 26068,
-      "sha256": "faf0beffd3c489243df38ff274dee16cf949eba8c1f2dd1cadbc4154a8483b32"
+      "bytes": 40711,
+      "sha256": "516c32aad3c868aa755e2c0045cf00bca3e05b0f22df9883127e91a29b6e315f"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",
-      "bytes": 70866,
-      "sha256": "b6894dad3ab7825f77c9752b93b7569b408f306b2ee8d9c7cb2205c4e33a6108"
+      "bytes": 71808,
+      "sha256": "8d9a014d032ece2eccc9286b2bf8b7fa9e7755bf4e455b26f9cfbe9b5f78313a"
     },
     {
       "path": "docs/phase3/PHASE3_SP01_REAL_DEVICE_PROTOCOL.md",
@@ -638,6 +688,36 @@
       "path": "docs/phase3/PHASE3_TEST_STRATEGY.md",
       "bytes": 53465,
       "sha256": "13f545e7002327b709a11a62fbec90a45034491449f5fbfccb5b4c79feafab39"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",
+      "bytes": 7684,
+      "sha256": "10526d99ef142f0d62d3f8b648b50032cdf50419073deb8a83e471d41f487867"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/FA09_AUTOMATED_PREREVIEW.md",
+      "bytes": 14351,
+      "sha256": "4dc2172a76061a1cae8994ec37d49c16d400fdd411dc6fa9019c6a6b261a11bb"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md",
+      "bytes": 53700,
+      "sha256": "c2c066c83756474b53dce98f9fed1d7eb9c6b4bb231da5374b971587c7a093ab"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/SP01_EMULATOR_SUPPLEMENT.md",
+      "bytes": 40594,
+      "sha256": "3ac8486a4895a2f3f1c7babac33b0dac6b993354d6bc02f7577f76d4c59ca662"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/SP02_LOW_RAM_AVD_SUPPLEMENT.md",
+      "bytes": 15511,
+      "sha256": "728285f1c0a792ecdf0a8a3ae36b4e25cb0caf17044f3094fcf5e098d129096b"
+    },
+    {
+      "path": "docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md",
+      "bytes": 25576,
+      "sha256": "ef7e531296dfc9a4e88a97009ef1417b13fdba271abc4f916cf707d8f5e329d5"
     },
     {
       "path": "docs/requirements-register.json",

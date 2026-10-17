@@ -1,0 +1,4 @@
+# SP-01 is its own pnpm root (outside the Wayvro workspace, tests/spikes/README.md). A flat (hoisted) node_modules keeps
+# React Native native-build paths under the Windows/CMake object-path limit (SP-AND evidence, ADR-034/ADR-036).
+# pnpm's default minimumReleaseAge (24 h) stays in force with no exclusions.
+nodeLinker: hoisted

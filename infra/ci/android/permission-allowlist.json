@@ -1,6 +1,6 @@
 {
   "$comment": "Q49/GR-10 Android manifest permission allowlist for the release AAB of the ONE public Wayvro app. A permission not listed here fails CI. Adding one requires a requirement ID, a just-in-time request design and founder review (CLAUDE.md §9). `${applicationId}` is substituted by the checker.",
-  "phase": "Phase 2 (P2.8): account slice + Driver/Partner onboarding capture in the one app",
+  "phase": "Phase 3 (P3.5): account slice, Driver/Partner onboarding capture and rider foreground location (FA-02 APPROVED 2026-10-12: COARSE + FINE only)",
   "allowed": [
     {
       "name": "android.permission.INTERNET",
@@ -14,6 +14,16 @@
       "name": "android.permission.CAMERA",
       "justification": "P2.8 Driver/Partner onboarding only: document photos and one selfie for MANUAL review (no liveness, no face matching). Requested just in time on the capture screen after an in-app explanation, never at start-up and never for rider-only users; denial falls back to the system Photo Picker for documents (no media permission) or the in-person explanation for the selfie.",
       "requirementIds": ["K02", "K03", "V03"]
+    },
+    {
+      "name": "android.permission.ACCESS_FINE_LOCATION",
+      "justification": "Phase 3 rider pickup: foreground (when-in-use) only, requested just in time at the first 'Use current location' tap after an in-app rationale, together with COARSE; approximate-only grants are handled by asking the rider to confirm a pin. Never requested at start-up, never in the background, never for the Driver/Partner area in Phase 3. Denial falls back to search, pin and pickup points.",
+      "requirementIds": ["B01", "B02", "A07", "V05", "U05"]
+    },
+    {
+      "name": "android.permission.ACCESS_COARSE_LOCATION",
+      "justification": "Requested together with FINE (Android 12+ requires both); an approximate-only grant biases search and centres the pin, never sets a pickup by itself.",
+      "requirementIds": ["B01", "B02", "A07", "V05", "U05"]
     }
   ],
   "forbidden": [
@@ -26,8 +36,11 @@
       "reason": "Driver-only, gated behind SP-01 and an approved driver flow; never in the Phase 1 shell."
     },
     { "name": "android.permission.FOREGROUND_SERVICE_LOCATION", "reason": "Driver-only location foreground service; gated behind SP-01." },
-    { "name": "android.permission.ACCESS_FINE_LOCATION", "reason": "Requested just in time by a later rider/driver feature, not by the shell." },
-    { "name": "android.permission.ACCESS_COARSE_LOCATION", "reason": "Requested just in time by a later feature, not by the shell." },
+    { "name": "android.permission.FOREGROUND_SERVICE", "reason": "Phase 3 has no foreground service; the driver location FGS is Phase 4 after SP-01/ADR-029." },
+    { "name": "android.permission.WAKE_LOCK", "reason": "No background work in Phase 3; Phase 4 decides with ADR-029." },
+    { "name": "android.permission.RECEIVE_BOOT_COMPLETED", "reason": "Tracking never restarts on boot; resume is explicit (role model section 6)." },
+    { "name": "android.permission.BLUETOOTH_CONNECT", "reason": "No Bluetooth feature (U05)." },
+    { "name": "android.permission.BLUETOOTH_SCAN", "reason": "No Bluetooth feature (U05)." },
     { "name": "android.permission.RECORD_AUDIO", "reason": "No audio feature is approved (ADR-021 open)." },
     { "name": "android.permission.SYSTEM_ALERT_WINDOW", "reason": "Development-only overlay; must never reach a release build." },
     { "name": "android.permission.READ_EXTERNAL_STORAGE", "reason": "Not needed; scoped storage/photo picker only when a feature requires it." },

@@ -138,6 +138,16 @@ jobs:
             ram: 2048M
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The emulator needs ~7.4 GB for its userdata partition; the runner image leaves ~3.7 GB without this cleanup.
+      - name: Free disk — remove toolchains this job does not use
+        run: |
+          for d in /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL /usr/local/julia* /usr/local/share/boost; do
+            if [ -e "$d" ]; then
+              du -sh "$d"
+              sudo rm -rf "$d"
+            fi
+          done
+          df -h /
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -189,6 +199,9 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Network-capture directory (api-35 lane; raw pcaps stay outside the uploaded build-logs)
+        if: matrix.lane == 'api-35'
+        run: mkdir -p /tmp/wayvro-net
       - name: Full-matrix flows on API ${{ matrix.api }} (${{ matrix.lane }}; cold boot, animations off; 60-min Maestro budget)
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -199,9 +212,28 @@ jobs:
           ram-size: ${{ matrix.ram }}
           disk-size: 6G
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated${{ matrix.lane == 'api-35' && ' -tcpdump /tmp/wayvro-net/emulator.pcap -netsim-args --pcap' || '' }}
           disable-animations: true
-          script: node tests/e2e-mobile/run-flows.mjs --tier full --lane ${{ matrix.lane }} --api-level ${{ matrix.api }} --apk apps/wayvro-mobile/build-reports/e2e/wayvro-e2e.apk --maestro /tmp/maestro/bin/maestro --budget-seconds 3600
+          # API-35 lane only: 120 s idle after boot (Wi-Fi up, app not installed) is the network inventory's OS baseline window
+          script: ${{ matrix.lane == 'api-35' && 'sleep 120 && ' || '' }}node tests/e2e-mobile/run-flows.mjs --tier full --lane ${{ matrix.lane }} --api-level ${{ matrix.api }} --apk apps/wayvro-mobile/build-reports/e2e/wayvro-e2e.apk --maestro /tmp/maestro/bin/maestro --budget-seconds 3600
+      # U04 (closure correction §12): DNS/SNI inventory of the release-mode E2E build's session. The API-35 image's
+      # traffic runs over netsim virtio-wifi, so netsimd's Wi-Fi pcap (written when the emulator exits) is the source;
+      # -tcpdump only sees the unused eth0 card. Raw pcaps are never uploaded (they hold the synthetic API session).
+      - name: Emulator network inventory (U04; api-35 lane; EMULATOR evidence, per-app attribution limited)
+        if: always() && matrix.lane == 'api-35'
+        run: |
+          node tests/e2e-mobile/net-inventory.mjs --self-test
+          timeout 60 sh -c 'while pgrep -x netsimd >/dev/null; do sleep 1; done' || true
+          # netsimd's capture directory differs by host OS/emulator build (run 38623281968: not under /tmp/netsimd): search the
+          # bounded temp/home locations and list every candidate
+          find /tmp "${TMPDIR:-/tmp}" "$HOME/.android" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" -name 'netsim-*.pcap' 2>/dev/null | xargs -r ls -la || true
+          pcap=$(find /tmp "${TMPDIR:-/tmp}" "$HOME/.android" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" -name 'netsim-*-WIFI.pcap' -size +1k 2>/dev/null | head -n 1)
+          if [ -z "$pcap" ]; then pcap=/tmp/wayvro-net/emulator.pcap; echo "netsim Wi-Fi capture not found; falling back to -tcpdump (expected BLOCKED on virtio-wifi images)"; fi
+          ls -la "$pcap"
+          status=0
+          node tests/e2e-mobile/net-inventory.mjs --pcap "$pcap" --summary build-logs/e2e-mobile/full-api-35/summary.json --out build-logs/e2e-mobile/net-inventory || status=$?
+          if [ -f build-logs/e2e-mobile/net-inventory/net-inventory.md ]; then cat build-logs/e2e-mobile/net-inventory/net-inventory.md >> "$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
       - name: Stop local infrastructure
         if: always()
         run: pnpm infra:down
@@ -235,9 +267,58 @@ jobs:
           pnpm --filter @wayvro/api exec vitest run test/geo-unit.test.ts test/catalog-domain.test.ts test/pricing-engine.test.ts
           echo "Property tests at 50,000 runs: $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # E07/Q26 (test strategy §4.20 and §5): local load harness + 10-minute FAULT-GEO soak against a throwaway stack with
+  # MOCK geo doubles and configured synthetic provider latency — LOCAL NON-STAGING, never a staging/production budget.
+  load:
+    name: Load harness + FAULT-GEO soak (local, non-staging)
+    needs: target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: corepack enable pnpm && pnpm --version
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Build (packages + API local runner)
+        run: pnpm build && pnpm build:local
+      - name: Start local infrastructure (compose project "wayvro")
+        env:
+          WAYVRO_CLAMAV_NO_FRESHCLAM: 'true'
+        run: pnpm infra:up
+      - name: Load harness (quote MISS/HIT, autocomplete, reverse, app-config; concurrency 1/4/16)
+        run: |
+          cp .env.example .env
+          pnpm load:local
+      - name: FAULT-GEO soak (randomised FG-01..08 mix, 600 s, seed = workflow run number; printed in the report)
+        run: pnpm soak:fault-geo --duration 600 --seed ${{ github.run_number }}
+      - name: Report
+        if: always()
+        run: |
+          for f in build-logs/load/*.md; do [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+      - name: Stop local infrastructure
+        if: always()
+        run: pnpm infra:down
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mobile-full-load-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: build-logs/load/
+
   summary:
     name: Matrix summary
-    needs: [target, matrix, property]
+    needs: [target, matrix, property, load]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -258,11 +339,13 @@ jobs:
       - name: Per-flow PASS/FAIL/FLAKY/BLOCKED/SKIPPED summary across lanes
         env:
           PROPERTY_RESULT: ${{ needs.property.result }}
+          LOAD_RESULT: ${{ needs.load.result }}
         run: |
           node tests/e2e-mobile/summarise.mjs matrix-results api-29,api-35,api-35-lowram matrix-summary.md || status=$?
           cat matrix-summary.md >> "$GITHUB_STEP_SUMMARY"
           echo "Property tests (50,000 runs): $PROPERTY_RESULT" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$PROPERTY_RESULT" != "success" ]; then exit 1; fi
+          echo "Load harness + FAULT-GEO soak: $LOAD_RESULT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$PROPERTY_RESULT" != "success" ] || [ "$LOAD_RESULT" != "success" ]; then exit 1; fi
           exit "${status:-0}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

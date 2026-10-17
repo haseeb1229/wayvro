@@ -1,4 +1,13 @@
-import { databaseEnvSchema, isNonProductionLike, keyEnvSchema, loadConfig, redisEnvSchema, serviceEnvSchema, vaultEnvSchema } from '@wayvro/config';
+import {
+  databaseEnvSchema,
+  isNonProductionLike,
+  keyEnvSchema,
+  loadConfig,
+  redisEnvSchema,
+  releaseEnvSchema,
+  serviceEnvSchema,
+  vaultEnvSchema,
+} from '@wayvro/config';
 import { z } from 'zod';
 
 const int = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
@@ -8,6 +17,9 @@ const workerEnvSchema = serviceEnvSchema
   .extend(redisEnvSchema.shape)
   .extend(keyEnvSchema.shape)
   .extend(vaultEnvSchema.shape)
+  // Phase 3 release controls (ADR-049): the scheduled app-policy activation re-checks the guardrails against the same
+  // latest-released-build configuration as the API
+  .extend(releaseEnvSchema.shape)
   .extend({
     // Evidence pipeline (ADR-041). The scanner and the sanitiser are bound only when configured; without them evidence
     // stays UPLOADED and is retried — never treated as clean.
@@ -39,6 +51,15 @@ const workerEnvSchema = serviceEnvSchema
     /** Inactive DRAFT/CONSENTED/DOCUMENTS_PENDING applications become EXPIRED_DRAFT (data model §4.5; proposal 30). */
     APPLICATION_DRAFT_EXPIRY_DAYS: int(30, 1, 365),
     KEY_ROTATION_BATCH_SIZE: int(500, 1, 10_000),
+    /** Phase 3 P3.2: hourly geo usage aggregates are kept 400 days (budget review; no personal data). */
+    GEO_USAGE_RETENTION_DAYS: int(400, 30, 1100),
+    /** Phase 3 P3.3: never-accepted quotes and their route snapshots (placeholder 30 days, NOT_COUNSEL_APPROVED, EG-16). */
+    QUOTE_RETENTION_DAYS: int(30, 1, 365),
+    /** Same namespace as the API's GEO_KEY_PREFIX: the rollup reads the API's hourly usage counters. */
+    GEO_KEY_PREFIX: z
+      .string()
+      .regex(/^[a-z0-9:_-]{1,40}$/)
+      .default('wv:geo:'),
   });
 
 export type WorkerConfig = Readonly<z.infer<typeof workerEnvSchema>>;

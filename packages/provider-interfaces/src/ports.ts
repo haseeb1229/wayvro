@@ -3,6 +3,7 @@
  * interfaces only. Real adapters live in server-only packages (e.g. `@wayvro/vault-adapters`, ADR-041), one per
  * concern, added only after the vendor ADR/contract (ADR-006/007/010/017/041).
  */
+import type { GeocodingAdapter, PlacesAutocompleteAdapter, ReverseGeocodingAdapter, RoutingAdapter } from './geo-ports.js';
 
 /**
  * Storage areas (ADR-041 §2.3). `quarantine` holds untrusted uploads until scanning and sanitisation; it is the ONLY
@@ -95,7 +96,23 @@ export interface ProviderPorts {
   readonly otpDelivery: OtpDeliveryPort;
   readonly pushNotification: PushNotificationPort;
   readonly oidcKeys: OidcKeysPort;
+  // Phase 3 geo SKUs (P3.2; geo-ports.ts). Unbound ⇒ the gateway answers 503 DEPENDENCY_UNAVAILABLE for that SKU.
+  readonly placesAutocomplete: PlacesAutocompleteAdapter;
+  readonly geocoding: GeocodingAdapter;
+  readonly reverseGeocoding: ReverseGeocodingAdapter;
+  readonly routing: RoutingAdapter;
 }
 
 export type ProviderKind = keyof ProviderPorts;
-export const PROVIDER_KINDS: readonly ProviderKind[] = ['objectStorage', 'malwareScanner', 'imageSanitiser', 'otpDelivery', 'pushNotification', 'oidcKeys'];
+export const PROVIDER_KINDS: readonly ProviderKind[] = [
+  'objectStorage',
+  'malwareScanner',
+  'imageSanitiser',
+  'otpDelivery',
+  'pushNotification',
+  'oidcKeys',
+  'placesAutocomplete',
+  'geocoding',
+  'reverseGeocoding',
+  'routing',
+];

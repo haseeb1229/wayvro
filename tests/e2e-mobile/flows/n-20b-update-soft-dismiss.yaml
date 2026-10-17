@@ -1,0 +1,23 @@
+# SP-08 #21 SOFT / UPD-01, part 2 of 3 (N) — A01, Q31: after a restart the SOFT policy shows a dismissible banner on
+# Rider home; nothing is blocked (Where to stays usable); "Not now" dismisses it.
+appId: dev.wayvro.app
+name: n-20b-update-soft-dismiss
+tags: [full]
+---
+- stopApp
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- extendedWaitUntil:
+    visible: 'A newer version of Wayvro is available.*'
+    timeout: 30000
+# SOFT never blocks: no blocking update screen
+- assertNotVisible: 'Update Wayvro from the store where you installed it, then open it again.'
+- takeScreenshot: n-20-soft-banner
+- tapOn: 'Not now'
+- assertNotVisible: 'A newer version of Wayvro is available.*'
+- assertVisible:
+    id: rider-home-where-to

@@ -1,0 +1,43 @@
+# SP-08 #9 / LOC-02 (N, API 35 dialog taps) — A07: with approximate location only the pickup is never auto-set; the
+# app explains it has the approximate area and asks for search (pin confirmation required).
+appId: dev.wayvro.app
+name: n-05-location-approximate
+tags: [full, api35-dialogs]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+# deterministic precondition (as n-04): the emulator gets a synthetic in-area fix; on the 2 GB low-RAM AVD the flow
+# otherwise depended on a fix left behind by an earlier flow (run 38635173646: 'Couldn't find your location')
+- setLocation:
+    latitude: 31.5104
+    longitude: 74.3416
+- scrollUntilVisible:
+    element: 'Use current location'
+    direction: DOWN
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible: 'Use your location for pickup\?'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Continue'
+    direction: DOWN
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_location_accuracy_radio_coarse'
+    timeout: 30000
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_location_accuracy_radio_coarse'
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_allow_foreground_only_button'
+- extendedWaitUntil:
+    visible: 'Wayvro has your approximate area only.*'
+    timeout: 60000
+- takeScreenshot: n-05-approximate

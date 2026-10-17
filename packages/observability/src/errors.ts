@@ -30,6 +30,9 @@ const DEFAULTS: Readonly<Record<ErrorCode, { status: number; message: string }>>
   WAYVRO_E_RECOVERY_REQUIRED: { status: 403, message: 'Please confirm whether this is your account before continuing.' },
   WAYVRO_E_OIDC_NOT_LINKED: { status: 401, message: 'Sign in with your phone number, then link this account in Settings.' },
   WAYVRO_E_OIDC_LINK_CONFLICT: { status: 409, message: 'This sign-in method cannot be linked to your account.' },
+  WAYVRO_E_SERVICE_AREA: { status: 422, message: 'Wayvro cannot offer a ride for this pickup, destination or time.' },
+  WAYVRO_E_APP_UPDATE_REQUIRED: { status: 426, message: 'Please update Wayvro to continue.' },
+  WAYVRO_E_MAINTENANCE: { status: 503, message: 'Wayvro is under maintenance. Please try again later.' },
 };
 
 export class WayvroError extends Error {

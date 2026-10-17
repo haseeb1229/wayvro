@@ -1,0 +1,172 @@
+# Wayvro SP-04 open-stack (S3 candidate) geo evaluation stack — EVALUATION/DEV ONLY (CON-P3-14).
+#
+# Never started by any other script, never part of the default local stack (infra/docker/compose.yaml) and never a
+# production artefact. Start only explicitly, from the repository root:
+#
+#   docker compose -p wayvro-geo-bench -f infra/docker/geo-bench.compose.yaml --env-file tools/geo-bench/.local/geo-bench.env <command>
+#
+# Procedure, data provenance, measured sizing and removal commands: tools/geo-bench/README.md
+# ("Open-stack benchmark services") and docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md.
+#
+# Data: OpenStreetMap extract (© OpenStreetMap contributors, ODbL 1.0) clipped to a Lahore bounding box, read from the
+# git-ignored folder tools/geo-bench/.local/data/ (bind mount, read-only). Derived databases/graphs live only in the
+# named volumes wayvro-geo-bench-* (ODbL share-alike applies to any derivative database that is distributed — none is).
+#
+# Images are pinned by digest (resolved 2026-10-16 with `docker buildx imagetools inspect`):
+#   ghcr.io/project-osrm/osrm-backend:v26.10.0-debian  sha256:55dbfd47d984c2cacd64e32901b4321c86b5ec761438e69aa053dc78698a786f
+#   mediagis/nominatim:5.3.2 (Nominatim 5.3.2)         sha256:7923a8e67197fc6d4f4ecb7c0e8bbedffeddcfdf4519596fe946e46a28f5a9f8
+#   ghcr.io/valhalla/valhalla:3.9.1                    sha256:4fd114eb1d26b8fc2f43bcb3df234c1b63a0bf13c277405e5943d5361dc575de
+#   eclipse-temurin:21-jre (Photon runtime)            sha256:ccbad9e7cb84c27092b12c40a4143e5733e050db9c3784d84f632dcf423fb2ef
+# Photon 1.3.0 is the official release jar (GitHub release asset, sha256
+# a89707c0045e4807b2a1180e132e68e108d998709f48b6c94b98a6e281f571a5, verified before use), mounted read-only.
+#
+# Exercised on 2026-10-16 (desk run, docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md): nominatim,
+# osrm-prep, osrm. NOT exercised (images/jar could not be downloaded over the available bandwidth that day, so their
+# commands are UNVERIFIED against the pinned releases and must be checked before first use): photon-import, photon,
+# valhalla-prep, valhalla.
+#
+# Every port is bound to 127.0.0.1 only. Memory limits are sized for a 16 GB laptop shared with other work.
+# The PostgreSQL password is a local-only throwaway value read from the git-ignored env file (never committed).
+
+name: wayvro-geo-bench
+
+x-common: &common
+  restart: 'no'
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '2' }
+
+services:
+  # --- one-off preparation jobs (profile "prep"; run one at a time) -------------------------------------------------
+  osrm-prep:
+    <<: *common
+    profiles: ['prep']
+    image: ghcr.io/project-osrm/osrm-backend@sha256:55dbfd47d984c2cacd64e32901b4321c86b5ec761438e69aa053dc78698a786f
+    mem_limit: 1536m
+    cpus: 2
+    volumes:
+      - ../../tools/geo-bench/.local/data:/input:ro
+      - wayvro-geo-bench-osrm:/data
+    entrypoint: ['sh', '-c']
+    command:
+      - >-
+        set -e;
+        cp /input/${GEO_BENCH_PBF:?set GEO_BENCH_PBF in the env file} /data/lahore.osm.pbf;
+        osrm-extract -t 2 -p /opt/car.lua /data/lahore.osm.pbf;
+        osrm-partition /data/lahore.osrm;
+        osrm-customize /data/lahore.osrm;
+        rm /data/lahore.osm.pbf;
+        echo OSRM_PREP_DONE
+
+  valhalla-prep:
+    <<: *common
+    profiles: ['prep']
+    image: ghcr.io/valhalla/valhalla@sha256:4fd114eb1d26b8fc2f43bcb3df234c1b63a0bf13c277405e5943d5361dc575de
+    mem_limit: 1536m
+    cpus: 2
+    volumes:
+      - ../../tools/geo-bench/.local/data:/input:ro
+      - wayvro-geo-bench-valhalla:/data
+    entrypoint: ['sh', '-c']
+    command:
+      - >-
+        set -e;
+        mkdir -p /data/tiles;
+        valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-tile-extract /data/tiles.tar
+        --mjolnir-timezone /data/tiles/timezones.sqlite --mjolnir-admin /data/tiles/admins.sqlite
+        --mjolnir-concurrency 2 --service-limits-auto-max-distance 100000 > /data/valhalla.json;
+        valhalla_build_tiles -c /data/valhalla.json /input/${GEO_BENCH_PBF:?set GEO_BENCH_PBF in the env file};
+        valhalla_build_extract -c /data/valhalla.json -v;
+        echo VALHALLA_PREP_DONE
+
+  photon-import:
+    <<: *common
+    profiles: ['prep']
+    image: eclipse-temurin@sha256:ccbad9e7cb84c27092b12c40a4143e5733e050db9c3784d84f632dcf423fb2ef
+    mem_limit: 1536m
+    cpus: 2
+    depends_on: [nominatim]
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx1g
+      NOMINATIM_PASSWORD: ${GEO_BENCH_PG_PASSWORD:?set GEO_BENCH_PG_PASSWORD in the env file}
+    volumes:
+      - ../../tools/geo-bench/.local/photon/photon-1.3.0.jar:/photon/photon.jar:ro
+      - wayvro-geo-bench-photon:/photon/data
+    working_dir: /photon/data
+    entrypoint: ['sh', '-c']
+    command:
+      - >-
+        java -jar /photon/photon.jar import -data-dir /photon/data -host nominatim -port 5432 -database nominatim
+        -user nominatim -password "$$NOMINATIM_PASSWORD" -languages en,ur -country-codes pk && echo PHOTON_IMPORT_DONE
+
+  # --- services ---------------------------------------------------------------------------------------------------
+  nominatim:
+    <<: *common
+    image: mediagis/nominatim@sha256:7923a8e67197fc6d4f4ecb7c0e8bbedffeddcfdf4519596fe946e46a28f5a9f8
+    mem_limit: 3g
+    cpus: 2
+    shm_size: 512m
+    environment:
+      PBF_PATH: /input/${GEO_BENCH_PBF:?set GEO_BENCH_PBF in the env file}
+      NOMINATIM_PASSWORD: ${GEO_BENCH_PG_PASSWORD:?set GEO_BENCH_PG_PASSWORD in the env file}
+      REPLICATION_URL: ''
+      IMPORT_WIKIPEDIA: 'false'
+      IMPORT_STYLE: full
+      THREADS: '2'
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 512MB
+      POSTGRES_AUTOVACUUM_WORK_MEM: 128MB
+      POSTGRES_WORK_MEM: 32MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+    volumes:
+      - ../../tools/geo-bench/.local/data:/input:ro
+      - wayvro-geo-bench-nominatim:/var/lib/postgresql/16/main
+    ports:
+      - '127.0.0.1:8088:8080'
+
+  photon:
+    <<: *common
+    image: eclipse-temurin@sha256:ccbad9e7cb84c27092b12c40a4143e5733e050db9c3784d84f632dcf423fb2ef
+    mem_limit: 1536m
+    cpus: 1
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx1g
+    volumes:
+      - ../../tools/geo-bench/.local/photon/photon-1.3.0.jar:/photon/photon.jar:ro
+      - wayvro-geo-bench-photon:/photon/data
+    working_dir: /photon/data
+    command: ['java', '-jar', '/photon/photon.jar', 'serve', '-data-dir', '/photon/data', '-listen-ip', '0.0.0.0', '-listen-port', '2322']
+    ports:
+      - '127.0.0.1:2322:2322'
+
+  osrm:
+    <<: *common
+    image: ghcr.io/project-osrm/osrm-backend@sha256:55dbfd47d984c2cacd64e32901b4321c86b5ec761438e69aa053dc78698a786f
+    mem_limit: 1536m
+    cpus: 1
+    volumes:
+      - wayvro-geo-bench-osrm:/data:ro
+    command: ['osrm-routed', '--algorithm', 'mld', '--threads', '2', '/data/lahore.osrm']
+    ports:
+      - '127.0.0.1:5000:5000'
+
+  valhalla:
+    <<: *common
+    image: ghcr.io/valhalla/valhalla@sha256:4fd114eb1d26b8fc2f43bcb3df234c1b63a0bf13c277405e5943d5361dc575de
+    mem_limit: 1536m
+    cpus: 1
+    volumes:
+      - wayvro-geo-bench-valhalla:/data:ro
+    command: ['valhalla_service', '/data/valhalla.json', '1']
+    ports:
+      - '127.0.0.1:8002:8002'
+
+volumes:
+  wayvro-geo-bench-nominatim:
+    name: wayvro-geo-bench-nominatim
+  wayvro-geo-bench-photon:
+    name: wayvro-geo-bench-photon
+  wayvro-geo-bench-osrm:
+    name: wayvro-geo-bench-osrm
+  wayvro-geo-bench-valhalla:
+    name: wayvro-geo-bench-valhalla

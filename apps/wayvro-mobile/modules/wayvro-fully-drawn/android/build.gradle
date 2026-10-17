@@ -1,0 +1,17 @@
+// Local Expo module (autolinked from apps/wayvro-mobile/modules/; no package, no third-party dependency).
+// SP-02 §6.1: exposes Activity.reportFullyDrawn() — a standard Android lifecycle signal, not a test hook.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'dev.wayvro'
+version = '1.0.0'
+
+android {
+  namespace "dev.wayvro.fullydrawn"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}

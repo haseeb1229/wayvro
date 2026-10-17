@@ -1,0 +1,33 @@
+{
+  "name": "@wayvro/geo-adapters",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SERVER-ONLY candidate geo adapters (Phase 3 P3.2; ADR-006 OPEN-SPIKE): Google, Mapbox and self-hosted open-stack implementations of the vendor-neutral geo ports. No adapter is bound by any composition root until the SP-04 freeze (P3.7).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:live": "tsc -p tsconfig.build.json && node scripts/live-check.mjs"
+  },
+  "dependencies": {
+    "@wayvro/provider-interfaces": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

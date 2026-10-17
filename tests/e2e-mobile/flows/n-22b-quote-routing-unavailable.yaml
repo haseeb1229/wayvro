@@ -1,0 +1,21 @@
+# SP-08 #16 routing unavailable / QUOTE-02, part 2 of 3 (N) — E07, CON-P3-08: with every ROUTE call failing, a
+# served trip (new pickup Model Town; a pair no earlier flow routed, so no cached route can stand in) is refused as
+# ROUTING_UNAVAILABLE: its own copy, no price and no distance/ETA line. run-flows.mjs then clears the fault.
+appId: dev.wayvro.app
+name: n-22b-quote-routing-unavailable
+tags: [full, pricing]
+---
+- tapOn: 'Change pickup'
+- extendedWaitUntil:
+    visible: 'Pickup'
+    timeout: 30000
+- inputText: 'Model'
+- tapOn: 'Model Town.*'
+- extendedWaitUntil:
+    visible: "We can't calculate prices right now"
+    timeout: 60000
+- assertVisible: 'No price is shown rather than a guess.*'
+- assertNotVisible: '.*Rs [0-9][0-9,]*.*'
+# no route summary ("<km> km · about <minutes> min") either: nothing is estimated
+- assertNotVisible: '.*km · about.*'
+- takeScreenshot: n-22-routing-unavailable

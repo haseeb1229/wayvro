@@ -1,0 +1,30 @@
+# SP-08 #21 HARD, part 2 of 2 (PR, N) — A01, Q31: after a restart the server's HARD policy blocks the app: the update
+# screen keeps the legal policies, account deletion and sign-out reachable, and no rider/driver home is shown.
+# run-flows.mjs retires the policy afterwards (also when this part fails).
+appId: dev.wayvro.app
+name: pr-13b-version-hard-blocked
+tags: [pr, full]
+---
+- stopApp
+- launchApp:
+    stopApp: true
+# The title is drawn under the status bar (no top inset on the blocking screen; reported as a P3.4/P3.5 UI finding) and
+# Maestro therefore treats it as not visible to the user; the reason line differs by how the gate learned the policy
+# (app config vs a 426 on another call), so the flow anchors on the store instruction both variants show.
+- extendedWaitUntil:
+    visible: 'Update Wayvro from the store where you installed it, then open it again.'
+    timeout: 60000
+- assertNotVisible:
+    id: rider-home-where-to
+- assertVisible: 'Read legal policies'
+- scrollUntilVisible:
+    element: 'Delete my account'
+    direction: DOWN
+- scrollUntilVisible:
+    element: 'Sign out'
+    direction: DOWN
+- takeScreenshot: pr-13-hard-update
+- tapOn: 'Read legal policies'
+- extendedWaitUntil:
+    visible: '.*(Terms|Privacy).*'
+    timeout: 30000

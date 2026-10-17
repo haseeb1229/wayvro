@@ -1,0 +1,42 @@
+# SP-08 #5 (N) — V08: search → back keeps the typed text and returns to Rider home; the account hub's back returns to
+# the current mode home; hardware back on the mode home leaves the app.
+appId: dev.wayvro.app
+name: n-03-back-stack
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Liberty'
+- hideKeyboard
+- back
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Account'
+    direction: DOWN
+- tapOn: 'Account'
+- extendedWaitUntil:
+    visible: 'Your account'
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+- back
+- assertNotVisible:
+    id: rider-home-where-to

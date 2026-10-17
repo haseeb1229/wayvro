@@ -10,7 +10,11 @@ import { createRefreshCall, createWayvroClient } from './wayvro-client';
 
 type Handler = (path: string, init: RequestInit) => Response | Promise<Response>;
 
-function harness(handler: Handler) {
+/** Before the fixture tokens' access expiry (2099-01-01T00:15Z): calls go out with the stored token as issued. */
+const BEFORE_EXPIRY = Date.parse('2099-01-01T00:00:00.000Z');
+const AFTER_EXPIRY = Date.parse('2099-01-01T00:20:00.000Z');
+
+function harness(handler: Handler, now: number = BEFORE_EXPIRY) {
   const calls: { path: string; init: RequestInit }[] = [];
   const store = new MemoryStore();
   let keyCounter = 0;
@@ -29,6 +33,7 @@ function harness(handler: Handler) {
     clock: { offsetMs: 0 },
     sleep: () => Promise.resolve(),
     random: () => 0,
+    now: () => now,
   };
   const session = new SessionManager({ store, refreshCall: createRefreshCall(http), newIdempotencyKey: newKey });
   const intents = createIdempotencyIntentStore(store, newKey);
@@ -94,6 +99,57 @@ describe('wayvro client', () => {
     expect(refreshes).toBe(1);
     const refreshCall = h.calls.find((c) => c.path === '/v1/auth/token-refreshes')!;
     expect(JSON.parse(refreshCall.init.body as string)).toEqual({ refreshToken: tokens(1).refreshToken });
+  });
+
+  it('SP02-F1: a token already expired at the first call of the process is refreshed BEFORE the request (no doomed 401)', async () => {
+    const seen: string[] = [];
+    const h = harness((path, init) => {
+      const auth = (init.headers as Record<string, string>)['authorization'];
+      seen.push(`${path} ${auth ?? '-'}`);
+      if (path === '/v1/auth/token-refreshes') return jsonResponse(200, tokens(2));
+      return auth === `Bearer ${tokens(2).accessToken}` ? jsonResponse(200, accountState()) : jsonResponse(401, errorBody('WAYVRO_E_UNAUTHENTICATED'));
+    }, AFTER_EXPIRY);
+    await h.session.establish(tokens(1));
+    await h.client.accountState();
+    expect(seen).toEqual(['/v1/auth/token-refreshes -', `/v1/account/state Bearer ${tokens(2).accessToken}`]);
+  });
+
+  it('SP02-F1: the early refresh happens at most once per process (a wrong clock costs one spare refresh, then the 401 path)', async () => {
+    let refreshes = 0;
+    const h = harness((path) => {
+      if (path === '/v1/auth/token-refreshes') {
+        refreshes += 1;
+        return jsonResponse(200, tokens(refreshes + 1));
+      }
+      return jsonResponse(200, accountState());
+    }, AFTER_EXPIRY);
+    await h.session.establish(tokens(1));
+    await h.client.accountState();
+    await h.client.accountState();
+    await h.client.accountState();
+    expect(refreshes).toBe(1);
+  });
+
+  it('SP02-F1: a token that has not expired is sent as is (no refresh)', async () => {
+    let refreshes = 0;
+    const h = harness((path) => {
+      if (path === '/v1/auth/token-refreshes') refreshes += 1;
+      return jsonResponse(200, accountState());
+    });
+    await h.session.establish(tokens(1));
+    await h.client.accountState();
+    expect(refreshes).toBe(0);
+  });
+
+  it('SP02-F1: a refused early refresh ends the session exactly like a refused refresh after a 401', async () => {
+    const h = harness(
+      (path) => (path === '/v1/auth/token-refreshes' ? jsonResponse(401, errorBody('WAYVRO_E_UNAUTHENTICATED')) : jsonResponse(200, accountState())),
+      AFTER_EXPIRY,
+    );
+    await h.session.establish(tokens(1));
+    await expect(h.client.accountState()).rejects.toMatchObject({ kind: 'session-expired' });
+    expect(h.session.getState()).toEqual({ status: 'signed-out', reason: 'expired' });
+    expect(h.store.data.has(STORAGE_KEYS.session)).toBe(false);
   });
 
   it('a second 401 after a successful refresh ends the session', async () => {

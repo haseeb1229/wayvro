@@ -1,0 +1,38 @@
+# SP-08 #21 MAINTENANCE / MAINT-01, part 2 of 3 (N) — A01, Q31: after a restart the maintenance screen covers every
+# route (no Rider home), offers "Try again" and keeps the legal policies and sign-out reachable; a retry while
+# maintenance is still on keeps the app blocked. run-flows.mjs then ends maintenance (a different staff approver).
+appId: dev.wayvro.app
+name: n-21b-maintenance-blocked
+tags: [full]
+---
+- stopApp
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: 'Planned maintenance is in progress. Please try again a little later.'
+    timeout: 60000
+- assertVisible: 'Wayvro checks again automatically.'
+- assertNotVisible:
+    id: rider-home-where-to
+- assertVisible: 'Read legal policies'
+- scrollUntilVisible:
+    element: 'Sign out'
+    direction: DOWN
+- takeScreenshot: n-21-maintenance
+# a retry while maintenance is on: still blocked
+- tapOn: 'Try again'
+- extendedWaitUntil:
+    visible: 'Try again'
+    timeout: 30000
+- assertVisible: 'Planned maintenance is in progress. Please try again a little later.'
+- assertNotVisible:
+    id: rider-home-where-to
+# the legal policies stay readable under maintenance (escape hatch)
+- tapOn: 'Read legal policies'
+- extendedWaitUntil:
+    visible: '.*(Terms|Privacy).*'
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    visible: 'Planned maintenance is in progress. Please try again a little later.'
+    timeout: 30000

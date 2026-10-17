@@ -3,15 +3,25 @@
  * lost-phone recovery completion after the cooldown (number moved, sessions of both accounts revoked; a request whose
  * number is no longer the requester's lapses; stale reviews expire) and account deletion (blockers re-evaluated incl.
  * evidence legal holds; due requests: evidence crypto-shredded and deleted from storage, account pseudonymised,
- * lookups deleted, open work closed). Synthetic data only.
+ * lookups deleted, open work closed) — and, cross-phase (P3.3), the account's quotes, quote components and route
+ * snapshots purged at completion (deferred while a quote is still live), other accounts' quotes untouched. Synthetic
+ * data only.
  */
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { runMigrations } from '@wayvro/db';
 import { FieldCipher, KeyedHasher, localKeyRing } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, PhoneLookup, fieldContext } from '@wayvro/identity-core';
 import { createLogger } from '@wayvro/observability';
 import type { ClaimedJob } from '@wayvro/server-runtime';
-import { captureLogs, createRestrictedLogin, createTestDatabase, type RestrictedLogin, type TestDatabase } from '@wayvro/test-support';
+import {
+  SYNTHETIC_CATALOG,
+  captureLogs,
+  createRestrictedLogin,
+  createTestDatabase,
+  seedSyntheticCatalog,
+  type RestrictedLogin,
+  type TestDatabase,
+} from '@wayvro/test-support';
 import { S3ObjectStorage } from '@wayvro/vault-adapters';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -46,6 +56,7 @@ const storage = new S3ObjectStorage({
 beforeAll(async () => {
   database = await createTestDatabase(adminUrl);
   await runMigrations(database.url);
+  await seedSyntheticCatalog({ env: 'test', databaseUrl: database.url });
   owner = new pg.Pool({ connectionString: database.url, max: 3 });
   for (const [group, assign] of [
     ['wayvro_worker', (p: pg.Pool) => (worker = p)],
@@ -317,5 +328,93 @@ describe(DELETION_PROCESSING_JOB, () => {
     );
     // the number can start a brand-new account later; nothing links it to the tombstone
     expect((await sessionStatus(waiting.session))?.status).toBe('ACTIVE');
+  });
+
+  /** One synthetic ECONOMY quote (+ its route snapshot with a polyline and balanced components); times as SQL intervals. */
+  async function quote(accountId: string, createdAgo: string, ttl: string): Promise<{ id: string; snapshot: string }> {
+    const c = await owner.connect();
+    try {
+      await c.query('begin');
+      const snapshot = randomUUID();
+      await c.query(
+        `insert into pricing.route_snapshots (id, provider_key, sku, routing_profile, fetched_at, cache_status, confidence, distance_m, duration_s, polyline,
+                                              latency_ms, created_at)
+         values ($1, 'geo-mock', 'ROUTE', 'CAR', now() - $2::interval, 'MISS', 'LOW', 7351, 1234, 'synthetic_polyline', 9, now() - $2::interval)`,
+        [snapshot, createdAgo],
+      );
+      const id = randomUUID();
+      await c.query(
+        `insert into pricing.quotes (id, quote_group_id, account_id, city_code, product_code, rate_card_id, rate_card_version, zone_set_id, pricing_engine_version,
+                                     pickup, dropoff, airport_pickup, distance_m, duration_s, route_snapshot_id, currency, total_minor, toll_policy, is_synthetic,
+                                     status, created_at, expires_at, request_hash)
+         select $1, $2, $3, 'LHR', 'ECONOMY', r.id, r.version, $4, 'pe-v1', ST_GeogFromText('POINT(74.35 31.52)'), ST_GeogFromText('POINT(74.27 31.47)'), false,
+                7351, 1234, $5, 'PKR', 47000, 'EXCLUDED_DISCLOSED', true, 'PRICED', now() - $6::interval, now() - $6::interval + $7::interval, $8
+           from pricing.rate_cards r where r.city_code = 'LHR' and r.product_code = 'ECONOMY' and r.status = 'ACTIVE'`,
+        [id, randomUUID(), accountId, SYNTHETIC_CATALOG.zoneSetId, snapshot, createdAgo, ttl, createHash('sha256').update(id).digest()],
+      );
+      for (const [seq, kind, amount] of [
+        [1, 'BASE', 46011],
+        [5, 'BOOKING_FEE', 1000],
+        [9, 'ROUNDING', -11],
+      ] as const) {
+        await c.query(`insert into pricing.quote_components (quote_id, seq, kind, amount_minor) values ($1, $2, $3, $4)`, [id, seq, kind, amount]);
+      }
+      await c.query('commit');
+      return { id, snapshot };
+    } catch (e) {
+      await c.query('rollback');
+      throw e;
+    } finally {
+      c.release();
+    }
+  }
+  const quoteRows = async (accountId: string) =>
+    (await owner.query<{ id: string }>(`select id from pricing.quotes where account_id = $1 order by id`, [accountId])).rows.map((r) => r.id);
+  const left = async (ids: { quotes: string[]; snapshots: string[] }) => ({
+    quotes: (await owner.query(`select 1 from pricing.quotes where id = any($1::uuid[])`, [ids.quotes])).rowCount,
+    components: (await owner.query(`select 1 from pricing.quote_components where quote_id = any($1::uuid[])`, [ids.quotes])).rowCount,
+    snapshots: (await owner.query(`select 1 from pricing.route_snapshots where id = any($1::uuid[])`, [ids.snapshots])).rowCount,
+  });
+  const requestStatus = async (id: string) =>
+    (await owner.query<{ status: string }>(`select status from identity.account_deletion_requests where id = $1`, [id])).rows[0]?.status;
+
+  it("completion purges the account's quotes, components and route snapshots (precise geography); other accounts' quotes are untouched", async () => {
+    const a = await account();
+    const other = await account();
+    // quotes from before the deletion request (they expired long before the grace period ended)
+    const mine = [await quote(a.id, '15 days', '300 seconds'), await quote(a.id, '20 days', '900 seconds'), await quote(a.id, '2 hours', '300 seconds')];
+    const theirs = [await quote(other.id, '15 days', '300 seconds'), await quote(other.id, '0 seconds', '300 seconds')];
+    const id = await request(a.id, true);
+    await deletionProcessingJob(deps()).handler(job(DELETION_PROCESSING_JOB));
+    expect(await requestStatus(id)).toBe('COMPLETED');
+    expect((await owner.query<{ status: string }>(`select status from identity.accounts where id = $1`, [a.id])).rows[0]?.status).toBe('DELETED');
+    expect(await quoteRows(a.id)).toEqual([]);
+    expect(await left({ quotes: mine.map((q) => q.id), snapshots: mine.map((q) => q.snapshot) })).toEqual({ quotes: 0, components: 0, snapshots: 0 });
+    expect(await quoteRows(other.id)).toEqual(theirs.map((q) => q.id).sort());
+    expect(await left({ quotes: theirs.map((q) => q.id), snapshots: theirs.map((q) => q.snapshot) })).toEqual({ quotes: 2, components: 6, snapshots: 2 });
+    // a re-run is a no-op (the request is COMPLETED; nothing else is touched)
+    await deletionProcessingJob(deps()).handler(job(DELETION_PROCESSING_JOB));
+    expect(await left({ quotes: theirs.map((q) => q.id), snapshots: theirs.map((q) => q.snapshot) })).toEqual({ quotes: 2, components: 6, snapshots: 2 });
+  });
+
+  it('a still-live quote defers completion (request stays PROCESSING, nothing pseudonymised) until it expires; the next run completes', async () => {
+    const a = await account();
+    // expires about three seconds from now (the database refuses to delete a quote before expires_at)
+    const live = await quote(a.id, '297 seconds', '300 seconds');
+    const id = await request(a.id, true);
+    await deletionProcessingJob(deps()).handler(job(DELETION_PROCESSING_JOB));
+    expect(await requestStatus(id)).toBe('PROCESSING');
+    expect((await owner.query<{ status: string }>(`select status from identity.accounts where id = $1`, [a.id])).rows[0]?.status).toBe('DELETION_PENDING');
+    expect(await sessionStatus(a.session)).toMatchObject({ status: 'ACTIVE' });
+    expect(await quoteRows(a.id)).toEqual([live.id]);
+    await expect
+      .poll(async () => (await owner.query<{ due: boolean }>(`select expires_at <= now() due from pricing.quotes where id = $1`, [live.id])).rows[0]?.due, {
+        timeout: 15000,
+        interval: 250,
+      })
+      .toBe(true);
+    await deletionProcessingJob(deps()).handler(job(DELETION_PROCESSING_JOB)); // resumes the PROCESSING request
+    expect(await requestStatus(id)).toBe('COMPLETED');
+    expect(await left({ quotes: [live.id], snapshots: [live.snapshot] })).toEqual({ quotes: 0, components: 0, snapshots: 0 });
   });
 });

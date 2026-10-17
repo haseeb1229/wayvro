@@ -181,6 +181,17 @@ describe('key provider (local/test only; staging/production refuse — EG-05)', 
     expect(() => loadKeyRing(env, { WAYVRO_LOCAL_KEY_SEED: 'short' })).toThrow(/at least 32/);
   });
 
+  it('Phase 3 key classes (place_refs, geo_cache) are in the default spec; an explicit spec without them has no key (boot fails closed)', () => {
+    expect(DEFAULT_LOCAL_KEY_SPEC).toContain('place_refs.v1=ACTIVE');
+    expect(DEFAULT_LOCAL_KEY_SPEC).toContain('geo_cache.v1=ACTIVE');
+    const full = localKeyRing(SEED);
+    expect(full.active('place_refs').id).toBe('place_refs.v1');
+    expect(new KeyedHasher(full).active('geo_cache', 'k').digest).toHaveLength(32);
+    const explicit = localKeyRing(SEED, 'contact.v1=ACTIVE');
+    expect(() => explicit.active('place_refs')).toThrow(KeyRingError);
+    expect(() => new KeyedHasher(explicit).active('geo_cache', 'k')).toThrow(KeyRingError);
+  });
+
   it('parses rotation specs and rejects malformed ones', () => {
     const ring = localKeyRing(SEED, 'contact.v1=DECRYPT_ONLY,contact.v2=ACTIVE, phone_lookup.v1=ACTIVE');
     expect(ring.active('contact').id).toBe('contact.v2');
