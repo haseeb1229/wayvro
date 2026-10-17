@@ -311,8 +311,8 @@
     },
     {
       "path": "docs/adr/ADR-052-mobile-e2e-tooling.md",
-      "bytes": 10624,
-      "sha256": "4c7d039b2a673820464ed03bf8e68a960817918aae82df1ce4d43b0564c53dd2"
+      "bytes": 10830,
+      "sha256": "7a7c1f893814b268037218131b8a52b59d71c902cf9e2228264750b891c36830"
     },
     {
       "path": "docs/adr/README.md",
@@ -591,8 +591,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md",
-      "bytes": 12972,
-      "sha256": "b2f64b8edf5be152fee6a166be3e3ca462af3ef8e7f701f9a4672abee310dc3c"
+      "bytes": 13408,
+      "sha256": "1ee071d831ed4e7976635f9db353c89f8567644bdf6294ff29ade29d4964ca12"
     },
     {
       "path": "docs/phase3/PHASE3_GEO_PROVIDER_EVALUATION.md",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 80099,
-      "sha256": "ae089d42e14d0694ac25c9aad5ccff5cf8b23c5c23963bcad8f89f79791a1d02"
+      "bytes": 83422,
+      "sha256": "7c1014482e77ea256cc337fcab6edaba8e59f977bc5d386028bf81130570ace2"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -651,8 +651,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 37344,
-      "sha256": "5037761a5a6849130aa91eccff4d561450dc70c5675c074aaa5d0d4489439a3e"
+      "bytes": 40711,
+      "sha256": "516c32aad3c868aa755e2c0045cf00bca3e05b0f22df9883127e91a29b6e315f"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",

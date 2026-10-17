@@ -1,5 +1,5 @@
 # PHASE3_SDK_PRIVACY_INVENTORY — Mobile/web third-party SDK and provider privacy inventory (U04) (PROPOSED)
-**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** sections 0–10 are the 2026-10-12 planning baseline; **§11 is the implemented P3.10 inventory (2026-10-13)**. Planning status: PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02 APPROVED; NEW FA-19 Mapbox licence gate); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
+**Date:** 2026-10-12 · **Branch:** `docs/phase-3-planning` (from `main` @ `058fcea`) · **Status:** sections 0–10 are the 2026-10-12 planning baseline; **§11 is the implemented P3.10 inventory (2026-10-13)**; **§12 is the current status (2026-10-18) and supersedes stale open items**. Planning status: PLAN ONLY — founder/ChatGPT plan review recorded 2026-10-12 (FA-02 APPROVED; NEW FA-19 Mapbox licence gate); no Phase 3 product code, migration, dependency, provider account or credential exists. · **Agent:** Claude Code (self-audit, not independent verification).
 
 ## 0. Purpose and scope
 
@@ -49,7 +49,7 @@ Release build facts (R): Expo SDK 57.0.27, RN 0.86.3, Hermes; `updates.enabled=f
 | expo-location (P3.5, installed) | 57.0.20 (= Expo SDK 57 `bundledNativeModules` `~57.0.20`; 57.0.21 was < 24 h old at install and is not the SDK pin; only new lockfile entry — its dependency `@expo/image-utils` 0.11.6 was already locked) | MIT | Expo-pinned — OK (ADR-030 re-check at install, ADR-043 P3.5 addendum) | ACCESS_COARSE_LOCATION + ACCESS_FINE_LOCATION (library manifest; allowlisted, FA-02); plugin options set foreground-only — no ACCESS_BACKGROUND_LOCATION / FOREGROUND_SERVICE* (FOREGROUND_SERVICE also in `blockedPermissions`); iOS `NSLocationWhenInUseUsageDescription` only (Always/Motion keys set `false` = deleted; verified by `expo config --type introspect`). The library manifest also declares a NON-exported `LocationTaskService` (FGS type `location`) — never started (task/background APIs string-banned); since 2026-10-17 it is **removed from the merged manifest** by `apps/wayvro-mobile/plugins/no-location-task-service.mjs` (`tools:node="remove"`), and the release-AAB gate `check-intent-filters.mjs` fails on any service declaring `foregroundServiceType` (component-allowlist `foregroundServices`: empty in Phase 3) | the rider's device position, only after the rider taps "Use current location" and passes the in-app rationale; held in memory (5 dp fix, 2 dp search bias), never persisted or logged; approximate grants only bias search | none by the module itself; Android platform/Play-services location provider (S — verify by capture, NOT RUN) |
 | typescript, vitest, @types/react | devDependencies | Apache-2.0 / MIT / MIT | dev only | — | — | not shipped |
 
-The only runtime network peer of the current app is the **Wayvro API** (and Wayvro-issued presigned object-storage URLs). This statement is derived from source reading, not from a network capture.
+The only runtime network peer of the current app is the **Wayvro API** (and Wayvro-issued presigned object-storage URLs). This statement was first derived from source reading (planning baseline); it has since been **confirmed at runtime** by the final network inventory (§12: app-UID traffic = the synthetic Wayvro API).
 
 ## 3. Current mobile dependencies — subprocessors, telemetry, disclosures, terms
 
@@ -142,11 +142,11 @@ The check is a guard against silent drift; approval itself remains a human (foun
 | When | Action | Status |
 |---|---|---|
 | P3.0 | add rows for oasdiff; fix and re-verify expo-dev-client release behaviour (F-P3-01) | DONE — oasdiff 1.32.1 is a CI-only binary (checksum-verified, never shipped); the release AAB intent-filter gate proves no `exp+wayvro` scheme (CI Android job) |
-| P3.5 | expo-location row moves to APPROVED on install (FA-02 APPROVED 2026-10-12); manifest/allowlist delta COARSE + FINE | DONE in source (57.0.20 installed; allowlist + `blockedPermissions` updated; prebuild main manifest shows only COARSE + FINE added) — release-AAB gate and network capture NOT RUN |
+| P3.5 | expo-location row moves to APPROVED on install (FA-02 APPROVED 2026-10-12); manifest/allowlist delta COARSE + FINE | DONE in source (57.0.20 installed; allowlist + `blockedPermissions` updated; prebuild main manifest shows only COARSE + FINE added) — release-AAB gate and network capture NOT RUN at P3.5 (historical; both done since: release-AAB permission/foreground-service gates on every Android CI run, runtime network inventory PASS — §12) |
 | P3.7 | choose renderer + tile host + geo bundle on SP-04/SP-02 evidence (an S2 bundle only with FA-19 resolved for a pilot/production freeze); remove rows of non-chosen candidates; telemetry settings verified by network capture | **BLOCKED-EXTERNAL** — no SP-04 field data (FA-05), no provider accounts (FA-06), no SP-02 device (FA-04), FA-19 open. No renderer is installed; the candidate rows stay CANDIDATE; `allowedVendorHosts` stays empty |
-| P3.10 | regenerate from the actual release AAB (dependency tree, autolinked modules, manifest, network capture of a scripted rider/driver session); store-disclosure drafts updated | **PARTIAL** — see §11: the dependency tree, resolved autolinked modules and the release manifest are checked against `infra/ci/android/sdk-inventory.json` on every Android CI run (SDK-INV, before Gradle); network capture of a scripted session **NOT RUN** (no device/proxy setup in this run); store-disclosure drafts unchanged (EG-18) |
+| P3.10 | regenerate from the actual release AAB (dependency tree, autolinked modules, manifest, network capture of a scripted rider/driver session); store-disclosure drafts updated | **DONE for the repository-owned parts (2026-10-18, §12)**; historical P3.10 note: **PARTIAL** — see §11: the dependency tree, resolved autolinked modules and the release manifest are checked against `infra/ci/android/sdk-inventory.json` on every Android CI run (SDK-INV, before Gradle); network capture of a scripted session **NOT RUN** at P3.10 (no device/proxy setup in that run; since done — runtime network inventory PASS, §12); store-disclosure drafts unchanged (EG-18, still open) |
 
-Open items: runtime network capture of the current release build (never done); exact Play Data safety categories for the chosen renderer SDK; Maestro CLI analytics behaviour; Transistorsoft licence-check/telemetry endpoints (only if CONDITIONAL activates); Mapbox Commercial Application License applicability (FA-19, only if S2 is a freeze candidate); Expo-module required-reason APIs on iOS; vendor DPAs and subprocessor lists (EG-11/EG-12, counsel).
+Open items (current list in §12): ~~runtime network capture of the current release build~~ (done 2026-10-18, §12); exact Play Data safety categories for the chosen renderer SDK; Maestro CLI analytics behaviour; Transistorsoft licence-check/telemetry endpoints (only if CONDITIONAL activates); Mapbox Commercial Application License applicability (FA-19, only if S2 is a freeze candidate); Expo-module required-reason APIs on iOS; vendor DPAs and subprocessor lists (EG-11/EG-12, counsel).
 
 ## 10. Server geo candidates (P3.2)
 
@@ -186,4 +186,32 @@ Release-app permission delta for the whole of Phase 3: `ACCESS_COARSE_LOCATION` 
 
 **Founder approval (2026-10-14, founder/ChatGPT review of PR #8):** APPROVED — the 14 `transitiveAddedP35` exact-version Expo/React Native modules above (already present in the Phase 1/2 release AABs) and the first-party `wayvro-fully-drawn` module, which only calls `Activity.reportFullyDrawn()` once per process, stores nothing, sends no network traffic and requests no permission. Recorded on the rows of `infra/ci/android/sdk-inventory.json` (`ref`). This is a native-module approval, **not** FA-09 (the native Urdu/Roman-Urdu language review stays open).
 
-**Not done:** Play Data safety / privacy-manifest updates (EG-18); iOS privacy manifest (no iOS track). Runtime network evidence: see the closure-correction section of `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md`.
+**Not done:** Play Data safety / privacy-manifest updates (EG-18); iOS privacy manifest (no iOS track). Runtime network evidence: done and PASS — see §12 and the final closure sections of `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md`.
+
+## 12. Current status (2026-10-18) — supersedes the open items of §9 and §11 where they differ
+
+**Verified facts on the final Phase-3 code `af5d8e2`:**
+- **Location permissions (release):** `ACCESS_COARSE_LOCATION` + `ACCESS_FINE_LOCATION` only, foreground (FA-02). There is no `ACCESS_BACKGROUND_LOCATION`, no `FOREGROUND_SERVICE` and no `FOREGROUND_SERVICE_LOCATION`. The complete release permission set is unchanged: COARSE, FINE, CAMERA (P2.8, Driver/Partner document capture, just in time) and INTERNET, enforced by the permission gate on every Android CI run.
+- **`LocationTaskService`:**
+  - **Removed** from the merged manifest of every variant by `apps/wayvro-mobile/plugins/no-location-task-service.mjs` (`tools:node="remove"`).
+  - It is started only by expo-location's background-updates path, which the app never calls; a test bans those APIs in app source.
+  - The release-AAB gate `infra/ci/android/check-intent-filters.mjs` now fails any service that declares `foregroundServiceType` unless `component-allowlist.json` `foregroundServices` lists it. The list is empty in Phase 3.
+  - Passed on the release AAB in CI (Android job of runs 39036576380, 39045490954 and 39050486005).
+  - The earlier "Play FGS declaration question" is therefore **resolved for Phase 3**. Phase 4 Driver online tracking needs its own reviewed decision (ADR-029/ADR-033; see the SP-01 supplement for the expo-location service lifecycle).
+- **Runtime network inventory: DONE, PASS.** Full matrix run 39045502501 on `af5d8e2`, API-35 lane:
+  - netsim Wi-Fi pcap, 272,454 packets;
+  - per-app attribution with `dumpsys netstats`: app UID 10209 exchanged 713,832 B, against 713,912 B seen to the synthetic Wayvro API;
+  - the hosts first seen during the session are Google OS / Play-services endpoints;
+  - **no analytics, ads, crash-reporting or update SDK traffic is attributed to Wayvro.**
+
+  This is emulator evidence of the release-mode E2E build in a synthetic environment, not device evidence.
+- **Native modules:** the founder approved the 14 `transitiveAddedP35` modules and `wayvro-fully-drawn` on 2026-10-14 (§11). SDK-INV checks the release AAB on every Android CI run.
+
+**Still open, and not closed by the above:**
+- EG-18: Play Data safety form, store listing and disclosures.
+- iOS privacy manifest and Expo-module required-reason APIs (no iOS track yet).
+- Renderer- and provider-specific disclosures, telemetry settings and tile hosts once a renderer and geo bundle are chosen (P3.7; ADR-046/ADR-006, SP-04/SP-02 evidence).
+- FA-19, only if Mapbox remains a finalist.
+- Vendor DPAs and subprocessor lists (EG-11/EG-12, counsel).
+- Maestro CLI analytics behaviour (CI tooling only; disabled by environment variables).
+- Transistorsoft endpoints, only if candidate B is ever activated.

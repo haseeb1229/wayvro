@@ -1,10 +1,36 @@
 # PHASE3_IMPLEMENTATION_RECORD — Full macro Phase 3 implementation (P3.0 – P3.10)
 
-**Branch:** `phase-3/maps-quotes-unified-ux` from protected `main` @ `b1a19865fa1a3f72244e2b5b10f9e1e5148004b9` (merge of the reviewed Phase-3 planning PR #7). · **Authorisation:** founder authorised the whole macro Phase 3 engineering run in one session (2026-10-12, `WAYVRO_PHASE3_FULL_IMPLEMENTATION_AUTHORISATION`); P3.0–P3.10 are internal checkpoints, not approval points. · **Plan:** `docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md` with `<PHASE3_PLAN_MERGE_SHA>` = `b1a1986…`, and every `docs/phase3/` design file. · **Status:** ENGINEERING RUN AT CLOSURE — PR opened for review, **not merged**; Phase 3 is **not complete** (real-world evidence SP-01/SP-02/SP-04 and the FA-09 native review are missing; 14 IDs BLOCKED on Maestro evidence — see the closure section). · **Agent:** Claude Code (self-audit, not independent verification). · Synthetic data only; no provider account, key, real boundary, real price or real user data exists in this run.
+**Branch:** `phase-3/maps-quotes-unified-ux` from protected `main` @ `b1a19865fa1a3f72244e2b5b10f9e1e5148004b9` (merge of the reviewed Phase-3 planning PR #7). · **Authorisation:** founder authorised the whole macro Phase 3 engineering run in one session (2026-10-12, `WAYVRO_PHASE3_FULL_IMPLEMENTATION_AUTHORISATION`); P3.0–P3.10 are internal checkpoints, not approval points. · **Plan:** `docs/phase3/PHASE3_IMPLEMENTATION_PROMPT_PROPOSED.md` with `<PHASE3_PLAN_MERGE_SHA>` = `b1a1986…`, and every `docs/phase3/` design file. · **Status (current, 2026-10-18):** repository-owned engineering closure **PASS** on final code `af5d8e2` (full matrix 39045502501 green; successor commits docs-only); classification 8 / 21 / 0; macro Phase 3 **EXTERNAL BLOCKED**; PR #8 open, unmerged; Phase 4 not started — see **Current status** below. (Historical status at 2026-10-13: ENGINEERING RUN AT CLOSURE — PR opened for review.), **not merged**; Phase 3 is **not complete** (real-world evidence SP-01/SP-02/SP-04 and the FA-09 native review are missing; 14 IDs BLOCKED on Maestro evidence — see the closure section). · **Agent:** Claude Code (self-audit, not independent verification). · Synthetic data only; no provider account, key, real boundary, real price or real user data exists in this run.
 
 Founder confirmations in force for this run (authorisation §4–§8): FA-01, FA-02, FA-07, FA-10, FA-11, FA-12, FA-16 APPROVED; FA-17 approved in principle; FA-18 deferred to Phase 4; FA-08 no paid spend; FA-09 native review required; FA-19 Mapbox licence clarification required before any S2 freeze. Pricing maker-checker: two distinct authenticated staff identities (both may hold `PRICING_MANAGER`), maker ≠ checker enforced by database and service, mandatory audit actor ids and reason codes, `STAFF_ADMIN` is not the routine approver, break-glass is not a shortcut. SP-01 thresholds are fixed pre-measurement values (FA-07).
 
 Genuine founder/external actions still open at run start: FA-03 (SP-01 real devices), FA-04 (SP-02 low-end device), FA-05 (SP-04 Lahore field data), FA-06 (evaluation provider accounts/keys), FA-09 (native Urdu/Roman-Urdu review), FA-19 (Mapbox written licence clarification, S2 only).
+
+## Current status (2026-10-18) — read this first
+
+This block is the current state. Everything below it is a time-stamped log; earlier closure sections are **historical and superseded** where they differ, and their banners say so.
+- **Repository-owned engineering closure: PASS.**
+  - **Final code:** SHA `af5d8e20615f58c9600f9fbdfacdf0d2833c825d`.
+  - **Branch successor:** `3985d43` and later commits are documentation-only, code-identical to `af5d8e2` (no change under apps, packages, infra, scripts, tests, .github, `pnpm-lock.yaml` or `package.json`).
+  - **CI on `af5d8e2`:** push run 39045490954 and PR run 39045495235 green; Mobile E2E 14/14.
+  - **Refreshed full matrix 39045502501 on `af5d8e2`:** every job success. PASS 105 · SKIPPED 6 · NOT RUN 6 · NOT TESTABLE 9 · FLAKY 0 · FAIL 0 · BLOCKED 0. The 50,000-run property tier, the load harness + 600 s FAULT-GEO soak and the network inventory all PASS.
+- **Classification of the 29 Phase-3 IDs:**
+  - **ENGINEERING_SATISFIED 8:** B04, B06, E05, E08, H06, H10, R28, V08.
+  - **PARTIAL_EXTERNAL_GATED 21:** A01, A06, A07, A08, B01, B02, B03, E06, E07, I11, K19, L08, P18, Q26, Q27, Q31, U04, U05, V05, V10, V11.
+  - **BLOCKED 0.**
+  - The earlier 5 / 10 / 14 split (2026-10-13/14) is historical.
+- **Macro Phase 3: EXTERNAL BLOCKED.** Not complete. Remaining gates:
+  - FA-03 / SP-01 real OEM devices;
+  - FA-04 / SP-02 real low-end phone;
+  - FA-05 / SP-04 Lahore field ground truth;
+  - FA-06 provider evaluation accounts if needed;
+  - FA-09 native Urdu / Roman-Urdu review;
+  - FA-13 iPhone / VoiceOver;
+  - FA-14 physical TalkBack;
+  - FA-19 only if Mapbox remains a finalist;
+  - EG-18 store / listing / disclosure work.
+- **Governance.** Ruleset 24837051 still requires the original five contexts and allows merge, squash and rebase. The founder-authorised update was prepared from the live ruleset (`Mobile E2E` as the sixth required context; merge-only). This session's permission policy refused the PUT on 2026-10-17 and 2026-10-18, so it is **pending, as a founder action**. Until then `Mobile E2E` is green on every run but informational.
+- **PR #8:** open and unmerged; review only. **Phase 4:** not started.
 
 ## Authority checks at run start (2026-10-12)
 
@@ -223,6 +249,8 @@ Founder confirmation needed: 14 transitive native modules newly listed as APPROV
 
 ## P3.10 — Closure (2026-10-13)
 
+> **Historical (2026-10-13: 5 / 10 / 14 classification, Maestro and full matrix not yet green in CI, runtime network capture not yet run) — superseded by the final closure evidence; see Current status at the top.**
+
 ### SP-08 evidence
 - **PR tier, first CI run** (`Mobile E2E`, run 38439820550 on `4347289`, API 35 emulator, EMULATOR evidence): **3 PASS** (pr-01 sign-in → Rider home with the rider-hygiene check, pr-02 restore, pr-04 Earn entry rider-only with hygiene), **3 FAIL**, **8 BLOCKED**. Maestro wall time 924 s; E2E APK build 1,011 s.
   - The 3 FAILs (pr-03, pr-05, pr-06) waited for the pre-P3.8 driver-home copy "Going online isn't available yet". Since P3.8 the readiness headline is one of three sentences. The closure commit matches any of the three exact headlines (no assertion removed), and the restriction-row selector allows the P3.8 "Earning paused." prefix and the P3.9 spoken detail. Re-run: the closure SHA's CI run.
@@ -299,6 +327,8 @@ Rule (`docs/phase3/PHASE3_REQUIREMENT_MATRIX.md`): ENGINEERING_SATISFIED only if
 
 ## Closure correction (founder decision 2026-10-14, `WAYVRO_PHASE3_ENGINEERING_CLOSURE_CORRECTION`)
 
+> **Historical (2026-10-14: CI blocked by the Actions billing limit; 14 IDs then BLOCKED on Maestro evidence) — superseded by the final closure evidence; see Current status at the top.**
+
 **Starting state:** main `b1a1986`, branch head `0573f87`, PR #8 open and not merged, worktree clean, 532 IDs / 29 Phase-3 IDs.
 
 ### Founder decisions recorded
@@ -348,6 +378,8 @@ Unchanged totals: **ENGINEERING_SATISFIED 5 · PARTIAL_EXTERNAL_GATED 10 · BLOC
 **NOT PASS — BLOCKED on two founder actions:** (1) merge PR #9; (2) restore GitHub Actions (billing/spending limit). The code for every repository-owned item of the correction is complete and passes locally. The CI evidence the correction requires (sharded PR tier green, full matrix, CI 50k, CI load/soak) has not been produced. **Macro Phase 3: EXTERNAL BLOCKED** (SP-01, SP-02, SP-04, FA-09 unchanged).
 
 ## Closure — CI evidence (founder authorisation 2026-10-15, `WAYVRO_PHASE3_CLAUDE_DO_EVERYTHING_POSSIBLE`)
+
+> **Historical (2026-10-15/16: closure on `4bf4803`; superseded by the targeted correction and the refreshed full matrix on `af5d8e2`) — superseded by the final closure evidence; see Current status at the top.**
 
 The repository was made PUBLIC by the founder to restore GitHub Actions; no workflow, runner or architecture was changed for that. Public-repo safety preflight:
 - no `pull_request_target` trigger;
@@ -475,6 +507,8 @@ All repository-owned Maestro evidence is green in CI (sharded PR tier and full m
 - **Not taken — release-like FA-17 HTTPS build:** an account-free quick tunnel gets a new random hostname on every start, so an APK built against it would stop working at teardown. A stable hostname needs a tunnel account (founder action).
 
 ## Laptop-only evidence sweep (founder instruction 2026-10-16, `WAYVRO_PHASE3_MAXIMUM_LAPTOP_EVIDENCE_SWEEP`)
+
+> **Historical (2026-10-16/17: its masked-number finding was later withdrawn and SP02-F1 re-measured) — superseded by the final closure evidence; see Current status at the top.**
 
 Every result below was produced on the Windows development laptop (Intel i5-1145G7, 4 cores / 8 threads, 15.7 GB RAM, shared with an unrelated project) with Android emulators, ADB, the local synthetic API (throwaway databases), local Docker and open data. **None of it is real-device, field, legal/commercial or native-speaker evidence**, and no macro-Phase-3 status changes because of it. Summaries are in `docs/phase3/evidence/laptop/`; raw captures stay in the git-ignored `evidence-local/` and `tools/geo-bench/.local/`.
 

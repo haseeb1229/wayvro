@@ -54,7 +54,7 @@ debug APK loads JS from Metro and is not release-like.
    endpoints with the code read from the local-runner-only `/__local/otp-inbox`; Driver/Partner states by SQL in the
    review service's shapes. Release-control changes (HARD policy, `rider.quotes` switch) are hooks with seeded staff as
    maker and approver. No new route, no fixture endpoint, no in-app bypass.
-6. **Tiers (FA-16).** CI job `Mobile E2E` (short name; informational, NOT in ruleset 24837051 — founder action): PR
+6. **Tiers (FA-16).** CI job `Mobile E2E` (short name; informational, NOT in ruleset 24837051 — founder action): PR — *2026-10-18 status: founder APPROVED making it required (with merge-only); the ruleset update is pending (session permission refusal), see `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md` Current status.*
    tier on API 35 only when mobile/contracts/API paths changed vs the merge base (otherwise `SKIPPED (no
    mobile-affecting change)`), Gradle cache restore-only, Maestro phase budget 900 s, JUnit + screenshots + retry videos
    uploaded for 7 days. `mobile-full.yml`: `workflow_dispatch` ONLY (no `schedule`), API 29 + API 35 + a 2 GB low-RAM

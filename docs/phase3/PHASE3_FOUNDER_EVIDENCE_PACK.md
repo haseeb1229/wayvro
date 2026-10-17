@@ -62,7 +62,7 @@ Steps:
 ## 5. Optional / later
 
 - FA-14 accessibility tester (TalkBack walkthrough on a physical device) — recommended before pilot; VoiceOver needs an iPhone (FA-13) and is NOT RUN in Phase 3.
-- Ruleset change: making the informational `Mobile E2E` job a required check is a founder action (Phase 4 per the SP-08 plan; keep the check name short — ruleset contexts are truncated at 100 characters).
+- Ruleset change: making the informational `Mobile E2E` job a required check is a founder action (Phase 4 per the SP-08 plan; keep the check name short — ruleset contexts are truncated at 100 characters). **Update 2026-10-18:** the founder APPROVED this (plus merge-only) on 2026-10-17; the payload was built from the live ruleset (`evidence-local/fix/ruleset-payload.json`, local) but the session permission policy refused the PUT, so it remains a founder action: `gh api -X PUT repos/haseeb1229/wayvro/rulesets/24837051 --input <payload>` (adds `Mobile E2E` as the sixth context, `allowed_merge_methods: ["merge"]`, nothing else changed).
 
 ## Founder preview APK (synthetic data only) — closure correction §17
 
