@@ -24,6 +24,7 @@ import {
   geocodingV3Place,
   geocodingV3Results,
   googleComponents,
+  googleErrorReason,
   googleKind,
   googleLanguage,
   str,
@@ -87,11 +88,17 @@ export class GoogleGeocodingAdapter implements GeocodingAdapter {
     try {
       res = await callJson(
         this.resolveCtx,
-        { method: 'GET', url, headers: { 'X-Goog-Api-Key': this.options.apiKey.reveal(), 'X-Goog-FieldMask': DETAILS_FIELD_MASK } },
+        {
+          method: 'GET',
+          url,
+          headers: { 'X-Goog-Api-Key': this.options.apiKey.reveal(), 'X-Goog-FieldMask': DETAILS_FIELD_MASK },
+          errorReason: googleErrorReason,
+        },
         signal,
       );
     } catch (error) {
-      if (error instanceof GeoAdapterError && error.httpStatus === 404)
+      // a 404 the error reason did not reclassify (e.g. as AUTH) means the place id no longer resolves
+      if (error instanceof GeoAdapterError && error.code === 'CLIENT_ERROR' && error.httpStatus === 404)
         throw new GeoAdapterError(this.resolveCtx.providerKey, 'PLACE_RESOLVE', 'NOT_FOUND', 404);
       throw error;
     }

@@ -40,7 +40,7 @@
 | Prediction (FA-09 pre-review) | Reachable? | Observed | Action |
 |---|---|---|---|
 | `phone.hint` "+92 3XX XXXXXXX" shown as "3XX XXXXXXX 92+" | yes (Urdu sign-in) | **confirmed** | fixed (§4) |
-| — (not predicted) `otp.body` masked number "+92 3** *** **43" | yes (Urdu OTP screen) | **reversed: "43** *** **3 92+"** | **OPEN** (§4–§5) |
+| — (not predicted) `otp.body` masked number "+92 3** *** **43" | yes (Urdu OTP screen) | **renders correctly** (number-only pixel crop, §5); the earlier "reversed" entry was a misreading — **withdrawn** | none needed |
 | 3 × `security.event.*OIDC*` ("Google یا Apple …") | no — the new Urdu account has no OIDC events | not observed | stays a reviewer item |
 | `SESSIONS_REVOKED_BY_SUPPORT` ("Wayvro سپورٹ …") | no — no such event on the synthetic accounts | not observed | stays a reviewer item |
 | 2 × driver "10 MB" | no — applicant document screens not walked (the verified driver has no open application) | not observed | stays a reviewer item |
@@ -53,12 +53,15 @@ UX observation for the founder (not a defect): a language chosen on the sign-in 
 1. **`phone.hint`**: the examples are now inserted values (`PHONE_FORMAT_EXAMPLES`), so they are isolated and "+92" stays in front (typed bidi controls are forbidden in the catalogue).
 2. **"1 suggestions"**: a singular `rider.search.countOne` string in en/ur/ur-Latn (`search-view.ts` `resultCountKey`, test added). New copy is PENDING_NATIVE_REVIEW.
 
-## 5. On-screen re-check with locally built E2E APKs
+## 5. On-screen re-check — and withdrawal of the masked-number finding (2026-10-17)
 
-| Build | phone.hint | otp.body masked number | search count |
-|---|---|---|---|
-| CI APK of `3998b12` (before) | "3XX XXXXXXX 92+" | "43** *** **3 92+" | "1 suggestions" |
-| local build with the hint/count fixes and LEFT-TO-RIGHT ISOLATE for letter-free values | **"+92 3XX XXXXXXX" (fixed)** | still reversed | **"1 تجویز" (fixed)** |
-| local build with LEFT-TO-RIGHT EMBEDDING (U+202A…U+202C) for letter-free values | fixed | still reversed | fixed |
+The first version of this section reported the Urdu masked number (`otp.body`, also `phoneChange.codeBody` and `stepUp.sent`) as rendered right-to-left ("43** *** **3 92+"), and three bidi variants (LRI, LRE, LRM) as not fixing it. **That finding was wrong and is withdrawn.** It came from reading whole Urdu lines in full-screen screenshots; a left-to-right number inside a right-to-left line was misread.
 
-The isolate of the hint (it contains Latin letters) is honoured, but neither FSI, LRI nor LRE kept the letter-free masked number "+92 3** *** **NN" in order inside the Urdu `Body` text on this emulator. The LRI/LRE experiments were therefore **reverted** (`isolate()` keeps its original FIRST STRONG ISOLATE behaviour) and the masked-number reversal stays an **OPEN defect** for follow-up: it needs a root-cause investigation of React Native Android text layout with `writingDirection: rtl` and a check on a real device. It also affects `phoneChange.codeBody` and `stepUp.sent`, which insert the same masked value. Screenshots: `walks/rider-ur-fixed/`, `walks/rider-ur-lre/`.
+The proof uses geometry and number-only pixel crops, never the reading of a mixed line:
+- **Original CI build (`ef3cbd0`, the unchanged FIRST STRONG ISOLATE sentence).** A crop of only the number region of `walks/rider-ur/rider-ur-03-otp.png` shows **"+92 3** *** **01"** in order (`evidence-local/fix/crop-original-num.png`).
+- **Diagnostic build that drew the value one character per text node.** The view hierarchy puts `+` at x = 389, `9` at 408 and so on up to `1` at 602, left to right; its crop shows the same correct order (`evidence-local/fix/crop-glyph.png`).
+- **`phone.hint`, which WAS a real defect.** The original crop shows **"3XX XXXXXXX 92+"** (`evidence-local/fix/crop-hint-orig-num.png`). After the fix (format examples as isolated inserted values), it shows **"+92 3XX XXXXXXX"** (`evidence-local/fix/crop-hint-new-num.png`).
+
+All diagnostic rendering changes (LRI, LRE and LRM marks, split and per-character rendering) were **reverted**. The masked-number sentence stays exactly as in `4bf4803`: `t()` with the FIRST STRONG ISOLATE that `interpolate()` already applies. The `phone.hint` and singular-count fixes stay.
+
+Lesson recorded for future evidence: judge mixed-direction rendering only from number-only crops or view geometry.

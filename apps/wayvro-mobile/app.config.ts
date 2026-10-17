@@ -116,7 +116,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // P3.5 foreground-only location (options verified in expo-location 57.0.20 plugin/build/withLocation.js): background
     // and foreground-service options false (no ACCESS_BACKGROUND_LOCATION / FOREGROUND_SERVICE* / UIBackgroundModes);
     // the iOS Always and motion keys are `false`, which DELETES them (an omitted key would write a default string).
-    // The library manifest still adds COARSE + FINE (allowlisted) and a NON-exported LocationTaskService.
+    // The library manifest still adds COARSE + FINE (allowlisted) and a NON-exported LocationTaskService, which the local
+    // plugin after it removes (foreground-only APIs never start it; CI FOREGROUND-SERVICE gate on the release AAB).
     [
       'expo-location',
       {
@@ -130,6 +131,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isAndroidMotionActivityEnabled: false,
       },
     ],
+    './plugins/no-location-task-service.mjs',
     ...(E2E_API_PORT === null ? [] : ['./plugins/e2e-loopback-network.mjs']),
   ],
   extra: {

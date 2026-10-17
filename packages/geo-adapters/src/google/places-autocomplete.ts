@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { callContext, callJson, type CallContext } from '../http.js';
 import { GOOGLE_TERMS, licence } from '../licences.js';
 import { buildComponents, parsePayload, requireQueryText, requireSessionId } from '../normalise.js';
-import { AUTOCOMPLETE_URL, GOOGLE_PLACE_ID, type GoogleAdapterOptions, googleKind, googleLanguage, str, tokens } from './shared.js';
+import { AUTOCOMPLETE_URL, GOOGLE_PLACE_ID, type GoogleAdapterOptions, googleErrorReason, googleKind, googleLanguage, str, tokens } from './shared.js';
 
 /** Bias radius around the coarse cell (metres). City-scale; the centre is already rounded to 2 decimals by the gateway. */
 const GOOGLE_AUTOCOMPLETE_BIAS_RADIUS_M = 10_000;
@@ -62,6 +62,7 @@ export class GooglePlacesAutocompleteAdapter implements PlacesAutocompleteAdapte
         url: new URL(AUTOCOMPLETE_URL),
         headers: { 'X-Goog-Api-Key': this.options.apiKey.reveal(), 'X-Goog-FieldMask': FIELD_MASK },
         body,
+        errorReason: googleErrorReason,
       },
       signal,
     );

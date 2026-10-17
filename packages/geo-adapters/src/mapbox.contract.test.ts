@@ -9,15 +9,20 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import {
   BODY_SENTINEL,
   FAKE_MAPBOX_TOKEN,
+  FIXED_NOW,
   HTTP_ERROR_STATUSES,
   MALFORMED_BODIES,
   QUERY_SENTINEL,
+  RETRY_AFTER_CASES,
   SESSION,
   bind,
+  canonicalFailureOf,
   connectFailure,
   expectNoLeak,
   expectedHttpCode,
+  expectedHttpKind,
   failureOf,
+  quotaResponse,
   stallingBody,
   type ContractOp,
 } from '../test/contract-harness.js';
@@ -38,15 +43,15 @@ import { MapboxReverseGeocodingAdapter } from './mapbox/reverse-geocoding.js';
 import { MapboxSearchBoxAutocompleteAdapter } from './mapbox/search-box-autocomplete.js';
 
 const accessToken = new SecretValue(FAKE_MAPBOX_TOKEN);
-const opts = (fetchImpl: FetchLike) => ({ providerKey: 'geo-s2', accessToken, fetchImpl });
+const opts = (fetchImpl: FetchLike, now?: () => Date) => ({ providerKey: 'geo-s2', accessToken, fetchImpl, ...(now ? { now } : {}) });
 const routeInput = { origin: SYNTHETIC.a, destination: SYNTHETIC.c, profile: 'CAR' as const, departAt: new Date('2026-10-16T10:00:00Z') };
 
 const OPS = {
   suggest: {
     name: 'Search Box /suggest',
     sku: 'AUTOCOMPLETE',
-    make: (f) => {
-      const a = new MapboxSearchBoxAutocompleteAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new MapboxSearchBoxAutocompleteAdapter(opts(f, now));
       return {
         licences: a.licences,
         call: (s) => a.suggest({ text: QUERY_SENTINEL, locale: 'en', biasCell: { lat: 31.52, lng: 74.35 }, countryCode: 'PK', searchSessionId: SESSION }, s),
@@ -58,8 +63,8 @@ const OPS = {
   retrieve: {
     name: 'Search Box /retrieve',
     sku: 'PLACE_RESOLVE',
-    make: (f) => {
-      const a = new MapboxGeocodingAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new MapboxGeocodingAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.resolve({ providerPlaceId: 'synthetic.poi.1', searchSessionId: SESSION, locale: 'en' }, s) };
     },
     ok: () => json(MAPBOX_RETRIEVE_RESPONSE),
@@ -68,8 +73,8 @@ const OPS = {
   geocode: {
     name: 'Geocoding v6 /forward',
     sku: 'GEOCODE',
-    make: (f) => {
-      const a = new MapboxGeocodingAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new MapboxGeocodingAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.geocode({ text: QUERY_SENTINEL, locale: 'en', countryCode: 'PK' }, s) };
     },
     ok: () => json(MAPBOX_GEOCODING_V6_RESPONSE),
@@ -78,8 +83,8 @@ const OPS = {
   reverse: {
     name: 'Geocoding v6 /reverse',
     sku: 'REVERSE_GEOCODE',
-    make: (f) => {
-      const a = new MapboxReverseGeocodingAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new MapboxReverseGeocodingAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.reverse({ point: SYNTHETIC.b, locale: 'en' }, s) };
     },
     ok: () => json(MAPBOX_GEOCODING_V6_RESPONSE),
@@ -88,8 +93,8 @@ const OPS = {
   directions: {
     name: 'Directions v5',
     sku: 'ROUTE',
-    make: (f) => {
-      const a = new MapboxDirectionsAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new MapboxDirectionsAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.route(routeInput, s) };
     },
     ok: () => json(MAPBOX_DIRECTIONS_RESPONSE),
@@ -333,4 +338,76 @@ describe('S2 Mapbox contract: no logging or telemetry from the adapter layer', (
     }
     for (const s of spies) expect(s).not.toHaveBeenCalled();
   });
+});
+
+describe('S2 Mapbox contract: canonical provider-interface taxonomy at the port boundary (fix 2026-10-17)', () => {
+  const echo = `${BODY_SENTINEL} access_token=${FAKE_MAPBOX_TOKEN} q=${QUERY_SENTINEL}`;
+  const fixedClock = () => FIXED_NOW;
+
+  it.each(ALL.flatMap((op) => HTTP_ERROR_STATUSES.map((status) => [op.name, status, op] as const)))(
+    '%s: HTTP %i is a canonical GeoProviderError of the expected kind',
+    async (_, status, op) => {
+      const { bound } = bind(op, () => json(mapboxError(echo), status));
+      const error = await canonicalFailureOf(bound.call(signal()));
+      expect(error.kind).toBe(expectedHttpKind(op, status));
+      expect(error.retryAfterSeconds).toBeUndefined();
+      expectNoLeak(error, SECRETS);
+    },
+  );
+
+  it.each(ALL.flatMap((op) => RETRY_AFTER_CASES.map(([label, header, expected]) => [op.name, label, op, header, expected] as const)))(
+    '%s: 429 with Retry-After %s ⇒ QUOTA with the bounded server-clock wait',
+    async (_, __, op, header, expected) => {
+      const { bound } = bind(op, () => quotaResponse(mapboxError(echo), header), fixedClock);
+      const error = await canonicalFailureOf(bound.call(signal()));
+      expect(error.kind).toBe('QUOTA');
+      expect(error.retryAfterSeconds).toBe(expected);
+      expectNoLeak(error, SECRETS);
+    },
+  );
+
+  it.each(ALL.map((op) => [op.name, op] as const))('%s: Retry-After on a 503 is not a quota wait (UPSTREAM, none carried)', async (_, op) => {
+    const { bound } = bind(op, () => json(mapboxError(echo), 503, { 'retry-after': '30' }));
+    const error = await canonicalFailureOf(bound.call(signal()));
+    expect(error.kind).toBe('UPSTREAM');
+    expect(error.retryAfterSeconds).toBeUndefined();
+  });
+
+  it.each(ALL.map((op) => [op.name, op] as const))(
+    '%s: 422 is REJECTED_INPUT; no vendor body reason is read (a Google-style bad-key body stays status-classified)',
+    async (_, op) => {
+      expect((await canonicalFailureOf(bind(op, () => json(mapboxError(echo), 422)).bound.call(signal()))).kind).toBe('REJECTED_INPUT');
+      const googleish = { error: { details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID', domain: 'googleapis.com' }] } };
+      expect((await canonicalFailureOf(bind(op, () => json(googleish, 400)).bound.call(signal()))).kind).toBe('REJECTED_INPUT');
+    },
+  );
+
+  it('no route and a vanished place are NO_RESULT (not provider failures); an incomplete route is MALFORMED', async () => {
+    for (const body of [mapboxError(echo, 'NoRoute'), { code: 'NoSegment', routes: [] }, { code: 'Ok', routes: [] }]) {
+      expect((await canonicalFailureOf(bind(OPS.directions, () => json(body)).bound.call(signal()))).kind).toBe('NO_RESULT');
+    }
+    const gone = await canonicalFailureOf(bind(OPS.retrieve, () => json(mapboxError(echo), 404)).bound.call(signal()));
+    expect([gone.code, gone.kind]).toEqual(['NOT_FOUND', 'NO_RESULT']);
+    const empty = await canonicalFailureOf(bind(OPS.retrieve, () => json({ type: 'FeatureCollection', features: [] })).bound.call(signal()));
+    expect([empty.code, empty.kind]).toEqual(['NOT_FOUND', 'NO_RESULT']);
+    const incomplete = await canonicalFailureOf(bind(OPS.directions, () => json({ code: 'Ok', routes: [{ duration: 10 }] })).bound.call(signal()));
+    expect([incomplete.code, incomplete.kind]).toEqual(['INCOMPLETE_ROUTE', 'MALFORMED']);
+  });
+
+  it.each(ALL.map((op) => [op.name, op] as const))(
+    '%s: malformed ⇒ MALFORMED; deadline, cancellation and a stalled body ⇒ TIMEOUT; connect failure ⇒ CONNECT',
+    async (_, op) => {
+      for (const [, body] of MALFORMED_BODIES) expect((await canonicalFailureOf(bind(op, body).bound.call(signal()))).kind).toBe('MALFORMED');
+      expect((await canonicalFailureOf(bind(op, () => never()).bound.call(AbortSignal.timeout(25)))).kind).toBe('TIMEOUT');
+      const controller = new AbortController();
+      const pending = bind(op, () => never()).bound.call(controller.signal);
+      controller.abort();
+      expect((await canonicalFailureOf(pending)).kind).toBe('TIMEOUT');
+      const down = await canonicalFailureOf(bind(op, connectFailure).bound.call(signal()));
+      expect(down.kind).toBe('CONNECT');
+      expectNoLeak(down, [...SECRETS, 'api.mapbox.com']);
+      const deadline = AbortSignal.timeout(25);
+      expect((await canonicalFailureOf(bind(op, () => stallingBody(deadline)).bound.call(deadline))).kind).toBe('TIMEOUT');
+    },
+  );
 });

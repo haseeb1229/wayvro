@@ -576,8 +576,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_ARCHITECTURE.md",
-      "bytes": 63562,
-      "sha256": "67a1851df6218b3583e717f70e655e8dae754664f70aed25999482876d2689eb"
+      "bytes": 64266,
+      "sha256": "73bcad3f5ae50b5bfe019b2153df223c57abd66b873ac494c172425757a974ce"
     },
     {
       "path": "docs/phase3/PHASE3_CATALOG_ZONES_AND_DATA_MODEL.md",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 67926,
-      "sha256": "3265aa001d8e9e0c5be96ee333b6b8a07eca329b4cc49e02853e3c74e249bb40"
+      "bytes": 68052,
+      "sha256": "054d29aec27f5d2c5327aa996275d091a529d050cb421eadec781033b379b8cd"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -651,8 +651,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 37029,
-      "sha256": "92e62e151c6a8adf10d5b23b234e110ad899bec864ff4833680d3591b1c6b23d"
+      "bytes": 37344,
+      "sha256": "5037761a5a6849130aa91eccff4d561450dc70c5675c074aaa5d0d4489439a3e"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",
@@ -691,18 +691,18 @@
     },
     {
       "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",
-      "bytes": 7051,
-      "sha256": "c2cee7a68ddbac2bd5fca3a9948bfb0692e5fefc47546c6d01209dc5e139e7a9"
+      "bytes": 7684,
+      "sha256": "10526d99ef142f0d62d3f8b648b50032cdf50419073deb8a83e471d41f487867"
     },
     {
       "path": "docs/phase3/evidence/laptop/FA09_AUTOMATED_PREREVIEW.md",
-      "bytes": 14396,
-      "sha256": "41f34e18f9ed60a8d19013cffdc30c9324a2a317835c370ccf433f850c56fccc"
+      "bytes": 14351,
+      "sha256": "4dc2172a76061a1cae8994ec37d49c16d400fdd411dc6fa9019c6a6b261a11bb"
     },
     {
       "path": "docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md",
-      "bytes": 36427,
-      "sha256": "ef29665e6e817b0e9e7ef4040501fba2216a8627f1885f298ace3d932f86abd8"
+      "bytes": 53700,
+      "sha256": "c2c066c83756474b53dce98f9fed1d7eb9c6b4bb231da5374b971587c7a093ab"
     },
     {
       "path": "docs/phase3/evidence/laptop/SP01_EMULATOR_SUPPLEMENT.md",
@@ -711,13 +711,13 @@
     },
     {
       "path": "docs/phase3/evidence/laptop/SP02_LOW_RAM_AVD_SUPPLEMENT.md",
-      "bytes": 10707,
-      "sha256": "da6502e591a191af9d67c11775489319db3ab1fc70e373d35e80eed901f64ab7"
+      "bytes": 15511,
+      "sha256": "728285f1c0a792ecdf0a8a3ae36b4e25cb0caf17044f3094fcf5e098d129096b"
     },
     {
       "path": "docs/phase3/evidence/laptop/SP04_OPEN_STACK_DESK_BENCHMARK.md",
-      "bytes": 14925,
-      "sha256": "820bf6f648d23b49ec03a03325c1f3691cea0e7efa99d416f8abccbbe0827006"
+      "bytes": 25576,
+      "sha256": "ef7e531296dfc9a4e88a97009ef1417b13fdba271abc4f916cf707d8f5e329d5"
     },
     {
       "path": "docs/requirements-register.json",

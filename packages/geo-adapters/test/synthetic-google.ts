@@ -96,6 +96,31 @@ export function googleApiError(code: number, status: string, message: string): R
   };
 }
 
+/**
+ * Google API error model body with one `google.rpc.ErrorInfo` detail carrying a documented `google.api.ErrorReason`
+ * (e.g. an invalid key documented as HTTP 400 INVALID_ARGUMENT + API_KEY_INVALID). The message is a test sentinel.
+ */
+export function googleApiErrorInfo(
+  code: number,
+  status: string,
+  reason: string,
+  message: string,
+  domain = 'googleapis.com',
+  type = 'type.googleapis.com/google.rpc.ErrorInfo',
+): Record<string, unknown> {
+  return {
+    error: {
+      code,
+      message,
+      status,
+      details: [
+        { '@type': 'type.googleapis.com/google.rpc.Help', links: [{ description: message, url: 'https://console.invalid/' }] },
+        { '@type': type, reason, domain, metadata: { service: 'synthetic.googleapis.com', consumer: message } },
+      ],
+    },
+  };
+}
+
 /** Canonical google.rpc status names for the HTTP statuses the contract tests exercise. */
 export const GOOGLE_RPC_STATUS: Readonly<Record<number, string>> = {
   400: 'INVALID_ARGUMENT',

@@ -8,7 +8,8 @@
 
 **Date:** 2026-10-16 · **Branch:** `phase-3/maps-quotes-unified-ux` (HEAD `ef3cbd0`, uncommitted working tree) ·
 **Agent:** Claude Code (self-audit, not independent verification) · **Scope:** CON-P3-14 optional open-stack
-profile; harness desk mode.
+profile; harness desk mode. · **Updated 2026-10-17** (HEAD `9647d80`, uncommitted): §6a airport hard-gate root
+cause and priority C11 field list; §1–§6 results unchanged.
 
 ## 1. What ran, what did not
 
@@ -128,7 +129,8 @@ Findings:
   fabricated Pakistani address). Spec corrected to "Lahore Fort", list re-issued as v2, run repeated.
 - **F4** OSRM routes the airport legs over `access=private` service roads next to the airport end point (the desk
   point is the airport polygon's vertex mean, i.e. airside). OSRM's car profile permits restricted access at the start
-  or end of a route; whether real terminal pickups avoid this needs the C11 field cases.
+  or end of a route; whether real terminal pickups avoid this needs the C11 field cases. Root cause established on
+  2026-10-17 — see §6a (endpoint-driven; not a profile defect; hard gate stays FAIL).
 
 ### Route-critical hard gate (§7.1, unchanged `score` logic)
 
@@ -148,6 +150,102 @@ data (route distance error, ETA error, reverse usefulness) stay PENDING; G1–G3
 |---|---|---|
 | `desk-degraded-stop` (repeats 10, concurrency 2) | `docker stop` Nominatim at +10 s, restarted at +29 s | 2,446 breaker-countable failures (NETWORK 2,436, SERVER_ERROR 8 while stopping); search/prefix/reverse answers after the stop are failures — the harness recorded 0 hits, never a substitute answer; OSRM unaffected (240/240 OK). The run finished (+21 s) before Nominatim returned, so no in-run recovery. |
 | `desk-degraded-pause` (repeats 10, concurrency 1) | `docker pause` Nominatim at +20 s for 15 s, then unpause | 11 consecutive TIMEOUTs (1.5 s autocomplete timeout) during the pause, all breaker-countable; 1,631 OK calls after; metrics recovered (top-5 36/127, forward top-1 21/55, reverse 48/55). 11 ≥ the "5 consecutive timeouts" open rule of architecture §5.4 — the gateway breaker itself was NOT exercised. |
+
+## 6a. Airport hard-gate root cause (2026-10-17)
+
+Founder correction §7: root-cause the C11 failure without waiving the gate and without changing desk data. Same
+stack and data as §1–§3 (OSRM v26.10.0 container restarted from the kept `wayvro-geo-bench-osrm` volume; Lahore clip
+of the 2026-10-15 Geofabrik extract — **© OpenStreetMap contributors, ODbL**). DESK — NOT FIELD.
+
+**Method.** (1) The four C11 legs were re-run against the local OSRM with `steps=true&annotations=nodes`; distances
+and ETAs reproduced the `desk-main` run exactly (7.83 / 10.80 / 14.10 / 35.58 km; 13.3 / 14.1 / 20.0 / 34.9 min).
+(2) `tools/geo-bench/desk-osm/route-ways.py` (pyosmium 3.7 from the pinned Nominatim image) mapped every OSRM node
+pair of each leg to its OSM way (whole clip: 0 unmapped pairs) and tested whether the ways at each route end connect
+to the network without `access=private/no` ways; OSRM `/nearest` at the desk airport point gave the snapped segment.
+(3) The profile actually compiled into the graph (`/opt/car.lua` + `/opt/lib/*.lua` copied out of the pinned image;
+`car.lua` md5 `29bd66d11cb501f4ce439b3130505748`, 628 lines) was read.
+
+**Profile behaviour (pinned OSRM v26.10.0 `car.lua`, unmodified).**
+- `access=private` on a `highway=service` way is in `restricted_access_tag_list` and `service` is in
+  `restricted_highway_whitelist`, so `WayHandlers.access` marks the way **restricted** (class `restricted`) instead
+  of inaccessible. `process_turn` (weight `routability`) gives any turn **from a non-restricted onto a restricted
+  segment** the maximum turn weight; leaving a restricted segment is not penalised. Restricted ways are therefore used
+  only when a route end lies in a part of the network reachable solely through them (destination-only semantics, soft
+  penalty — not a hard ban). Observed: weight − duration ≈ 3,270–3,300 s on all four official legs (one restricted
+  entry each) vs 0–26 s on the diagnostic legs below.
+- `WayHandlers.startpoint`: a `highway=service` way with `access=private` is **not a snapping candidate**
+  (`service_access_tag_blacklist`), so an end point inside the private airfield road cluster snaps to the nearest
+  *untagged* way, however far.
+- `process_node`: a node with `barrier=gate` + `access=private` is not an obstacle (the access branch wins and the
+  60 s gate penalty is skipped); the restriction is carried only by the way tags. No route here depends on that.
+- Ways without a `highway`/`route` tag (e.g. `aeroway=*` runways/taxiways/aprons) are never routable; no segment of
+  the four legs is an aeroway.
+
+**Findings shared by all four legs (they use the same airport end).** The desk airport point (LHR-DESK-045) is the
+vertex mean of the aerodrome polygon, way 822652039 (`aeroway=aerodrome`, `iata=LHE`): it lies **inside** the
+aerodrome polygon, on the airfield, ≈ 0.9 km from the passenger terminal building (way 371636667, `aeroway=terminal`)
+and ≈ 0.6 km from the nearest snappable road. OSRM snaps it (614 m) to way **1488381974** (`highway=service`, **no
+access tag**, version 1 of 2026-03-12, all 4 nodes inside the aerodrome polygon), a stub attached only to the
+private perimeter road. Without `access=private/no` ways that stub connects to nothing (component of 1 way), so the
+route must leave/enter through the private chain below — exactly the profile's destination-only case. The private
+ways appear **only** at the airport end (pairs 0–10 of 181/261/528 for the outbound legs, 312–322 of 322 for the
+inbound leg); nowhere else on these legs is a restricted way used, and the §6 extract check found no mid-route private way on
+the other 20 legs.
+
+| Route | Airport-end ways used (in travel order from the airport; reversed for 068) — key tags | Profile behaviour | Class | Action |
+|---|---|---|---|---|
+| LHR-DESK-066 airport → Liberty | snap stub **1488381974** `highway=service` (no access tag; inside aerodrome 822652039) → **232121109** `highway=service, access=private` (perimeter road, 141 nodes) → **105840612** `highway=service, access=private` → **946418464** `highway=service, access=private` through node 8760783611 `barrier=gate, access=private` (on the aerodrome boundary) → 946418463 `highway=service` through node 8760783610 `barrier=gate, access=yes` → 233360083 `highway=service` → Aziz Bhatti Road (231788595, `highway=secondary`) | restricted ways entered once (max turn weight), only because the start is in a private-only component; no shortcut | **C** (primary: airside polygon-centroid end point) + **B** (contributing: stub 1488381974 untagged inside the private cluster, which is what makes it the snap target) | no profile change; no data change; FIELD_REQUIRED (FL-AIR-1…4) |
+| LHR-DESK-067 airport → Lahore Junction | identical airport-end chain (1488381974 → 232121109 → 105840612 → 946418464 → 946418463 → 233360083 → Aziz Bhatti Road) | same | **C** + **B** | same |
+| LHR-DESK-068 DHA Phase V → airport | Aziz Bhatti Road (231795208) → 319309034 `secondary_link` → 231795207 `service` → 233360083 → 946418463 → **946418464** (private, gate 8760783611) → **105840612** (private) → **232121109** (private) → stub 1488381974 | restricted entry penalised once, only because the destination is in the private-only component | **C** + **B** | same |
+| LHR-DESK-069 airport → Bahria Town | identical airport-end chain as 066 | same | **C** + **B** | same |
+
+Not class **A**: the map data does mark 232121109 / 105840612 / 946418464 (and gate 8760783611) private, but the
+profile does not route *through* them — it reaches an end point that the desk case placed behind them. A
+conservative profile change (e.g. making `access=private` service ways inaccessible) would not be a fix: the airfield
+end point would then snap elsewhere or fail, and genuine private-gated destinations (societies, campuses) would
+break. **No evaluation profile was created, OSRM was not rebuilt, and the 79-case benchmark was not re-run** (nothing
+in the stack changed; the official §6 numbers stand).
+
+**Diagnostic only (does NOT replace the official desk result).** `DIAG-LANDSIDE-FORECOURT`: the same four legs with
+the airport end moved to the middle vertex of way 231693990 (`highway=unclassified, oneway=yes`, name "Departure /
+Short stay", outside the aerodrome polygon, landside of terminal 371636667). Also an OSM-derived (circular) point and a
+drop-off lane, not a verified pickup point.
+
+| Leg (diagnostic) | Distance | ETA | Restricted ways | Wrong-way ways | Classes on route |
+|---|---|---|---|---|---|
+| DIAG-066 | 14.35 km | 20.2 min | 0 | 0 | — |
+| DIAG-067 | 15.59 km | 19.0 min | 0 | 0 | motorway |
+| DIAG-068 | 12.68 km | 14.3 min | 0 | 0 | motorway, toll |
+| DIAG-069 | 41.89 km | 40.1 min | 0 | 0 | motorway, toll, tunnel |
+
+With a landside end point the access violation disappears entirely (weight = duration, no `restricted` class), so the
+failure is **endpoint-driven**. Distances differ from the official legs by +6.5 / +4.8 / −1.4 / +6.3 km because the
+real terminal access is on the opposite (east) side of the airfield from the northern private gate the official legs
+use — another reason no number from the official airport legs may be used as an airport ETA/fare reference.
+
+**Final S3 desk status: route-critical hard gate FAIL — 4 unresolved CRITICAL `PRIVATE_OR_INACCESSIBLE`
+(LHR-DESK-066…069, S3-osrm), eligibility INELIGIBLE on desk data, FIELD_REQUIRED.** `route-review.desk-reviewed.csv`
+is unchanged (no `cleared=Y`). The diagnostic is not a §7.1 clearing action; clearing needs
+`GROUND_TRUTH_CORRECTED` from field C11 points (or a founder-signed mitigation). Nominatim-as-autocomplete stays
+desk-only; nothing is frozen (ADR-006 / ADR-046 OPEN).
+
+### Priority SP-04 Lahore field list — airport (C11)
+
+| ID | What to capture in the field | Why (OSM ids from the 2026-10-15 extract) |
+|---|---|---|
+| FL-AIR-1 | GPS-fixed rider **pickup** point(s) actually used/permitted for ride-hailing at the passenger terminal (arrivals kerb, designated ride-hailing/parking area), with signage photos; and the departures drop-off point | Replaces the airside desk point (aerodrome 822652039 vertex mean). Candidate landside OSM ways: 231786847 "Arrivals / Short Stay", 231786849 "Taxis", 231786851 "Long Parking", 231693990 "Departure / Short stay" — unverified |
+| FL-AIR-2 | Drive the four C11 legs (to/from Liberty, Lahore Junction, DHA Phase V, Bahria Town) from/to the FL-AIR-1 points with GPX, odometer and drive minutes; note toll plaza / entry fee | Official legs use the northern private gate; the diagnostic reaches the terminal from the east side (6.5 / 4.8 / −1.4 / 6.3 km different). Toll-lane ways 231786852–231786855 exist in OSM near the forecourt but none carries  and the diagnostic did not use them — real distance, ETA and any entry fee/fare impact need ground truth |
+| FL-AIR-3 | Observe whether the northern gate chain is closed to the public: node 8760783611 (`barrier=gate, access=private`) on ways 946418464 / 105840612 / 232121109, exit via gate node 8760783610 (`access=yes`) and Hajj Terminal (233360085) area to Aziz Bhatti Road | Confirms the OSM `access=private` tagging is correct (expected: staff/airside only) |
+| FL-AIR-4 | Check whether service stub 1488381974 (no access tag, inside the aerodrome perimeter) is airside | If airside, the OSM data is under-tagged; any correction is a normal OSM community edit after survey — never a Wayvro-local data patch |
+
+Product note (input to SP-04/ADR-006, not a decision): airport and other gated-venue pickups need curated pickup
+points; a geocoder centroid of a large polygon is not a routable pickup.
+
+Reproduce: OSRM up (`$C up -d osrm`), save the four `/route` responses with `steps=true&annotations=nodes&overview=full`,
+then `MSYS_NO_PATHCONV=1 docker run --rm --memory 2g --entrypoint python3 -v <data>:/data:ro -v <out>:/rca -v
+<repo>/tools/geo-bench/desk-osm:/scripts:ro <pinned Nominatim image> -I /scripts/route-ways.py
+/data/lahore-261015.osm.pbf /rca/route-ways-full.json 74.10,31.25,74.62,31.72 /rca/route-066.json …`. Local outputs:
+`evidence-local/sp04/airport-rca/` (route responses, diagnostic responses, way mapping, copy of the pinned profile).
 
 ## 7. Limitations
 
@@ -171,7 +269,8 @@ data (route distance error, ETA error, reverse usefulness) stay PENDING; G1–G3
 ## 9. Local artefacts (git-ignored; not committed)
 
 - `evidence-local/sp04/desk-main/` (`sp04-aggregate.{json,md}`, desk review), `desk-main-auto-review/`,
-  `desk-degraded-stop/`, `desk-degraded-pause/`, `desk-main-route-rows.csv`, `desk-oneway-private-review.json`.
+  `desk-degraded-stop/`, `desk-degraded-pause/`, `desk-main-route-rows.csv`, `desk-oneway-private-review.json`,
+  `airport-rca/` (§6a: official and diagnostic C11 route responses, way mapping, copy of the pinned `car.lua`).
 - `tools/geo-bench/.local/`: extract + clip + md5, exports, working CSVs (v1 superseded, v2), run folders with raw
   responses (delete within 30 days), logs, env files.
 - Containers stopped (not removed), volumes kept: `wayvro-geo-bench-nominatim`, `wayvro-geo-bench-osrm`. Removal:

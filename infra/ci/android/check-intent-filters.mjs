@@ -7,6 +7,10 @@
  *    allowlisted with exactly its permission and intent filters;
  *  - no application intent filter may carry a <data> element (scheme/host/path/mimeType) or the BROWSABLE category, so
  *    no external URL scheme (e.g. the expo-dev-client `exp+<slug>`) and no app/universal link reaches a release build.
+ *  - no service may declare android:foregroundServiceType unless component-allowlist.json `foregroundServices` lists it:
+ *    Phase 3 has no foreground service (P3.5 / FA-02: foreground-only Rider location), so e.g. expo-location's
+ *    LocationTaskService (type location) must be removed from the release merged manifest
+ *    (apps/wayvro-mobile/plugins/no-location-task-service.mjs).
  * <queries> entries (package-visibility declarations, not handlers) are ignored.
  *
  * Usage: node infra/ci/android/check-intent-filters.mjs --aab app-release.aab --bundletool bundletool-all.jar [--report out.json]
@@ -56,6 +60,7 @@ export function checkManifest(xml, policy) {
   if (!applicationId) throw new Error('could not read package name from manifest');
   const sub = (n) => n.replace('${applicationId}', applicationId);
   const allowed = new Map(policy.exported.map((e) => [`${e.kind}:${sub(e.name)}`, e]));
+  const allowedFgs = new Set((policy.foregroundServices ?? []).map((e) => sub(e.name)));
   const components = [];
   const problems = [];
   for (const application of childrenNamed(manifest, 'application')) {
@@ -76,6 +81,9 @@ export function checkManifest(xml, policy) {
         for (const d of f.data) problems.push(`DATA ${id}: intent filter declares <data ${JSON.stringify(d)}> (no external scheme/link in release)`);
         if (f.categories.includes('android.intent.category.BROWSABLE')) problems.push(`BROWSABLE ${id}: browsable intent filter in a release build`);
       }
+      const fgsType = c.attrs['android:foregroundServiceType'];
+      if (c.name === 'service' && fgsType !== undefined && !allowedFgs.has(name))
+        problems.push(`FOREGROUND-SERVICE ${id}: declares foregroundServiceType=${fgsType}; not in component-allowlist.json foregroundServices`);
       if (!exported) continue;
       const entry = allowed.get(id);
       if (!entry) {
@@ -146,6 +154,15 @@ function selfTest() {
       pass: false,
     },
     { name: 'profile installer without its permission', xml: app(main() + profile('')), pass: false },
+    {
+      name: 'non-exported location foreground service (expo-location LocationTaskService)',
+      xml: app(
+        main() +
+          profile() +
+          '<service android:exported="false" android:foregroundServiceType="location" android:name="expo.modules.location.services.LocationTaskService"/>',
+      ),
+      pass: false,
+    },
   ];
   let failed = 0;
   for (const c of cases) {

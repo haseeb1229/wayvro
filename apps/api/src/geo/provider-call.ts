@@ -7,8 +7,13 @@
  *  - Retry: only after a CONNECT failure, only when `retries` allows it and the remaining deadline still covers a full
  *    SKU timeout; never after a timeout, 5xx, quota or malformed answer. Each attempt consumes budget (spend is
  *    bounded per attempt, not per request).
- *  - Breaker accounting: timeout / connect / 5xx / malformed = failure; provider quota (429-equivalent) and rejection of
- *    our own validated input = NEUTRAL (quota opens a per-SKU cool-down instead; FG-05).
+ *  - Breaker accounting: timeout / connect / 5xx / malformed / credential-or-configuration refusal (AUTH) = failure;
+ *    provider quota (429-equivalent), rejection of our own validated input and a healthy "no such place / no route"
+ *    answer (NO_RESULT) = NEUTRAL (quota opens a per-SKU cool-down instead; FG-05).
+ *  - Quota cool-down = the provider's Retry-After (`GeoProviderError.retryAfterSeconds`) when it is a finite,
+ *    non-negative number, else QUOTA_COOLDOWN_DEFAULT_SECONDS; always clamped to [1, 3600] s.
+ *  - Candidate adapters (@wayvro/geo-adapters) throw `GeoAdapterError`, a GeoProviderError subclass whose `kind` is
+ *    already canonical; this module reads only `kind` / `retryAfterSeconds`, never an adapter-specific field.
  *  - Errors are classified by type only: an adapter message (which may echo the query) is never logged or returned.
  */
 import { GeoProviderError, type GeoAdapterLicence, type GeoProviderFailure } from '@wayvro/provider-interfaces';
@@ -24,6 +29,8 @@ export type ProviderRefusal =
   | 'TIMEOUT'
   | 'PROVIDER_ERROR'
   | 'REJECTED_INPUT'
+  /** The provider answered that the place no longer resolves / no route exists (not a provider failure). */
+  | 'NO_RESULT'
   | 'DEADLINE'
   | 'LIMITER_UNAVAILABLE';
 
@@ -56,6 +63,38 @@ export interface CallOptions {
   readonly timeoutMs: number;
   readonly retries: number;
   readonly meter: Meter;
+}
+
+const QUOTA_COOLDOWN_DEFAULT_SECONDS = 60;
+const QUOTA_COOLDOWN_MIN_SECONDS = 1;
+const QUOTA_COOLDOWN_MAX_SECONDS = 3600;
+
+/**
+ * Quota cool-down length: the provider-advised wait when usable, else the default; bounded either way.
+ * @internal exported for unit tests.
+ */
+export function quotaCooldownSeconds(retryAfterSeconds: number | undefined): number {
+  const advised =
+    retryAfterSeconds !== undefined && Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0 ? retryAfterSeconds : QUOTA_COOLDOWN_DEFAULT_SECONDS;
+  return Math.min(QUOTA_COOLDOWN_MAX_SECONDS, Math.max(QUOTA_COOLDOWN_MIN_SECONDS, Math.ceil(advised)));
+}
+
+/** Canonical failure → the refusal the caller sees. */
+function refusalOf(failure: GeoProviderFailure): ProviderRefusal {
+  switch (failure) {
+    case 'TIMEOUT':
+      return 'TIMEOUT';
+    case 'REJECTED_INPUT':
+      return 'REJECTED_INPUT';
+    case 'NO_RESULT':
+      return 'NO_RESULT';
+    case 'CONNECT':
+    case 'UPSTREAM':
+    case 'QUOTA':
+    case 'MALFORMED':
+    case 'AUTH':
+      return 'PROVIDER_ERROR';
+  }
 }
 
 const CONNECT_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'EHOSTUNREACH', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT']);
@@ -166,7 +205,7 @@ export class GeoProviderCaller {
         admission.complete(outcome);
       });
       if (failure === 'CONNECT' && attempt < opts.retries && opts.deadline - this.now().getTime() >= opts.timeoutMs) continue;
-      throw new ProviderRefused(failure === 'TIMEOUT' ? 'TIMEOUT' : failure === 'REJECTED_INPUT' ? 'REJECTED_INPUT' : 'PROVIDER_ERROR');
+      throw new ProviderRefused(refusalOf(failure));
     }
   }
 
@@ -197,7 +236,18 @@ export class GeoProviderCaller {
         complete('FAILURE');
         this.log.error({ signal: 'GEO_PROVIDER_SCHEMA_FAIL', ...meta }, 'geo provider response failed validation');
         return;
-      default:
+      case 'AUTH':
+        // a refused credential/configuration fails every call until an operator acts: error level, breaker failure
+        meter.errors++;
+        complete('FAILURE');
+        this.log.error({ signal: 'GEO_PROVIDER_ERROR', failure, ...meta }, 'geo provider refused the credential or configuration');
+        return;
+      case 'NO_RESULT':
+        // a healthy answer (place gone / no route): no breaker failure, no error count; the span outcome records it
+        complete('NEUTRAL');
+        return;
+      case 'CONNECT':
+      case 'UPSTREAM':
         meter.errors++;
         complete('FAILURE');
         this.log.warn({ signal: 'GEO_PROVIDER_ERROR', failure, ...meta }, 'geo provider call failed');
@@ -230,7 +280,7 @@ export class GeoProviderCaller {
   }
 
   private async coolDown(l: GeoAdapterLicence, retryAfterSeconds: number | undefined): Promise<void> {
-    const seconds = Math.min(3600, Math.max(1, Math.round(retryAfterSeconds ?? 60)));
+    const seconds = quotaCooldownSeconds(retryAfterSeconds);
     try {
       await this.redis.set(this.cooldownKey(l), '1', 'EX', seconds);
     } catch {

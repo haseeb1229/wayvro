@@ -159,3 +159,129 @@ describe('GeoAdapterError', () => {
     }
   });
 });
+
+describe('callJson: canonical errors, Retry-After and documented error reasons (fix 2026-10-17)', () => {
+  const NOW = new Date('2026-10-17T10:00:00Z');
+  function clocked(responder: Parameters<typeof fakeFetch>[0], now: () => Date = () => NOW) {
+    const fake = fakeFetch(responder);
+    return callContext({ providerKey: 'geo-test', fetchImpl: fake.fetchImpl, maxResponseBytes: 4096, now }, 'GEOCODE');
+  }
+  const get = (ctx: ReturnType<typeof clocked>, extra: { errorReason?: (body: unknown) => 'AUTH' | 'QUOTA' | null } = {}) =>
+    failure(callJson(ctx, { method: 'GET', url: URL_WITH_KEY, ...extra }, AbortSignal.timeout(1000)));
+
+  it.each([
+    ['30', 30],
+    ['Sat, 17 Oct 2026 10:00:45 GMT', 45],
+    ['bogus', undefined],
+    ['-1', undefined],
+    ['999999', 3600],
+  ] as const)('429 with Retry-After %j ⇒ QUOTA, retryAfterSeconds %s (server clock injected)', async (header, expected) => {
+    const error = await get(clocked(() => json({ error_message: 'echo SECRET' }, 429, { 'retry-after': header })));
+    expect(error.kind).toBe('QUOTA');
+    expect(error.retryAfterSeconds).toBe(expected);
+    expect(error.message).not.toContain(header);
+  });
+
+  it('the HTTP-date is read against the injected clock, not the process clock', async () => {
+    const later = await get(
+      clocked(
+        () => json({}, 429, { 'retry-after': 'Sat, 17 Oct 2026 10:00:45 GMT' }),
+        () => new Date('2026-10-17T10:00:40Z'),
+      ),
+    );
+    expect(later.retryAfterSeconds).toBe(5);
+  });
+
+  it('defaults to the process clock when none is injected', () => {
+    const before = Date.now();
+    const at = callContext({ providerKey: 'geo-test' }, 'ROUTE').now().getTime();
+    expect(at).toBeGreaterThanOrEqual(before);
+  });
+
+  it('Retry-After on a non-quota status is ignored', async () => {
+    const error = await get(clocked(() => json({}, 503, { 'retry-after': '30' })));
+    expect([error.kind, error.retryAfterSeconds]).toEqual(['UPSTREAM', undefined]);
+  });
+
+  it('errorReason refines 4xx only, falls back to the status on null, and sees undefined for a non-JSON body', async () => {
+    const seen: unknown[] = [];
+    const reason = (body: unknown) => {
+      seen.push(body);
+      return body !== null && typeof body === 'object' && 'auth' in body ? ('AUTH' as const) : null;
+    };
+    expect(
+      (
+        await get(
+          clocked(() => json({ auth: true }, 400)),
+          { errorReason: reason },
+        )
+      ).kind,
+    ).toBe('AUTH');
+    expect(
+      (
+        await get(
+          clocked(() => json({ other: true }, 400)),
+          { errorReason: reason },
+        )
+      ).kind,
+    ).toBe('REJECTED_INPUT');
+    expect(
+      (
+        await get(
+          clocked(() => new Response('<html>', { status: 400 })),
+          { errorReason: reason },
+        )
+      ).kind,
+    ).toBe('REJECTED_INPUT');
+    expect(seen.at(-1)).toBeUndefined();
+    const count = seen.length;
+    expect(
+      (
+        await get(
+          clocked(() => json({ auth: true }, 500)),
+          { errorReason: reason },
+        )
+      ).kind,
+    ).toBe('UPSTREAM');
+    expect(seen).toHaveLength(count);
+  });
+
+  it('a reason that reclassifies to QUOTA picks up Retry-After', async () => {
+    const error = await get(
+      clocked(() => json({}, 403, { 'retry-after': '12' })),
+      { errorReason: () => 'QUOTA' },
+    );
+    expect([error.code, error.kind, error.retryAfterSeconds]).toEqual(['QUOTA', 'QUOTA', 12]);
+  });
+
+  it('an error body that cannot be drained keeps the status classification (reason not consulted)', async () => {
+    let consulted = false;
+    const broken = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.error(new Error('reset'));
+      },
+    });
+    const error = await get(
+      clocked(() => new Response(broken, { status: 401 })),
+      {
+        errorReason: () => {
+          consulted = true;
+          return 'QUOTA';
+        },
+      },
+    );
+    expect([error.code, error.kind, consulted]).toEqual(['AUTH', 'AUTH', false]);
+  });
+
+  it('NETWORK before a status is CONNECT (retryable once by the gateway); after a status it is UPSTREAM', async () => {
+    const down = await get(clocked(() => Promise.reject(new TypeError('fetch failed'))));
+    expect([down.code, down.kind]).toEqual(['NETWORK', 'CONNECT']);
+    const broken = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.error(new Error('reset'));
+      },
+    });
+    const reset = await get(clocked(() => new Response(broken, { status: 200 })));
+    expect([reset.code, reset.kind]).toEqual(['NETWORK', 'UPSTREAM']);
+  });
+});

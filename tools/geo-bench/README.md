@@ -161,7 +161,10 @@ demo/community servers (refused by the config loader).
    (`GEO_BENCH_NOMINATIM_SEARCH=desk` adds the desk-only Nominatim `/search` comparison, labelled NOT autocomplete,
    for runs without Photon), then `score --desk --review <run>/route-review.desk-auto.csv` (automated T3-06 review)
    or a reviewed copy. `desk-osm/oneway-check.mjs` checks local OSRM routes against the extract's one-way and
-   private/no-access ways (input to the desk route review).
+   private/no-access ways (input to the desk route review). `desk-osm/route-ways.py` (pyosmium, pinned Nominatim
+   image, `python3 -I`) maps saved OSRM route responses (`annotations=nodes`) to OSM way ids + access tags and checks
+   whether the ways at each route end connect to the network without `access=private/no` ways (used for the
+   2026-10-17 airport hard-gate root cause; output stays local).
 6. Stop, keep data: `$C stop`. Remove only when no longer needed: `$C down` then
    `docker volume rm wayvro-geo-bench-nominatim wayvro-geo-bench-osrm wayvro-geo-bench-photon wayvro-geo-bench-valhalla`
    (never a prune), and delete `tools/geo-bench/.local/data/`.

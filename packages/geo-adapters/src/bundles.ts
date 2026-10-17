@@ -22,6 +22,8 @@ import { OsrmRoutingAdapter, ValhallaRoutingAdapter } from './open/routing.js';
 export interface BundleFactoryOptions {
   readonly providerKey: string;
   readonly fetchImpl?: FetchLike;
+  /** Server clock (Retry-After HTTP-dates, Google Routes departure time); defaults to the process clock. */
+  readonly now?: () => Date;
 }
 
 export interface GeoBundleAdapters {
@@ -31,8 +33,12 @@ export interface GeoBundleAdapters {
   readonly routing: RoutingAdapter;
 }
 
-function base(options: BundleFactoryOptions): { providerKey: string; fetchImpl?: FetchLike } {
-  return options.fetchImpl === undefined ? { providerKey: options.providerKey } : { providerKey: options.providerKey, fetchImpl: options.fetchImpl };
+function base(options: BundleFactoryOptions): { providerKey: string; fetchImpl?: FetchLike; now?: () => Date } {
+  return {
+    providerKey: options.providerKey,
+    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  };
 }
 
 /** S1 Google: Places Autocomplete + Place Details, Geocoding (forward + reverse), Routes. Requires a Google renderer. */

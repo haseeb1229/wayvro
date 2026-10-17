@@ -270,7 +270,8 @@ export class GeoGateway {
       }
       const timeout = this.deps.policy.GEO_GEOCODE_TIMEOUT_MS;
       const deadline = started + timeout + this.deps.policy.GEO_RETRY_SLACK_MS;
-      // a provider that no longer knows the place rejects the id: PLACE_REF_STALE, the client re-searches
+      // a provider that no longer knows the place rejects the id (REJECTED_INPUT) or answers NO_RESULT:
+      // PLACE_REF_STALE, the client re-searches
       const resolved = await this.cached(
         ctx,
         { p: claims.placeId, l: q.locale },
@@ -417,7 +418,8 @@ export class GeoGateway {
 
   /**
    * Steps 4–9 for one SKU: fresh cache hit, else provider call (validated by `schema`), else — when allowed — a stale
-   * entry; writes successful results back when the licence permits caching.
+   * entry; writes successful results back when the licence permits caching. `onRejectedInput` maps the provider's own
+   * answers (REJECTED_INPUT, NO_RESULT) to the client error of the endpoint.
    */
   private async cached<T extends object>(
     ctx: CallContext,
@@ -455,13 +457,15 @@ export class GeoGateway {
       return result;
     } catch (e) {
       if (e instanceof ProviderRefused) {
-        if (serveStale && entry?.state === 'STALE' && e.reason !== 'LIMITER_UNAVAILABLE' && e.reason !== 'REJECTED_INPUT') {
+        // a rejected input or a healthy "no result" answer is the provider's word, never masked by a stale entry
+        const answered = e.reason === 'REJECTED_INPUT' || e.reason === 'NO_RESULT';
+        if (serveStale && entry?.state === 'STALE' && e.reason !== 'LIMITER_UNAVAILABLE' && !answered) {
           ctx.meter.cacheHits++;
           ctx.cacheStatus = 'STALE_SERVED';
           this.deps.log.warn({ signal: 'GEO_STALE_SERVED', ...meta, refusal: e.reason }, 'provider unavailable; stale geo entry served');
           return { value: entry.value, fetchedAt: entry.fetchedAt };
         }
-        throw e.reason === 'REJECTED_INPUT' ? onRejectedInput() : refusalError(e.reason);
+        throw answered ? onRejectedInput() : refusalError(e.reason);
       }
       throw e;
     }

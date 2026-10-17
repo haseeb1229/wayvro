@@ -75,8 +75,16 @@ export function createWayvroClient(deps: WayvroClientDeps) {
 
   /** Bearer call with one single-flight refresh + one retry on 401. */
   async function authed<T>(spec: RequestSpec<T>): Promise<HttpResult<T>> {
-    const token = session.accessToken();
+    let token = session.accessToken();
     if (token === null) throw new ApiError('session-expired');
+    // SP02-F1: a token already past its server-issued expiry at the first call of this process is refreshed first (the
+    // same single-flight refresh as after a 401), saving the request that could only answer 401.
+    if (session.refreshDueAtFirstUse((http.now ?? Date.now)() + http.clock.offsetMs)) {
+      const early = await session.refreshAfterUnauthorized(token);
+      const fresh = session.accessToken();
+      if (early === 'expired' || fresh === null) throw new ApiError('session-expired');
+      token = fresh;
+    }
     try {
       return await send(http, { ...spec, accessToken: token });
     } catch (error) {

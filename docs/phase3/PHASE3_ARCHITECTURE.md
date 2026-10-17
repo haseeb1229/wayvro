@@ -220,6 +220,7 @@ The `POST /v1/quotes` latency budget (p95 ≤ 800 ms, p99 ≤ 1,500 ms on a rout
 | Open duration | 30 s, then HALF_OPEN |
 | Half-open | up to 3 probe calls; all succeed ⇒ CLOSED; any failure ⇒ OPEN again |
 | Counted as failure | timeout, connect error, 5xx, 429 from provider, normalisation error; NOT counted: 4xx caused by our own validated input (logged as `GEO_ADAPTER_CONTRACT_ERROR`, investigated) |
+| Canonical failure kinds (implemented, 2026-10-17) | Adapters throw `GeoAdapterError`, a `GeoProviderError` subclass whose `kind` is fixed by one exhaustive table (`packages/geo-adapters/src/errors.ts`); the gateway reads `kind` only. Failure (breaker): `TIMEOUT`, `CONNECT` (the only kind retried, once), `UPSTREAM`, `MALFORMED`, `AUTH` (credential/configuration; never retried, no cool-down). Neutral: `QUOTA` (cool-down = the provider's `Retry-After` when valid, clamped to 1–3600 s, else 60 s), `REJECTED_INPUT`, `NO_RESULT` (place gone / no route; refusal `NO_RESULT`, place resolution answers `PLACE_REF_STALE`). Evidence: `docs/phase3/evidence/laptop/PROVIDER_ACCOUNT_FREE_CONTRACTS.md` §8. |
 | Signals | `GEO_BREAKER_OPENED`, `GEO_BREAKER_HALF_OPEN`, `GEO_BREAKER_CLOSED` (log signals with providerKey/sku only) |
 
 ### 5.5 Lahore address formatter

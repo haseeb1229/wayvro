@@ -21,7 +21,8 @@
           "isIosBackgroundLocationEnabled": false
         }
       ],
-      "./plugins/spike-manifest.mjs"
+      "./plugins/spike-manifest.mjs",
+      "./plugins/spike-proguard.mjs"
     ],
     "android": {
       "package": "dev.wayvro.spike.sp01",

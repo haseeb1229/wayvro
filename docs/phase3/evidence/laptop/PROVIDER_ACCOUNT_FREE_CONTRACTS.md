@@ -220,3 +220,127 @@ durations are wall-clock and not performance evidence.
 | Pricing commitments (the `MICRO_USD_PER_CALL` values are planning-time ESTIMATES read 2026-10-12; no tier, discount or commitment is assumed) | LEGAL_COMMERCIAL_REQUIRED |
 
 Nothing in this document claims real-provider verification, production readiness or an ADR-006 decision.
+
+## 8. Fix (2026-10-17) — findings 1–3 closed in repository code (account-free evidence only)
+
+**Trigger:** founder correction §4 (a repository-owned defect). **Branch/HEAD at run time:**
+`phase-3/maps-quotes-unified-ux` @ `9647d80` (changes uncommitted; the lead commits). No provider account, key or
+network call was used; no adapter is bound by any composition root (ADR-006 stays OPEN-SPIKE). Nothing below is SP-04
+evidence or real-provider conformance.
+
+### 8.1 Design: one translation boundary, inside the error type
+
+`GeoAdapterError` now **extends** the canonical `GeoProviderError` (`@wayvro/provider-interfaces`). Its constructor
+translates the detailed adapter `code` (+ HTTP status) into the canonical `kind`, once, through the total table
+`toGeoProviderFailure` (`packages/geo-adapters/src/errors.ts`; a `Record` over every code, so a new adapter code without
+a canonical mapping does not compile). Every adapter failure is therefore a canonical error by construction; the
+gateway's `classifyFailure` (`instanceof GeoProviderError` → `kind`) needs no adapter knowledge, and `apps/api` still
+does not depend on `@wayvro/geo-adapters` (dependency-cruiser `geo-adapters-composition-only` unchanged).
+
+Why this rather than a `toGeoProviderError(e)` wrapper at each port method: a wrapper must be remembered in every method
+of every adapter (10 Google/Mapbox operations, the open-stack adapters and the dev-only SP-04 harness's own Nominatim
+port), and forgetting one silently reintroduces the defect; it would also discard the detailed `code`, `httpStatus` and
+`countsAsProviderFailure` that the 329 existing tests and `tools/geo-bench` (SP-04 accounting, not touched here) read.
+The subclass keeps that public surface unchanged (constructor signature, `code`, `httpStatus`,
+`countsAsProviderFailure`, `cause` option, message text) and adds `kind` / `retryAfterSeconds`.
+`countsAsProviderFailure` is now documented as SP-04 benchmark accounting only; the breaker/cool-down policy is the
+gateway's, from `kind`.
+
+**Additive taxonomy change** (`packages/provider-interfaces/src/geo-errors.ts`): `GeoProviderFailure` gains `AUTH`
+(credential / project configuration refused: breaker FAILURE, never retried, no cool-down, error-level
+`GEO_PROVIDER_ERROR` with `failure: AUTH`) and `NO_RESULT` (healthy "place gone / no route" answer: breaker NEUTRAL, not
+retried, not counted as an error, never cached; refusal `NO_RESULT`). No kind was renamed or removed. `GeoProviderError`
+gains an optional `ErrorOptions` third parameter and its `name` is typed `string` so subclasses can name themselves.
+Exhaustive handling updated in `apps/api/src/geo/provider-call.ts` (`recordFailure` lists every kind, `refusalOf` is an
+exhaustive switch, `ProviderRefusal` gains `NO_RESULT`, which flows into `RoutingUnavailableReason`); `gateway.ts`
+treats `NO_RESULT` like `REJECTED_INPUT` (the endpoint's error — place resolution ⇒ 400 `PLACE_REF_STALE` — and never
+masked by a stale entry). Routing ⇒ `RoutingUnavailableError('NO_RESULT')`; the quote service already maps every routing
+refusal to its routing-unavailable answer (never an estimate). A repository search found no other exhaustive handling
+of these unions.
+
+### 8.2 Mapping table (adapter code → canonical kind → gateway policy)
+
+| Adapter `code` (HTTP)                                           | Canonical `kind` | Breaker | Retried                         | Cool-down           | Refusal          |
+| --------------------------------------------------------------- | ---------------- | ------- | ------------------------------- | ------------------- | ---------------- |
+| `TIMEOUT`; `ABORTED` (caller signal; gateway abort wins anyway) | `TIMEOUT`        | TIMEOUT | no                              | no                  | `TIMEOUT`        |
+| `NETWORK`, no HTTP status received                              | `CONNECT`        | FAILURE | once, if the deadline allows it | no                  | `PROVIDER_ERROR` |
+| `NETWORK` after a status (body read failed)                     | `UPSTREAM`       | FAILURE | no                              | no                  | `PROVIDER_ERROR` |
+| `SERVER_ERROR` (5xx), `PROVIDER_STATUS`                         | `UPSTREAM`       | FAILURE | no                              | no                  | `PROVIDER_ERROR` |
+| `QUOTA` (429, v3 `OVER_*_LIMIT`, Google quota reason)           | `QUOTA`          | NEUTRAL | no                              | Retry-After or 60 s | `PROVIDER_ERROR` |
+| `AUTH` (401/403, v3 `REQUEST_DENIED`, Google credential reason) | `AUTH`           | FAILURE | no                              | no                  | `PROVIDER_ERROR` |
+| `CLIENT_ERROR` (other 4xx incl. 422), `INVALID_INPUT`           | `REJECTED_INPUT` | NEUTRAL | no                              | no                  | `REJECTED_INPUT` |
+| `MALFORMED_RESPONSE`, `OVERSIZED_RESPONSE`, `INCOMPLETE_ROUTE`  | `MALFORMED`      | FAILURE | no                              | no                  | `PROVIDER_ERROR` |
+| `NO_ROUTE`, `NOT_FOUND`                                         | `NO_RESULT`      | NEUTRAL | no                              | no                  | `NO_RESULT`      |
+
+**Finding 3 (Google bad key as HTTP 400).** Places API (New) and Routes API 4xx bodies are classified by the documented
+`google.rpc.ErrorInfo.reason` (domain `googleapis.com`, enum `google.api.ErrorReason`, read 2026-10-17 from googleapis
+`google/api/error_reason.proto`, which gives no HTTP status per reason): credential/configuration reasons
+(`API_KEY_INVALID`, `API_KEY_*_BLOCKED`, `SERVICE_DISABLED`, `BILLING_DISABLED`, `CONSUMER_INVALID`,
+`CONSUMER_SUSPENDED`, `CREDENTIALS_MISSING`, `ACCOUNT_STATE_INVALID`, `GCP_SUSPENDED`) ⇒ `AUTH`; `RATE_LIMIT_EXCEEDED`
+/ `RESOURCE_QUOTA_EXCEEDED` ⇒ `QUOTA`; any other reason, another domain or `@type`, a body without details or a non-JSON
+body ⇒ the HTTP status decides. Only `@type`, `domain` and `reason` are read and the reason is only looked up in fixed
+sets, never stored; `message` is never read. A Place Details 404 carrying a credential reason stays `AUTH` (not a
+vanished place). Geocoding v3 keeps its documented HTTP-200 `status` mapping; Mapbox documents no reason enum ⇒ status
+only. Which status/reason a real invalid, restricted or disabled key produces remains EXTERNAL_ACCOUNT_REQUIRED.
+
+### 8.3 Retry-After rules (finding 2)
+
+`packages/geo-adapters/src/retry-after.ts`, applied in `callJson` only when the final code is `QUOTA`:
+
+- delta-seconds (`1*DIGIT`, clock-independent) ⇒ rounded up and clamped to **1–3600 s** (`0` ⇒ 1; huge ⇒ 3600);
+- HTTP-date in all three RFC 9110 §5.6.7 forms (IMF-fixdate, RFC 850 with the 50-year rule, asctime),
+  calendar-validated and converted against the **injected server clock** (`now` option on every adapter and bundle
+  factory; default the process clock — adapters are server-only, never a device clock) ⇒ the difference rounded up and
+  clamped to 1–3600 s; a date that is not in the future ⇒ unusable (clock skew or a stale cache ⇒ conservative
+  default);
+- malformed values (sign, fraction, exponent, unit, junk, lower-case or non-GMT zone, ISO 8601, impossible date/time,
+  more than 64 characters), negative or non-finite ⇒ `undefined` ⇒ the gateway default;
+- a `Retry-After` on a non-QUOTA answer (e.g. 503) is ignored; the header value never enters an error or a log;
+- `GeoAdapterError` re-bounds any supplied value and keeps it only on `QUOTA`; the gateway cool-down
+  (`quotaCooldownSeconds`, `apps/api/src/geo/provider-call.ts`) uses it when finite and non-negative, else its 60 s
+  default, clamped to 1–3600 s again. (Before: `Math.round(x ?? 60)` — a NaN produced an invalid `EX`, i.e. silently no
+  cool-down, and a negative value became 1 s.)
+
+### 8.4 Tests added (synthetic fixtures only)
+
+| File                                                        | Added | What they prove                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/geo-adapters/src/errors.test.ts` (new)            | 22    | the full code → kind table (written independently of the implementation), `instanceof GeoProviderError`, message/stack, bounded Retry-After only on QUOTA, `cause` passthrough; S1/S2 bundle factories pass the injected clock                                       |
+| `packages/geo-adapters/src/retry-after.test.ts` (new)       | 36    | delta-seconds, the three HTTP-date forms, server-clock relativity, past dates, malformed/negative/non-finite/oversized values, bounds                                                                                                                                 |
+| `packages/geo-adapters/src/http.test.ts`                    | 12    | Retry-After through `callJson` with an injected clock, ignored on 503; `errorReason` only for 4xx, null fallback, non-JSON body, undrainable body; CONNECT vs UPSTREAM                                                                                               |
+| `packages/geo-adapters/src/google.contract.test.ts`         | 174   | all 5 S1 operations: HTTP 400/401/403/404/429/500/503 ⇒ canonical kind; 429 × 12 Retry-After cases; 503 + Retry-After; 8 ErrorInfo-reason cases (400 `API_KEY_INVALID` ⇒ AUTH on Places (New)/Routes); ignored reasons; v3 statuses; NO_RESULT/MALFORMED; timeout, cancellation, stalled body, CONNECT; no leak |
+| `packages/geo-adapters/src/mapbox.contract.test.ts`         | 111   | all 5 S2 operations: the same status, Retry-After and 503 cases; 422; no vendor reason read; NoRoute/NoSegment/empty routes and a vanished place ⇒ NO_RESULT; incomplete route ⇒ MALFORMED; transport kinds                                                         |
+| `packages/provider-interfaces/src/geo-binding.test.ts`      | 1     | additive kinds, optional cause, subclass naming                                                                                                                                                                                                                       |
+| `apps/api/test/geo-provider-call.test.ts` (new, unit)       | 27    | candidate-adapter doubles (`geo-candidate-doubles.ts`, a GeoProviderError subclass shaped like GeoAdapterError) through the real `GeoProviderCaller` and real `CircuitBreaker`: classification by kind only; cool-down = Retry-After 7 / default 60 / clamp 3600 / floor 1; quota never opens the breaker; AUTH opens it without retry; NO_RESULT neutral and uncounted; only CONNECT retried; adapter message never logged |
+| `apps/api/test/geo-candidate.integration.test.ts` (new)     | 3     | real PostgreSQL + Valkey and the real gateway: Valkey cool-down TTL ≤ 7 s after Retry-After 7 and no second provider call; resolve NO_RESULT ⇒ 400 `PLACE_REF_STALE`; routing NO_RESULT ⇒ `RoutingUnavailableError('NO_RESULT')`, AUTH ⇒ `PROVIDER_ERROR`; candidate message never logged |
+
+No existing test was weakened or deleted; the contract harness gained an optional injected clock and canonical helpers.
+The MOCK geo doubles (`packages/provider-test-doubles`, outside this change) still report a vanished place as
+`REJECTED_INPUT`; the gateway answers both that and `NO_RESULT` with `PLACE_REF_STALE`.
+
+### 8.5 Commands and exact outcomes (2026-10-17, Git Bash, `C:\Dev\Wayvro`; logs under `evidence-local/fix/logs/`, not committed)
+
+| #   | Command                                                                                                                                                                         | Outcome                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `pnpm --filter @wayvro/geo-adapters test` after the source change, before the new tests                                                                                         | PASS — 9 files, 329/329 (existing behaviour unchanged)                                                                              |
+| 2   | `pnpm --filter @wayvro/provider-interfaces build` (its dist feeds the dependants' typecheck) and `typecheck`                                                                    | PASS                                                                                                                                |
+| 3   | `pnpm --filter @wayvro/geo-adapters typecheck`; `pnpm --filter @wayvro/api typecheck`                                                                                           | PASS (final runs)                                                                                                                   |
+| 4   | `pnpm --filter @wayvro/geo-adapters test:coverage`                                                                                                                               | PASS — 11 files, 684/684; all files statements 99.42 %, branches 93.76 %, functions 98.52 %, lines 99.72 % (thresholds 90/85/90/90) |
+| 5   | `pnpm --filter @wayvro/provider-interfaces test` and `test:coverage`; `pnpm --filter @wayvro/provider-test-doubles test`                                                        | PASS — 14/14; 14/14; 13/13                                                                                                          |
+| 6   | apps/api `vitest run test/geo-provider-call.test.ts test/geo-unit.test.ts test/geo-roman-urdu.test.ts` (unit config)                                                            | PASS — 3 files, 51/51                                                                                                               |
+| 7   | apps/api `vitest run --config vitest.integration.config.ts` on the `geo-candidate`, `geo`, `geo-budget` integration files + the 3 geo unit files (local PostgreSQL/Valkey; throwaway DB per suite) | PASS — 6 files, 99/99                                                                                              |
+| 8   | apps/api `vitest run --config vitest.integration.config.ts test/quotes.integration.test.ts` (routing consumer regression)                                                       | PASS — 1 file, 30/30                                                                                                                |
+| 9   | `eslint --max-warnings=0 packages/geo-adapters packages/provider-interfaces`; `eslint --max-warnings=0 apps/api/src/geo` + the touched/new `apps/api/test/geo*` files           | PASS — exit 0, no findings (both)                                                                                                   |
+| 10  | `knip --workspace` `packages/geo-adapters`, `packages/provider-interfaces`, `apps/api`, each normal and `--production`                                                           | PASS — all 6 exit 0; one tag hint (`parseRetryAfter` `@internal` unused) fixed by removing the tag                                  |
+| 11  | `depcruise packages/geo-adapters packages/provider-interfaces apps/api/src apps/api/test --config .dependency-cruiser.cjs`                                                     | PASS — "no dependency violations found (219 modules, 1259 dependencies cruised)"                                                    |
+| 12  | `prettier --check` on every touched file including this document                                                                                                                | PASS (final run)                                                                                                                    |
+
+**NOT RUN:** `pnpm --filter @wayvro/geo-adapters test:live` (no FA-06 credentials); `tools/geo-bench` typecheck/tests
+(concurrent work owns that workspace and it reads the built `@wayvro/geo-adapters` dist, which was deliberately not
+rebuilt while a benchmark may be running; the surface it uses — constructor, `code`, `countsAsProviderFailure`,
+`cause` — is unchanged); full-repo `pnpm lint` / `knip` / `depcruise` (outside this bounded change); real-provider
+behaviour (statuses, reasons and `Retry-After` presence stay EXTERNAL_ACCOUNT_REQUIRED, §7).
+
+**Follow-ups for the lead:** add `AUTH` / `NO_RESULT` to the failure-policy rows of `docs/phase3/PHASE3_ARCHITECTURE.md`
+§5.4 (no new log signal was introduced: AUTH uses `GEO_PROVIDER_ERROR` at error level; NO_RESULT is recorded only as the
+span outcome); rebuild the `@wayvro/geo-adapters` dist before the next geo-bench run.

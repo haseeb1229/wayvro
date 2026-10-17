@@ -5,7 +5,7 @@
 import type { AddressComponents, GeoConfidence, GeoLocale, PlaceKind, ResolvedPlace } from '@wayvro/provider-interfaces';
 import { z } from 'zod';
 import type { SecretValue } from '../config.js';
-import { GeoAdapterError } from '../errors.js';
+import { GeoAdapterError, type GeoAdapterErrorCode } from '../errors.js';
 import type { AdapterOptions, CallContext } from '../http.js';
 import { MAX_PROVIDER_STRING, buildComponents, classifyKind, malformed, parsePayload, toPoint } from '../normalise.js';
 
@@ -18,6 +18,50 @@ export const PLACES_BASE = 'https://places.googleapis.com/v1/';
 export const AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete';
 export const GEOCODING_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 export const ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+const ERROR_INFO_TYPE = 'type.googleapis.com/google.rpc.ErrorInfo';
+/**
+ * `google.api.ErrorReason` values (domain `googleapis.com`; googleapis `google/api/error_reason.proto`, read
+ * 2026-10-17) that mean the CREDENTIAL or the project/account configuration was refused — whatever HTTP status carries
+ * them (Google documents e.g. an invalid key as HTTP 400 INVALID_ARGUMENT + `API_KEY_INVALID`).
+ */
+const GOOGLE_AUTH_REASONS: ReadonlySet<string> = new Set([
+  'API_KEY_INVALID',
+  'API_KEY_SERVICE_BLOCKED',
+  'API_KEY_HTTP_REFERRER_BLOCKED',
+  'API_KEY_IP_ADDRESS_BLOCKED',
+  'API_KEY_ANDROID_APP_BLOCKED',
+  'API_KEY_IOS_APP_BLOCKED',
+  'SERVICE_DISABLED',
+  'BILLING_DISABLED',
+  'CONSUMER_INVALID',
+  'CONSUMER_SUSPENDED',
+  'CREDENTIALS_MISSING',
+  'ACCOUNT_STATE_INVALID',
+  'GCP_SUSPENDED',
+]);
+/** `google.api.ErrorReason` values that mean a quota/rate refusal. */
+const GOOGLE_QUOTA_REASONS: ReadonlySet<string> = new Set(['RATE_LIMIT_EXCEEDED', 'RESOURCE_QUOTA_EXCEEDED']);
+
+const errorModelSchema = z.object({ error: z.object({ details: z.array(z.unknown()).max(20).optional() }) });
+const errorInfoSchema = z.object({ '@type': z.literal(ERROR_INFO_TYPE), reason: z.string().max(80), domain: z.literal('googleapis.com') });
+
+/**
+ * Google API error model (`{error:{code,message,status,details[]}}`, Places API (New) and Routes API) → a code from
+ * the documented `ErrorInfo.reason`, or null (the HTTP status then decides). Only `@type`, `domain` and `reason` are
+ * read and the reason is only looked up in the fixed sets above; `message` (which may echo the request) is never read.
+ */
+export function googleErrorReason(body: unknown): GeoAdapterErrorCode | null {
+  const model = errorModelSchema.safeParse(body);
+  if (!model.success) return null;
+  for (const detail of model.data.error.details ?? []) {
+    const info = errorInfoSchema.safeParse(detail);
+    if (!info.success) continue;
+    if (GOOGLE_AUTH_REASONS.has(info.data.reason)) return 'AUTH';
+    if (GOOGLE_QUOTA_REASONS.has(info.data.reason)) return 'QUOTA';
+  }
+  return null;
+}
 
 /** Google place ids are URL-safe base64-like tokens. */
 export const GOOGLE_PLACE_ID = /^[A-Za-z0-9_-]{1,512}$/;

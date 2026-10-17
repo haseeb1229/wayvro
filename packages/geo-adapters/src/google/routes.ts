@@ -11,7 +11,7 @@ import { GeoAdapterError } from '../errors.js';
 import { callContext, callJson, type CallContext } from '../http.js';
 import { GOOGLE_TERMS, licence } from '../licences.js';
 import { MAX_POLYLINE_CHARS, decodePolyline, malformed, parsePayload, requirePoint, routeNumbers, validateGeometry } from '../normalise.js';
-import { type GoogleAdapterOptions, ROUTES_URL } from './shared.js';
+import { type GoogleAdapterOptions, ROUTES_URL, googleErrorReason } from './shared.js';
 
 const FIELD_MASK = 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline';
 
@@ -40,8 +40,6 @@ export function parseDurationSeconds(value: string | undefined): number | null {
 
 export interface GoogleRoutesOptions extends GoogleAdapterOptions {
   readonly trafficAware: boolean;
-  /** Server clock (injectable for tests). */
-  readonly now?: () => Date;
 }
 
 export class GoogleRoutesAdapter implements RoutingAdapter {
@@ -68,11 +66,17 @@ export class GoogleRoutesAdapter implements RoutingAdapter {
       languageCode: 'en',
       regionCode: 'pk',
     };
-    const now = (this.options.now ?? (() => new Date()))();
+    const now = this.ctx.now();
     if (this.options.trafficAware && input.departAt.getTime() > now.getTime()) body['departureTime'] = input.departAt.toISOString();
     const res = await callJson(
       this.ctx,
-      { method: 'POST', url: new URL(ROUTES_URL), headers: { 'X-Goog-Api-Key': this.options.apiKey.reveal(), 'X-Goog-FieldMask': FIELD_MASK }, body },
+      {
+        method: 'POST',
+        url: new URL(ROUTES_URL),
+        headers: { 'X-Goog-Api-Key': this.options.apiKey.reveal(), 'X-Goog-FieldMask': FIELD_MASK },
+        body,
+        errorReason: googleErrorReason,
+      },
       signal,
     );
     const payload = parsePayload(this.ctx, schema, res.body, res.status);

@@ -85,4 +85,17 @@ describe('assertGeoBundle (CON-P3-16 / CONFIG-BUNDLE)', () => {
     expect(e.retryAfterSeconds).toBe(30);
     expect(e.message).toBe('geo provider failure: QUOTA');
   });
+
+  it('GeoProviderError: the additive AUTH / NO_RESULT kinds, an optional cause and subclass naming (fix 2026-10-17)', () => {
+    expect(new GeoProviderError('AUTH').kind).toBe('AUTH');
+    expect(new GeoProviderError('NO_RESULT').retryAfterSeconds).toBeUndefined();
+    const cause = new Error('underlying');
+    expect(new GeoProviderError('CONNECT', undefined, { cause }).cause).toBe(cause);
+    class AdapterFailure extends GeoProviderError {
+      override readonly name: string = 'AdapterFailure';
+    }
+    const sub = new AdapterFailure('UPSTREAM');
+    expect(sub).toBeInstanceOf(GeoProviderError);
+    expect(String(sub)).toBe('AdapterFailure: geo provider failure: UPSTREAM');
+  });
 });

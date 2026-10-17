@@ -50,8 +50,15 @@ billed per session (Google autocomplete, Mapbox Search Box) the declaration is t
 - Malformed or oversized (> 1 MiB by default) payloads, non-success statuses, 401/403, 429/quota statuses, timeouts
   (AbortSignal), network failures and routes without a positive distance or a duration THROW `GeoAdapterError` with a
   stable `code`; nothing is defaulted and no place is fabricated. "No result" is `[]` / `null`.
-- `GeoAdapterError.countsAsProviderFailure` tells the gateway's breaker which failures are provider failures (Wayvro
-  input errors, `NO_ROUTE`, `NOT_FOUND` and cancellations are not).
+- `GeoAdapterError` **is** the canonical `GeoProviderError` of `@wayvro/provider-interfaces` (fix 2026-10-17): its
+  detailed `code` is translated once, at construction, into the canonical `kind` the API gateway classifies on
+  (`toGeoProviderFailure` in `src/errors.ts`: TIMEOUT/ABORTED ⇒ TIMEOUT, NETWORK before a status ⇒ CONNECT and after
+  ⇒ UPSTREAM, AUTH ⇒ AUTH, QUOTA ⇒ QUOTA, CLIENT_ERROR/INVALID_INPUT ⇒ REJECTED_INPUT, SERVER_ERROR/PROVIDER_STATUS
+  ⇒ UPSTREAM, MALFORMED/OVERSIZED/INCOMPLETE_ROUTE ⇒ MALFORMED, NO_ROUTE/NOT_FOUND ⇒ NO_RESULT). On QUOTA the
+  `Retry-After` header (delta-seconds or HTTP-date against the injected server clock `now`) is carried as
+  `retryAfterSeconds`, bounded to 1–3600 s. Google Places (New) / Routes 4xx bodies are classified by the documented
+  `ErrorInfo.reason` (e.g. HTTP 400 `API_KEY_INVALID` ⇒ AUTH). The breaker/cool-down policy is the gateway's, from
+  `kind`; `countsAsProviderFailure` only serves the SP-04 harness's error accounting.
 - Errors never contain the provider body, the request URL (some vendors take the key as a query parameter), the query
   or a `cause`. Redirects are refused so a key never follows one.
 - The provider receives only query text, the gateway's coarse 2-decimal bias cell, points (reverse: 5 dp), session

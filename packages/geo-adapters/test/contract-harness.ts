@@ -5,7 +5,7 @@
  * prove that a real provider answers that way.
  */
 import { inspect } from 'node:util';
-import type { GeoAdapterLicence, GeoSku } from '@wayvro/provider-interfaces';
+import { GeoProviderError, type GeoAdapterLicence, type GeoProviderFailure, type GeoSku } from '@wayvro/provider-interfaces';
 import { expect } from 'vitest';
 import { GeoAdapterError, type GeoAdapterErrorCode } from '../src/errors.js';
 import type { FetchLike } from '../src/http.js';
@@ -29,17 +29,17 @@ export interface BoundOp {
 export interface ContractOp {
   readonly name: string;
   readonly sku: GeoSku;
-  /** Builds a fresh adapter on `fetchImpl` and binds the operation with synthetic input. */
-  readonly make: (fetchImpl: FetchLike) => BoundOp;
+  /** Builds a fresh adapter on `fetchImpl` (and the injected server clock, when given) and binds the operation. */
+  readonly make: (fetchImpl: FetchLike, now?: () => Date) => BoundOp;
   /** A documented-shape success payload for this operation. */
   readonly ok: () => Response;
   /** Code expected for HTTP 404 (place resolution maps it to NOT_FOUND; everything else is a client error). */
   readonly http404: GeoAdapterErrorCode;
 }
 
-export function bind(op: ContractOp, responder: Responder): { readonly bound: BoundOp; readonly requests: RecordedRequest[] } {
+export function bind(op: ContractOp, responder: Responder, now?: () => Date): { readonly bound: BoundOp; readonly requests: RecordedRequest[] } {
   const fake = fakeFetch(responder);
-  return { bound: op.make(fake.fetchImpl), requests: fake.requests };
+  return { bound: op.make(fake.fetchImpl, now), requests: fake.requests };
 }
 
 export async function failureOf(promise: Promise<unknown>): Promise<GeoAdapterError> {
@@ -106,4 +106,57 @@ export function stallingBody(signal: AbortSignal): Response {
 /** A transport failure whose message echoes the outbound URL (which may carry the key) and a body sentinel. */
 export function connectFailure(request: RecordedRequest): Promise<Response> {
   return Promise.reject(new TypeError(`fetch failed ${request.url.toString()} ${BODY_SENTINEL}`));
+}
+
+// ── canonical taxonomy (fix 2026-10-17): what the API gateway classifies on ─────────────────────────────────────────
+
+/** A failure that must also be a canonical `GeoProviderError` (the only type the gateway's classifier reads). */
+export async function canonicalFailureOf(promise: Promise<unknown>): Promise<GeoAdapterError> {
+  const error = await failureOf(promise);
+  expect(error).toBeInstanceOf(GeoProviderError);
+  return error;
+}
+
+/** Expected canonical kind per HTTP status, written out independently of the adapter's mapping table. */
+export function expectedHttpKind(op: ContractOp, status: (typeof HTTP_ERROR_STATUSES)[number]): GeoProviderFailure {
+  switch (status) {
+    case 401:
+    case 403:
+      return 'AUTH';
+    case 404:
+      return op.http404 === 'NOT_FOUND' ? 'NO_RESULT' : 'REJECTED_INPUT';
+    case 429:
+      return 'QUOTA';
+    case 500:
+    case 503:
+      return 'UPSTREAM';
+    default:
+      return 'REJECTED_INPUT';
+  }
+}
+
+/** Fixed server clock for HTTP-date Retry-After cases (a Saturday). */
+export const FIXED_NOW = new Date('2026-10-17T10:00:00Z');
+
+/** [label, Retry-After header or null, expected retryAfterSeconds] against FIXED_NOW. */
+export const RETRY_AFTER_CASES: readonly (readonly [string, string | null, number | undefined])[] = [
+  ['absent', null, undefined],
+  ['delta-seconds 120', '120', 120],
+  ['delta-seconds 0 (lower bound)', '0', 1],
+  ['huge delta-seconds (upper bound)', '86400', 3600],
+  ['beyond-safe-integer delta-seconds', '99999999999999999999', 3600],
+  ['negative', '-5', undefined],
+  ['fraction', '1.5', undefined],
+  ['malformed text', 'soon', undefined],
+  ['HTTP-date +90 s', 'Sat, 17 Oct 2026 10:01:30 GMT', 90],
+  ['HTTP-date +1 day (upper bound)', 'Sun, 18 Oct 2026 10:00:00 GMT', 3600],
+  ['HTTP-date in the past', 'Sat, 17 Oct 2026 09:59:00 GMT', undefined],
+  ['impossible HTTP-date', 'Fri, 30 Feb 2026 10:00:00 GMT', undefined],
+];
+
+/** A 429 whose body is `body` and whose Retry-After header is `retryAfter` (omitted when null). */
+export function quotaResponse(body: unknown, retryAfter: string | null): Response {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (retryAfter !== null) headers['retry-after'] = retryAfter;
+  return new Response(JSON.stringify(body), { status: 429, headers });
 }

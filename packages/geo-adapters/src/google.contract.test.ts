@@ -8,15 +8,20 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import {
   BODY_SENTINEL,
   FAKE_GOOGLE_KEY,
+  FIXED_NOW,
   HTTP_ERROR_STATUSES,
   MALFORMED_BODIES,
   QUERY_SENTINEL,
+  RETRY_AFTER_CASES,
   SESSION,
   bind,
+  canonicalFailureOf,
   connectFailure,
   expectNoLeak,
   expectedHttpCode,
+  expectedHttpKind,
   failureOf,
+  quotaResponse,
   stallingBody,
   type ContractOp,
 } from '../test/contract-harness.js';
@@ -28,6 +33,7 @@ import {
   GOOGLE_ROUTES_RESPONSE,
   GOOGLE_RPC_STATUS,
   googleApiError,
+  googleApiErrorInfo,
   googleGeocodingStatus,
 } from '../test/synthetic-google.js';
 import { SecretValue } from './config.js';
@@ -39,15 +45,15 @@ import type { FetchLike } from './http.js';
 import { MICRO_USD_PER_CALL } from './licences.js';
 
 const apiKey = new SecretValue(FAKE_GOOGLE_KEY);
-const opts = (fetchImpl: FetchLike) => ({ providerKey: 'geo-s1', apiKey, fetchImpl });
+const opts = (fetchImpl: FetchLike, now?: () => Date) => ({ providerKey: 'geo-s1', apiKey, fetchImpl, ...(now ? { now } : {}) });
 const routeInput = { origin: SYNTHETIC.a, destination: SYNTHETIC.c, profile: 'CAR' as const, departAt: new Date('2026-10-16T10:00:00Z') };
 
 const OPS = {
   autocomplete: {
     name: 'Places Autocomplete (New)',
     sku: 'AUTOCOMPLETE',
-    make: (f) => {
-      const a = new GooglePlacesAutocompleteAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new GooglePlacesAutocompleteAdapter(opts(f, now));
       return {
         licences: a.licences,
         call: (s) => a.suggest({ text: QUERY_SENTINEL, locale: 'en', biasCell: { lat: 31.52, lng: 74.35 }, countryCode: 'PK', searchSessionId: SESSION }, s),
@@ -59,8 +65,8 @@ const OPS = {
   resolve: {
     name: 'Place Details (New)',
     sku: 'PLACE_RESOLVE',
-    make: (f) => {
-      const a = new GoogleGeocodingAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new GoogleGeocodingAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.resolve({ providerPlaceId: 'synthetic_place_a', searchSessionId: SESSION, locale: 'en' }, s) };
     },
     ok: () => json(GOOGLE_PLACE_DETAILS_RESPONSE),
@@ -69,8 +75,8 @@ const OPS = {
   geocode: {
     name: 'Geocoding v3 forward',
     sku: 'GEOCODE',
-    make: (f) => {
-      const a = new GoogleGeocodingAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new GoogleGeocodingAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.geocode({ text: QUERY_SENTINEL, locale: 'en', countryCode: 'PK' }, s) };
     },
     ok: () => json(GOOGLE_GEOCODING_OK_RESPONSE),
@@ -79,8 +85,8 @@ const OPS = {
   reverse: {
     name: 'Geocoding v3 reverse',
     sku: 'REVERSE_GEOCODE',
-    make: (f) => {
-      const a = new GoogleReverseGeocodingAdapter(opts(f));
+    make: (f, now?: () => Date) => {
+      const a = new GoogleReverseGeocodingAdapter(opts(f, now));
       return { licences: a.licences, call: (s) => a.reverse({ point: SYNTHETIC.b, locale: 'en' }, s) };
     },
     ok: () => json(GOOGLE_GEOCODING_OK_RESPONSE),
@@ -89,8 +95,8 @@ const OPS = {
   route: {
     name: 'Routes computeRoutes',
     sku: 'ROUTE',
-    make: (f) => {
-      const a = new GoogleRoutesAdapter({ ...opts(f), trafficAware: false });
+    make: (f, now?: () => Date) => {
+      const a = new GoogleRoutesAdapter({ ...opts(f, now), trafficAware: false });
       return { licences: a.licences, call: (s) => a.route(routeInput, s) };
     },
     ok: () => json(GOOGLE_ROUTES_RESPONSE),
@@ -376,4 +382,147 @@ describe('S1 Google contract: no logging or telemetry from the adapter layer', (
     }
     for (const s of spies) expect(s).not.toHaveBeenCalled();
   });
+});
+
+describe('S1 Google contract: canonical provider-interface taxonomy at the port boundary (fix 2026-10-17)', () => {
+  const echo = `${BODY_SENTINEL} key=${FAKE_GOOGLE_KEY} q=${QUERY_SENTINEL}`;
+  const fixedClock = () => FIXED_NOW;
+  /** A Google error-model answer with the given status and Retry-After 45 (only a QUOTA outcome may carry it). */
+  const withReason = (status: number, rpcStatus: string, reason: string) => () =>
+    new Response(JSON.stringify(googleApiErrorInfo(status, rpcStatus, reason, echo)), {
+      status,
+      headers: { 'content-type': 'application/json', 'retry-after': '45' },
+    });
+
+  it.each(ALL.flatMap((op) => HTTP_ERROR_STATUSES.map((status) => [op.name, status, op] as const)))(
+    '%s: HTTP %i is a canonical GeoProviderError of the expected kind',
+    async (_, status, op) => {
+      const { bound } = bind(op, () => json(googleApiError(status, GOOGLE_RPC_STATUS[status] ?? 'UNKNOWN', echo), status));
+      const error = await canonicalFailureOf(bound.call(signal()));
+      expect(error.kind).toBe(expectedHttpKind(op, status));
+      expect(error.retryAfterSeconds).toBeUndefined();
+      expectNoLeak(error, SECRETS);
+    },
+  );
+
+  it.each(ALL.flatMap((op) => RETRY_AFTER_CASES.map(([label, header, expected]) => [op.name, label, op, header, expected] as const)))(
+    '%s: 429 with Retry-After %s ⇒ QUOTA with the bounded server-clock wait',
+    async (_, __, op, header, expected) => {
+      const { bound } = bind(op, () => quotaResponse(googleApiError(429, 'RESOURCE_EXHAUSTED', echo), header), fixedClock);
+      const error = await canonicalFailureOf(bound.call(signal()));
+      expect(error.kind).toBe('QUOTA');
+      expect(error.retryAfterSeconds).toBe(expected);
+      expectNoLeak(error, SECRETS);
+    },
+  );
+
+  it.each(ALL.map((op) => [op.name, op] as const))('%s: Retry-After on a 503 is not a quota wait (UPSTREAM, none carried)', async (_, op) => {
+    const { bound } = bind(op, () => json(googleApiError(503, 'UNAVAILABLE', echo), 503, { 'retry-after': '30' }));
+    const error = await canonicalFailureOf(bound.call(signal()));
+    expect(error.kind).toBe('UPSTREAM');
+    expect(error.retryAfterSeconds).toBeUndefined();
+  });
+
+  // [label, HTTP status, google.rpc status, ErrorInfo reason, kind by reason (Places (New) / Routes), kind by status (Geocoding v3)]
+  const reasonCases = [
+    ['400 INVALID_ARGUMENT + API_KEY_INVALID (documented bad key)', 400, 'INVALID_ARGUMENT', 'API_KEY_INVALID', 'AUTH', 'REJECTED_INPUT'],
+    ['403 PERMISSION_DENIED + API_KEY_SERVICE_BLOCKED', 403, 'PERMISSION_DENIED', 'API_KEY_SERVICE_BLOCKED', 'AUTH', 'AUTH'],
+    ['403 PERMISSION_DENIED + SERVICE_DISABLED', 403, 'PERMISSION_DENIED', 'SERVICE_DISABLED', 'AUTH', 'AUTH'],
+    ['403 PERMISSION_DENIED + BILLING_DISABLED', 403, 'PERMISSION_DENIED', 'BILLING_DISABLED', 'AUTH', 'AUTH'],
+    ['403 PERMISSION_DENIED + API_KEY_IP_ADDRESS_BLOCKED', 403, 'PERMISSION_DENIED', 'API_KEY_IP_ADDRESS_BLOCKED', 'AUTH', 'AUTH'],
+    ['403 PERMISSION_DENIED + RATE_LIMIT_EXCEEDED', 403, 'PERMISSION_DENIED', 'RATE_LIMIT_EXCEEDED', 'QUOTA', 'AUTH'],
+    ['429 RESOURCE_EXHAUSTED + RESOURCE_QUOTA_EXCEEDED', 429, 'RESOURCE_EXHAUSTED', 'RESOURCE_QUOTA_EXCEEDED', 'QUOTA', 'QUOTA'],
+    ['400 INVALID_ARGUMENT + an undocumented reason', 400, 'INVALID_ARGUMENT', 'SYNTHETIC_REASON', 'REJECTED_INPUT', 'REJECTED_INPUT'],
+  ] as const;
+
+  it.each(ALL.flatMap((op) => reasonCases.map((c) => [op.name, c[0], op, c] as const)))(
+    '%s: %s ⇒ classified by the documented ErrorInfo reason (Places (New) / Routes), else by HTTP status (Geocoding v3)',
+    async (_, __, op, [, status, rpcStatus, reason, byReason, byStatus]) => {
+      const { bound } = bind(op, withReason(status, rpcStatus, reason), fixedClock);
+      const error = await canonicalFailureOf(bound.call(signal()));
+      const kind = HEADER_AUTH.has(op) ? byReason : byStatus;
+      expect(error.kind).toBe(kind);
+      expect(error.retryAfterSeconds).toBe(kind === 'QUOTA' ? 45 : undefined);
+      expectNoLeak(error, SECRETS);
+    },
+  );
+
+  it.each(
+    [OPS.autocomplete, OPS.resolve, OPS.route].flatMap((op) =>
+      (
+        [
+          ['a foreign domain', googleApiErrorInfo(400, 'INVALID_ARGUMENT', 'API_KEY_INVALID', BODY_SENTINEL, 'synthetic.invalid')],
+          [
+            'a non-ErrorInfo detail type',
+            googleApiErrorInfo(400, 'INVALID_ARGUMENT', 'API_KEY_INVALID', BODY_SENTINEL, 'googleapis.com', 'type.googleapis.com/google.rpc.BadRequest'),
+          ],
+          ['no details', { error: { code: 400, message: BODY_SENTINEL, status: 'INVALID_ARGUMENT' } }],
+          ['a non-model body', { message: BODY_SENTINEL }],
+        ] as const
+      ).map(([label, body]) => [op.name, label, op, body] as const),
+    ),
+  )('%s: an error body with %s is not reclassified (HTTP 400 ⇒ REJECTED_INPUT)', async (_, __, op, body) => {
+    const { bound } = bind(op, () => json(body, 400));
+    expect((await canonicalFailureOf(bound.call(signal()))).kind).toBe('REJECTED_INPUT');
+  });
+
+  it.each([OPS.autocomplete, OPS.resolve, OPS.route].map((op) => [op.name, op] as const))(
+    '%s: a non-JSON 400 body cannot be reclassified (REJECTED_INPUT)',
+    async (_, op) => {
+      const { bound } = bind(op, () => new Response(`<html>${BODY_SENTINEL}</html>`, { status: 400 }));
+      expect((await canonicalFailureOf(bound.call(signal()))).kind).toBe('REJECTED_INPUT');
+    },
+  );
+
+  it('Place Details: a 404 whose reason is API_KEY_INVALID is AUTH, not a vanished place', async () => {
+    const { bound } = bind(OPS.resolve, withReason(404, 'NOT_FOUND', 'API_KEY_INVALID'));
+    const error = await canonicalFailureOf(bound.call(signal()));
+    expect([error.code, error.kind]).toEqual(['AUTH', 'AUTH']);
+  });
+
+  it.each(
+    [OPS.geocode, OPS.reverse].flatMap((op) =>
+      (
+        [
+          ['OVER_QUERY_LIMIT', 'QUOTA'],
+          ['OVER_DAILY_LIMIT', 'QUOTA'],
+          ['REQUEST_DENIED', 'AUTH'],
+          ['INVALID_REQUEST', 'REJECTED_INPUT'],
+          ['UNKNOWN_ERROR', 'UPSTREAM'],
+          ['SYNTHETIC_STATUS', 'UPSTREAM'],
+        ] as const
+      ).map(([status, kind]) => [op.name, status, kind, op] as const),
+    ),
+  )('%s: HTTP 200 status %s ⇒ canonical %s (no Retry-After on a 200)', async (_, status, kind, op) => {
+    const { bound } = bind(op, () => json(googleGeocodingStatus(status, echo)));
+    const error = await canonicalFailureOf(bound.call(signal()));
+    expect(error.kind).toBe(kind);
+    expect(error.retryAfterSeconds).toBeUndefined();
+  });
+
+  it('no route and a vanished place are NO_RESULT (not provider failures); an incomplete route is MALFORMED', async () => {
+    expect((await canonicalFailureOf(bind(OPS.route, () => json({})).bound.call(signal()))).kind).toBe('NO_RESULT');
+    expect((await canonicalFailureOf(bind(OPS.route, () => json({ routes: [] })).bound.call(signal()))).kind).toBe('NO_RESULT');
+    const gone = await canonicalFailureOf(bind(OPS.resolve, () => json(googleApiError(404, 'NOT_FOUND', echo), 404)).bound.call(signal()));
+    expect([gone.code, gone.kind]).toEqual(['NOT_FOUND', 'NO_RESULT']);
+    const incomplete = await canonicalFailureOf(bind(OPS.route, () => json({ routes: [{ duration: '10s' }] })).bound.call(signal()));
+    expect([incomplete.code, incomplete.kind]).toEqual(['INCOMPLETE_ROUTE', 'MALFORMED']);
+  });
+
+  it.each(ALL.map((op) => [op.name, op] as const))(
+    '%s: malformed ⇒ MALFORMED; deadline, cancellation and a stalled body ⇒ TIMEOUT; connect failure ⇒ CONNECT',
+    async (_, op) => {
+      for (const [, body] of MALFORMED_BODIES) expect((await canonicalFailureOf(bind(op, body).bound.call(signal()))).kind).toBe('MALFORMED');
+      expect((await canonicalFailureOf(bind(op, () => never()).bound.call(AbortSignal.timeout(25)))).kind).toBe('TIMEOUT');
+      const controller = new AbortController();
+      const pending = bind(op, () => never()).bound.call(controller.signal);
+      controller.abort();
+      expect((await canonicalFailureOf(pending)).kind).toBe('TIMEOUT');
+      const down = await canonicalFailureOf(bind(op, connectFailure).bound.call(signal()));
+      expect(down.kind).toBe('CONNECT');
+      expectNoLeak(down, [...SECRETS, 'googleapis.com']);
+      const deadline = AbortSignal.timeout(25);
+      expect((await canonicalFailureOf(bind(op, () => stallingBody(deadline)).bound.call(deadline))).kind).toBe('TIMEOUT');
+    },
+  );
 });

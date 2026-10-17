@@ -96,3 +96,29 @@ A code read adds one avoidable cost: the access token lives 15 minutes (`SESSION
 | Memory growth over 10 quote cycles (PB-09) | **NOT RUN** (time-box). |
 | 3 GB comparison AVD `wayvro-sp02-api35-3g` | created, **NOT RUN** (time-box). |
 | Founder preview APK installability | **PASS (emulator)**: `adb install` of the debug dev client succeeded on the x86_64 AVD and it opened at `DevLauncherActivity` (`evidence-local/laptop2/logs/preview-install.log`; SHA-256 checked before install; same application id, so the E2E APK was reinstalled for the measurements). Not performance evidence. |
+
+## 5. SP02-F1 instrumented root cause (2026-10-17 correction) — EMULATOR SUPPLEMENTARY
+
+**Method.** Same 2 GB / 2-core API-35 AVD and release-mode instrumented E2E APK. A local copy of the synthetic stack with the API request log at `info` (`evidence-local/fix/stack/`, not committed) gives each request's route, status, server time and completion time. The device logcat (`-v epoch`) gives process start, first frame (`Displayed`), JS start (`Running "main"`), module evaluation (`WayvroPerf eval`) and `Fully drawn`. Both share the host clock, so each sample is one timeline. There are no new hooks in app code. Scripts and raw samples are in `evidence-local/fix/sp02/`. The host was less loaded than in §3, so absolute numbers are lower than in §3. The cohorts ran one after another on the same AVD.
+
+| Cohort (kept samples) | first frame p50 | JS start p50 | entry module p50 | Rider home module p50 | fully drawn p50 / p90 | requests on the critical path |
+|---|---:|---:|---:|---:|---:|---|
+| A signed out (11) | 909 ms | 1,719 ms | 1,891 ms | 1,909 ms | **2,039 / 2,687 ms** | `GET /v1/app/config` (304, 7 ms) |
+| B signed in, fresh token (11) | 962 ms | 1,766 ms | 1,989 ms | 2,849 ms | **2,970 / 3,290 ms** | `GET /v1/account/state` (37 ms) and `GET /v1/app/config` **in parallel** (start ≈ 2.27 s) |
+| D signed in, after `am kill` in the background (9) | 857 ms | 1,671 ms | 1,850 ms | 2,699 ms | **2,767 / 3,559 ms** | as B |
+| C signed in, access token already expired (9; local stack with `SESSION_ACCESS_TTL_SECONDS=60`, 65 s between samples) | 757 ms | 1,396 ms | 1,673 ms | 2,540 ms | **2,671 / 3,059 ms** | `GET /v1/account/state` **401** → `POST /v1/auth/token-refreshes` → `GET /v1/account/state` 200 on every sample |
+
+**Findings:**
+1. The 7.1 s p50 of §3 was dominated by host saturation. On this run the signed-in cold start is 2.97 s p50 / 3.29 s p90 (PB-01 is p50 ≤ 2.5 s, p90 ≤ 4.0 s on the reference device).
+2. **No serial request chain exists with a fresh token.** The account state and the app policy are already requested in parallel, and the server answers in 3–60 ms.
+3. About 1.7–1.8 s passes before JS starts. That is native, React Native and Hermes bootstrap on two software-rendered vCPUs, and only a reference device can measure it.
+4. About 0.5 s passes between the account response and the Rider home module graph: response handling, validation, routing and first render.
+5. **App-owned inefficiency (fixed).** In cohort C every cold start first sent a request that could only answer 401. Within one sample (`C-expired/3`), the account state took about 740 ms from first request to final answer, against about 40 ms with a fresh token. About 540 ms of it is the refresh's persisted-idempotency-key write to secure storage before the refresh request. That write is replay protection and stays.
+
+**Fix (safe; security invariants unchanged).** `SessionManager.refreshDueAtFirstUse(now)` is true at most **once per process**, when the stored access token's server-issued `accessTokenExpiresAt` has already passed. The first authenticated call then refreshes **before** sending, through the unchanged single-flight `refreshAfterUnauthorized` path, which uses the same persisted idempotency key, rotation and wipe on refusal. The clock is the device clock plus the learnt server offset, and it is only a hint. A wrong clock costs at most one spare refresh per process or falls back to today's 401 path. The access-token TTL (900 s), idle/absolute lifetimes, refresh replay protection, token storage and every server check are unchanged. No stale account state is accepted, and no capability is pre-authorised. Tests are in `apps/wayvro-mobile/src/core/api/wayvro-client.test.ts`: early refresh before the request, at most once per process, no refresh for a valid token, and a refused early refresh ends the session.
+
+**After the fix (cohort C again, same 60 s TTL stack, 9 kept samples):** `POST /v1/auth/token-refreshes` 200 then `GET /v1/account/state` 200 on **every** sample, with **0** 401 answers (before: 9 of 9 started with a 401). The doomed request is gone. This run overlapped a Gradle build on the same host, so its absolute times (fully drawn p50 8.3 s) are not comparable and are not reported as an improvement; the evidence is the request sequence (`evidence-local/fix/sp02/C-expired-fixed/`).
+
+**Status.** `SP02-F1 = REAL_DEVICE_REQUIRED / EMULATOR SUPPLEMENTARY`. The remaining startup time is bootstrap and render cost that only FA-04's reference device can measure. PB-01 and PB-02 are reported neither as PASS nor as FAIL.
+
+**Previously omitted laptop checks:** the 3 GB AVD comparison, Lite-mode cold/warm and quote-cycle memory growth (PB-09) are still **NOT RUN** in this correction (time). The cohort work above took priority.

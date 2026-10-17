@@ -5,7 +5,12 @@
     {
       "kind": "activity",
       "name": "${applicationId}.MainActivity",
-      "intentFilters": [{ "actions": ["android.intent.action.MAIN"], "categories": ["android.intent.category.LAUNCHER"] }],
+      "intentFilters": [
+        {
+          "actions": ["android.intent.action.MAIN"],
+          "categories": ["android.intent.category.LAUNCHER"]
+        }
+      ],
       "justification": "Launcher entry point. The expo-dev-client generated scheme (exp+<slug>) exists only in development builds (debug source-set manifest, apps/wayvro-mobile/plugins/dev-client-scheme.mjs).",
       "requirementIds": ["V08", "U05"]
     },
@@ -14,13 +19,27 @@
       "name": "androidx.profileinstaller.ProfileInstallReceiver",
       "permission": "android.permission.DUMP",
       "intentFilters": [
-        { "actions": ["androidx.profileinstaller.action.INSTALL_PROFILE"], "categories": [] },
-        { "actions": ["androidx.profileinstaller.action.SKIP_FILE"], "categories": [] },
-        { "actions": ["androidx.profileinstaller.action.SAVE_PROFILE"], "categories": [] },
-        { "actions": ["androidx.profileinstaller.action.BENCHMARK_OPERATION"], "categories": [] }
+        {
+          "actions": ["androidx.profileinstaller.action.INSTALL_PROFILE"],
+          "categories": []
+        },
+        {
+          "actions": ["androidx.profileinstaller.action.SKIP_FILE"],
+          "categories": []
+        },
+        {
+          "actions": ["androidx.profileinstaller.action.SAVE_PROFILE"],
+          "categories": []
+        },
+        {
+          "actions": ["androidx.profileinstaller.action.BENCHMARK_OPERATION"],
+          "categories": []
+        }
       ],
       "justification": "AndroidX baseline-profile installer. Callable only by holders of the signature|privileged DUMP permission (adb shell / the platform), not by other apps.",
       "requirementIds": ["Q26"]
     }
-  ]
+  ],
+  "foregroundServices": [],
+  "$commentForegroundServices": "Services allowed to declare android:foregroundServiceType in the release AAB. EMPTY in Phase 3: no foreground service (P3.5, FA-02 foreground-only Rider location; Driver online/background tracking is Phase 4 and needs its own reviewed entry with requirement IDs)."
 }
