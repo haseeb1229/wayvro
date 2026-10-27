@@ -19,17 +19,25 @@ This block is the current state. Everything below it is a time-stamped log; earl
   - **PARTIAL_EXTERNAL_GATED 21:** A01, A06, A07, A08, B01, B02, B03, E06, E07, I11, K19, L08, P18, Q26, Q27, Q31, U04, U05, V05, V10, V11.
   - **BLOCKED 0.**
   - The earlier 5 / 10 / 14 split (2026-10-13/14) is historical.
-- **Macro Phase 3: EXTERNAL BLOCKED.** Not complete. Remaining gates:
-  - FA-03 / SP-01 real OEM devices;
-  - FA-04 / SP-02 real low-end phone;
-  - FA-05 / SP-04 Lahore field ground truth;
-  - FA-06 provider evaluation accounts if needed;
-  - FA-09 native Urdu / Roman-Urdu review;
-  - FA-13 iPhone / VoiceOver;
-  - FA-14 physical TalkBack;
-  - FA-19 only if Mapbox remains a finalist;
-  - EG-18 store / listing / disclosure work.
+- **Macro Phase 3: EXTERNAL BLOCKED.** Not complete. The open gates fall into three separate categories (authority: `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1, `docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md` §0 and §5):
+  - **Phase-3 close blockers** (exit needs all four):
+    - FA-03 / SP-01 real OEM Android devices;
+    - FA-04 / SP-02 reference low-end Android phone;
+    - FA-05 / SP-04 Lahore field ground truth and provider benchmark;
+    - FA-09 native Urdu / Roman-Urdu human review.
+  - **Conditional dependencies** (no independent exit block):
+    - FA-17 HTTPS tunnel for the signed-in SP-01 TC-01 and SP-02 subsets. Without an acceptable path those measurements stay BLOCKED, and TLS is never weakened.
+    - FA-06 provider evaluation accounts, only if the SP-04 comparison of proprietary candidates needs them. The open stack can be benchmarked without them.
+    - FA-19 written Mapbox licence clarification, only if S2 (Mapbox) remains a finalist. It blocks an S2 freeze, not exit.
+  - **Future release gates** (not Phase-3 exit):
+    - FA-13 iPhone / VoiceOver (Phase 7);
+    - FA-14 physical TalkBack walkthrough (recommended before pilot);
+    - EG-18 store listing, Play location declaration and Data safety.
 - **Governance.** Ruleset 24837051 still requires the original five contexts and allows merge, squash and rebase. The founder-authorised update was prepared from the live ruleset (`Mobile E2E` as the sixth required context; merge-only). This session's permission policy refused the PUT on 2026-10-17 and 2026-10-18, so it is **pending, as a founder action**. Until then `Mobile E2E` is green on every run but informational.
+- **Repository visibility:** the repository is **PRIVATE** again (checked 2026-10-27). The PUBLIC period recorded in the closure-CI section below is historical.
+- **Latest CI on the documentation head `09b7672`:**
+  - PR run 39063230948: all 11 jobs success, including the E2E APK, all four Mobile E2E shards and the aggregate (14 expected · PASS 14).
+  - Push run 39063226015: all jobs success. The shards were SKIPPED there because nothing mobile-affecting changed since `5c5d285`; the aggregate reports that skip.
 - **PR #8:** open and unmerged; review only. **Phase 4:** not started.
 
 ## Authority checks at run start (2026-10-12)

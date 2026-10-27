@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 9660,
-      "sha256": "f3f611d093b096885f7df61d8fd1f91ef7072df1ebac49b595a6c5ec38f02f88"
+      "bytes": 10557,
+      "sha256": "43f17dad3e23dc70331a7fba8822de6e89d54f4e148e3861f255e5b16d8eefd8"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 12266,
-      "sha256": "de630e32660db7d6eed6f7684fab9313bf033d64d255ca2ee1aa39056b8e6020"
+      "bytes": 13442,
+      "sha256": "c5a94fd3db3c490af1ca8406d4ccd5b53fb2919279e39218cb6e45fdde8bf80c"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -301,8 +301,8 @@
     },
     {
       "path": "docs/adr/ADR-050-phase3-performance-budgets.md",
-      "bytes": 4352,
-      "sha256": "61abcdf3293db7a543c9fe284c4f8d2183a937ba72ddf04ffec90111dbf0821e"
+      "bytes": 5729,
+      "sha256": "f385ea230123eba1e3f57f089888a5061ba1b85470c0f525eef527572a34ea68"
     },
     {
       "path": "docs/adr/ADR-051-service-products-zones-lifecycle.md",
@@ -311,13 +311,13 @@
     },
     {
       "path": "docs/adr/ADR-052-mobile-e2e-tooling.md",
-      "bytes": 10830,
-      "sha256": "7a7c1f893814b268037218131b8a52b59d71c902cf9e2228264750b891c36830"
+      "bytes": 12693,
+      "sha256": "0b03f9e9308067f0c53afe4d4b97532134e44d00679e95475b5117676f32d2fe"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 8890,
-      "sha256": "1ca7e73668b9259e3eab4b6e1d2b419ce0b9c3c82fa224fbd3b74b80ab49ea64"
+      "bytes": 9339,
+      "sha256": "94939c3feb86e6785ffa93360cfe65bd19fec430acc102f90616ba92096f0d0b"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 83522,
-      "sha256": "0e744ceb04d5f9877815a5dd16d1dc4fefdebbc101bbb184726ee3acd35deeca"
+      "bytes": 84848,
+      "sha256": "f0437c6a48e66f2ebc463a13cc575ff8c0087f64f92626422fa87652de9bc52e"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",

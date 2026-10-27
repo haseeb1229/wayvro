@@ -107,6 +107,27 @@ build mode, its plugin, the Metro wrapper and the gates can be deleted together;
   Maestro/TalkBack treat it as not visible to the user. **Fixed:** `Screen topInset` (the overlay has no navigation
   header, so it insets the status bar as well). Emulator re-run NOT RUN.
 
+## Current evidence (2026-10-27) — EMULATOR evidence in CI; status stays PROPOSED until the Phase 3 review
+- **PR tier, sharded (FA-16 closure correction).** One E2E APK, then 4 balanced shards (each with its own emulator,
+  throwaway stack and 900 s Maestro budget), then the `Mobile E2E` aggregate (`tests/e2e-mobile/aggregate-shards.mjs`:
+  every one of the 14 flows exactly once). Decision 6's single-job PR tier is superseded by this layout.
+  - Green on the final code `af5d8e2`: push run 39045490954 and PR run 39045495235, 14 expected · PASS 14.
+  - Green on the documentation head `09b7672`: PR run 39063230948, all four shards and the aggregate, 14/14 PASS.
+  - In push run 39063226015 the shards were SKIPPED (no mobile-affecting change), as designed.
+- **Full matrix 39045502501 on `af5d8e2`: every job success.**
+  - Jobs: target guard, E2E APK, Maestro API 29, API 35 and API 35 low-RAM, the 50,000-run property tier, load +
+    600 s FAULT-GEO soak, and the matrix summary. The runtime network inventory in the API 35 lane PASSES.
+  - Totals: PASS 105 · SKIPPED 6 · NOT RUN 6 (n-14, n-27: no deterministic Photo Picker/camera automation) · NOT
+    TESTABLE 9 · FLAKY 0 · FAIL 0 · BLOCKED 0.
+- **Runner robustness fix in `af5d8e2`** (`tests/e2e-mobile/run-flows.mjs`). It addresses the low-RAM lane crash of
+  run 39039135285 (an unhandled `UND_ERR_SOCKET` from a hook's control PUT):
+  - the idempotent control PUT retries once on a network-level failure;
+  - a hook that still throws marks only that flow BLOCKED, with its reason, and cleanup hooks still run.
+- **Ruleset.** `Mobile E2E` is still informational. Ruleset 24837051 requires only the original five contexts. The
+  founder-approved change (sixth context + merge-only) is pending as a founder action.
+- **The earlier "Not verified" note is superseded.** It said the CI runtime of `Mobile E2E` and `mobile-full.yml` was
+  NOT RUN; both have now run green in CI.
+
 ## Not verified
-CI runtime of the `Mobile E2E` job and of `mobile-full.yml` (boot time, KVM availability on the repository's plan,
-flake rate) — NOT RUN until the first CI runs; physical-device runs (SP-08 R/M tiers) NOT RUN.
+Physical-device runs (SP-08 R/M tiers) — NOT RUN. All results above are EMULATOR evidence and do not satisfy SP-01 or
+SP-02.
