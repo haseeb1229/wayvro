@@ -586,8 +586,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md",
-      "bytes": 35005,
-      "sha256": "98a1fb817c72bb47628ad3691616c2d40359f52653150ad6d79f19eb19cfe8b7"
+      "bytes": 37813,
+      "sha256": "5f97e17e1a468974a4df1d5a476564cccc7e6053536a099e3d4efd5c7df88f72"
     },
     {
       "path": "docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 86258,
-      "sha256": "92ae3c80ea2129a6a288508a27bf5b39f1d87a671315595e7a54ef25a8a3aa9b"
+      "bytes": 87180,
+      "sha256": "7e578b9248fad14b14b17cf3278953206c83b44808b4933c4079919edcae45be"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -666,8 +666,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SP02_LOW_END_PERFORMANCE_PROTOCOL.md",
-      "bytes": 27340,
-      "sha256": "6e4387a3cba96d24beba58f61fa57092ab8708b86fa49a7ddb091c51618f4775"
+      "bytes": 27517,
+      "sha256": "740cbc7bf70eaf3919c4bff6f552bb0b7a5e96717746bc6108254e151b57f3fc"
     },
     {
       "path": "docs/phase3/PHASE3_SP04_FIELD_CAPTURE_TEMPLATE.csv",
@@ -691,13 +691,13 @@
     },
     {
       "path": "docs/phase3/evidence/device/SP01_SAMSUNG_A30.md",
-      "bytes": 12129,
-      "sha256": "80e6346226e36de84344ca0a7d57fb26cb4b66fd90cc741aaee79803cc438a31"
+      "bytes": 12196,
+      "sha256": "e99504627f536306229c0c19a79d62f78ace316514ddb2e11736bba98628e02a"
     },
     {
-      "path": "docs/phase3/evidence/device/SP02_SAMSUNG_A30_INFORMATIONAL.md",
-      "bytes": 4527,
-      "sha256": "38721d29f932eee4d4bb394476e801f2152f9fb6efebae065799c5896c990b9c"
+      "path": "docs/phase3/evidence/device/SP02_SAMSUNG_A30.md",
+      "bytes": 8622,
+      "sha256": "0f312424e05a017917d73d1593140ffbd8f3c25985548fff25742c232e74971b"
     },
     {
       "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",

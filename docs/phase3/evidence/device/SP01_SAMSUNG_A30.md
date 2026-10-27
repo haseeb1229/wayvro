@@ -23,7 +23,7 @@
 |---|---|
 | Model class | Samsung Galaxy A30 (SM-A305F), One UI on Android 10 / API 29, arm64-v8a |
 | RAM | 3.6 GB (`MemTotal` 3,818,116 kB); `ro.config.low_ram` unset |
-| Role | SP-01 Samsung class. **Not** the SP-02 reference class (Transsion Android Go), so it gives no SP-02 PASS/FAIL. |
+| Role | SP-01 Samsung class. Also the SP-02 reference device by founder decision of 2026-10-27 (`docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1b; results in `SP02_SAMSUNG_A30.md`). |
 | Battery config | DEFAULT = fresh install. GUIDED = App info → Battery: "Allow background activity" On (default) and "Optimise battery usage" → All → spike **Off**, which puts the spike on the system's battery-optimisation exemption list (standby bucket 5). On this One UI version GUIDED and STD-EXEMPT are therefore the same state. |
 
 ## 2. Deviations (read with every result)

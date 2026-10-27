@@ -19,12 +19,12 @@ This block is the current state. Everything below it is a time-stamped log; earl
   - **PARTIAL_EXTERNAL_GATED 21:** A01, A06, A07, A08, B01, B02, B03, E06, E07, I11, K19, L08, P18, Q26, Q27, Q31, U04, U05, V05, V10, V11.
   - **BLOCKED 0.**
   - The earlier 5 / 10 / 14 split (2026-10-13/14) is historical.
-- **Macro Phase 3: EXTERNAL BLOCKED.** Not complete. The open gates fall into three separate categories (authority: `docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1, `docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md` §0 and §5):
-  - **Phase-3 close blockers** (exit needs all four):
-    - FA-03 / SP-01 real OEM Android devices;
-    - FA-04 / SP-02 reference low-end Android phone;
-    - FA-05 / SP-04 Lahore field ground truth and provider benchmark;
-    - FA-09 native Urdu / Roman-Urdu human review.
+- **Macro Phase 3: NOT COMPLETE.** Founder decisions of 2026-10-27 (`docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1b) changed the close blockers. The gate categories (authority: that file's §1 and §1b, and `docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md` §0 and §5) are now:
+  - **Phase-3 close blocker remaining:** FA-04 / SP-02 on the reference device, which is now the Samsung Galaxy A30 class (founder decision). Measured on 2026-10-28: PB-02, PB-03, PB-04 and PB-05 PASS. **PB-07 FAIL** (Rider-home PSS p90 ≈ 166 MiB > 160 MB). PB-06 and PB-09 BLOCKED (a Cloudflare edge address is blocked on Pakistani networks). PB-01 at N2 and PB-12a NOT RUN (founder choice).
+  - **Deferred by the founder** (evidence still required later, not waived):
+    - FA-03 Transsion and Xiaomi SP-01 classes, to the Phase-4 ADR-029 freeze;
+    - FA-05 / SP-04 Lahore field data, to the ADR-006 provider freeze before pilot;
+    - FA-09 native Urdu / Roman-Urdu review, to before any external user or pilot exposure.
   - **Conditional dependencies** (no independent exit block):
     - FA-17 HTTPS tunnel for the signed-in SP-01 TC-01 and SP-02 subsets. Without an acceptable path those measurements stay BLOCKED, and TLS is never weakened.
     - FA-06 provider evaluation accounts, only if the SP-04 comparison of proprietary candidates needs them. The open stack can be benchmarked without them.
@@ -38,11 +38,16 @@ This block is the current state. Everything below it is a time-stamped log; earl
 - **Latest CI on the documentation head `09b7672`:**
   - PR run 39063230948: all 11 jobs success, including the E2E APK, all four Mobile E2E shards and the aggregate (14 expected · PASS 14).
   - Push run 39063226015: all jobs success. The shards were SKIPPED there because nothing mobile-affecting changed since `5c5d285`; the aggregate reports that skip.
-- **CI on `c5c9657` (documentation only): NOT STARTED.** GitHub refused to start every job ("recent account payments have failed or your spending limit needs to be increased"). This is an account billing block, not a test result; the last green CI is the `09b7672` pair above.
+- **CI on `c5c9657` and `b755711` (documentation only): NOT STARTED.** GitHub refused to start every job ("recent account payments have failed or your spending limit needs to be increased"). This is an account billing block, not a test result; the last green CI is the `09b7672` pair above.
 - **Real-device evidence (2026-10-27), one phone, Samsung Galaxy A30 (Android 10, 3.6 GB):**
   - **SP-01 Samsung class:** `docs/phase3/evidence/device/SP01_SAMSUNG_A30.md`. TC-02, 05, 07, 08, 09, 10, 12b, 13, 16, 17, 18, 19 and 21 PASS. TC-04 GUIDED **FAIL** on R1: 75.14 % completeness with 0 drops; the device delivers a fix about every 6.8 s for a 5 s request. TC-06a, TC-11 and TC-15 **FAIL**: a background socket that does not reconnect, and an orphan location FGS after a revoke or crash. TC-01 runtime BLOCKED (FA-17); TC-06b, 12a NOT RUN; TC-14 partial. SP-01 / FA-03 stays open: the Transsion and Xiaomi classes have not run, and ADR-029 / ADR-033 are undecided.
-  - **SP-02:** `docs/phase3/evidence/device/SP02_SAMSUNG_A30_INFORMATIONAL.md`. Informational only (not the FA-04 reference class). The R1a `058fcea` AAB was rebuilt locally (the CI artefact had expired), with PB-04/PB-05 within limits. A30 control sets ran for R1a and R1b. The NON-SHIPPING PB-06 instrumented APK is built and passes 14/14 static checks; its runtime needs the FA-17 session. SP-02 / FA-04 stays open.
-  - Classification unchanged: 8 / 21 / 0.
+  - **SP-02:** `docs/phase3/evidence/device/SP02_SAMSUNG_A30.md`. The A30 became the reference device by founder decision. R1a `058fcea` was rebuilt locally (the CI artefact had expired). Signed-in R1b ran through the founder-authorised FA-17 session (synthetic data, `/v1`-only proxy, torn down afterwards). Results:
+    - **PASS:** PB-02 1.76 s p50; PB-03 82 ms p50; PB-04; PB-05.
+    - **FAIL:** PB-07, Rider-home PSS p90 170,214 KiB in the cold set and 169,436 KiB in the repeat, against 156,250 KiB.
+    - **BLOCKED:** PB-06 and PB-09. One of the tunnel's two Cloudflare edge addresses fails TLS on both Pakistani networks tried, and DNS keeps rotating to it.
+    - **NOT RUN:** PB-01 at N2 (N0: 2.42 / 3.24 s, informational) and PB-12a.
+    - **Not this round:** PB-08 is R2.
+  - Classification unchanged: 8 / 21 / 0. Deferring gates does not satisfy any ID.
 - **PR #8:** open and unmerged; review only. **Phase 4:** not started.
 
 ## Authority checks at run start (2026-10-12)
