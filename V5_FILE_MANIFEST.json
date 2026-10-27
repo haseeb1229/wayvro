@@ -17,7 +17,7 @@
     ],
     "note": "documentation/planning package only; code and build output are protected by Git + CI"
   },
-  "file_count_excluding_manifest": 143,
+  "file_count_excluding_manifest": 145,
   "files": [
     {
       "path": ".gitattributes",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 84848,
-      "sha256": "f0437c6a48e66f2ebc463a13cc575ff8c0087f64f92626422fa87652de9bc52e"
+      "bytes": 86258,
+      "sha256": "92ae3c80ea2129a6a288508a27bf5b39f1d87a671315595e7a54ef25a8a3aa9b"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -688,6 +688,16 @@
       "path": "docs/phase3/PHASE3_TEST_STRATEGY.md",
       "bytes": 53465,
       "sha256": "13f545e7002327b709a11a62fbec90a45034491449f5fbfccb5b4c79feafab39"
+    },
+    {
+      "path": "docs/phase3/evidence/device/SP01_SAMSUNG_A30.md",
+      "bytes": 12129,
+      "sha256": "80e6346226e36de84344ca0a7d57fb26cb4b66fd90cc741aaee79803cc438a31"
+    },
+    {
+      "path": "docs/phase3/evidence/device/SP02_SAMSUNG_A30_INFORMATIONAL.md",
+      "bytes": 4527,
+      "sha256": "38721d29f932eee4d4bb394476e801f2152f9fb6efebae065799c5896c990b9c"
     },
     {
       "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",

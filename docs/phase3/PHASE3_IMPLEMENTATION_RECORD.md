@@ -6,7 +6,7 @@ Founder confirmations in force for this run (authorisation §4–§8): FA-01, FA
 
 Genuine founder/external actions still open at run start: FA-03 (SP-01 real devices), FA-04 (SP-02 low-end device), FA-05 (SP-04 Lahore field data), FA-06 (evaluation provider accounts/keys), FA-09 (native Urdu/Roman-Urdu review), FA-19 (Mapbox written licence clarification, S2 only).
 
-## Current status (2026-10-18) — read this first
+## Current status (2026-10-27) — read this first
 
 This block is the current state. Everything below it is a time-stamped log; earlier closure sections are **historical and superseded** where they differ, and their banners say so.
 - **Repository-owned engineering closure: PASS.**
@@ -38,6 +38,11 @@ This block is the current state. Everything below it is a time-stamped log; earl
 - **Latest CI on the documentation head `09b7672`:**
   - PR run 39063230948: all 11 jobs success, including the E2E APK, all four Mobile E2E shards and the aggregate (14 expected · PASS 14).
   - Push run 39063226015: all jobs success. The shards were SKIPPED there because nothing mobile-affecting changed since `5c5d285`; the aggregate reports that skip.
+- **CI on `c5c9657` (documentation only): NOT STARTED.** GitHub refused to start every job ("recent account payments have failed or your spending limit needs to be increased"). This is an account billing block, not a test result; the last green CI is the `09b7672` pair above.
+- **Real-device evidence (2026-10-27), one phone, Samsung Galaxy A30 (Android 10, 3.6 GB):**
+  - **SP-01 Samsung class:** `docs/phase3/evidence/device/SP01_SAMSUNG_A30.md`. TC-02, 05, 07, 08, 09, 10, 12b, 13, 16, 17, 18, 19 and 21 PASS. TC-04 GUIDED **FAIL** on R1: 75.14 % completeness with 0 drops; the device delivers a fix about every 6.8 s for a 5 s request. TC-06a, TC-11 and TC-15 **FAIL**: a background socket that does not reconnect, and an orphan location FGS after a revoke or crash. TC-01 runtime BLOCKED (FA-17); TC-06b, 12a NOT RUN; TC-14 partial. SP-01 / FA-03 stays open: the Transsion and Xiaomi classes have not run, and ADR-029 / ADR-033 are undecided.
+  - **SP-02:** `docs/phase3/evidence/device/SP02_SAMSUNG_A30_INFORMATIONAL.md`. Informational only (not the FA-04 reference class). The R1a `058fcea` AAB was rebuilt locally (the CI artefact had expired), with PB-04/PB-05 within limits. A30 control sets ran for R1a and R1b. The NON-SHIPPING PB-06 instrumented APK is built and passes 14/14 static checks; its runtime needs the FA-17 session. SP-02 / FA-04 stays open.
+  - Classification unchanged: 8 / 21 / 0.
 - **PR #8:** open and unmerged; review only. **Phase 4:** not started.
 
 ## Authority checks at run start (2026-10-12)
