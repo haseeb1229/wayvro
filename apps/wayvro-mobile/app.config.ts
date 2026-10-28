@@ -132,6 +132,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     './plugins/no-location-task-service.mjs',
+    // PB-07 (FA-07): R8 removes unused Android library code from release-mode builds; class names are kept.
+    './plugins/release-code-shrinking.mjs',
     ...(E2E_API_PORT === null ? [] : ['./plugins/e2e-loopback-network.mjs']),
   ],
   extra: {
