@@ -100,3 +100,38 @@ PB-07 failure.
 - PB-06 and PB-09 need one more session on a network path where the tunnel's working address is stable: a different
   network, a tunnel provider whose edge is reachable, or the staging host.
 - PB-01 at N2 and PB-12a stay NOT RUN by founder choice.
+
+## 6. PB-07 fix and first-screen re-measurement (2026-10-29)
+
+**Cause found.** R8 code shrinking was off in the release build type (`android.enableMinifyInReleaseBuilds` defaulted to
+false), so the AAB carried 49.1 MB of uncompressed dex for every Android library class, used or not. ART runs that code
+straight from the APK, and the pages it touches count as PSS: "Code" was 47–48 MB at the first screen and 70 MB at Rider
+home, with `.apk mmap` 59 MB at home.
+
+**Fix** (`b9f739b`, `c8bb136`): R8 shrinking for release-mode builds through
+`apps/wayvro-mobile/plugins/release-code-shrinking.mjs`. Class names are kept, so stack traces and the release-purity
+dex check stay meaningful. Resource shrinking stays off. Shrunk CI AAB of `a0737eb` (push run 40771991256, sha256
+`eebda6cf…b2d8a4`): dex 20.9 MB in 3 files. All seven release gates PASS, and the Mobile E2E suite (4 shards) passes on
+the shrunk release-mode APK.
+
+**First-screen control, same session, same phone, Wi-Fi ADB, phone on battery at 99 %, thermal status 0** (control set:
+unconfigured CI AABs, 6 cold launches with the first discarded, no network involved):
+
+| Metric | `af5d8e2` (before) | `a0737eb` (after) | Change |
+|---|---|---|---|
+| PSS at the first screen p50 / p90 | 137,091 / 138,305 KiB (CV 0.4 %) | **122,628 / 123,264 KiB** (CV 0.3 %) | −14,463 / −15,041 KiB |
+| Code (run #3) / `.apk mmap` | 48,140 / 47,029 KiB | 34,508 / 33,681 KiB | −13.6 / −13.3 MB |
+| `am start` TotalTime p50 / p90 | 472 / 542 ms | 459 / 504 ms | no regression |
+
+The other memory categories are unchanged within noise. The R1b first-screen figure of 2026-10-27 (150,938 KiB p50)
+included a 17.7 MB `GL mtrack` allocation that did not recur in either run here, so only the same-session pair is
+compared.
+
+**PB-07 verdict: still FAIL until re-measured.** PB-07 is defined at Rider home on the signed-in build. That needs an
+HTTPS origin the phone can reach. The Cloudflare quick tunnel is unreliable from these networks (§1), and this session's
+permission policy refused the replacement tunnel (localhost.run, synthetic data, the same `/v1`-only proxy) on
+2026-10-29. At Rider home the unshrunk build mapped more app code (59 MB) than at the first screen, so a saving at least
+as large is expected (projection: p90 ≈ 154 MB against the 160 MB budget). **This projection is not evidence.** PB-06
+and PB-09 stay BLOCKED for the same reason. The next session with an allowed tunnel re-runs `signedin` (PB-01 at N0,
+PB-07), `memscreens`, `quotecycles` (PB-09), `signedout` (PB-02), `warm` (PB-03) and the PB-06 instrumented build on
+the new code.
