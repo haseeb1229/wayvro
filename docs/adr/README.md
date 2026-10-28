@@ -17,7 +17,7 @@ Every ADR states: status, context, alternatives, evidence (commands, versions, m
 | [ADR-005b](ADR-005b-realtime-transport.md) | Realtime transport and recovery model (SP-05) | ACCEPTED on evidence — recovery PASS; 2k-herd latency target not met on the dev laptop, re-test gate at Phase 4 |
 | [ADR-010](ADR-010-object-storage-local-s3.md) | Local S3-compatible development server (production storage still PROPOSED) | ACCEPTED (local only) |
 | [ADR-027](ADR-027-ci-quality-and-dead-code-tooling.md) | CI, dead-code, boundary and security tooling | ACCEPTED on evidence |
-| [ADR-030](ADR-030-web-framework-and-version-maturity.md) | Web framework version line (Next.js 16.3.8) and framework-maturity policy | ACCEPTED — founder review correction 2026-10-10 |
+| [ADR-030](ADR-030-web-framework-and-version-maturity.md) | Web framework version line (Next.js 16.4.3 since the 2026-10-29 security amendment; 16.3.8 before) and framework-maturity policy | ACCEPTED — founder review correction 2026-10-10; amended 2026-10-29 (security) |
 | [ADR-034](ADR-034-monorepo-tooling-and-runtime.md) | Monorepo tooling and runtime | ACCEPTED on evidence |
 | [ADR-036](ADR-036-android-build-toolchain.md) | Android build toolchain (SP-AND) | ACCEPTED on evidence — SP-AND PASS via the executed fallback (pnpm hoisted layout after an isolated-layout Windows FAIL) |
 | [ADR-037](ADR-037-local-development-infrastructure.md) | Local development infrastructure (Docker Compose) | ACCEPTED |

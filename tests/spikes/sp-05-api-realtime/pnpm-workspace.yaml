@@ -1,0 +1,8 @@
+# Disposable SP-05 evidence harness (outside the root workspace). This file makes the directory its own workspace root
+# so the security overrides below apply (same entries and reasons as the root pnpm-workspace.yaml, 2026-10-29).
+allowBuilds:
+  esbuild: true
+overrides:
+  'fast-uri@>=3.0.0 <3.1.9': 3.1.9
+  'fast-uri@>=4.0.0 <4.2.3': 4.2.3
+  'fastify@5.12.5': 5.12.6

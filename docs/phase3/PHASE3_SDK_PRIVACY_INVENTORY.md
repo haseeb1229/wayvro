@@ -44,7 +44,7 @@ Release build facts (R): Expo SDK 57.0.27, RN 0.86.3, Hermes; `updates.enabled=f
 | react-native-screens | 4.26.2 | MIT | pinned | none | none | none |
 | react-native-safe-area-context | 5.7.0 | MIT | pinned (its transitive `kotlin-stdlib-jdk8:1.8.0` was involved in the F-P3-02 CI failure, caused by a stale Gradle cache and fixed by PR #6) | none | none | none |
 | @tanstack/react-query | 5.103.3 | MIT | pinned; devtools not installed | none | API responses cached in memory | none (fetchers call the Wayvro API) |
-| zod | 4.6.5 | MIT | pinned | none | none | none |
+| zod | 4.6.6 (security patch GHSA-mrhx-c7xc-m3w5, 2026-10-29) | MIT | pinned | none | none | none |
 | @wayvro/contracts | workspace | first-party | — | none | none | none |
 | expo-location (P3.5, installed) | 57.0.20 (= Expo SDK 57 `bundledNativeModules` `~57.0.20`; 57.0.21 was < 24 h old at install and is not the SDK pin; only new lockfile entry — its dependency `@expo/image-utils` 0.11.6 was already locked) | MIT | Expo-pinned — OK (ADR-030 re-check at install, ADR-043 P3.5 addendum) | ACCESS_COARSE_LOCATION + ACCESS_FINE_LOCATION (library manifest; allowlisted, FA-02); plugin options set foreground-only — no ACCESS_BACKGROUND_LOCATION / FOREGROUND_SERVICE* (FOREGROUND_SERVICE also in `blockedPermissions`); iOS `NSLocationWhenInUseUsageDescription` only (Always/Motion keys set `false` = deleted; verified by `expo config --type introspect`). The library manifest also declares a NON-exported `LocationTaskService` (FGS type `location`) — never started (task/background APIs string-banned); since 2026-10-17 it is **removed from the merged manifest** by `apps/wayvro-mobile/plugins/no-location-task-service.mjs` (`tools:node="remove"`), and the release-AAB gate `check-intent-filters.mjs` fails on any service declaring `foregroundServiceType` (component-allowlist `foregroundServices`: empty in Phase 3) | the rider's device position, only after the rider taps "Use current location" and passes the in-app rationale; held in memory (5 dp fix, 2 dp search bias), never persisted or logged; approximate grants only bias search | none by the module itself; Android platform/Play-services location provider (S — verify by capture, NOT RUN) |
 | typescript, vitest, @types/react | devDependencies | Apache-2.0 / MIT / MIT | dev only | — | — | not shipped |
@@ -108,8 +108,8 @@ Nothing in this section is installed. Renderer and tile host are **one choice co
 
 | Surface | Runtime dependencies (R) | Third-party runtime SDKs | Phase-3 change |
 |---|---|---|---|
-| apps/web-public | next 16.3.8, react / react-dom 19.2.3, first-party workspace packages | none (no analytics, no tag manager, no fonts CDN known — verify at P3.10) | none proposed |
-| apps/web-ops | next 16.3.8, react / react-dom 19.2.3, @simplewebauthn/browser 14.0.0 (MIT; local WebAuthn ceremony, no third-party endpoint), first-party packages | none | pricing/catalog/release-control staff screens add **no** third-party SDK; any zone-preview map in web-ops would need its own row and the same licence coupling check |
+| apps/web-public | next 16.4.3 (ADR-030 amendment 2026-10-29), react / react-dom 19.2.3, first-party workspace packages | none (no analytics, no tag manager, no fonts CDN known — verify at P3.10) | none proposed |
+| apps/web-ops | next 16.4.3, react / react-dom 19.2.3, @simplewebauthn/browser 14.0.0 (MIT; local WebAuthn ceremony, no third-party endpoint), first-party packages | none | pricing/catalog/release-control staff screens add **no** third-party SDK; any zone-preview map in web-ops would need its own row and the same licence coupling check |
 
 Next.js build-time telemetry is a developer/CI tool setting, not a runtime SDK; it should stay disabled in CI (verify).
 

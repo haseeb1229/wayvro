@@ -226,8 +226,8 @@
     },
     {
       "path": "docs/adr/ADR-030-web-framework-and-version-maturity.md",
-      "bytes": 3693,
-      "sha256": "dc682aad5918d25ba0d8975ab5ad5bda67f2840fafc28b69d6e68535ffa44354"
+      "bytes": 5106,
+      "sha256": "21b4ebe48f4c06665df31ba72d289eb8a0152368dc6c0c3072278738d862a66a"
     },
     {
       "path": "docs/adr/ADR-034-monorepo-tooling-and-runtime.md",
@@ -316,8 +316,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 9339,
-      "sha256": "94939c3feb86e6785ffa93360cfe65bd19fec430acc102f90616ba92096f0d0b"
+      "bytes": 9425,
+      "sha256": "02d2b03eaef05fa0af19a9b59ae54e40f8d02ae1569c40b3ad968f9219b41453"
     },
     {
       "path": "docs/operations/developer-setup.md",
@@ -651,8 +651,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
-      "bytes": 40711,
-      "sha256": "516c32aad3c868aa755e2c0045cf00bca3e05b0f22df9883127e91a29b6e315f"
+      "bytes": 40791,
+      "sha256": "b88ebfa893601a6261a0f36c2b8ed7b3ae9b4e575354733b8619fb11fa7de79c"
     },
     {
       "path": "docs/phase3/PHASE3_SECURITY_COST_THREAT_MODEL.md",

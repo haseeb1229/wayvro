@@ -14,7 +14,7 @@
   "dependencies": {
     "@wayvro/geo-adapters": "workspace:*",
     "@wayvro/provider-interfaces": "workspace:*",
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
