@@ -22,7 +22,7 @@ This block is the current state. Everything below it is a time-stamped log; earl
 - **Macro Phase 3: NOT COMPLETE.** Founder decisions of 2026-10-27 (`docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1b) changed the close blockers. The gate categories (authority: that file's §1 and §1b, and `docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md` §0 and §5) are now:
   - **Phase-3 close blocker remaining:** FA-04 / SP-02 on the reference device, which is now the Samsung Galaxy A30 class (founder decision). Measured on 2026-10-28: PB-02, PB-03, PB-04 and PB-05 PASS. **PB-07 FAIL** (Rider-home PSS p90 ≈ 166 MiB > 160 MB). PB-06 and PB-09 BLOCKED (a Cloudflare edge address is blocked on Pakistani networks). PB-01 at N2 and PB-12a NOT RUN (founder choice).
   - **Deferred by the founder** (evidence still required later, not waived):
-    - FA-03 Transsion and Xiaomi SP-01 classes, to the Phase-4 ADR-029 freeze;
+    - FA-03 Transsion and Xiaomi SP-01 classes: dropped on 2026-10-29. Later device tests use the Galaxy A30 only; this is an accepted risk that ADR-029 must record;
     - FA-05 / SP-04 Lahore field data, to the ADR-006 provider freeze before pilot;
     - FA-09 native Urdu / Roman-Urdu review, to before any external user or pilot exposure.
   - **Conditional dependencies** (no independent exit block):

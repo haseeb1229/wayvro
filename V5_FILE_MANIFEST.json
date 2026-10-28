@@ -586,8 +586,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md",
-      "bytes": 37813,
-      "sha256": "5f97e17e1a468974a4df1d5a476564cccc7e6053536a099e3d4efd5c7df88f72"
+      "bytes": 38979,
+      "sha256": "cafad073c5887ec0e492cb45767c8211e3a669cd99fc1297ec4e645047a58ab8"
     },
     {
       "path": "docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 87180,
-      "sha256": "7e578b9248fad14b14b17cf3278953206c83b44808b4933c4079919edcae45be"
+      "bytes": 87267,
+      "sha256": "3bb97a171cd8adb17ff2989aecb081630297dd8354154873bf8399a8ffe3e526"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
