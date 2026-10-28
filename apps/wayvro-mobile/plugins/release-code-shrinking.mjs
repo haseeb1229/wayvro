@@ -26,6 +26,18 @@ const { withDangerousMod, withGradleProperties } = configPlugins;
 export const MINIFY_PROPERTY = 'android.enableMinifyInReleaseBuilds';
 export const RESOURCE_SHRINK_PROPERTY = 'android.enableShrinkResourcesInReleaseBuilds';
 export const KEEP_NAMES_RULE = '-dontobfuscate';
+/**
+ * ML Kit barcode / code-scanner classes are deliberately NOT linked: expo-camera is compiled from source with
+ * `barcodeScannerEnabled: false` (app.config.ts, package.json `expo.autolinking.android.buildFromSource`), but its
+ * barcode analyzer source still refers to them. The app never starts barcode scanning, so those calls are never made.
+ * The unshrunk build already shipped without these classes; telling R8 they are absent changes no runtime behaviour.
+ */
+export const ABSENT_BY_DESIGN_RULES = [
+  '-dontwarn com.google.mlkit.vision.barcode.**',
+  '-dontwarn com.google.mlkit.vision.codescanner.**',
+  '-dontwarn com.google.mlkit.vision.common.**',
+];
+const RELEASE_RULES = [KEEP_NAMES_RULE, ...ABSENT_BY_DESIGN_RULES];
 
 /**
  * Sets minify on and resource shrinking off in the parsed gradle.properties entries (idempotent).
@@ -40,14 +52,16 @@ export function setShrinkingProperties(properties) {
 }
 
 /**
- * Appends the keep-names rule to proguard-rules.pro content once.
+ * Appends the release rules (keep names; classes absent by design) to proguard-rules.pro content, each once.
  * @param {string} rules
  * @returns {string}
  */
-export function addKeepNamesRule(rules) {
-  if (rules.split(/\r?\n/).some((line) => line.trim() === KEEP_NAMES_RULE)) return rules;
+export function addReleaseRules(rules) {
+  const present = new Set(rules.split(/\r?\n/).map((line) => line.trim()));
+  const missing = RELEASE_RULES.filter((rule) => !present.has(rule));
+  if (missing.length === 0) return rules;
   const base = rules.length === 0 || rules.endsWith('\n') ? rules : `${rules}\n`;
-  return `${base}\n# PB-07 (plugins/release-code-shrinking.mjs): shrink unused code, keep class names readable.\n${KEEP_NAMES_RULE}\n`;
+  return `${base}\n# PB-07 (plugins/release-code-shrinking.mjs): shrink unused code, keep class names readable.\n${missing.join('\n')}\n`;
 }
 
 export default function withReleaseCodeShrinking(config) {
@@ -60,7 +74,7 @@ export default function withReleaseCodeShrinking(config) {
     (c) => {
       const file = join(c.modRequest.platformProjectRoot, 'app', 'proguard-rules.pro');
       const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
-      writeFileSync(file, addKeepNamesRule(current));
+      writeFileSync(file, addReleaseRules(current));
       return c;
     },
   ]);

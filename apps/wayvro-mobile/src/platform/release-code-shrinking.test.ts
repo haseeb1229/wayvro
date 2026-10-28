@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { addKeepNamesRule, KEEP_NAMES_RULE, MINIFY_PROPERTY, RESOURCE_SHRINK_PROPERTY, setShrinkingProperties } from '../../plugins/release-code-shrinking.mjs';
+import {
+  ABSENT_BY_DESIGN_RULES,
+  addReleaseRules,
+  KEEP_NAMES_RULE,
+  MINIFY_PROPERTY,
+  RESOURCE_SHRINK_PROPERTY,
+  setShrinkingProperties,
+} from '../../plugins/release-code-shrinking.mjs';
+
+const ruleLines = (text: string): string[] => text.split('\n').map((l) => l.trim());
 
 describe('PB-07 release code shrinking (R8, class names kept)', () => {
   it('turns release minify on and keeps resource shrinking off, replacing any earlier value', () => {
@@ -15,12 +24,16 @@ describe('PB-07 release code shrinking (R8, class names kept)', () => {
     expect(setShrinkingProperties(out)).toEqual(out);
   });
 
-  it('adds -dontobfuscate to proguard-rules.pro exactly once and keeps the existing rules', () => {
+  it('adds -dontobfuscate and the absent-by-design ML Kit rules once each, keeping the existing rules', () => {
     const template = '# react-native-reanimated\n-keep class com.swmansion.reanimated.** { *; }';
-    const once = addKeepNamesRule(template);
+    const once = addReleaseRules(template);
     expect(once.startsWith(template)).toBe(true);
-    expect(once.split('\n').filter((l) => l.trim() === KEEP_NAMES_RULE)).toHaveLength(1);
-    expect(addKeepNamesRule(once)).toBe(once);
-    expect(addKeepNamesRule('').trim().endsWith(KEEP_NAMES_RULE)).toBe(true);
+    for (const rule of [KEEP_NAMES_RULE, ...ABSENT_BY_DESIGN_RULES]) expect(ruleLines(once).filter((l) => l === rule)).toHaveLength(1);
+    expect(addReleaseRules(once)).toBe(once);
+    expect(ruleLines(addReleaseRules(''))).toContain(KEEP_NAMES_RULE);
+  });
+
+  it('only silences the ML Kit vision packages that the disabled barcode scanner would bring', () => {
+    for (const rule of ABSENT_BY_DESIGN_RULES) expect(rule).toMatch(/^-dontwarn com\.google\.mlkit\.vision\.[a-z]+\.\*\*$/);
   });
 });
