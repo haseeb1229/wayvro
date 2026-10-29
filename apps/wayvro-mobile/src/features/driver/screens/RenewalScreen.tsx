@@ -253,7 +253,9 @@ function RenewalEvidence(props: {
       </Screen>
     );
   }
-  const uploading = view.data.some((s) => s.display.state === 'queued' || s.display.state === 'uploading' || s.display.state === 'processing');
+  const uploading = view.data.some(
+    (s) => s.display.state === 'queued' || s.display.state === 'uploading' || s.display.state === 'retrying' || s.display.state === 'processing',
+  );
   return (
     <Screen>
       <Stack.Screen options={{ title: props.title }} />

@@ -5,7 +5,10 @@ import { AccountGate } from '../../core/account/AccountGate';
 export default function SessionLayout() {
   return (
     <AccountGate>
-      <Stack />
+      <Stack>
+        <Stack.Screen name="ride" options={{ headerShown: false }} />
+        <Stack.Screen name="drive" options={{ headerShown: false }} />
+      </Stack>
     </AccountGate>
   );
 }

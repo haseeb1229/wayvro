@@ -1,0 +1,264 @@
+/*
+ * SP-08 flow manifest (docs/phase3/PHASE3_SP08_CROSS_MODE_E2E.md §5; PHASE3_TEST_STRATEGY §4.14). One row per runnable
+ * matrix entry; tests/e2e-mobile/run-flows.mjs reads it. Tiers: `pr` = PR smoke (API 35, Mobile E2E job), `full` = the
+ * manual workflow_dispatch matrix (API 29 + 35, .github/workflows/mobile-full.yml). Every SP-08 row that has no flow
+ * here is listed with its reason (NOT TESTABLE / manual-device only) so nothing disappears silently.
+ *
+ *   file / sequence  Maestro file(s) under flows/; a sequence interleaves server-state hooks (run-flows.mjs `hooks`)
+ *   before / after   hooks around the flow (`after` always runs, also on failure)
+ *   checks           host-side assertions after a passing flow (run-flows.mjs `checks`)
+ *   requires         `pricing`: NOT RUN (with the reason) when the stack seeded no ACTIVE synthetic rate card
+ *   apiLevels        flows that tap OS permission dialogs run on API 35 only (SP-08 §6)
+ *   inv07            INV-07 flows: never quarantined; FLAKY fails the run
+ */
+const hygiene = (opts = {}) => ({ name: 'riderHygiene', locationAllowed: false, locationAsked: false, ...opts });
+
+export const FLOWS = [
+  {
+    id: 'pr-01-signin-rider-home',
+    sp08: '#1, #12',
+    accounts: ['A'],
+    tiers: ['pr', 'full'],
+    inv07: true,
+    file: 'pr-01-signin-rider-home.yaml',
+    checks: [hygiene()],
+  },
+  { id: 'pr-02-restore-rider', sp08: '#2', accounts: ['A'], tiers: ['pr', 'full'], file: 'pr-02-restore-rider.yaml' },
+  { id: 'pr-03-driver-switch-restore', sp08: '#2, #4, NAV-01', accounts: ['C'], tiers: ['pr', 'full'], file: 'pr-03-driver-switch-restore.yaml' },
+  {
+    id: 'pr-04-earn-entry-rider-only',
+    sp08: '#4',
+    accounts: ['A'],
+    tiers: ['pr', 'full'],
+    inv07: true,
+    file: 'pr-04-earn-entry-rider-only.yaml',
+    checks: [hygiene()],
+  },
+  { id: 'pr-05-driver-role-restricted', sp08: '#4, NAV-02', accounts: ['D'], tiers: ['pr', 'full'], file: 'pr-05-driver-role-restricted.yaml' },
+  { id: 'pr-06-account-restricted', sp08: '#4, NAV-05', accounts: ['E'], tiers: ['pr', 'full'], file: 'pr-06-account-restricted.yaml' },
+  {
+    id: 'pr-07-location-denied',
+    sp08: '#10, LOC-03',
+    accounts: ['A'],
+    tiers: ['pr', 'full'],
+    apiLevels: [35],
+    file: 'pr-07-location-denied.yaml',
+    checks: [hygiene({ locationAsked: true })],
+  },
+  { id: 'pr-08-search-autocomplete', sp08: '#14 (search), SRCH-01', accounts: ['A'], tiers: ['pr', 'full'], file: 'pr-08-search-autocomplete.yaml' },
+  {
+    id: 'pr-09-rider-hygiene-driver',
+    sp08: '#12, RIDER-HYGIENE-01',
+    accounts: ['B'],
+    tiers: ['pr', 'full'],
+    inv07: true,
+    file: 'pr-09-rider-hygiene-driver.yaml',
+    checks: [hygiene()],
+  },
+  { id: 'pr-10-quote-options', sp08: '#14, QUOTE-01', accounts: ['A'], tiers: ['pr', 'full'], requires: ['pricing'], file: 'pr-10-quote-options.yaml' },
+  { id: 'pr-11-quote-restore', sp08: '#3, NAV-03', accounts: ['A'], tiers: ['pr', 'full'], requires: ['pricing'], file: 'pr-11-quote-restore.yaml' },
+  { id: 'pr-12-kyc-onboarding', sp08: '#18', accounts: ['APPLICANT'], tiers: ['pr', 'full'], file: 'pr-12-kyc-onboarding.yaml' },
+  {
+    id: 'pr-13-version-hard',
+    sp08: '#21 (HARD), UPD-02',
+    accounts: ['A'],
+    tiers: ['pr', 'full'],
+    sequence: [{ maestro: 'pr-13a-version-hard-sign-in.yaml' }, { hook: 'activateHardUpdatePolicy' }, { maestro: 'pr-13b-version-hard-blocked.yaml' }],
+    after: ['retireUpdatePolicies'],
+  },
+  { id: 'pr-14-signout-wipe', sp08: '#25', accounts: ['C', 'A'], tiers: ['pr', 'full'], file: 'pr-14-signout-wipe.yaml' },
+
+  // ── full matrix only (manual workflow_dispatch, FA-16) ───────────────────────────────────────────────────────────
+  { id: 'n-01-pending-application', sp08: '#4 (F), NAV-06, ONB-01', accounts: ['F'], tiers: ['full'], file: 'n-01-pending-application.yaml' },
+  { id: 'n-02-expired-documents', sp08: '#4 (G), #20, ONB-02', accounts: ['G'], tiers: ['full'], file: 'n-02-expired-documents.yaml' },
+  { id: 'n-03-back-stack', sp08: '#5', accounts: ['A'], tiers: ['full'], file: 'n-03-back-stack.yaml' },
+  {
+    id: 'n-04-location-precise',
+    sp08: '#8, LOC-01',
+    accounts: ['A'],
+    tiers: ['full'],
+    apiLevels: [35],
+    file: 'n-04-location-precise.yaml',
+    checks: [hygiene({ locationAllowed: true, locationAsked: true })],
+  },
+  { id: 'n-05-location-approximate', sp08: '#9, LOC-02', accounts: ['A'], tiers: ['full'], apiLevels: [35], file: 'n-05-location-approximate.yaml' },
+  {
+    id: 'n-06-location-revoked-background',
+    sp08: '#11, LOC-05',
+    accounts: ['A'],
+    tiers: ['full'],
+    apiLevels: [35],
+    sequence: [{ maestro: 'n-06a-location-grant.yaml' }, { hook: 'revokeLocation' }, { maestro: 'n-06b-location-revoked.yaml' }],
+  },
+  { id: 'n-07-lazy-driver-modules', sp08: '#13', accounts: ['A'], tiers: ['full'], inv07: true, file: 'n-07-lazy-driver-modules.yaml', checks: [hygiene()] },
+  { id: 'n-08-quote-expiry', sp08: '#15', accounts: ['A'], tiers: ['full'], requires: ['pricing'], file: 'n-08-quote-expiry.yaml' },
+  { id: 'n-09-quote-refusals', sp08: '#16, QUOTE-02', accounts: ['A'], tiers: ['full'], requires: ['pricing'], file: 'n-09-quote-refusals.yaml' },
+  {
+    id: 'n-10-rider-quotes-switch-off',
+    sp08: '#22',
+    accounts: ['A', 'C'],
+    tiers: ['full'],
+    before: ['disableRiderQuotes'],
+    file: 'n-10-rider-quotes-switch-off.yaml',
+    after: ['enableRiderQuotes'],
+  },
+  { id: 'n-11-lite-mode', sp08: '#24, LITE-01', accounts: ['A'], tiers: ['full'], file: 'n-11-lite-mode.yaml' },
+  {
+    id: 'n-12-screenshots-urdu-font',
+    sp08: '#26, RTL-01, A11Y-01 (capture; review is manual)',
+    accounts: ['A'],
+    tiers: ['full'],
+    sequence: [{ maestro: 'n-12-screenshots-urdu-font.yaml' }, { hook: 'fontScale200' }, { maestro: 'n-12b-screenshots-font-200.yaml' }],
+    after: ['fontScaleReset'],
+  },
+  { id: 'n-13-compliance-renewal', sp08: '#20', accounts: ['B'], tiers: ['full'], file: 'n-13-compliance-renewal.yaml' },
+  {
+    id: 'n-14-kyc-upload',
+    sp08: '#19',
+    accounts: ['APPLICANT'],
+    tiers: ['full'],
+    manualOnly:
+      'needs a seeded emulator gallery image + photo-picker automation and the sanitiser/ClamAV/worker pipeline; not automated in Phase 3 (recorded NOT RUN, never PASS)',
+  },
+  { id: 'n-15-rate-limit', sp08: '#17', accounts: ['A'], tiers: ['full'], requires: ['pricing'], file: 'n-15-rate-limit.yaml' },
+  {
+    id: 'n-16-driver-onboarding-switch-off',
+    sp08: '#23',
+    accounts: ['A', 'F', 'C'],
+    tiers: ['full'],
+    notTestable:
+      'driver.onboarding is a static feature-flag registry entry (packages/config/src/flags.ts), not a runtime switch: no runtime OFF state exists to set in Phase 3',
+  },
+  {
+    id: 'n-17-external-links',
+    sp08: '#7',
+    accounts: [],
+    tiers: ['full'],
+    notTestable: 'no external URL scheme in release builds (CON-P3-07, F-P3-01); router unit tests cover parsing; activated after EG-15',
+  },
+  { id: 'n-18-intent-in-app', sp08: '#6 (G), NAV-04', accounts: ['G'], tiers: ['full'], file: 'n-18-intent-in-app.yaml' },
+  {
+    id: 'n-19-intent-system-path',
+    sp08: '#6 (A, C), NAV-04',
+    accounts: ['A', 'C'],
+    tiers: ['full'],
+    sequence: [
+      { maestro: 'n-19a-intent-signin-rider.yaml' },
+      { hook: 'deliverDriverHomePath' },
+      { maestro: 'n-19b-intent-driver-refused.yaml' },
+      { hook: 'deliverMalformedPath' },
+      { maestro: 'n-19c-intent-malformed.yaml' },
+      { maestro: 'n-19d-intent-signin-driver.yaml' },
+      { hook: 'deliverCompliancePath' },
+      { maestro: 'n-19e-intent-driver-switch.yaml' },
+    ],
+  },
+  {
+    id: 'n-20-update-soft',
+    sp08: '#21 (SOFT), UPD-01',
+    accounts: ['A'],
+    tiers: ['full'],
+    sequence: [
+      { maestro: 'n-20a-update-soft-sign-in.yaml' },
+      { hook: 'activateSoftUpdatePolicy' },
+      { maestro: 'n-20b-update-soft-dismiss.yaml' },
+      { maestro: 'n-20c-update-soft-persisted.yaml' },
+    ],
+    checks: [{ name: 'serverSoftUpdate' }],
+    after: ['retireUpdatePolicies'],
+  },
+  {
+    id: 'n-21-maintenance',
+    sp08: '#21 (MAINTENANCE), MAINT-01',
+    accounts: ['A'],
+    tiers: ['full'],
+    sequence: [
+      { maestro: 'n-21a-maintenance-sign-in.yaml' },
+      { hook: 'startMaintenance' },
+      { maestro: 'n-21b-maintenance-blocked.yaml' },
+      { hook: 'endMaintenance' },
+      { maestro: 'n-21c-maintenance-recovered.yaml' },
+    ],
+    after: ['endMaintenance'],
+  },
+  {
+    id: 'n-22-quote-restricted-routing',
+    sp08: '#16 (pickup restricted, routing unavailable), QUOTE-02',
+    accounts: ['A'],
+    tiers: ['full'],
+    requires: ['pricing'],
+    sequence: [
+      { maestro: 'n-22a-quote-pickup-restricted.yaml' },
+      { hook: 'routeFault' },
+      { maestro: 'n-22b-quote-routing-unavailable.yaml' },
+      { hook: 'clearGeoFaults' },
+      { maestro: 'n-22c-quote-routing-recovered.yaml' },
+    ],
+    after: ['clearGeoFaults'],
+  },
+  {
+    id: 'n-22x-quote-outside-hours',
+    sp08: '#16 (outside hours), QUOTE-02',
+    accounts: ['A'],
+    tiers: ['full'],
+    notTestable:
+      'the stack seeds all-day service hours so quote flows never depend on the wall clock, and an ACTIVE zone set (incl. its service hours) cannot be edited (catalog guard triggers); OUTSIDE_SERVICE_HOURS is covered by the API HOURS integration tests and the quote-view unit tests (rider.hours.* copy), never reported PASS here',
+  },
+  {
+    id: 'n-23-pin-search-fallback',
+    sp08: 'PIN-01, PIN-03, SRCH-02, SRCH-04',
+    accounts: ['A'],
+    tiers: ['full'],
+    sequence: [{ maestro: 'n-23a-pin-search-sign-in.yaml' }, { hook: 'autocompleteFault' }, { maestro: 'n-23b-pin-search-fallback.yaml' }],
+    after: ['clearGeoFaults'],
+  },
+  {
+    id: 'n-24-location-deny-permanent',
+    sp08: '#10, LOC-04',
+    accounts: ['A'],
+    tiers: ['full'],
+    apiLevels: [35],
+    file: 'n-24-location-deny-permanent.yaml',
+    checks: [hygiene({ locationAsked: true })],
+  },
+  { id: 'n-25-pin-accuracy-prompt', sp08: 'PIN-02', accounts: ['A'], tiers: ['full'], apiLevels: [35], file: 'n-25-pin-accuracy-prompt.yaml' },
+  { id: 'n-26-search-roman-urdu-alias', sp08: 'SRCH-03', accounts: ['R'], tiers: ['full'], file: 'n-26-search-roman-urdu-alias.yaml' },
+  {
+    id: 'n-27-onboarding-capture-resume',
+    sp08: 'ONB-03',
+    accounts: ['APPLICANT'],
+    tiers: ['full'],
+    manualOnly:
+      'the resumable capture intent is an evidence file in the persisted upload queue, which needs a camera capture or a seeded gallery image + photo-picker automation and the sanitiser/ClamAV/worker pipeline (the n-14 blocker); restart-resume is covered by the upload-runner unit tests; recorded NOT RUN, never PASS',
+  },
+];
+
+/*
+ * PR-tier shards (FA-16 founder decision 2026-10-14): four shards, each on its own emulator with its own throwaway
+ * stack and its own 900 s Maestro budget. Balanced (longest-first) from the measured CI flow times of runs
+ * 38452091883, 38452098038, 38457699020 and 38457704445 (passing attempts, s): pr-12 ≈ 170, pr-14 ≈ 150 (estimate: it
+ * had not yet run in CI), pr-01 ≈ 140 (includes the first-launch cold start), pr-10 ≈ 90, pr-02 ≈ 85, pr-03 / pr-07 /
+ * pr-11 ≈ 80, pr-08 / pr-09 ≈ 68, pr-13 ≈ 65, pr-05 ≈ 60, pr-06 ≈ 58, pr-04 ≈ 57 ⇒ ≈ 290–350 s per shard before
+ * retries. Every PR-tier flow belongs to exactly one shard (validatePrShards).
+ */
+export const PR_SHARDS = {
+  1: ['pr-06-account-restricted', 'pr-11-quote-restore', 'pr-12-kyc-onboarding'],
+  2: ['pr-03-driver-switch-restore', 'pr-04-earn-entry-rider-only', 'pr-13-version-hard', 'pr-14-signout-wipe'],
+  3: ['pr-01-signin-rider-home', 'pr-07-location-denied', 'pr-09-rider-hygiene-driver'],
+  4: ['pr-02-restore-rider', 'pr-05-driver-role-restricted', 'pr-08-search-autocomplete', 'pr-10-quote-options'],
+};
+
+/** Problems with the shard assignment (empty when every PR-tier flow is in exactly one shard of `count`). */
+export function validatePrShards(count) {
+  const problems = [];
+  const pr = FLOWS.filter((f) => f.tiers.includes('pr')).map((f) => f.id);
+  const keys = Object.keys(PR_SHARDS).map(Number);
+  if (keys.length !== count || keys.some((k, i) => k !== i + 1)) problems.push(`PR_SHARDS must have keys 1..${String(count)}`);
+  const assigned = Object.values(PR_SHARDS).flat();
+  for (const id of pr) {
+    const n = assigned.filter((a) => a === id).length;
+    if (n !== 1) problems.push(`${id} is assigned to ${String(n)} shards`);
+  }
+  for (const id of assigned) if (!pr.includes(id)) problems.push(`${id} is not a PR-tier flow`);
+  return problems;
+}

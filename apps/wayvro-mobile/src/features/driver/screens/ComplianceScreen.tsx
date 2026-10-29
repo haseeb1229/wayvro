@@ -2,7 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useI18n } from '../../../core/i18n/I18nProvider';
 import { formatDate } from '../../../core/i18n/strings';
-import { Banner, Body, Button, Heading, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, Heading, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { viewStateFromQuery } from '../../../core/ui/view-state';
 import { useCompliance, useComplianceDistricts } from '../api/driver-queries';
@@ -65,7 +65,6 @@ export default function ComplianceScreen() {
         <RestrictionRow key={r.id} restriction={r} />
       ))}
       <Banner tone="info" text={dt('driver.riderUnaffected')} />
-      <TranslationPendingNote />
     </Screen>
   );
 }

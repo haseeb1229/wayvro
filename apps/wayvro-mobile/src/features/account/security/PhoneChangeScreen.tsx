@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../../../core/i18n/I18nProvider';
-import { formatDateTime } from '../../../core/i18n/strings';
+import { formatDateTime, PHONE_FORMAT_EXAMPLES } from '../../../core/i18n/strings';
 import { QUERY_KEYS } from '../../../core/query/query-client';
 import { useServices } from '../../../core/services/ServicesProvider';
 import { Banner, Body, Button, ErrorBanner, Screen, TextField, Title } from '../../../core/ui/primitives';
@@ -97,7 +97,7 @@ export default function PhoneChangeScreen() {
       <Body>{t('phoneChange.body')}</Body>
       <TextField
         label={t('phoneChange.label')}
-        hint={t('phone.hint')}
+        hint={t('phone.hint', PHONE_FORMAT_EXAMPLES)}
         value={raw}
         onChangeText={(value) => {
           setRaw(value);

@@ -25,17 +25,20 @@
     "openapi:check": "pnpm --filter @wayvro/contracts openapi:generate && git diff --exit-code -- packages/contracts/openapi",
     "docs:check": "node docs/phase0/tools/phase0-coverage.js --check && node docs/phase0/tools/regen-manifest.js --check",
     "db:migrate": "pnpm --filter @wayvro/db db:migrate",
+    "seed:synthetic": "node --env-file-if-exists=.env scripts/seed-synthetic.mjs",
     "infra:up": "node scripts/infra.mjs up",
     "infra:down": "node scripts/infra.mjs down",
     "infra:status": "node scripts/infra.mjs status",
     "infra:reset": "node scripts/infra.mjs reset",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm depcruise && pnpm knip && pnpm syncpack && pnpm flags:check && pnpm test && pnpm docs:check",
-    "test:e2e:web": "playwright test --config tests/e2e-web/playwright.config.ts"
+    "test:e2e:web": "playwright test --config tests/e2e-web/playwright.config.ts",
+    "load:local": "node --env-file-if-exists=.env tools/load-harness/load.mjs",
+    "soak:fault-geo": "node --env-file-if-exists=.env tools/load-harness/soak.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
-    "@next/eslint-plugin-next": "16.3.8",
+    "@next/eslint-plugin-next": "16.4.3",
     "@playwright/test": "1.62.1",
     "@types/node": "24.19.1",
     "@types/pg": "8.23.1",

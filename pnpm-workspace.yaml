@@ -3,6 +3,8 @@
 packages:
   - apps/*
   - packages/*
+  # Dev-only tools (never a dependency of a deployable app): tools/geo-bench is the SP-04 benchmark harness (P3.2).
+  - tools/*
 
 # Flat (hoisted) node_modules: React Native native builds on Windows exceed CMake's 250-character object-path limit
 # under pnpm's isolated .pnpm/<name>@<version>_<hash>/ layout (SP-AND evidence, ADR-034/ADR-036). Phantom-dependency
@@ -21,3 +23,14 @@ allowBuilds:
 # has critical advisories GHSA-8r5x-fm3f-whwj / GHSA-p8wg-vrv2-v86f fixed in 4.7.10 (patch release, same API).
 overrides:
   handlebars: 4.7.10
+  # fast-uri (via fastify's ajv compiler and fast-json-stringify): GHSA-333x-w4r6-6crp / GHSA-w74x-v6f9-j3xg /
+  # GHSA-wjr9-j795-jxcr / GHSA-xhq7-xmqj-769h are fixed in the patch releases 3.1.9 and 4.2.3 (same API); fastify 5.12.6
+  # still accepts the vulnerable ranges, so both lines are lifted to their fixed patch here (2026-10-29).
+  'fast-uri@>=3.0.0 <3.1.9': 3.1.9
+  'fast-uri@>=4.0.0 <4.2.3': 4.2.3
+  # fastify: @nestjs/platform-fastify 12.1.2 pins 5.12.5 exactly, and that copy serves the API and realtime gateway.
+  # GHSA-389g-gv7q-r4x8 (header validation bypass) is fixed in the patch release 5.12.6.
+  'fastify@5.12.5': 5.12.6
+  # zod 4.x below 4.6.6 (GHSA-mrhx-c7xc-m3w5, memory exhaustion on oversized constrained collections): every workspace
+  # package declares 4.6.6; this lifts the copies that tooling (knip, eslint-plugin-react-hooks) would otherwise keep.
+  'zod@>=4.0.0 <4.6.6': 4.6.6

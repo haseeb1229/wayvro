@@ -1,0 +1,16 @@
+# SP-08 #16 routing unavailable, part 3 of 3 (N): routing works again; the retry (offered after its backoff, never
+# automatically in a loop) prices the same trip.
+appId: dev.wayvro.app
+name: n-22c-quote-routing-recovered
+tags: [full, pricing]
+---
+- extendedWaitUntil:
+    visible: 'Try again'
+    timeout: 60000
+- tapOn: 'Try again'
+- extendedWaitUntil:
+    visible: '.*Rs [0-9][0-9,]*.*'
+    timeout: 60000
+- assertVisible: '.*km · about.*'
+- assertNotVisible: "We can't calculate prices right now"
+- takeScreenshot: n-22-routing-recovered

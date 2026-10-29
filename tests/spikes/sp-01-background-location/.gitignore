@@ -1,0 +1,14 @@
+# SP-01 spike: generated and local-only material is never committed (protocol §15).
+node_modules/
+.expo/
+dist/
+# Generated native project (`expo prebuild --clean` recreates it).
+/android
+/ios
+# Build artefacts and gate reports stay local; only reviewed aggregates under results/ are committed.
+build-reports/
+*.apk
+*.aab
+*.apks
+# Raw receiver rows must live outside the repository; this is a second line of defence.
+*.jsonl

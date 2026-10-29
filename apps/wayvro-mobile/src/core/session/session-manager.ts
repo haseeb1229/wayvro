@@ -45,6 +45,8 @@ export class SessionManager {
   private stored: StoredSession | null = null;
   private state: SessionState = { status: 'loading' };
   private inflight: Promise<RefreshOutcome> | null = null;
+  /** Set by the first `refreshDueAtFirstUse` call of this process (the check runs at most once). */
+  private firstUseChecked = false;
   /** Incremented by every establish/clear so a refresh that finishes after a sign-out cannot resurrect tokens. */
   private generation = 0;
   /** Session-storage writes run one at a time; a write queued under an older generation is skipped. */
@@ -115,6 +117,21 @@ export class SessionManager {
       }
     }
     return { complete };
+  }
+
+  /**
+   * SP02-F1 cold-start shortcut: true AT MOST ONCE per process — on the first authenticated call — when the stored access
+   * token's server-issued expiry (`accessTokenExpiresAt`) has already passed at `nowMs`. The caller then refreshes
+   * through `refreshAfterUnauthorized` (the same single-flight, persisted-idempotency-key refresh) BEFORE sending, instead
+   * of first sending a request that can only answer 401. `nowMs` is a hint (device clock plus the learnt server offset):
+   * a wrong clock costs at most one spare refresh per process or falls back to the unchanged 401 path; token lifetimes,
+   * rotation, replay protection and every server check stay as they are.
+   */
+  refreshDueAtFirstUse(nowMs: number): boolean {
+    if (this.firstUseChecked || this.stored === null) return false;
+    this.firstUseChecked = true;
+    const expiresAt = Date.parse(this.stored.accessTokenExpiresAt);
+    return Number.isFinite(expiresAt) && expiresAt <= nowMs;
   }
 
   /**

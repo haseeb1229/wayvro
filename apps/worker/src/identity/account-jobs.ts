@@ -9,9 +9,9 @@
  * `identity.deletion-processing` (hourly): re-evaluates the blockers of every open deletion request (database facts +
  * evidence legal holds in the vault), then processes due requests: evidence is crypto-shredded (wrapped DEK destroyed)
  * and its stored objects deleted, and the account becomes a pseudonymised tombstone (numbers erased, lookups deleted,
- * sessions revoked, open applications/cases/appeals closed). Records named by the request's retention exceptions are
- * kept (placeholder bases until EG-16). Registered only with the vault pool and object storage bound — without them,
- * due requests wait (never "completed" while evidence would remain).
+ * sessions revoked, open applications/cases/appeals closed, Phase-3 quotes purged). Records named by the request's
+ * retention exceptions are kept (placeholder bases until EG-16). Registered only with the vault pool and object storage
+ * bound — without them, due requests wait (never "completed" while evidence would remain).
  */
 import type { FieldCipher } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, deletionBlockers, fieldContext, releasePhone, revokeSessions, type PhoneLookup } from '@wayvro/identity-core';
@@ -149,12 +149,14 @@ export function deletionProcessingJob(deps: DeletionJobDeps): JobDefinition {
         [due.rows.map((r) => r.id), BATCH],
       );
       let completed = 0;
+      let deferred = 0;
       for (const r of [...due.rows, ...resumed.rows]) {
         await eraseEvidence(deps, r.account_id);
-        await withTransaction(deps.pool, (tx) => pseudonymise(tx, r.id, r.account_id));
-        completed++;
+        const outcome = await withTransaction(deps.pool, (tx) => pseudonymise(tx, r.id, r.account_id));
+        if (outcome === 'COMPLETED') completed++;
+        if (outcome === 'DEFERRED') deferred++;
       }
-      deps.log.info({ job: DELETION_PROCESSING_JOB, reevaluated: open.rowCount ?? 0, blocked, completed }, 'account deletion');
+      deps.log.info({ job: DELETION_PROCESSING_JOB, reevaluated: open.rowCount ?? 0, blocked, completed, deferred }, 'account deletion');
     },
   };
 }
@@ -213,9 +215,33 @@ async function eraseEvidence(deps: DeletionJobDeps, accountId: string): Promise<
   }
 }
 
-async function pseudonymise(tx: pg.PoolClient, requestId: string, accountId: string): Promise<void> {
+/**
+ * Phase-3 quotes of the account (P3.3; pricing doc §7): purged at completion with their components and route snapshots —
+ * they hold the account id, the precise pickup/drop-off points and the route geometry, and no retention exception
+ * covers them (the Phase-2 deletion model keeps only the categories `retentionExceptions` names). The per-account quote
+ * advisory lock serialises with a concurrent quote write. The database refuses to delete a quote before `expires_at`;
+ * none can be live after the grace period (DELETION_PENDING accounts cannot quote, the TTL is at most 30 minutes, the
+ * grace at least a day), but if one is, completion is deferred — the request stays PROCESSING and the next run resumes
+ * it — rather than completing while location data remains. Returns false when deferred.
+ */
+async function purgeQuotes(tx: pg.PoolClient, accountId: string): Promise<boolean> {
+  await tx.query(`select pg_advisory_xact_lock(hashtext('wayvro.quote:' || $1))`, [accountId]);
+  const live = await tx.query(`select 1 from pricing.quotes where account_id = $1 and expires_at > now() limit 1`, [accountId]);
+  if ((live.rowCount ?? 0) > 0) return false;
+  await tx.query(`delete from pricing.quote_components where quote_id in (select id from pricing.quotes where account_id = $1)`, [accountId]);
+  const deleted = await tx.query<{ route_snapshot_id: string }>(`delete from pricing.quotes where account_id = $1 returning route_snapshot_id`, [accountId]);
+  // a snapshot serves one quote group (one account); one still referenced by another quote is never removed
+  await tx.query(
+    `delete from pricing.route_snapshots s where s.id = any($1::uuid[]) and not exists (select 1 from pricing.quotes q where q.route_snapshot_id = s.id)`,
+    [[...new Set(deleted.rows.map((r) => r.route_snapshot_id))]],
+  );
+  return true;
+}
+
+async function pseudonymise(tx: pg.PoolClient, requestId: string, accountId: string): Promise<'COMPLETED' | 'DEFERRED' | 'SKIPPED'> {
   const current = await tx.query<{ status: string }>(`select status from identity.account_deletion_requests where id = $1 for update`, [requestId]);
-  if (current.rows[0]?.status !== 'PROCESSING') return;
+  if (current.rows[0]?.status !== 'PROCESSING') return 'SKIPPED';
+  if (!(await purgeQuotes(tx, accountId))) return 'DEFERRED';
   await revokeSessions(tx, accountId, 'ACCOUNT_DELETED', null);
   const phones = await tx.query<{ id: string }>(`select id from identity.account_phones where account_id = $1`, [accountId]);
   for (const p of phones.rows) await releasePhone(tx, p.id, 'ACCOUNT_DELETED');
@@ -265,4 +291,5 @@ async function pseudonymise(tx: pg.PoolClient, requestId: string, accountId: str
     objectId: requestId,
     outcome: 'SUCCESS',
   });
+  return 'COMPLETED';
 }

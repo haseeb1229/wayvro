@@ -94,7 +94,7 @@ export function renewalAppeal(renewal: Renewal | null | undefined): RenewalAppea
   return renewal.status === 'REJECTED' && decisionId !== null ? { kind: 'can-appeal', decisionId } : { kind: 'none' };
 }
 
-const restrictionView = (r: Restriction): RestrictionView => ({
+export const restrictionView = (r: Restriction): RestrictionView => ({
   id: r.id,
   key: `driverRestriction.${r.reasonClass}`,
   scopeKey: `driverRestriction.scope.${r.scope}`,

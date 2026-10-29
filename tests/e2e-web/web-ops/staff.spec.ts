@@ -34,6 +34,8 @@ test.describe.serial('staff sign-in and shell', () => {
     await page.getByLabel('Name for this key').fill('virtual key');
     await page.getByRole('button', { name: 'Register security key' }).click();
     await expect(page).toHaveURL(/\/$/);
+    // the overview's own title proves the /enrol -> / navigation (push + refresh) has settled before axe runs
+    await expect(page).toHaveTitle('Wayvro Operations');
     await expect(page.getByTestId('environment-banner')).toHaveText('LOCAL — synthetic data');
     await expect(page.getByText('STAFF_ADMIN')).toBeVisible();
     await expect(page.getByRole('note')).toContainText('Two security keys are required');

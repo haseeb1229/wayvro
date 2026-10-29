@@ -1,0 +1,37 @@
+# SP-08 #24 / LITE-01 (N) — L08: Lite mode toggles on and persists across a restart. (Network shaping with
+# `-netspeed edge -netdelay gprs` and the no-polyline request check need emulator console control and the pricing
+# slice; they are recorded NOT RUN in Phase 3 rather than approximated.)
+appId: dev.wayvro.app
+name: n-11-lite-mode
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element: 'Lite mode'
+    direction: DOWN
+- tapOn: 'Lite mode'
+- assertVisible:
+    text: 'Lite mode'
+    checked: true
+- stopApp
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element: 'Lite mode'
+    direction: DOWN
+- assertVisible:
+    text: 'Lite mode'
+    checked: true
+- takeScreenshot: n-11-lite-on

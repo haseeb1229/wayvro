@@ -1,0 +1,42 @@
+# SP-08 #8 / LOC-01 (N, API 35 dialog taps) — A07, V05: rationale first, one OS dialog, "While using the app" with
+# precise location; the pickup is filled from the emulator's location and the rider confirms it. Only foreground
+# location is granted afterwards (run-flows rider-hygiene check with locationAllowed).
+appId: dev.wayvro.app
+name: n-04-location-precise
+tags: [full, api35-dialogs]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- setLocation:
+    latitude: 31.5104
+    longitude: 74.3416
+- scrollUntilVisible:
+    element: 'Use current location'
+    direction: DOWN
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible: 'Use your location for pickup\?'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Continue'
+    direction: DOWN
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_allow_foreground_only_button'
+    timeout: 30000
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_allow_foreground_only_button'
+- extendedWaitUntil:
+    visible: '.*Pickup.*'
+    timeout: 60000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- takeScreenshot: n-04-pickup-from-location

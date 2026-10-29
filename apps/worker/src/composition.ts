@@ -6,16 +6,22 @@
  * Database role: the worker's LOGIN role is a member of `wayvro_worker` (jobs, rotation, purge) and
  * `wayvro_audit_sealer` (read audit events, append seals) — never the owner/migrator.
  */
+import { releasedBuildsOf } from '@wayvro/config';
 import { FieldCipher, KeyedHasher, loadKeyRing } from '@wayvro/field-crypto';
 import { PhoneLookup, keyRotationJob, otpDeliveryJob, type RotationDeps } from '@wayvro/identity-core';
 import type { Logger } from '@wayvro/observability';
 import type { ProviderRegistry } from '@wayvro/provider-interfaces';
-import { JobRunner, type JobDefinition } from '@wayvro/server-runtime';
+import { JobRunner, type GeoUsageCounters, type JobDefinition } from '@wayvro/server-runtime';
 import type pg from 'pg';
 import { AUDIT_SEAL_JOB, AUDIT_VERIFY_JOB, auditJobs } from './audit-seal.js';
 import type { WorkerConfig } from './config.js';
+import { GEO_USAGE_ROLLUP_JOB, geoUsageRollupJob } from './geo/usage-rollup.js';
 import { DELETION_PROCESSING_JOB, RECOVERY_COMPLETION_JOB, deletionProcessingJob, recoveryCompletionJob } from './identity/account-jobs.js';
 import { MAINTENANCE_PURGE_JOB, maintenanceJob } from './maintenance.js';
+import { SCHEDULED_ACTIVATION_JOB, scheduledActivationJob } from './release/activation.js';
+import { appPolicyActivator } from './release/app-policy-activator.js';
+import { rateCardActivator } from './release/rate-card-activator.js';
+import { runtimeSwitchExpiryActivator } from './release/switch-expiry.js';
 import { RecurringScheduler } from './scheduler.js';
 import { accountStateHintConsumer, type HintPublisher } from './outbox/account-state-hint.js';
 import { LocalDispatcher, PgOutboxSource, PgProcessedEventStore } from './outbox/pg-outbox.js';
@@ -43,6 +49,8 @@ export function composeWorker(
   providers: ProviderRegistry,
   vaultPool: pg.Pool | null = null,
   hints: HintPublisher | null = null,
+  /** P3.2: the API's hourly geo usage counters in Valkey; null = the rollup job is not registered. */
+  geoUsage: GeoUsageCounters | null = null,
 ): WorkerRuntime {
   // Staging/production refuse until a KMS-backed key provider exists (EG-05).
   const ring = loadKeyRing(config.WAYVRO_ENV, config);
@@ -54,12 +62,24 @@ export function composeWorker(
       otpChallengeDays: config.OTP_CHALLENGE_RETENTION_DAYS,
       succeededJobDays: config.SUCCEEDED_JOB_RETENTION_DAYS,
       applicationDraftExpiryDays: config.APPLICATION_DRAFT_EXPIRY_DAYS,
+      geoUsageDays: config.GEO_USAGE_RETENTION_DAYS,
+      quoteRetentionDays: config.QUOTE_RETENTION_DAYS,
       batchSize: 5000,
     }),
     keyRotationJob(rotation),
     applicationIntakeJob(pool),
     documentExpiryJob(pool, log),
     recoveryCompletionJob({ pool, cipher, lookup: new PhoneLookup(rotation.hasher), log }),
+    // Phase 3 (P3.4/P3.3): scheduled activation registry — app version policies, runtime-switch effective_until expiry and
+    // rate cards (zone sets/eligibility rules have no scheduled activation in Phase 3)
+    scheduledActivationJob(
+      [
+        appPolicyActivator({ pool, env: config.WAYVRO_ENV, released: releasedBuildsOf(config), log }),
+        runtimeSwitchExpiryActivator({ pool, env: config.WAYVRO_ENV, log }),
+        rateCardActivator({ pool, env: config.WAYVRO_ENV, log }),
+      ],
+      log,
+    ),
   ];
   if (providers.has('otpDelivery')) definitions.push(otpDeliveryJob({ db: pool, cipher, port: providers.get('otpDelivery') }));
   const recurring = [
@@ -68,7 +88,12 @@ export function composeWorker(
     { type: MAINTENANCE_PURGE_JOB, everySeconds: 600 },
     { type: DOCUMENT_EXPIRY_JOB, everySeconds: 86_400 },
     { type: RECOVERY_COMPLETION_JOB, everySeconds: 600 },
+    { type: SCHEDULED_ACTIVATION_JOB, everySeconds: 60 },
   ];
+  if (geoUsage) {
+    definitions.push(geoUsageRollupJob(pool, geoUsage, log));
+    recurring.push({ type: GEO_USAGE_ROLLUP_JOB, everySeconds: 900 });
+  }
   if (vaultPool && providers.has('objectStorage')) {
     const storage = providers.get('objectStorage');
     if (providers.has('malwareScanner') && providers.has('imageSanitiser')) {

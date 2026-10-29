@@ -8,6 +8,9 @@
     "start": "expo start --dev-client",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "i18n:export": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/export.ts",
+    "i18n:import-review": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/import-review.ts",
+    "i18n:prereview": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/i18n/resolve-ts.mjs scripts/i18n/prereview-export.ts",
     "android:prebuild": "expo prebuild --platform android --clean --no-install",
     "android:debug": "node ../../scripts/android-build.mjs debug",
     "android:release": "node ../../scripts/android-build.mjs release"
@@ -24,6 +27,7 @@
     "expo-file-system": "57.0.7",
     "expo-image-picker": "57.0.20",
     "expo-linking": "57.0.12",
+    "expo-location": "57.0.20",
     "expo-router": "57.0.25",
     "expo-secure-store": "57.0.4",
     "expo-status-bar": "57.0.1",
@@ -31,7 +35,7 @@
     "react-native": "0.86.3",
     "react-native-safe-area-context": "5.7.0",
     "react-native-screens": "4.26.2",
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@types/react": "19.2.18",

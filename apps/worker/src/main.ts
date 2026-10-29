@@ -3,7 +3,15 @@
 import { createDatabase } from '@wayvro/db';
 import { createLogger, startTelemetry } from '@wayvro/observability';
 import { bindProviders } from '@wayvro/provider-interfaces';
-import { backoffDelayMs, createHealthServer, createRequestPathRedis, databaseCheck, enforceArtifactPolicy, redisCheck } from '@wayvro/server-runtime';
+import {
+  GeoUsageCounters,
+  backoffDelayMs,
+  createHealthServer,
+  createRequestPathRedis,
+  databaseCheck,
+  enforceArtifactPolicy,
+  redisCheck,
+} from '@wayvro/server-runtime';
 import { ClamdScanner, DockerSanitiser, objectStorageFromSettings } from '@wayvro/vault-adapters';
 import { composeWorker } from './composition.js';
 import { loadWorkerConfig } from './config.js';
@@ -34,7 +42,9 @@ const providers = bindProviders(config.WAYVRO_ENV, {
 const vaultDb = config.DATABASE_VAULT_URL ? createDatabase(config.DATABASE_VAULT_URL, { maxConnections: 3, applicationName: 'wayvro-worker-vault' }) : null;
 // Hint publisher for the outbox's first consumer (account-state hints → realtime), on its own connection.
 const hintRedis = createRequestPathRedis(config.REDIS_URL);
-const { runner, scheduler, relay } = composeWorker(config, db.pool, log, providers, vaultDb?.pool ?? null, hintRedis);
+// P3.2: the hourly geo usage rollup reads the API's counters (same Valkey, same GEO_KEY_PREFIX)
+const geoUsage = new GeoUsageCounters(hintRedis, config.GEO_KEY_PREFIX);
+const { runner, scheduler, relay } = composeWorker(config, db.pool, log, providers, vaultDb?.pool ?? null, hintRedis, geoUsage);
 const redis = redisCheck(config.REDIS_URL);
 const health = createHealthServer({ service: 'worker', version: config.WAYVRO_BUILD_VERSION, checks: [databaseCheck(db), redis] });
 
