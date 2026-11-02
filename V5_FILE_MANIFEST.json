@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 90815,
-      "sha256": "7463fdbb97c7dfb68713eadde65fda0f664345b8b8db5efd981b2a56835c0339"
+      "bytes": 91167,
+      "sha256": "a5a9c4ed61234de031b232a6456a6e971286a1d45974d68921b0c2451c389c5c"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -696,8 +696,8 @@
     },
     {
       "path": "docs/phase3/evidence/device/SP02_SAMSUNG_A30.md",
-      "bytes": 11237,
-      "sha256": "1943feb94f79e25a0dbf2527509138600df0390b26e79cc0966df9412211b584"
+      "bytes": 14676,
+      "sha256": "9f72c44092af05cad912b10e615d46589776a85cb5eebc20440ef469db9bba98"
     },
     {
       "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",

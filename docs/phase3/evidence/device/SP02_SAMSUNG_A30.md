@@ -135,3 +135,53 @@ as large is expected (projection: p90 ≈ 154 MB against the 160 MB budget). **T
 and PB-09 stay BLOCKED for the same reason. The next session with an allowed tunnel re-runs `signedin` (PB-01 at N0,
 PB-07), `memscreens`, `quotecycles` (PB-09), `signedout` (PB-02), `warm` (PB-03) and the PB-06 instrumented build on
 the new code.
+
+## 7. Rider-home re-measurement after the fix (2026-11-02/03) — PB-07 still FAIL
+
+**Session.** The founder approved the tunnel manually. Synthetic stack, the same `/v1`-only proxy (`/__local` answered 404
+through the tunnel each time), and a localhost.run SSH tunnel instead of Cloudflare (§1). Home Wi-Fi; the phone was on
+Wi-Fi ADB. The free tunnels dropped after 12–45 minutes each, five times. Every set below ran inside one tunnel window,
+except where it says otherwise. All signed-in artefacts were deleted after the session and the app was uninstalled.
+
+**Artefacts.**
+- **New:** signed-in AAB of `f7cd235` (code identical to `a0737eb`), built with `node scripts/android-build.mjs release`;
+  16 KB, permissions, intent-filters, size, release-purity and bundle-secrets gates PASS.
+- **Old:** the `af5d8e2` CI AAB.
+- **Per-session server address.** The address lives only in `base/assets/app.config` (checked: no other AAB entry
+  contains the host). For each new tunnel, a local script swapped or inserted that one value and then proved:
+  - the same entry list (1,317 / 1,320 entries);
+  - every other entry byte-identical;
+  - the config identical apart from `baseUrl`.
+
+  Device APKs are signed by bundletool at install, as before.
+
+**Rider home, signed in, N0** (6 cold launches, first discarded; PSS KiB):
+
+| Set | Build | PSS p50 / p90 | GPU `GL mtrack` 75.8 MB present | Fully drawn p50 |
+|---|---|---|---|---|
+| a30e | new `a0737eb` | 241,926 / 242,257 (CV 0.2 %) | 5 of 5 | 4,813 ms |
+| a30f | old `af5d8e2` | 179,583 / 180,011 (CV 0.4 %) | 0 of 5 | 6,244 ms |
+| a30g | new `a0737eb` | 166,640 / 241,882 (**CV 21.1 %: repeat rule**) | 2 of 5 | 4,748 ms |
+
+- **Without the GPU allocation, the new build is about 166.6 MB at Rider home** (a30g runs 3–5), against **156,250 KiB**.
+  The fix lowered "Code" from 79.9 to 67.9 MB (old a30f run 3 against new a30g run 4), but the rest stays: 30 MB
+  window buffers, about 28 MB native heap, about 17 MB system/native libraries, about 16 MB unknown, Java and system.
+- **The 75.8 MB `GL mtrack` allocation is intermittent.** `dumpsys gfxinfo` at Rider home showed 58.6 MB of GPU
+  caches, 52.05 MB of them purgeable, mostly Skia scratch render targets (52.02 MB, 9 entries). These are off-screen
+  layers that some drawing operations create. It appeared only with the new build (7 of 10 launches, against 0 of 5 for
+  the old). That is not proven to be caused by the change: the sets ran in different tunnel windows, and whether the
+  tunnel was alive during the a30f set was not verified.
+- Fully-drawn times include tunnel latency (US-hosted tunnel); N0 PB-01 is informational only.
+
+**Verdicts:**
+- **PB-07: FAIL**, with or without the intermittent GPU allocation.
+- **PB-09: NOT RUN.** The tunnel dropped during the first cycle, so the set was INVALID.
+- **PB-06: NOT RUN.**
+
+**What follows:**
+1. **Engineering (bounded):** find what makes Rider home allocate Skia off-screen render targets (for example a view
+   with opacity, elevation or a clipped rounded container) and confirm it in a same-window A/B; then look for the
+   remaining ~10 MB.
+2. **Founder decision:** an evidence-backed ADR-050 budget review (this file is the evidence).
+3. **Server path:** PB-06 and PB-09, and any re-measurement, need a server address that stays up for about an hour: a
+   staging host, or a tunnel with a fixed name. Free random-name tunnels proved unreliable from this network.
