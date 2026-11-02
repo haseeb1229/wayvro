@@ -206,7 +206,12 @@ describe('API-AGE (server part, A15)', () => {
       expect((await h.inject(post('/v1/account/age-declarations', { policyVersion: 2, dateOfBirth: '1990-13-45' }, auth))).statusCode).toBe(400);
       const ok = await h.inject(post('/v1/account/age-declarations', { policyVersion: 2, dateOfBirth: '1991-04-12' }, auth));
       expect(ok.statusCode).toBe(201);
-      expect(ok.body).not.toContain('1991');
+      // The DOB is never echoed: no DOB-named field and no rendering of the date anywhere in the body. (A bare '1991'
+      // check is not used: random UUIDv7 ids and timestamps can contain those digits — CI run 40898589150.)
+      for (const rendering of ['1991-04-12', '19910412', '12/04/1991', '04/12/1991', '12-04-1991', '1991/04/12']) {
+        expect(ok.body).not.toContain(rendering);
+      }
+      expect(JSON.stringify(Object.keys(JSON.parse(ok.body) as Record<string, unknown>))).not.toMatch(/dob|birth/i);
       const row = (
         await h.owner.query<{ id: string; dob_envelope: Buffer; affirmed: boolean | null }>(
           `select d.id, d.dob_envelope, d.affirmed from identity.age_declarations d where d.policy_version = 2 and d.session_id = $1`,
@@ -214,7 +219,9 @@ describe('API-AGE (server part, A15)', () => {
         )
       ).rows[0];
       expect(row?.affirmed).toBeNull();
-      expect(row?.dob_envelope.toString('latin1')).not.toContain('1991');
+      // Stored as ciphertext only: the plaintext date never appears in the envelope (random ciphertext bytes may
+      // contain any 4-digit sequence, so the full date is checked).
+      expect(row?.dob_envelope.toString('latin1')).not.toContain('1991-04-12');
       expect(
         h.runtime.cipher.decryptString('identity_dates', row?.dob_envelope ?? Buffer.alloc(0), fieldContext(ENCRYPTED_FIELDS.ageDeclarationDob, row?.id ?? '')),
       ).toBe('1991-04-12');
