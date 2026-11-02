@@ -43,7 +43,7 @@ Commands are PowerShell unless marked; run from the repository root unless a `cd
 ### 4.1 Install and local checks (no device needed)
 ```powershell
 cd tests/spikes/sp-01-background-location
-pnpm install --frozen-lockfile --ignore-workspace --node-linker=hoisted   # --ignore-workspace alone would ignore pnpm-workspace.yaml and fall back to the isolated linker, which breaks Windows native builds
+pnpm install --frozen-lockfile   # own pnpm-workspace.yaml (nodeLinker: hoisted + security overrides, 2026-11-03); never --ignore-workspace, which ignores that file (isolated linker breaks Windows native builds; the frozen install fails on the overrides)
 pnpm typecheck
 pnpm test
 ```

@@ -8,11 +8,6 @@ ignoreUntil = 2027-01-09
 reason = "braces 3.0.3 (no fixed release): stack-exhaustion DoS needs attacker-controlled deeply nested glob patterns; only reached via micromatch in lint/build tooling with patterns from repository config."
 
 [[IgnoredVulns]]
-id = "GHSA-86w9-cpqp-85rv"
-ignoreUntil = 2027-01-09
-reason = "node-forge 1.4.0 (no fixed release): RSA PKCS#1 v1.5 verification flaw; used only by @expo/cli (developer CLI) for EAS Update code signing, which is disabled (app.config.ts updates.enabled=false); never bundled into the app."
-
-[[IgnoredVulns]]
 id = "GHSA-w5hq-g745-h8pq"
 ignoreUntil = 2027-01-09
 reason = "uuid 7.0.3 via xcode@3.0.1 (@expo/config-plugins): missing bounds check only when callers pass their own buffer to v3/v5/v6; used at prebuild time to generate iOS project ids, never with untrusted input; upgrade blocked by the transitive pin."
@@ -27,6 +22,12 @@ reason = "esbuild 0.18.20 via drizzle-kit/@esbuild-kit: the advisory concerns es
 id = "GHSA-vcc3-ghjq-m6fr"
 ignoreUntil = 2026-12-31
 reason = "decode-uri-component 0.2.2 via query-string 7.1.3 (pinned by expo-router 57.0.25): CPU-exhaustion DoS on malformed percent-encoding (availability only). The fix 0.5.0 is ESM-only and query-string 7 require()s a callable CJS default, so an override would break routing. Reachability (corrected in Phase 3 P3.0, F-P3-01): RELEASE builds register no URL scheme, app link or universal link and export only the launcher activity — verified on every CI run against the release AAB by infra/ci/android/check-intent-filters.mjs (until P3.0 the expo-dev-client exp+wayvro scheme also reached release builds, which made the earlier premise untrue). Only DEVELOPMENT builds on developer devices keep exp+wayvro for the dev launcher. GATE: re-check before any deep link/URL scheme is wired (must upgrade expo-router/query-string or bound URL length first); expires 2026-12-31 and is not extended without a fresh, truthful reachability review."
+
+# RUNTIME exception, same package, path and gate as GHSA-vcc3-ghjq-m6fr above (2026-11-03).
+[[IgnoredVulns]]
+id = "GHSA-qr28-fpjm-wq7f"
+ignoreUntil = 2026-12-31
+reason = "decode-uri-component 0.2.2 via query-string 7.1.3 (pinned by expo-router 57.0.25): quadratic-time fallback decoder on malformed input with many distinct percent-encoded runs (CPU DoS, availability only). The fix 0.5.1 is still ESM-only, so the override blocker of GHSA-vcc3-ghjq-m6fr applies unchanged. Reachability is the same: the only decoding path is expo-router parsing an incoming URL/path; RELEASE builds register no URL scheme, app link or universal link (infra/ci/android/check-intent-filters.mjs on the release AAB in every CI run), and in-app hrefs are static route literals or pathname+params objects that expo-router encodes itself, so they never reach the fallback decoder. No server (API, realtime gateway, worker, web) depends on query-string or decode-uri-component. SAME GATE: re-check before any deep link/URL scheme is wired; expires with GHSA-vcc3-ghjq-m6fr and is not extended without a fresh reachability review."
 
 # Version-scoped exceptions (2026-10-29). PackageOverrides match ONE exact package version, so a runtime copy of the same
 # package at another version is still scanned. Both are reached only by Expo's developer tooling (prebuild/CLI) and are
@@ -46,3 +47,24 @@ ecosystem = "npm"
 vulnerability.ignore = true
 effectiveUntil = 2027-01-31
 reason = "GHSA-mrhx-c7xc-m3w5 (fixed only in zod 4.6.6; no 3.x fix): memory exhaustion when validating oversized constrained collections. This copy belongs to @expo/cli (developer CLI: dev server, prebuild) and validates its own config/CLI data; the app bundle and every server use zod 4.6.6. Re-check when Expo moves @expo/cli to zod 4."
+
+# Version-scoped exceptions (2026-11-03) for glob/minimatch advisories fixed only in new majors (glob 14, minimatch 11,
+# both published 2026-10-27). Every consumer declares ^13.0.0 / ^10.2.x, and the majors change behaviour and remove APIs
+# (minimatch 11 drops makeRe/AST/matchOne; glob 14 returns arrays instead of Sets and re-roots '/' ignore patterns), so an
+# out-of-range override is not safe. Both copies are build/lint tooling only, in the workspace and the SP-01/SP-AND
+# spike lockfiles; nothing in the app's JS bundle, the API, the realtime gateway, the worker or the web app uses them.
+[[PackageOverrides]]
+name = "glob"
+version = "13.0.6"
+ecosystem = "npm"
+vulnerability.ignore = true
+effectiveUntil = 2027-01-31
+reason = "GHSA-3g3m-2fjr-6pw4 (fixed only in glob 14.0.2; no 13.x fix): an aborted walk keeps reading directories after its AbortSignal fires (availability only; matters when untrusted patterns or directory trees are bounded by a signal). Only Expo developer tooling uses this copy (@expo/cli, @expo/config, @expo/config-plugins, @expo/fingerprint, @expo/metro-config) at dev-server/prebuild/bundle time, with hard-coded or repository-config patterns over the developer's own project tree; the only caller that passes a signal is @expo/cli's TypeScript doctor check ('**/*.@(ts|tsx)' with a 5 s timeout), whose worst case is extra local disk I/O after the timeout. Re-check when Expo moves to glob 14."
+
+[[PackageOverrides]]
+name = "minimatch"
+version = "10.2.6"
+ecosystem = "npm"
+vulnerability.ignore = true
+effectiveUntil = 2027-01-31
+reason = "GHSA-g3hv-75wg-m249 (fixed only in minimatch 11.0.1; no 10.x fix): CPU/memory amplification in firstPhasePreProcess needs an attacker-supplied pattern AND optimizationLevel >= 2. ESLint, @eslint/config-array, @typescript-eslint/typescript-estree and @expo/fingerprint use the default level 1 with patterns from repository config; only glob 13.0.6 sets level 2, with the Expo-tooling patterns described in its entry. Lint/build tooling only. Re-check when ESLint/typescript-eslint/Expo move to minimatch 11."
