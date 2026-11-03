@@ -36,8 +36,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 10557,
-      "sha256": "43f17dad3e23dc70331a7fba8822de6e89d54f4e148e3861f255e5b16d8eefd8"
+      "bytes": 9858,
+      "sha256": "c6213b84e61f89e0ca34f4e906799e7de04eba3bb4a3bed084dd33984bc274f6"
     },
     {
       "path": "V5_VALIDATION_SUMMARY.json",
@@ -46,8 +46,8 @@
     },
     {
       "path": "docs/00_README_AND_STATUS.md",
-      "bytes": 13442,
-      "sha256": "c5a94fd3db3c490af1ca8406d4ccd5b53fb2919279e39218cb6e45fdde8bf80c"
+      "bytes": 14998,
+      "sha256": "77a1aba6ecebee9aa7a07f535e90e7438fe94003f0d329c6bcc6a469035c9229"
     },
     {
       "path": "docs/01_COMPETITION_AND_STRATEGY.md",
@@ -301,8 +301,8 @@
     },
     {
       "path": "docs/adr/ADR-050-phase3-performance-budgets.md",
-      "bytes": 5729,
-      "sha256": "f385ea230123eba1e3f57f089888a5061ba1b85470c0f525eef527572a34ea68"
+      "bytes": 6939,
+      "sha256": "5a6014076ed36d925a6792d3469cc371b363cc748a6dbc791f4a4a058f351508"
     },
     {
       "path": "docs/adr/ADR-051-service-products-zones-lifecycle.md",
@@ -586,8 +586,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md",
-      "bytes": 38979,
-      "sha256": "cafad073c5887ec0e492cb45767c8211e3a669cd99fc1297ec4e645047a58ab8"
+      "bytes": 40135,
+      "sha256": "27d9a01c889cc8508d62ab309afc959f537825c1e4edbc77ee4d686055724e65"
     },
     {
       "path": "docs/phase3/PHASE3_FOUNDER_EVIDENCE_PACK.md",
@@ -611,8 +611,8 @@
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md",
-      "bytes": 91167,
-      "sha256": "a5a9c4ed61234de031b232a6456a6e971286a1d45974d68921b0c2451c389c5c"
+      "bytes": 92851,
+      "sha256": "549429903b2f532c032187fe0b84eee29912ff8f85a1f4336873ec208b521f42"
     },
     {
       "path": "docs/phase3/PHASE3_IMPLEMENTATION_SEQUENCE.md",
@@ -696,8 +696,8 @@
     },
     {
       "path": "docs/phase3/evidence/device/SP02_SAMSUNG_A30.md",
-      "bytes": 14676,
-      "sha256": "9f72c44092af05cad912b10e615d46589776a85cb5eebc20440ef469db9bba98"
+      "bytes": 19494,
+      "sha256": "8d6810bb25c9a40cf41876fef7e031b71008bef1a86a49d37b9c24ff855fe848"
     },
     {
       "path": "docs/phase3/evidence/laptop/A11Y_EMULATOR_SUPPLEMENT.md",

@@ -185,3 +185,74 @@ except where it says otherwise. All signed-in artefacts were deleted after the s
 2. **Founder decision:** an evidence-backed ADR-050 budget review (this file is the evidence).
 3. **Server path:** PB-06 and PB-09, and any re-measurement, need a server address that stays up for about an hour: a
    staging host, or a tunnel with a fixed name. Free random-name tunnels proved unreliable from this network.
+
+## 8. PB-07 bounded engineering (2026-11-03): GPU allocation root-caused and fixed; clean floor still above budget
+
+**Method.** Everything in this section is **DIAGNOSTIC** and decides no budget (protocol §12; ADR-050 Decision 2).
+- **Builds.** Non-shipping arm64 E2E-variant builds, made in a scratch worktree that is never committed. The only
+  local change was the loopback host, 10.0.2.2 → 127.0.0.1, in `api-config.ts` and in the E2E network-security
+  plugin, so that a real phone can reach the local synthetic stack through `adb reverse`. They are plain HTTP and
+  carry the PB-06 probe.
+- **Delay.** A loopback delay proxy added 1.2 s to every response, close to the tunnel round trip of §7.
+- **Conditions.** Same A30, Wi-Fi ADB, thermal status 0 at the start of every set.
+
+**Variants:**
+- **D0:** current code (`a0737eb`/`38b6f53`).
+- **D1:** D0 plus `animation: 'none'` on the root stack.
+- **D2:** D1 with the Rider-home location-status read stubbed (cost probe only).
+
+**Finding 1 — the intermittent ~75 MB is caused by the root redirect transition and is fixed.**
+- **Mechanism.** On a signed-in cold launch, `/` shows a loading state until the account state arrives, then
+  `<Redirect>` replaces `/` with `/ride`. The root native stack animated that replace with the default full-screen
+  fade/scale. On Android 10 that renders both screens through screen-sized off-screen layers. Skia keeps the
+  resulting scratch render targets in its GPU cache, and an `am send-trim-memory … RUNNING_LOW` does not release them.
+  `dumpsys meminfo` counts them as `GL mtrack` in some samples only, which explains the 7 of 10 launches in §7.
+
+| Probe (4 launches each, +5 s / +40 s / after trim) | GPU cache (`dumpsys gfxinfo` total) | PSS total (KiB) |
+|---|---|---|
+| D0, no delay | 4.09 MB in every sample | 166,811–169,661 |
+| D0, 1.2 s delay | **58.24 MB** in every sample | 173,041–173,928 |
+| D1, 1.2 s delay | **4.12 MB** in every sample | 163,189–165,833 |
+| D0 again, 1.2 s delay (interleaved after D1) | **58.24 / 58.24 / 58.24 / 48.41 MB** | 161,394–164,043 |
+
+- **Fix.** `5681cb5`: the root stack no longer animates state redirects (`apps/wayvro-mobile/src/core/mode/root-stack.ts`,
+  plus a unit test). Navigation inside a mode keeps its animations.
+- **Causation shown.** Same-window, interleaved D0/D1/D0. The R8 change was not the cause: the old build shows the
+  same allocation whenever the redirect lands late; the new build just reaches Rider home sooner, closer to the sample.
+
+**Finding 2 — the location-status read on Rider home costs nothing measurable.**
+- Protocol sets, 1.2 s delay, 6 cold launches with the first discarded, all six screens verified as Rider home:
+  - **D1:** p50 **162,341** / p90 **162,617** KiB, CV 0.1 %.
+  - **D2:** p50 162,108 / p90 163,567 KiB, CV 0.7 %.
+- No UX trade-off is proposed there.
+
+**Clean floor and composition (D1, Rider home, KiB).** Total about 162,158, against **156,250**:
+
+| Part | KiB | Owner |
+|---|---|---|
+| Window buffers (EGL mtrack) | 30,000 | platform: three 1080×2340 buffers |
+| System and system `.so` | 13,006 + 17,209 | platform, shared |
+| App code paged in (dex, APK including native libraries, jar) | 23,756 + 29,748 + 2,450 | app |
+| Native heap (Hermes / React Native runtime) | 27,295 | app |
+| Unknown (JS heap and other anonymous memory) | 15,967 | app |
+| Java heap | 8,588 | app |
+
+**Invalidations recorded:**
+- **Set `diag-d1-set`: INVALID.** The sign-in step was cut off by a timeout while the laptop was building, and the
+  launches showed the sign-in screen.
+- **Harness defect.** That set also exposed a defect in the local harness: a wrong or unverified screen invalidated the
+  launch and timing samples but not the memory sample.
+  - Fixed: the validity is now spread last.
+  - Parser self-test 67/67 and device self-test 14/14 still PASS.
+  - Every earlier SP-02 aggregate was rescanned and **none** was affected.
+
+**Status after the bounded loop:**
+- **Measured.** Under the diagnostic conditions the floor is about **162.3–162.6 MB** p50/p90 against the 156,250 KiB
+  budget, about 6.4 MB (4 %) over.
+- **Remaining levers.** Each is unmeasured, would take its own build and same-window A/B, and is expected to yield
+  1–3 MB at most: R8 optimisation passes, Hermes heap tuning, unloaded image-decoder libraries, lazy translation
+  catalogues. Together they offer diminishing returns against a 6.4 MB gap.
+- **No official verdict yet.** The PB-07 verdict on the release AAB of `5681cb5` over public-trust HTTPS has **NOT
+  RUN**, because no stable HTTPS endpoint exists (§7). PB-07 therefore stays **FAIL** (§7 is the last valid reference
+  result), with an expected release floor still above the budget.
+- **Unchanged.** PB-06 runtime and PB-09 are NOT RUN. The threshold is unchanged.

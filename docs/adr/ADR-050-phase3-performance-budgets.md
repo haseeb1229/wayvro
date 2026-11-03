@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ACCEPTED for the budget values (FA-07, approved pre-measurement 2026-10-12); PARTIAL for evidence** — only the CI-measurable budgets are measured; every device and staging budget is NOT MEASURED |
+| Status | **ACCEPTED for the budget values (FA-07, approved pre-measurement 2026-10-12; unchanged); PARTIAL for evidence** — CI budgets measured; reference-device budgets partly measured on the founder-accepted Galaxy A30 (PB-07 FAIL; see Current evidence 2026-11-03); staging budgets NOT MEASURED |
 | Date | 2026-10-13 |
 | Supersedes | `docs/phase3/PHASE3_ADR_AND_DEPENDENCY_PROPOSALS.md` ADR-050 (proposal) |
 | Requirements | Q26, Q27, V11; CON-P3-05 |
@@ -33,7 +33,18 @@ Wayvro ships one app to riders and Driver/Partners (CLAUDE.md §2, §9). Rider u
 
 The +0.48 MB for Phase 3 comes from expo-location, the Phase-3 screens and strings, and the first-party `wayvro-fully-drawn` module. No map renderer is installed: the renderer's size delta, which must stay inside the remaining ≈ 3.87 MB of arm64-v8a headroom, is measured at the P3.7 freeze (BLOCKED-EXTERNAL).
 
-## Current evidence (2026-10-27) — budget values unchanged
+## Current evidence (2026-11-03) — budget values unchanged
+Reference device: Samsung Galaxy A30 class, by founder decision of 2026-10-27 (`docs/phase3/PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1b). Details are in `docs/phase3/evidence/device/SP02_SAMSUNG_A30.md` §3 and §6–§8.
+- **PASS on the A30 (release AAB of `af5d8e2`):** PB-02 1,756 ms p50; PB-03 82 ms p50. PB-04 and PB-05 PASS in CI on every code SHA.
+- **PB-07 FAIL** (Rider home, p90 ≤ 156,250 KiB):
+  - 169–170 MB on `af5d8e2`;
+  - about 166.6 MB in clean launches after R8 shrinking (`b9f739b`/`c8bb136`);
+  - about 242 MB when a ~75 MB GPU scratch allocation appeared. That allocation was root-caused to the animated root redirect and fixed in `5681cb5`.
+
+  The diagnostic floor with the fix is about **162.3–162.6 MB**. The release verdict on `5681cb5` over HTTPS has NOT RUN (no stable endpoint). **The budget is not changed**; a change would need founder approval and an amendment here.
+- **NOT RUN:** PB-06 device runtime and PB-09 (no stable HTTPS endpoint). PB-01 at N2 and PB-12a, by founder choice. PB-08 is R2 (no renderer).
+
+## Evidence (2026-10-27) — historical, superseded by the section above
 - **CI size gate on the final code `af5d8e2`** (Android job, push run 39045490954, `SIZE CHECK: PASS`; self-test 7 cases PASS): arm64-v8a download MAX **26,134,975 B** (+483,248 B vs baseline), armeabi-v7a **25,391,891 B** (+482,272 B), Hermes bundle **3,688,896 B** — PB-04/PB-05 **PASS (CI)**. The gate also ran green on the documentation head `09b7672` (push run 39063226015, PR run 39063230948).
 - **SP-02 emulator supplement** (`docs/phase3/evidence/laptop/SP02_LOW_RAM_AVD_SUPPLEMENT.md`, 2 GB API-35 AVD, release-mode Hermes E2E APK): `LOCAL_EMULATOR_SUPPLEMENTARY`. Indicative only (Decision 2): it closes no PB-01 … PB-14 device budget and reports none as PASS. PB-06 was 0 driver modules before fully drawn in 40/40 samples, still an emulator proxy.
 - **SP02-F1 correction** (`docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md`, targeted correction §2): the signed-in cold start sent a request that could only answer 401 when the access token had expired. The app now refreshes first (0 of 9 samples with a 401 afterwards, against 9 of 9 before). The remaining startup time is classified REAL_DEVICE_REQUIRED (FA-04).
