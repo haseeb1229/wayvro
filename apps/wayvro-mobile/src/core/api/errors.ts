@@ -1,4 +1,5 @@
-import { ErrorEnvelopeSchema, type ErrorCode } from '@wayvro/contracts';
+import { ErrorCodeSchema, ErrorEnvelopeSchema, type ErrorCode } from '@wayvro/contracts';
+import { z } from 'zod';
 
 /**
  * The small set of error kinds the UI understands (CLAUDE.md §13). Raw server messages, provider text and stack traces
@@ -20,6 +21,15 @@ export const UI_ERROR_KINDS = [
   'restricted',
   /** The feature is switched off server-side (release gate); nothing to retry. */
   'feature-disabled',
+  /**
+   * Phase 3 (422 WAYVRO_E_SERVICE_AREA): nothing can be priced for this pickup/drop-off/time; `detail.reasonCodes` say
+   * why (ZONE_NOT_SERVED, PICKUP_RESTRICTED, OUTSIDE_SERVICE_HOURS, ROUTE_TOO_LONG, NO_ACTIVE_RATE_CARD, LEGAL_GATE_DISABLED).
+   */
+  'service-area',
+  /** Phase 3 (426 WAYVRO_E_APP_UPDATE_REQUIRED): this build may not continue; the app-policy gate blocks the app. */
+  'update-required',
+  /** Phase 3 (503 WAYVRO_E_MAINTENANCE): planned maintenance; the app-policy gate shows the maintenance screen. */
+  'maintenance',
   'unavailable',
   'unknown',
 ] as const;
@@ -33,6 +43,8 @@ export interface ApiErrorDetail {
   readonly requestId: string | null;
   /** Reason codes of the restriction(s) behind a WAYVRO_E_ACCOUNT_RESTRICTED refusal (never shown raw as an error message). */
   readonly reasonCodes: readonly string[];
+  /** Phase 3: with SERVICE_AREA / OUTSIDE_SERVICE_HOURS — the next opening instant (server time), else null. */
+  readonly nextOpenAt: string | null;
   /**
    * true when the outcome is UNKNOWN (no response, timeout, 5xx): the request may or may not have taken effect, so a
    * retry must reuse the same idempotency key. false when the server answered definitively.
@@ -54,6 +66,7 @@ export class ApiError extends Error {
       retryAfterSeconds: detail.retryAfterSeconds ?? null,
       requestId: detail.requestId ?? null,
       reasonCodes: detail.reasonCodes ?? [],
+      nextOpenAt: detail.nextOpenAt ?? null,
       transient: detail.transient ?? false,
     };
   }
@@ -90,6 +103,10 @@ const KIND_BY_CODE: Readonly<Partial<Record<ErrorCode, UiErrorKind>>> = {
   // P2.10: generic OIDC outcomes (a 401 here is not an expired session; the app offers the phone instead)
   WAYVRO_E_OIDC_NOT_LINKED: 'validation',
   WAYVRO_E_OIDC_LINK_CONFLICT: 'conflict',
+  // Phase 3 (P3.3/P3.4): quote refusals and the release controls
+  WAYVRO_E_SERVICE_AREA: 'service-area',
+  WAYVRO_E_APP_UPDATE_REQUIRED: 'update-required',
+  WAYVRO_E_MAINTENANCE: 'maintenance',
 };
 
 function kindForStatus(status: number): UiErrorKind {
@@ -97,23 +114,36 @@ function kindForStatus(status: number): UiErrorKind {
   if (status === 403) return 'unknown';
   if (status === 409) return 'conflict';
   if (status === 429) return 'rate-limited';
+  // A 426 without a valid envelope (proxy, older gateway) still means this build may not continue.
+  if (status === 426) return 'update-required';
   if (status === 400 || status === 422) return 'validation';
   if (status >= 500) return 'unavailable';
   return 'unknown';
 }
 
+/**
+ * The client reads the envelope's `code` as an opaque string (COMPAT-N1 finding): ERROR_CODES is append-only, and a
+ * code added by a NEWER server must not discard the whole body — an unknown code keeps the HTTP-status kind and still
+ * delivers the retry hints and reason codes. Known codes are typed through ErrorCodeSchema; the server contract stays
+ * closed.
+ */
+const ClientErrorEnvelopeSchema = z.object({ error: ErrorEnvelopeSchema.shape.error.extend({ code: z.string().min(1).max(100) }) });
+
 /** Maps a non-2xx HTTP response (status + parsed JSON body, if any) to an ApiError. */
 export function errorFromResponse(status: number, body: unknown): ApiError {
-  const parsed = ErrorEnvelopeSchema.safeParse(body);
+  const parsed = ClientErrorEnvelopeSchema.safeParse(body);
   const transient = status >= 500;
   if (!parsed.success) return new ApiError(kindForStatus(status), { status, transient });
-  const { code, requestId, details } = parsed.data.error;
-  return new ApiError(KIND_BY_CODE[code] ?? kindForStatus(status), {
+  const { requestId, details } = parsed.data.error;
+  const known = ErrorCodeSchema.safeParse(parsed.data.error.code);
+  const code = known.success ? known.data : null;
+  return new ApiError((code === null ? undefined : KIND_BY_CODE[code]) ?? kindForStatus(status), {
     code,
     status,
     requestId,
     retryAfterSeconds: details?.retryAfterSeconds ?? null,
     reasonCodes: details?.reasonCodes ?? [],
+    nextOpenAt: details?.nextOpenAt ?? null,
     transient,
   });
 }

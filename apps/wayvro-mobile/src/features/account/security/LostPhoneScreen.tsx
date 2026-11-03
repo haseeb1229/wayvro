@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useI18n } from '../../../core/i18n/I18nProvider';
+import { PHONE_FORMAT_EXAMPLES } from '../../../core/i18n/strings';
 import { Banner, Body, Button, ErrorBanner, RadioGroup, Screen, TextField, Title } from '../../../core/ui/primitives';
 import { errorView } from '../../../core/ui/view-state';
 import type { RecoveryProof } from './account-security-api';
@@ -38,7 +39,7 @@ export default function LostPhoneScreen() {
       <Body>{t('lostPhone.body')}</Body>
       <TextField
         label={t('lostPhone.previousLabel')}
-        hint={t('phone.hint')}
+        hint={t('phone.hint', PHONE_FORMAT_EXAMPLES)}
         value={previous}
         onChangeText={(value) => {
           setPrevious(value);

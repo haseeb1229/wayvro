@@ -25,7 +25,7 @@ All versions were chosen at install against the Expo SDK 57 `bundledNativeModule
   - **Static check of the release JS bundle:** no reanimated or gesture-handler module is bundled. The only worklets reference is `@expo/ui`'s optional `try { require('react-native-worklets') } catch {}`.
 - **Two permissions added to `blockedPermissions`:** `USE_BIOMETRIC` and `USE_FINGERPRINT`, contributed by `androidx.biometric` via expo-secure-store. There is no biometric prompt; a biometric unlock would need its own decision.
 - **The permission allowlist did not change:** the merged release manifest holds `INTERNET` plus the AndroidX dynamic-receiver permission only.
-- **No URL scheme** until identifiers clear (docs/28 §15).
+- **No URL scheme** until identifiers clear (docs/28 §15). *Corrected in Phase 3 P3.0 (F-P3-01), see the P3.0 amendment below:* this was not true of the release AAB until P3.0, because expo-dev-client appended its generated `exp+wayvro` scheme to the shared main manifest.
 - **No API URL default:** a build without `WAYVRO_API_URL` shows "service not configured". Release builds require https. The emulator loopback is used only for `__DEV__` with `WAYVRO_DEV_LOCAL_API=1`.
 
 ## Measurements (2026-10-11, this machine)
@@ -50,7 +50,7 @@ All are **NOT RUN** and must be checked on a representative low-end Android devi
 ## Supply-chain finding
 expo-router 57.0.25 pins query-string 7.1.3 → decode-uri-component 0.2.2, which is affected by GHSA-vcc3-ghjq-m6fr (Medium, CPU-exhaustion DoS on malformed percent-encoding).
 - The fixed 0.5.0 is ESM-only, and an override would break query-string 7.
-- It is accepted as a time-boxed runtime exception in `osv-scanner.toml` (expires 2026-12-31), because no URL scheme or deep link exists, so no external input reaches the parser.
+- It is accepted as a time-boxed runtime exception in `osv-scanner.toml` (expires 2026-12-31), because no URL scheme or deep link is registered in release builds, so no external input reaches the parser (premise restored and CI-enforced in Phase 3 P3.0 — see the P3.0 amendment).
 - **Gate:** before any deep link is wired, upgrade expo-router/query-string or bound URL length.
 
 ## P2.8 addendum — Driver/Partner capture (K02/K03/V03/Q01)
@@ -80,3 +80,33 @@ New lockfile entries pulled in by these packages: barcode-detector 3.2.2, zxing-
 ## Consequences / reversal
 - Navigation can move back to plain React Navigation by replacing the thin route files; the feature screens do not import the router.
 - If a later screen needs gestures or animation, the exclusion is removed in that change, with a size measurement.
+
+## Phase 3 P3.0 amendment — release URL scheme (F-P3-01), 2026-10-12
+
+**Finding.** The "no URL scheme" decision above was not true of the release artefact. `expo-dev-client` 57.0.19 is applied automatically by `expo prebuild` (legacy plugin list in `@expo/prebuild-config`), and its `withGeneratedAndroidScheme` (option `addGeneratedScheme`, default `true`) appends `exp+<slug>` to the SHARED main manifest. The release AAB therefore exported `dev.wayvro.app.MainActivity` with a VIEW + DEFAULT + BROWSABLE intent filter for `exp+wayvro` (verified on the 2026-10-11 local release AAB and on the CI artefact of PR #6 run 38177849934; `docs/phase3/PHASE3_HANDOFF_REPORT.md` §B). In release builds the dev launcher is inactive, so such a URL reaches the app's router — the input path the decode-uri-component exception assumed did not exist.
+
+**Decision (variant-conditional, dev workflow preserved).**
+- `app.config.ts` lists `['expo-dev-client', { addGeneratedScheme: false }]` (the documented option; prebuild then skips its automatic copy because config plugins run once per package), so the shared main manifest carries no generated scheme.
+- The local plugin `apps/wayvro-mobile/plugins/dev-client-scheme.mjs` re-adds the same intent filter (same scheme derivation as the dev-client source) to the **debug** and **debugOptimized** source-set manifests only. The Android manifest merger applies them to development variants alone, so `adb shell am start … exp+wayvro://expo-development-client/?url=…` keeps working on development builds.
+- **iOS:** no iOS build exists (ADR-036); `addGeneratedScheme: false` also keeps the scheme out of the iOS Info.plist. When iOS development builds start, a Debug-configuration-only URL type is needed (open item, not a release risk).
+
+**Gate (CI, every run).** `infra/ci/android/check-intent-filters.mjs` dumps the merged release manifest with bundletool and compares every activity/alias/service/receiver/provider with `infra/ci/android/component-allowlist.json`: only `MainActivity` (MAIN/LAUNCHER) and `androidx.profileinstaller.ProfileInstallReceiver` (guarded by `android.permission.DUMP`) may be exported; any `<data>` element or BROWSABLE category in an application intent filter fails. `--self-test` (Quality job) proves the negative controls (the `exp+wayvro` filter, an extra exported receiver, an https app-link alias, an implicitly exported service, the profile installer without its permission). Before the fix, the gate FAILED the existing release AAB on exactly the `exp+wayvro` filter. Evidence for the fixed artefacts (release AAB without the scheme; development APK with it) is recorded in `docs/phase3/PHASE3_IMPLEMENTATION_RECORD.md` §P3.0.
+
+**Unchanged.** Intentional deep links / app links stay disabled while the decode-uri-component exception is open; the exception's 2026-12-31 expiry is not extended (its reason text in `osv-scanner.toml` is corrected to the now-true, CI-enforced premise); the Phase-3 intent router bounds URL length before any parsing (P3.5).
+
+## Phase 3 P3.5 addendum — expo-location (rider foreground location; FA-02 APPROVED 2026-10-12), 2026-10-13
+
+**Version re-checked at install (ADR-030).** `expo-location` **57.0.20** (MIT, not deprecated, published 2026-09-24) = the Expo SDK 57 `bundledNativeModules` pin `~57.0.20`. 57.0.21 (published 2026-10-12) was under pnpm's 24 h minimum release age and is not the SDK pin, so it was not taken. Lockfile delta: the `expo-location` importer entry, package and snapshot only; its single dependency `@expo/image-utils` 0.11.6 was already locked.
+
+**Configuration (option names and effects verified in the installed `plugin/build/withLocation.js`, not only in the docs).**
+- `locationWhenInUsePermission`: the rider usage string from the permission model §3.3 (iOS `NSLocationWhenInUseUsageDescription`).
+- `locationAlwaysAndWhenInUsePermission: false`, `locationAlwaysPermission: false`, `motionUsagePermission: false`: in `@expo/config-plugins` `applyPermissions`, `false` DELETES the key while an omitted option WRITES a default "Allow $(PRODUCT_NAME) to use your location" string — so omitting them would have shipped Always keys. `expo config --type introspect` shows only `NSLocationWhenInUseUsageDescription`.
+- `isIosBackgroundLocationEnabled: false` (no `UIBackgroundModes` `location`), `isAndroidBackgroundLocationEnabled: false` (no ACCESS_BACKGROUND_LOCATION), `isAndroidForegroundServiceEnabled: false` (no FOREGROUND_SERVICE / FOREGROUND_SERVICE_LOCATION; when omitted the plugin follows the background flag), `isAndroidMotionActivityEnabled: false`.
+- `android.permission.FOREGROUND_SERVICE` joins `blockedPermissions` (second line of defence; ACCESS_BACKGROUND_LOCATION and FOREGROUND_SERVICE_LOCATION were already blocked).
+- Permission allowlist: ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION moved to `allowed` with the permission-model §3.2 justifications and requirement IDs B01/B02/A07/V05/U05; FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED, BLUETOOTH_CONNECT and BLUETOOTH_SCAN added to `forbidden`.
+
+**Code placement.** expo-location is imported only under `apps/wayvro-mobile/src/platform/location/` with two entry points: `status.ts` (read-only permission + device-location state, never prompts — the only one the Driver/Partner module may import) and `request.ts` (rider-only: the single foreground request, a one-shot Balanced fix with a 10 s app-side timeout and a fresh-last-known shortcut, and a scoped ≥ 5 s / ≥ 10 m watch for the pin screen). `mayShowUserSettingsDialog: false` keeps the "improve accuracy" system dialog away; device-location-off is explained by the app. The architecture test bans every other importer and the background/geofence/task API names.
+
+**Evidence (2026-10-13, this machine).** `expo prebuild --platform android --clean --no-install`: the generated main manifest adds exactly ACCESS_COARSE_LOCATION and ACCESS_FINE_LOCATION, marks FOREGROUND_SERVICE `tools:node="remove"`, and adds no exported component, intent filter or scheme (the debug source-set still carries the dev-client scheme only). The generated directory was deleted afterwards.
+
+**Not verified (NOT RUN).** Gradle/AAB build, the merged release manifest and the CI permission/intent-filter gates on a real artefact, size delta, any device behaviour (prompts, approximate grants, revocation, Android 12+ precision downgrade, OEM differences), iOS build. **Open item:** the library manifest declares a non-exported `expo.modules.location.services.LocationTaskService` with `foregroundServiceType="location"`. It cannot run as a foreground service without the (blocked) FGS permissions and is never started (task APIs are string-banned), and the intent-filter gate only lists EXPORTED components; whether its mere declaration triggers a Play Console FGS-type declaration must be checked before the first store upload (stripping it with a reviewed `tools:node="remove"` plugin is the fallback).

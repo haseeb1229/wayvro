@@ -3,6 +3,7 @@ import {
   AccountStateSchema,
   AgeDeclarationRecordedSchema,
   AgeEligibilityPolicySchema,
+  AppConfigSchema,
   ConsentRecordedSchema,
   ConsentStatusListSchema,
   OtpChallengeSchema,
@@ -18,6 +19,7 @@ import {
   type AgeDeclarationRecorded,
   type AgeDeclarationRequest,
   type AgeEligibilityPolicy,
+  type AppConfig,
   type ConsentRecorded,
   type ConsentRequest,
   type ConsentStatusList,
@@ -50,7 +52,7 @@ export type PolicyLocale = 'en' | 'ur';
 export type Profile = z.infer<typeof ProfileSchema>;
 export type AccountAppeal = z.infer<typeof AccountAppealSchema>;
 
-export interface DeviceInfo {
+interface DeviceInfo {
   readonly platform: 'ANDROID' | 'IOS';
   readonly appVersion: string;
 }
@@ -73,8 +75,16 @@ export function createWayvroClient(deps: WayvroClientDeps) {
 
   /** Bearer call with one single-flight refresh + one retry on 401. */
   async function authed<T>(spec: RequestSpec<T>): Promise<HttpResult<T>> {
-    const token = session.accessToken();
+    let token = session.accessToken();
     if (token === null) throw new ApiError('session-expired');
+    // SP02-F1: a token already past its server-issued expiry at the first call of this process is refreshed first (the
+    // same single-flight refresh as after a 401), saving the request that could only answer 401.
+    if (session.refreshDueAtFirstUse((http.now ?? Date.now)() + http.clock.offsetMs)) {
+      const early = await session.refreshAfterUnauthorized(token);
+      const fresh = session.accessToken();
+      if (early === 'expired' || fresh === null) throw new ApiError('session-expired');
+      token = fresh;
+    }
     try {
       return await send(http, { ...spec, accessToken: token });
     } catch (error) {
@@ -204,6 +214,10 @@ export function createWayvroClient(deps: WayvroClientDeps) {
       ).data.revokedCount,
 
     securityEvents: (): Promise<SecurityEventList> => read({ method: 'GET', path: '/v1/account/security-events', schema: SecurityEventListSchema }, true),
+
+    // ── release controls (Phase 3, A01/Q31) ───────────────────────────────────────────────────────────────────
+    /** Public, cacheable app configuration (version policy, maintenance, presentation switches, client tuning). */
+    appConfig: (): Promise<AppConfig> => read({ method: 'GET', path: '/v1/app/config', schema: AppConfigSchema }, false),
 
     // ── legal ─────────────────────────────────────────────────────────────────────────────────────────────────
     policies: (locale: PolicyLocale): Promise<PolicyList> =>

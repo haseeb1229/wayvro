@@ -18,7 +18,7 @@ export function tokens(n: number): SessionTokens {
   return {
     sessionId: IDS.session,
     accessToken: `wv_at_synthetic_${String(n)}`,
-    accessTokenExpiresAt: '2026-10-11T10:15:00.000Z',
+    accessTokenExpiresAt: '2099-01-01T00:15:00.000Z',
     refreshToken: `wv_rt_synthetic_${String(n)}`,
     refreshTokenExpiresAt: '2026-11-10T10:00:00.000Z',
   };

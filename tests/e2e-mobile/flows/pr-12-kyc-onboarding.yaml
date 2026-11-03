@@ -1,0 +1,116 @@
+# SP-08 #18 (PR to the documents list, N) — V10, K19, V03: Phase-2 Driver/Partner onboarding keeps working beside the
+# Phase-3 rider shell: intro → Driver/Partner policies → consent → details → vehicle → documents list. No upload here
+# (#19 is full-matrix); the CAMERA dialog never appears on these screens (it belongs to the capture screen only).
+# Synthetic applicant values only (CNIC 35202-0000000-1 is the repository's synthetic test number).
+appId: dev.wayvro.app
+name: pr-12-kyc-onboarding
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_APPLICANT}
+      PHONE_LOCAL: ${PHONE_LOCAL_APPLICANT}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Before you apply'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Start my application'
+    direction: DOWN
+- tapOn: 'Start my application'
+- scrollUntilVisible:
+    element: 'Review Driver/Partner policies'
+    direction: DOWN
+    timeout: 30000
+- tapOn: 'Review Driver/Partner policies'
+- repeat:
+    while:
+      visible: 'Accept and continue'
+    times: 4
+    commands:
+      - scrollUntilVisible:
+          element: 'Accept and continue'
+          direction: DOWN
+      - tapOn: 'Accept and continue'
+- scrollUntilVisible:
+    element: 'I agree, continue'
+    direction: DOWN
+    timeout: 30000
+- tapOn: 'I agree, continue'
+- extendedWaitUntil:
+    visible: 'Your application'
+    timeout: 30000
+# details
+- tapOn: 'Your details.*'
+- extendedWaitUntil:
+    visible: 'Full legal name'
+    timeout: 30000
+- tapOn: 'Full legal name'
+- inputText: 'Synthetic Applicant'
+- tapOn: 'CNIC number'
+- inputText: '35202-0000000-1'
+- scrollUntilVisible:
+    element: 'Day \(DD\)'
+    direction: DOWN
+- tapOn: 'Day \(DD\)'
+- inputText: '17'
+- tapOn: 'Month \(MM\)'
+- inputText: '05'
+- tapOn: 'Year \(YYYY\)'
+- inputText: '1990'
+- hideKeyboard
+- scrollUntilVisible:
+    element: 'Save'
+    direction: DOWN
+- tapOn: 'Save'
+- extendedWaitUntil:
+    visible: 'Your application'
+    timeout: 30000
+# vehicle
+- tapOn: 'Your vehicle.*'
+- extendedWaitUntil:
+    visible: 'Number plate'
+    timeout: 30000
+- tapOn: 'Number plate'
+- inputText: ${'LEA' + String(Date.now()).slice(-4)}
+- tapOn: 'Make'
+- inputText: 'Synthetic'
+- tapOn: 'Model'
+- inputText: 'Sedan'
+- tapOn: 'Model year \(YYYY\)'
+- inputText: '2020'
+- tapOn: 'Colour'
+- inputText: 'White'
+- hideKeyboard
+- scrollUntilVisible:
+    element: 'I am the registered owner'
+    direction: DOWN
+- tapOn: 'I am the registered owner'
+- scrollUntilVisible:
+    element: 'Save vehicle'
+    direction: DOWN
+- tapOn: 'Save vehicle'
+- extendedWaitUntil:
+    visible: 'Your application'
+    timeout: 30000
+# documents list (no upload in the PR tier)
+- scrollUntilVisible:
+    element: 'Documents and photos.*'
+    direction: DOWN
+- tapOn: 'Documents and photos.*'
+- extendedWaitUntil:
+    visible: '.*Driving licence.*'
+    timeout: 30000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- takeScreenshot: pr-12-documents-list

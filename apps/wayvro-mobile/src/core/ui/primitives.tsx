@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { contentDirection } from '../i18n/bidi';
 import { useI18n } from '../i18n/I18nProvider';
 import type { StringKey } from '../i18n/strings';
-import { colors, MIN_TOUCH_TARGET, spacing, typography } from './tokens';
+import { livePoliteness, spokenSentence, type Announcement } from './a11y';
+import { colors, MIN_TOUCH_TARGET, spacing, tonePairs, typography } from './tokens';
 import type { UiErrorView } from './view-state';
 
 /**
@@ -11,24 +13,50 @@ import type { UiErrorView } from './view-state';
  * text alignment/writing direction and mirrored rows, without forcing a global RTL restart.
  */
 
-function useDirection() {
+/**
+ * Direction helpers for the current UI language (RTL per component; no global forceRTL). `text` is for catalogue copy
+ * in the UI language; `content(text)` is for server text in any script (addresses, place names): it aligns with the UI
+ * language but sets the writing direction from the text itself (`bidi.ts`), so mixed-script rows render correctly.
+ */
+export function useDirection() {
   const { rtl } = useI18n();
   return {
     rtl,
     text: rtl ? styles.textRtl : styles.textLtr,
     row: rtl ? styles.rowRtl : styles.rowLtr,
+    content: (text: string) => [
+      rtl ? styles.alignRight : styles.alignLeft,
+      contentDirection(text, rtl ? 'rtl' : 'ltr') === 'rtl' ? styles.writeRtl : styles.writeLtr,
+    ],
   };
 }
 
-export function Screen({ children, scroll = true }: { readonly children: ReactNode; readonly scroll?: boolean }) {
+/**
+ * Screen container. It ends every screen with the "translation pending native-speaker review" note, so Urdu and Roman
+ * Urdu copy is never shown without it (P18; FA-09) — screens do not add the note themselves. `topInset`: a screen drawn
+ * without a navigation header (the release blocking overlay) also insets the status bar.
+ */
+export function Screen({
+  children,
+  scroll = true,
+  topInset = false,
+}: {
+  readonly children: ReactNode;
+  readonly scroll?: boolean;
+  readonly topInset?: boolean;
+}) {
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={topInset ? ['top', 'bottom', 'left', 'right'] : ['bottom', 'left', 'right']}>
       {scroll ? (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {children}
+          <TranslationPendingNote />
         </ScrollView>
       ) : (
-        <View style={[styles.content, styles.fill]}>{children}</View>
+        <View style={[styles.content, styles.fill]}>
+          {children}
+          <TranslationPendingNote />
+        </View>
       )}
     </SafeAreaView>
   );
@@ -66,12 +94,15 @@ export function Button(props: {
   readonly disabled?: boolean;
   readonly busy?: boolean;
   readonly busyLabel?: string;
+  /** Stable locator for the SP-08 Maestro flows (ADR-052): locale-independent, never user-visible. */
+  readonly testID?: string;
 }) {
   const { variant = 'primary', disabled = false, busy = false } = props;
   const inactive = disabled || busy;
   const label = busy && props.busyLabel !== undefined ? props.busyLabel : props.label;
   return (
     <Pressable
+      testID={props.testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inactive, busy }}
@@ -90,15 +121,34 @@ export function Button(props: {
   );
 }
 
-export function LinkRow({ label, onPress, detail }: { readonly label: string; readonly onPress: () => void; readonly detail?: string }) {
+/**
+ * A navigable row. `glyph` is an optional status mark drawn before the label; it is decorative (hidden from screen
+ * readers), so the meaning must also be in `label`/`detail` text — never the glyph or colour alone.
+ */
+export function LinkRow({
+  label,
+  onPress,
+  detail,
+  glyph,
+}: {
+  readonly label: string;
+  readonly onPress: () => void;
+  readonly detail?: string;
+  readonly glyph?: string;
+}) {
   const dir = useDirection();
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={detail === undefined ? label : `${label}. ${detail}`}
+      accessibilityLabel={spokenSentence([label, detail])}
       onPress={onPress}
       style={({ pressed }) => [styles.linkRow, dir.row, pressed ? styles.pressed : undefined]}
     >
+      {glyph === undefined ? null : (
+        <Text style={styles.glyph} importantForAccessibility="no" accessibilityElementsHidden>
+          {glyph}
+        </Text>
+      )}
       <View style={styles.fill}>
         <Text style={[styles.body, dir.text]}>{label}</Text>
         {detail === undefined ? null : <Text style={[styles.caption, styles.muted, dir.text]}>{detail}</Text>}
@@ -117,7 +167,10 @@ export function TextField(
     readonly onChangeText: (value: string) => void;
     readonly hint?: string;
     readonly error?: string | null;
-  } & Pick<TextInputProps, 'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline'>,
+  } & Pick<
+    TextInputProps,
+    'keyboardType' | 'autoComplete' | 'textContentType' | 'maxLength' | 'editable' | 'onSubmitEditing' | 'autoFocus' | 'multiline' | 'onFocus' | 'testID'
+  >,
 ) {
   const dir = useDirection();
   const { label, hint, error, value, onChangeText, ...inputProps } = props;
@@ -203,15 +256,21 @@ export function RadioGroup<V extends string>(props: {
   );
 }
 
-export function Banner({ tone, text }: { readonly tone: 'info' | 'warning' | 'error'; readonly text: string }) {
+/** Banner variants; their colour pairs are the contrast-tested `tonePairs` tokens. */
+export type BannerTone = keyof typeof tonePairs;
+
+const bannerLook = (tone: BannerTone) => ({ box: { backgroundColor: tonePairs[tone].background }, text: { color: tonePairs[tone].text } });
+
+/**
+ * A status message. `announce` says how a screen reader is told about it (`a11y.ts`): ordinary status text is polite;
+ * a just-expired quote or a blocking policy state is assertive (announced once — the text does not change while shown).
+ */
+export function Banner({ tone, text, announce = 'status' }: { readonly tone: BannerTone; readonly text: string; readonly announce?: Announcement }) {
   const dir = useDirection();
+  const look = bannerLook(tone);
   return (
-    <View
-      style={[styles.banner, tone === 'info' ? styles.bannerInfo : tone === 'warning' ? styles.bannerWarning : styles.bannerError]}
-      accessibilityRole={tone === 'error' ? 'alert' : 'text'}
-      accessibilityLiveRegion="polite"
-    >
-      <Text style={[styles.body, tone === 'info' ? styles.infoText : tone === 'warning' ? styles.warningText : styles.errorText, dir.text]}>{text}</Text>
+    <View style={[styles.banner, look.box]} accessibilityRole={tone === 'error' ? 'alert' : 'text'} accessibilityLiveRegion={livePoliteness(announce)}>
+      <Text style={[styles.body, look.text, dir.text]}>{text}</Text>
     </View>
   );
 }
@@ -222,7 +281,10 @@ export function PlaceholderBadge() {
   return <Banner tone="warning" text={t('common.placeholderNotice')} />;
 }
 
-/** Note shown in Urdu/Roman-Urdu while translations await native review. */
+/**
+ * Note shown in Urdu/Roman-Urdu while translations await native review. `Screen` renders it on every screen; only a
+ * full-bleed view that cannot use `Screen` (the camera) renders it itself.
+ */
 export function TranslationPendingNote() {
   const { t, pendingReview } = useI18n();
   return pendingReview ? <Body muted>{t('common.translationPending')}</Body> : null;
@@ -275,6 +337,10 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.xl },
   textLtr: { textAlign: 'left', writingDirection: 'ltr' },
   textRtl: { textAlign: 'right', writingDirection: 'rtl' },
+  alignLeft: { textAlign: 'left' },
+  alignRight: { textAlign: 'right' },
+  writeLtr: { writingDirection: 'ltr' },
+  writeRtl: { writingDirection: 'rtl' },
   rowLtr: { flexDirection: 'row' },
   rowRtl: { flexDirection: 'row-reverse' },
   title: { ...typography.title, color: colors.text },
@@ -324,6 +390,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   chevron: { fontSize: 24, color: colors.textMuted },
+  glyph: { ...typography.body, fontWeight: '700', minWidth: 20, textAlign: 'center', color: colors.text },
   choiceRow: { minHeight: MIN_TOUCH_TARGET, alignItems: 'center', gap: spacing.md },
   box: { width: 28, height: 28, borderRadius: 6, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   boxChecked: { backgroundColor: colors.primary },
@@ -331,9 +398,4 @@ const styles = StyleSheet.create({
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.primary },
   radioSelected: { backgroundColor: colors.primary },
   banner: { borderRadius: 8, padding: spacing.md },
-  bannerInfo: { backgroundColor: colors.infoBackground },
-  bannerWarning: { backgroundColor: colors.warningBackground },
-  bannerError: { backgroundColor: colors.errorBackground },
-  infoText: { color: colors.infoText },
-  warningText: { color: colors.warningText },
 });

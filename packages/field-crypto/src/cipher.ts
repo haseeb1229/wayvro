@@ -31,6 +31,10 @@ export const KEY_CLASSES = {
   evidenceKek: 'evidence_kek',
   /** appellants' free-text statements (PII-classified; P2.7) */
   appealStatements: 'appeal_statements',
+  /** Phase 3 P3.2: sealed, account-bound, expiring placeRef tokens wrapping provider place ids (ARCH-05, EG-05 in production) */
+  placeRefs: 'place_refs',
+  /** Phase 3 P3.2: keyed digests of geo cache keys, so a Valkey dump reveals no search text or location (ARCH-06, ADR-047) */
+  geoCache: 'geo_cache',
 } as const;
 export type KeyClass = (typeof KEY_CLASSES)[keyof typeof KEY_CLASSES];
 

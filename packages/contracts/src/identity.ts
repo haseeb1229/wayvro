@@ -76,6 +76,30 @@ export type SessionCreated = z.infer<typeof SessionCreatedSchema>;
 
 export const TokenRefreshRequestSchema = z.strictObject({ refreshToken: z.string().min(1).max(200) }).meta({ id: 'TokenRefreshRequest' });
 
+// ── unified-app modes (Phase 3, ADR-048) ─────────────────────────────────────────────────────────────────────────
+export const RIDER_MODE_BLOCKERS = ['ACCOUNT_RESTRICTED', 'DELETION_PENDING'] as const;
+export const DRIVER_MODE_BLOCKERS = [
+  'ONBOARDING_UNAVAILABLE',
+  'APPLICATION_PENDING',
+  'APPLICATION_REJECTED',
+  'DOCUMENTS_EXPIRED',
+  'PROFILE_REVERIFICATION_DUE',
+  'ROLE_RESTRICTED',
+  'ACCOUNT_RESTRICTED',
+  'DELETION_PENDING',
+] as const;
+export const AccountModesSchema = z.object({
+  rider: z.object({ available: z.boolean(), blockers: z.array(z.enum(RIDER_MODE_BLOCKERS)) }),
+  driver: z.object({
+    /** HUB: a driver profile exists (any state); ONBOARDING: no profile, onboarding available or an application exists. */
+    entry: z.enum(['NONE', 'ONBOARDING', 'HUB']),
+    /** May the Driver/Partner AREA be shown — not "may earn" (going online does not exist in Phase 3). */
+    available: z.boolean(),
+    blockers: z.array(z.enum(DRIVER_MODE_BLOCKERS)),
+  }),
+});
+export type AccountModes = z.infer<typeof AccountModesSchema>;
+
 // ── account ─────────────────────────────────────────────────────────────────────────────────────────────────────
 // Display names: 1..60 characters after trimming; no control characters and no bidi overrides (spoofing).
 const DisplayNameSchema = z
@@ -108,6 +132,13 @@ export const AccountStateSchema = z
     driver: AccountDriverSectionSchema,
     /** P2.5 (additive): restrictions affecting this account, its driver profile or its vehicles (V13). */
     restrictions: z.array(AccountRestrictionSchema),
+    /**
+     * Phase 3 (additive, optional for one release window; V08/ADR-048): server-derived mode availability for the ONE app.
+     * Presentation only — it explains which mode home the app may show; it never authorises anything (every driver
+     * route re-checks capability server-side). Clients without it derive the same values from `driver` and
+     * `restrictions`.
+     */
+    modes: AccountModesSchema.optional(),
   })
   .meta({ id: 'AccountState' });
 export type AccountState = z.infer<typeof AccountStateSchema>;

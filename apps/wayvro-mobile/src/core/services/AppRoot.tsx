@@ -7,13 +7,15 @@ import { resolveApiConfig } from '../config/api-config';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
 import { saveUiLocale } from '../i18n/locale-preference';
 import type { UiLocale } from '../i18n/strings';
+import { AppPolicyGate } from '../release/AppPolicyGate';
 import { Banner, Body, Button, Screen, Title } from '../ui/primitives';
 import { createAppServices, type AppServices } from './app-services';
 import { ServicesProvider, type ServicesContextValue } from './ServicesProvider';
 
 /**
  * App bootstrap: resolves the API configuration, opens secure storage, restores the session and wires foreground
- * refetching. Nothing here requests a permission, starts a background task or initialises a driver-only service.
+ * refetching. The app-policy gate (A01/Q31) sits above the router. Nothing here requests a permission, starts a
+ * background task or initialises a driver-only service.
  */
 type Boot = { readonly kind: 'loading' } | { readonly kind: 'failed' } | { readonly kind: 'ready'; readonly services: AppServices };
 
@@ -36,7 +38,7 @@ function Bootstrapped({ baseUrl, children }: { readonly baseUrl: string; readonl
 
   useEffect(() => {
     let active = true;
-    createAppServices(baseUrl, Constants.expoConfig?.version).then(
+    createAppServices(baseUrl, Constants.expoConfig ?? null).then(
       (services) => {
         if (!active) return;
         setLocale(services.initialLocale);
@@ -98,7 +100,7 @@ function Bootstrapped({ baseUrl, children }: { readonly baseUrl: string; readonl
       <QueryClientProvider client={value.queryClient}>
         <I18nProvider locale={locale}>
           <StatusBar style="dark" />
-          {children}
+          <AppPolicyGate>{children}</AppPolicyGate>
         </I18nProvider>
       </QueryClientProvider>
     </ServicesProvider>

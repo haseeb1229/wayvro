@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
 import { runMigrations } from '@wayvro/db';
 import { otpDeliveryJob } from '@wayvro/identity-core';
 import { createLogger } from '@wayvro/observability';
-import { bindProviders, type OidcKeysPort } from '@wayvro/provider-interfaces';
+import { bindProviders, type OidcKeysPort, type ProviderPorts } from '@wayvro/provider-interfaces';
 import { RecordingOtpDelivery } from '@wayvro/provider-test-doubles';
 import { JobRunner, createRequestPathRedis } from '@wayvro/server-runtime';
 import { captureLogs, createRestrictedLogin, createTestDatabase, type LogCapture } from '@wayvro/test-support';
@@ -18,6 +18,7 @@ import type { InjectOptions, LightMyRequestResponse } from 'fastify';
 import pg from 'pg';
 import { S3ObjectStorage } from '@wayvro/vault-adapters';
 import { composeApi, type ApiRuntime } from '../src/composition.js';
+import type { GeoSeams } from '../src/geo/gateway.js';
 import { loadApiConfig } from '../src/config.js';
 
 const ADMIN_URL = process.env['DATABASE_URL'];
@@ -36,6 +37,8 @@ export interface Harness {
   /** Present with `vault: true`: the storage adapter and a pool authenticated as a member of wayvro_vault. */
   readonly storage: S3ObjectStorage | null;
   readonly vault: pg.Pool | null;
+  /** Per-harness Valkey namespace (rate-limit keys; geo keys live under `<keyPrefix>geo:`). */
+  readonly keyPrefix: string;
   inject(opts: InjectOptions): Promise<LightMyRequestResponse>;
   /** Runs pending otp.deliver jobs (as the worker role). */
   deliver(): Promise<void>;
@@ -50,6 +53,10 @@ export interface HarnessOptions {
   readonly vault?: boolean;
   /** P2.10: the local OIDC issuer bound as the provider key source (its client IDs go into OIDC_*_AUDIENCES). */
   readonly oidc?: OidcKeysPort;
+  /** P3.2: additional provider bindings (e.g. the synthetic geo doubles). */
+  readonly providers?: Partial<ProviderPorts>;
+  /** P3.2: geo seams (switch reader + service-area lookup) until the lead wires the catalog/release modules. */
+  readonly geoSeams?: GeoSeams;
 }
 
 export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
@@ -81,6 +88,8 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
     REDIS_URL: redisUrl,
     WAYVRO_LOCAL_KEY_SEED: SEED,
     RATE_LIMIT_KEY_PREFIX: prefix,
+    // geo cache/usage/breaker keys share the per-harness namespace, so `close()` removes them too
+    GEO_KEY_PREFIX: `${prefix}geo:`,
     OTP_DAILY_SEND_BUDGET: '1000000',
     OTP_MONTHLY_SEND_BUDGET: '1000000',
     ...(vaultLogin ? { DATABASE_VAULT_URL: vaultLogin.url } : {}),
@@ -93,8 +102,9 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
     ...(options.otpDelivery === false ? {} : { otpDelivery: sink }),
     ...(storage ? { objectStorage: storage } : {}),
     ...(options.oidc ? { oidcKeys: options.oidc } : {}),
+    ...options.providers,
   });
-  const runtime = await composeApi(config, log, { providers });
+  const runtime = await composeApi(config, log, { providers, ...(options.geoSeams ? { geoSeams: options.geoSeams } : {}) });
   await runtime.app.getHttpAdapter().getInstance().ready();
   const owner = new pg.Pool({ connectionString: database.url, max: 3 });
   const worker = new pg.Pool({ connectionString: workerLogin.url, max: 3 });
@@ -112,6 +122,7 @@ export async function startApi(options: HarnessOptions = {}): Promise<Harness> {
     logs,
     storage,
     vault,
+    keyPrefix: prefix,
     inject: (opts) => runtime.app.getHttpAdapter().getInstance().inject(opts),
     async deliver() {
       await runner.runOnce();

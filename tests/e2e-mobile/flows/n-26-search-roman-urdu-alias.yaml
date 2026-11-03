@@ -1,0 +1,49 @@
+# SRCH-03 (N) — A06, B02: a Roman-Urdu landmark alias finds its landmark. Rider R prefers Roman Urdu (seeded through
+# the public profile endpoint), so the app is in Roman Urdu and its searches carry locale ur-Latn. The stack approved
+# exactly one synthetic ur-Latn alias, "badshai masjid" → "badshahi mosque" (seeded staff approver ≠ the proposer; the
+# database maker-checker rules apply). Negative control: its sibling spelling "baadshahi masjid" is still PROPOSED and
+# matches nothing in the synthetic gazetteer, so the app shows its no-results copy.
+appId: dev.wayvro.app
+name: n-26-search-roman-urdu-alias
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_R}
+      PHONE_LOCAL: ${PHONE_LOCAL_R}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible:
+      id: search-dropoff
+    timeout: 30000
+# negative control: a PROPOSED (unapproved) alias is not used by search
+- inputText: 'baadshahi masjid'
+- extendedWaitUntil:
+    visible: 'Kuch nahin mila\..*'
+    timeout: 30000
+- assertNotVisible: 'Badshahi Mosque.*'
+- takeScreenshot: n-26-proposed-alias-no-match
+- eraseText: 30
+# the ACTIVE Roman-Urdu alias expands server-side to its landmark
+- inputText: 'badshai masjid'
+- extendedWaitUntil:
+    visible: 'Badshahi Mosque.*'
+    timeout: 30000
+- assertNotVisible: 'Kuch nahin mila\..*'
+- takeScreenshot: n-26-active-alias-match
+- tapOn: 'Badshahi Mosque.*'
+# the suggestion resolves (placeRef opened by the server): search moves on to the pickup field, whose "use current
+# location" row ("Mojooda maqam istemal karein") appears, and the suggestion list is gone (a failed resolution keeps the
+# drop-off field focused and shows an error)
+- extendedWaitUntil:
+    visible: 'Mojooda maqam istemal karein'
+    timeout: 30000
+- assertNotVisible: '.*tajaweez'
+- assertVisible: 'Badshahi Mosque'
+- takeScreenshot: n-26-dropoff-set

@@ -48,7 +48,7 @@ These numbers were frozen for SP-02 by the FA-07 approval (founder/ChatGPT plan 
 ## 4. Devices
 | Role | Device class | Notes |
 |---|---|---|
-| **Reference** | Transsion-class Android Go, 3–4 GB RAM: Infinix Smart 10 **or** Tecno Spark 30C class (FA-04; may be the same unit as the SP-01 Transsion device) | the only device whose results decide PASS/FAIL |
+| **Reference** | **Founder decision 2026-10-27 (`PHASE3_EXTERNAL_FOUNDER_ACTIONS.md` §1b): Samsung Galaxy A30 class (Android 10, 3.6 GB).** Originally: Transsion-class Android Go, 3–4 GB RAM: Infinix Smart 10 **or** Tecno Spark 30C class (FA-04; may be the same unit as the SP-01 Transsion device); now a recommended pre-pilot cross-check | the only device whose results decide PASS/FAIL |
 | Alternate 1 | Redmi A5 / 14C class (HyperOS) | confirms results are not Transsion-specific; informational |
 | Alternate 2 | Galaxy A06 class | informational |
 | Never | emulator, flagship phone | debugging/comparison only |

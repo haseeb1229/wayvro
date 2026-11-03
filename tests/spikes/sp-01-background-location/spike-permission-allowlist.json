@@ -1,0 +1,61 @@
+{
+  "$comment": "SP-01 SPIKE-ONLY permission allowlist for dev.wayvro.spike.sp01 (protocol §5.1, TC-21). Same shape as infra/ci/android/permission-allowlist.json, used with check-permissions.mjs --policy. It never applies to the one Wayvro app; the release allowlist is NOT widened for SP-01. `${applicationId}` is substituted by the checker.",
+  "phase": "Phase 3 SP-01 disposable spike (candidate A: expo-location 57.0.20 + expo-task-manager 57.0.21)",
+  "allowed": [
+    { "name": "android.permission.INTERNET", "justification": "LAN receiver (HTTP + Socket.IO). Normal permission." },
+    {
+      "name": "android.permission.ACCESS_FINE_LOCATION",
+      "justification": "Precise location while online (go-online requires precise). Declared by expo-location's library manifest and plugin."
+    },
+    {
+      "name": "android.permission.ACCESS_COARSE_LOCATION",
+      "justification": "Required alongside FINE on Android 12+ (approximate choice). Declared by expo-location's library manifest and plugin."
+    },
+    {
+      "name": "android.permission.ACCESS_BACKGROUND_LOCATION",
+      "justification": "SP-01 measures background tracking while online (\"Allow all the time\"). Added by the expo-location plugin (isAndroidBackgroundLocationEnabled)."
+    },
+    {
+      "name": "android.permission.FOREGROUND_SERVICE",
+      "justification": "Location foreground service while online. Added by the expo-location plugin (isAndroidForegroundServiceEnabled)."
+    },
+    { "name": "android.permission.FOREGROUND_SERVICE_LOCATION", "justification": "FGS type location (Android 14+). Added by the expo-location plugin." },
+    {
+      "name": "android.permission.POST_NOTIFICATIONS",
+      "justification": "Shows the FGS notification on Android 13+ (requested in the go-online flow; denial tolerated). Not used for push: the spike has no push library."
+    },
+    {
+      "name": "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+      "justification": "STD-EXEMPT battery configuration (protocol §7): the standard exemption dialog, only on the founder's tap."
+    },
+    {
+      "name": "android.permission.RECEIVE_BOOT_COMPLETED",
+      "justification": "Required by candidate A, not by a boot receiver: expo-task-manager 57.0.21 hands every location batch to a PERSISTED JobScheduler job (TaskManagerUtils.createJobInfo setPersisted(true)), and JobScheduler refuses persisted jobs without this permission (IllegalArgumentException, process crash on the first location callback; found in the 2026-10-16 emulator run). The spike still declares NO boot receiver: the BOOT_COMPLETED / MY_PACKAGE_REPLACED actions stay stripped from TaskBroadcastReceiver (plugins/spike-manifest.mjs) and check-spike-manifest.mjs still fails on them, so tracking never restarts by itself after a reboot (TC-09 measures what a persisted job does after boot)."
+    },
+    {
+      "name": "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+      "justification": "Signature-level permission AndroidX core declares for non-exported dynamic receivers on API < 33. Grants nothing to other apps."
+    }
+  ],
+  "forbidden": [
+    {
+      "name": "android.permission.USE_FULL_SCREEN_INTENT",
+      "reason": "M26/ADR-033 and protocol R8: offers never depend on full-screen intents; any SP-01 artefact containing it fails."
+    },
+    { "name": "android.permission.SYSTEM_ALERT_WINDOW", "reason": "No overlay; development-only permission." },
+    { "name": "android.permission.CAMERA", "reason": "SP-01 has no camera use." },
+    { "name": "android.permission.RECORD_AUDIO", "reason": "No audio." },
+    { "name": "android.permission.ACTIVITY_RECOGNITION", "reason": "Motion activity is not part of SP-01 (isAndroidMotionActivityEnabled=false)." },
+    { "name": "com.google.android.gms.permission.ACTIVITY_RECOGNITION", "reason": "Motion activity is not part of SP-01." },
+    { "name": "android.permission.SCHEDULE_EXACT_ALARM", "reason": "No alarms are used to wake the spike." },
+    { "name": "android.permission.USE_EXACT_ALARM", "reason": "No alarms are used to wake the spike." },
+    { "name": "android.permission.WAKE_LOCK", "reason": "Not declared by candidate A; if a dependency adds it, record and review before running." },
+    { "name": "android.permission.FOREGROUND_SERVICE_DATA_SYNC", "reason": "Only FGS type location is allowed (TC-21)." },
+    { "name": "android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING", "reason": "Only FGS type location is allowed (TC-21)." },
+    { "name": "android.permission.READ_PHONE_STATE", "reason": "No device identifiers are collected." },
+    { "name": "android.permission.READ_CONTACTS", "reason": "Not needed." },
+    { "name": "android.permission.READ_EXTERNAL_STORAGE", "reason": "Not needed." },
+    { "name": "android.permission.WRITE_EXTERNAL_STORAGE", "reason": "Not needed." },
+    { "name": "com.google.android.c2dm.permission.RECEIVE", "reason": "No push (FCM) in SP-01 (protocol §5.1; TC-22 NOT RUN)." }
+  ]
+}

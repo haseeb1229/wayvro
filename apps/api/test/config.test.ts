@@ -48,6 +48,25 @@ describe('api configuration', () => {
     expect(loadApiConfig(base)).toMatchObject({ STAFF_WEBAUTHN_RP_ID: 'localhost', STAFF_SESSION_IDLE_SECONDS: 900, STAFF_STEP_UP_SECONDS: 300 });
   });
 
+  it('geo IP-prefix ceilings and the route-ratio outlier bound are bounded server configuration', () => {
+    expect(loadApiConfig(base)).toMatchObject({
+      GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX: 600,
+      GEO_RESOLVE_PER_MINUTE_IP_PREFIX: 300,
+      GEO_REVERSE_PER_MINUTE_IP_PREFIX: 300,
+      ROUTE_RATIO_OUTLIER_MAX: 3,
+    });
+    expect(loadApiConfig({ ...base, ROUTE_RATIO_OUTLIER_MAX: '2.5', GEO_REVERSE_PER_MINUTE_IP_PREFIX: '1000' })).toMatchObject({
+      ROUTE_RATIO_OUTLIER_MAX: 2.5,
+      GEO_REVERSE_PER_MINUTE_IP_PREFIX: 1000,
+    });
+    for (const bad of ['1.2', '10.5', 'NaN', 'Infinity', 'three']) {
+      expect(() => loadApiConfig({ ...base, ROUTE_RATIO_OUTLIER_MAX: bad })).toThrow(/ROUTE_RATIO_OUTLIER_MAX/);
+    }
+    for (const bad of ['0', '100001', '1.5']) {
+      expect(() => loadApiConfig({ ...base, GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX: bad })).toThrow(/GEO_AUTOCOMPLETE_PER_MINUTE_IP_PREFIX/);
+    }
+  });
+
   it('refuses to boot without its dependencies', () => {
     expect(() => loadApiConfig({ WAYVRO_ENV: 'local' })).toThrow(/DATABASE_URL[\s\S]*REDIS_URL|REDIS_URL[\s\S]*DATABASE_URL/);
   });

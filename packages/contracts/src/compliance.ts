@@ -21,6 +21,17 @@ export const OWNERSHIP_TYPES = [
   'FAMILY_OWNED',
   'OTHER_AUTHORISED_USE',
 ] as const;
+/**
+ * Phase 3 (P3.1, additive; DM-OPEN-02 / ADR-051): vehicle body types an applicant may CLAIM (confirmed by a reviewer
+ * like every other vehicle field); also the closed list used by catalog vehicle-eligibility rules (H10).
+ */
+export const VEHICLE_BODY_TYPES = ['HATCHBACK', 'SEDAN', 'SUV', 'CROSSOVER', 'MPV', 'MOTORCYCLE', 'AUTO_RICKSHAW'] as const;
+/** Optional applicant claims (Phase 3, additive): absent = not claimed; eligibility rules then report UNKNOWN. */
+const VehicleClaims = {
+  seats: z.number().int().min(1).max(12).optional(),
+  bodyType: z.enum(VEHICLE_BODY_TYPES).optional(),
+  airConditioned: z.boolean().optional(),
+};
 
 export const APPLICATION_STATE_VALUES = [
   'DRAFT',
@@ -119,6 +130,7 @@ export const VehicleCreateRequestSchema = z
     serviceCategory: CategoryCode,
     ownershipType: z.enum(OWNERSHIP_TYPES),
     registrationNumber: z.string().trim().min(2).max(40).optional(),
+    ...VehicleClaims,
   })
   .meta({ id: 'VehicleCreateRequest' });
 export const VehicleUpdateRequestSchema = z
@@ -129,6 +141,7 @@ export const VehicleUpdateRequestSchema = z
     modelYear: z.number().int().min(1950).max(2100).optional(),
     colour: z.string().trim().min(1).max(30).optional(),
     ownershipType: z.enum(OWNERSHIP_TYPES).optional(),
+    ...VehicleClaims,
   })
   .meta({ id: 'VehicleUpdateRequest' });
 
@@ -185,6 +198,11 @@ const VehicleViewSchema = z.object({
   ownershipType: z.enum(OWNERSHIP_TYPES),
   relation: z.enum(['OWNER', 'AUTHORISED_USER']),
   version: z.number().int(),
+  // Phase 3 (additive): the applicant's claims, null = not claimed (always sent by Phase-3 servers; optional so older
+  // fixtures and clients stay valid)
+  seats: z.number().int().nullable().optional(),
+  bodyType: z.enum(VEHICLE_BODY_TYPES).nullable().optional(),
+  airConditioned: z.boolean().nullable().optional(),
 });
 const DocumentViewSchema = z.object({
   id: z.uuid(),
@@ -264,6 +282,40 @@ export const RequirementChecklistSchema = z
   })
   .meta({ id: 'RequirementChecklist' });
 
+/**
+ * P3.8 (additive; H10 display, K19): the catalog's vehicle-eligibility result per (vehicle × service product of the
+ * driver's city). DISPLAY ONLY — never an authorisation: earning eligibility stays `eligibility`, and dispatch
+ * eligibility is Phase 4. NOT_OFFERED = the product is not ENABLED in the city (DISABLED_LEGAL_GATE, or not enabled yet).
+ */
+export const PRODUCT_ELIGIBILITY_RESULTS = ['ELIGIBLE', 'NOT_ELIGIBLE', 'UNKNOWN', 'NOT_OFFERED'] as const;
+/**
+ * The reason codes servers send today. `reasons` stays an OPEN code list on the wire (a later server may add codes;
+ * clients show an unknown code generically, never as a guess).
+ */
+export const PRODUCT_ELIGIBILITY_REASONS = [
+  'NO_ACTIVE_RULE',
+  'VEHICLE_CLASS_MISMATCH',
+  'MODEL_YEAR_TOO_OLD',
+  'VEHICLE_TOO_OLD',
+  'SEATS_BELOW_MINIMUM',
+  'AC_REQUIRED',
+  'BODY_TYPE_NOT_ALLOWED',
+  'DISABLED_LEGAL_GATE',
+  'NOT_ENABLED_IN_CITY',
+] as const;
+/** Optional vehicle claims a rule needed but the applicant never made (UNKNOWN); also an open list on the wire. */
+export const PRODUCT_ELIGIBILITY_MISSING_ATTRIBUTES = ['seats', 'bodyType', 'airConditioned'] as const;
+const ProductEligibilitySchema = z.object({
+  vehicleId: z.uuid(),
+  // the shape of pricing's ProductCodeSchema (not imported: pricing → geo → compliance-admin → compliance is a cycle)
+  productCode: z.string().regex(/^[A-Z][A-Z0-9_]{1,23}$/),
+  result: z.enum(PRODUCT_ELIGIBILITY_RESULTS),
+  reasons: z.array(z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/)),
+  missingAttributes: z.array(z.string().regex(/^[a-zA-Z]{2,40}$/)),
+  /** Version of the ACTIVE rule that decided; null for NOT_OFFERED and NO_ACTIVE_RULE. */
+  ruleVersion: z.number().int().positive().nullable(),
+});
+
 export const DriverComplianceSchema = z
   .object({
     profile: z.object({ id: z.uuid(), state: DriverProfileStateSchema }),
@@ -295,6 +347,8 @@ export const DriverComplianceSchema = z
     /** P2.8 (additive): the verified application (evidence upload slots for renewals use it). */
     applicationId: z.uuid().optional(),
     restrictions: z.array(AccountRestrictionSchema),
+    /** P3.8 (additive; display only): per vehicle × product of the driver's city — see PRODUCT_ELIGIBILITY_RESULTS. */
+    productEligibility: z.array(ProductEligibilitySchema).optional(),
   })
   .meta({ id: 'DriverCompliance' });
 export type DriverCompliance = z.infer<typeof DriverComplianceSchema>;

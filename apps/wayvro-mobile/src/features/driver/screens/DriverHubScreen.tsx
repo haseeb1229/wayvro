@@ -7,7 +7,7 @@ import { useI18n } from '../../../core/i18n/I18nProvider';
 import { formatDate } from '../../../core/i18n/strings';
 import { QUERY_KEYS } from '../../../core/query/query-client';
 import { confirmDestructive } from '../../../core/ui/confirm';
-import { Banner, Body, Button, LinkRow, Screen, StateView, Title, TranslationPendingNote } from '../../../core/ui/primitives';
+import { Banner, Body, Button, LinkRow, Screen, StateView, Title } from '../../../core/ui/primitives';
 import { spacing } from '../../../core/ui/tokens';
 import { combineQueries, viewStateFromQuery, type ViewState } from '../../../core/ui/view-state';
 import { DRIVER_KEYS, useDriverApplication } from '../api/driver-queries';
@@ -63,7 +63,6 @@ export default function DriverHubScreen() {
       {combined.stale ? <Banner tone="warning" text={t('common.staleData')} /> : null}
       {queue.restoreFailed ? <Banner tone="warning" text={dt('driver.restoreFailed')} /> : null}
       <HubBody view={view} driver={account.data?.driver ?? null} />
-      <TranslationPendingNote />
     </Screen>
   );
 }

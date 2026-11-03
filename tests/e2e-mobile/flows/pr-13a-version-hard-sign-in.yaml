@@ -1,0 +1,15 @@
+# SP-08 #21 HARD, part 1 of 2 (PR, N): a signed-in rider on Rider home. run-flows.mjs then activates an Android
+# version policy whose minimum supported build is above the E2E build (seeded staff maker + approver), and part 2 runs.
+appId: dev.wayvro.app
+name: pr-13a-version-hard-sign-in
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000

@@ -25,7 +25,7 @@
     "@wayvro/provider-interfaces": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",
     "@wayvro/vault-adapters": "workspace:*",
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@types/node": "24.19.1",

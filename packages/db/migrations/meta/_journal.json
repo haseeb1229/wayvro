@@ -71,6 +71,34 @@
       "when": 1792400000000,
       "tag": "0009_support_closure",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792500000000,
+      "tag": "0010_catalog_products_zones",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792600000000,
+      "tag": "0011_geo_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792700000000,
+      "tag": "0012_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0013_platform_release_controls",
+      "breakpoints": true
     }
   ]
 }

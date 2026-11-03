@@ -28,12 +28,12 @@
     "@wayvro/identity-core": "workspace:*",
     "@wayvro/observability": "workspace:*",
     "@wayvro/server-runtime": "workspace:*",
-    "fastify": "5.12.5",
+    "fastify": "5.12.6",
     "ioredis": "6.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "socket.io": "4.8.3",
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@types/node": "24.19.1",

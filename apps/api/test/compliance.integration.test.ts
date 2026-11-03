@@ -125,6 +125,43 @@ describe('onboarding gates and the application lifecycle (D04/K14/V03)', () => {
     ).toBe(400);
   });
 
+  it('vehicle attribute claims (Phase 3, DM-OPEN-02): optional seats/body type/AC are stored, echoed and updatable; closed lists enforced', async () => {
+    const s = await readyConsumer();
+    const app = await createApp(s);
+    const base = { make: 'Suzuki', model: 'Cultus', modelYear: 2021, colour: 'Grey', serviceCategory: 'CAR', ownershipType: 'REGISTERED_OWNER' };
+    const claimed = await h.inject(
+      post(
+        `/v1/driver-onboarding/applications/${app.id}/vehicles`,
+        { ...base, plate: 'SYN-CLM-1', seats: 4, bodyType: 'HATCHBACK', airConditioned: true },
+        bearer(s.accessToken),
+      ),
+    );
+    expect(claimed.statusCode, claimed.body).toBe(201);
+    const plain = await h.inject(post(`/v1/driver-onboarding/applications/${app.id}/vehicles`, { ...base, plate: 'SYN-CLM-2' }, bearer(s.accessToken)));
+    expect(plain.statusCode, plain.body).toBe(201);
+    expect(
+      (
+        await h.inject(
+          post(`/v1/driver-onboarding/applications/${app.id}/vehicles`, { ...base, plate: 'SYN-CLM-3', bodyType: 'LIMOUSINE' }, bearer(s.accessToken)),
+        )
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (await h.inject(post(`/v1/driver-onboarding/applications/${app.id}/vehicles`, { ...base, plate: 'SYN-CLM-4', seats: 0 }, bearer(s.accessToken))))
+        .statusCode,
+    ).toBe(400);
+    const id = claimed.json<{ vehicleId: string }>().vehicleId;
+    const updated = await h.inject(
+      post(`/v1/driver-onboarding/applications/${app.id}/vehicles/${id}`, { expectedVersion: 1, seats: 5, airConditioned: false }, bearer(s.accessToken)),
+    );
+    expect(updated.statusCode, updated.body).toBe(200);
+    const view = DriverApplicationSchema.parse(updated.json());
+    expect(view.vehicles.map((v) => ({ plate: v.plateDisplay, seats: v.seats, bodyType: v.bodyType, airConditioned: v.airConditioned }))).toEqual([
+      { plate: 'SYN-CLM-1', seats: 5, bodyType: 'HATCHBACK', airConditioned: false },
+      { plate: 'SYN-CLM-2', seats: null, bodyType: null, airConditioned: null },
+    ]);
+  });
+
   it('vehicles: a known plate becomes an affiliation + signal; only the owning application edits; documents follow subject rules', async () => {
     const a = await readyConsumer();
     const b = await readyConsumer();

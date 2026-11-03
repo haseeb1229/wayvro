@@ -12,3 +12,32 @@ export {
   type WayvroEnv,
 } from './env.js';
 export { FLAG_REGISTRY, isFlagEnabled, validateFlagRegistry, type FlagDefinition } from './flags.js';
+export {
+  APP_PLATFORMS,
+  BLOCKED_BUILD_REASONS,
+  MAX_APP_BUILD,
+  appPolicyActivationLockKey,
+  appPolicyGuardrailProblems,
+  rateCardActivationLockKey,
+  releaseEnvSchema,
+  releasedBuildsOf,
+  type AppPlatform,
+  type BlockedBuildRange,
+  type BlockedBuildReason,
+  type GuardrailProblem,
+  type PolicyGuardrailInput,
+  type ReleasedBuilds,
+} from './release-guardrails.js';
+export {
+  RUNTIME_SWITCH_KEYS,
+  RUNTIME_SWITCH_REGISTRY,
+  oppositeSwitchState,
+  runningSwitchState,
+  runtimeSwitchDefinition,
+  runtimeSwitchTargetLockKey,
+  validateRuntimeSwitchRegistry,
+  type RuntimeSwitchDefinition,
+  type RuntimeSwitchReader,
+  type SwitchScope,
+  type SwitchState,
+} from './runtime-switches.js';

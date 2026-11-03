@@ -1,0 +1,15 @@
+# SP-08 #21 MAINTENANCE / MAINT-01, part 1 of 3 (N): a signed-in rider on Rider home. run-flows.mjs then puts
+# `platform.maintenance` into its safe state (ENABLED = maintenance in progress; seeded staff member).
+appId: dev.wayvro.app
+name: n-21a-maintenance-sign-in
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000

@@ -1,0 +1,23 @@
+# SP-08 #6 / NAV-04, part 5 of 5 (N) — V08: for approved driver C (in Rider mode) a Driver/Partner status intent is a
+# PERMITTED switch: the app lands on the Driver/Partner home first, pushes the status screen on top of it and says it
+# opened the Driver/Partner area; back returns to the Driver/Partner home, not to Rider home.
+appId: dev.wayvro.app
+name: n-19e-intent-driver-switch
+tags: [full]
+---
+- extendedWaitUntil:
+    visible: 'Driver/Partner status'
+    timeout: 60000
+- assertNotVisible:
+    id: rider-home-where-to
+- takeScreenshot: n-19-compliance-from-system-path
+- back
+- extendedWaitUntil:
+    visible: 'Opened the Driver/Partner area.'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Riding with Wayvro is not affected.'
+    direction: DOWN
+- assertNotVisible:
+    id: rider-home-where-to
+- takeScreenshot: n-19-driver-home-after-intent

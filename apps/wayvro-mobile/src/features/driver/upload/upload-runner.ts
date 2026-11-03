@@ -366,13 +366,18 @@ function notReceived(error: unknown): boolean {
   );
 }
 
-/** @internal exported for unit tests: API failure → queue event (bounded retry for unknown outcomes only). */
+/**
+ * @internal exported for unit tests: API failure → queue event (bounded retry for unknown outcomes only). P3.5: planned
+ * maintenance waits and retries like any other outage (bounded); a required update (the app-policy gate blocks the app)
+ * or a quote-only refusal is definitive.
+ */
 export function failureEvent(error: unknown): UploadEvent {
   if (!(error instanceof ApiError)) return { type: 'definitive-error', reason: 'unknown' };
   switch (error.kind) {
     case 'offline':
       return { type: 'transient-error', reason: 'offline' };
     case 'unavailable':
+    case 'maintenance':
       return { type: 'transient-error', reason: 'unavailable' };
     case 'rate-limited':
       return { type: 'transient-error', reason: 'rate-limited', retryAfterMs: (error.detail.retryAfterSeconds ?? 0) * 1000 };
@@ -384,6 +389,8 @@ export function failureEvent(error: unknown): UploadEvent {
     case 'required-action':
     case 'restricted':
     case 'feature-disabled':
+    case 'update-required':
+    case 'service-area':
     case 'unknown':
       return { type: 'definitive-error', reason: 'unknown' };
   }

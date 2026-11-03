@@ -9,7 +9,10 @@ import { createRestrictedLogin, createTestDatabase, type RestrictedLogin, type T
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runMigrations } from '../src/index.js';
-import { TOTAL_MIGRATIONS, migrateFirst } from './journal.js';
+import { MIGRATION_TAGS, TOTAL_MIGRATIONS, migrateFirst } from './journal.js';
+
+/** The schema state just before 0009 (pinned by tag, so later migrations never shift it). */
+const BEFORE_0009 = MIGRATION_TAGS.indexOf('0009_support_closure');
 
 const ADMIN_URL = process.env['DATABASE_URL'];
 if (!ADMIN_URL) throw new Error('DATABASE_URL is required for integration tests (start infra with `pnpm infra:up`)');
@@ -63,7 +66,7 @@ describe('0009 support closure', () => {
   it('the previous schema with live rows upgrades to latest, then re-runs as a no-op', async () => {
     const previous = await createTestDatabase(adminUrl);
     try {
-      await migrateFirst(previous.url, TOTAL_MIGRATIONS - 1);
+      await migrateFirst(previous.url, BEFORE_0009);
       const pool = new pg.Pool({ connectionString: previous.url, max: 1 });
       let s: { account: string; session: string };
       try {
@@ -73,7 +76,7 @@ describe('0009 support closure', () => {
       } finally {
         await pool.end();
       }
-      expect(await runMigrations(previous.url)).toEqual({ appliedBefore: TOTAL_MIGRATIONS - 1, appliedAfter: TOTAL_MIGRATIONS });
+      expect(await runMigrations(previous.url)).toEqual({ appliedBefore: BEFORE_0009, appliedAfter: TOTAL_MIGRATIONS });
       expect(await runMigrations(previous.url)).toEqual({ appliedBefore: TOTAL_MIGRATIONS, appliedAfter: TOTAL_MIGRATIONS });
       const after = new pg.Pool({ connectionString: previous.url, max: 1 });
       try {

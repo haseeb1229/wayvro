@@ -30,6 +30,9 @@ const MESSAGE_BY_KIND: Readonly<Record<Exclude<UiErrorKind, 'rate-limited'>, Str
   'required-action': 'error.requiredAction',
   restricted: 'error.restricted',
   'feature-disabled': 'error.featureDisabled',
+  'service-area': 'error.serviceArea',
+  'update-required': 'error.updateRequired',
+  maintenance: 'error.maintenance',
   unavailable: 'error.unavailable',
   unknown: 'error.unknown',
 };
@@ -45,6 +48,10 @@ const ACTION_BY_KIND: Readonly<Record<UiErrorKind, UiErrorView['action']>> = {
   'required-action': 'none',
   restricted: 'none',
   'feature-disabled': 'none',
+  // P3.5: shown by the quote screen with its own reasons; the app-policy gate covers the other two.
+  'service-area': 'none',
+  'update-required': 'none',
+  maintenance: 'retry',
   unavailable: 'retry',
   unknown: 'retry',
 };

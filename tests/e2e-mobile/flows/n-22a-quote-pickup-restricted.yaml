@@ -1,0 +1,36 @@
+# SP-08 #16 pickup restricted / QUOTE-02, part 1 of 3 (N) — E08, CON-P3-08: a pickup inside the synthetic
+# PICKUP_RESTRICTED zone (Gaddafi Stadium of the synthetic gazetteer; both designated points lie beyond the 300 m snap
+# radius) is refused with its own copy — never a price. REQUIRES ACTIVE synthetic rate cards. run-flows.mjs then makes
+# every ROUTE call of the synthetic doubles fail (local-runner geo fault control).
+appId: dev.wayvro.app
+name: n-22a-quote-pickup-restricted
+tags: [full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Gaddafi'
+- tapOn: 'Gaddafi Stadium.*'
+- extendedWaitUntil:
+    visible: 'Pickup here is from set points'
+    timeout: 60000
+- assertVisible: 'Pickup at this place is only possible from designated points.*'
+- assertVisible: 'Change pickup'
+# no price card: the price format is "Rs <digits>"
+- assertNotVisible: '.*Rs [0-9][0-9,]*.*'
+- takeScreenshot: n-22-pickup-restricted

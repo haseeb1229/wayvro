@@ -20,6 +20,9 @@ const SERVER_ONLY_PACKAGES = [
   '@wayvro/field-crypto',
   '@wayvro/identity-core',
   '@wayvro/vault-adapters',
+  // Phase 3 P3.2: candidate geo adapters (server keys, provider terms) and the dev-only SP-04 harness.
+  '@wayvro/geo-adapters',
+  '@wayvro/geo-bench',
   '@wayvro/image-sanitiser',
 ];
 // Development/test-only packages (ADR-045): production source of any app/package must never import them.
@@ -99,6 +102,24 @@ export default tseslint.config(
     files: ['**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { ...tseslint.configs.disableTypeChecked.languageOptions, globals: { ...globals.node } },
+  },
+  {
+    // Metro loads its configuration and Babel transformers with CommonJS `require` (ADR-052): these two files are
+    // CommonJS by contract, so `require` is the module system here, not a style choice.
+    files: ['apps/wayvro-mobile/metro.config.cjs', 'apps/wayvro-mobile/build-tools/**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs' },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    // Maestro runScript files (ADR-052): plain scripts run by Maestro's GraalJS on the host, not Node modules. Its
+    // globals: the `http`/`json` helpers, the `output` object and the flow's environment variables.
+    files: ['tests/e2e-mobile/flows/**/*.js'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      sourceType: 'script',
+      globals: { http: 'readonly', json: 'readonly', output: 'writable', API: 'readonly', PHONE: 'readonly' },
+    },
   },
   {
     files: ['**/*.test.ts', '**/test/**/*.ts'],

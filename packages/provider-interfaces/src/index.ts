@@ -1,5 +1,15 @@
-export { ProviderBindingError, bindProviders, type ProviderRegistry } from './binding.js';
+export {
+  GEO_PORT_KINDS,
+  GEO_PORT_SKUS,
+  ProviderBindingError,
+  assertGeoBundle,
+  bindProviders,
+  type GeoBundle,
+  type GeoPortKind,
+  type ProviderRegistry,
+} from './binding.js';
 export { MOCK_PROVIDER, isMockProvider, type MockBrand } from './brand.js';
+export { GeoProviderError, type GeoProviderFailure } from './geo-errors.js';
 export {
   PROVIDER_KINDS,
   type ImageSanitiserPort,
@@ -17,3 +27,28 @@ export {
   type StorageArea,
   type StoredObjectInfo,
 } from './ports.js';
+export type {
+  AddressComponents,
+  AutocompleteInput,
+  GeoAdapter,
+  GeoAdapterLicence,
+  GeoConfidence,
+  GeoLocale,
+  GeoPoint,
+  GeoRendererKind,
+  GeoSku,
+  GeocodingAdapter,
+  GeocodingPort,
+  PlaceCandidate,
+  PlaceKind,
+  PlacesAutocompleteAdapter,
+  PlacesAutocompletePort,
+  ResolvedPlace,
+  ReverseGeocodingAdapter,
+  ReverseGeocodingPort,
+  RouteInput,
+  RouteResult,
+  RoutingAdapter,
+  RoutingPort,
+  RoutingProfile,
+} from './geo-ports.js';

@@ -1,0 +1,4 @@
+{
+  "$comment": "SP-08 §6 quarantine list: a flow FLAKY twice in 7 days moves here with an owner and an expiry (<= 14 days). Quarantined flows still run in every full-matrix run and are reported in every summary; INV-07 flows (#1, #12) are never quarantined (run-flows.mjs ignores them here). Empty at P3.5.",
+  "entries": []
+}

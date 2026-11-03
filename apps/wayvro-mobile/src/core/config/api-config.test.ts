@@ -36,3 +36,22 @@ describe('resolveApiConfig', () => {
     }
   });
 });
+
+describe('resolveApiConfig — SP-08 E2E variant (ADR-052)', () => {
+  it('maps the build-time E2E port to the emulator loopback host only, in either build type', () => {
+    for (const isDev of [false, true]) {
+      expect(resolveApiConfig({ wayvroApi: { e2eLoopbackPort: 4120, devLocalApi: false } }, isDev)).toEqual({
+        kind: 'configured',
+        baseUrl: 'http://10.0.2.2:4120',
+        source: 'e2e-loopback',
+      });
+    }
+  });
+
+  it('refuses a malformed port and an ambiguous combination with a configured origin', () => {
+    for (const port of [80, 0, 65536, 4120.5, '4120', null, true]) {
+      expect(resolveApiConfig({ wayvroApi: { e2eLoopbackPort: port } }, false), String(port)).toEqual({ kind: 'invalid' });
+    }
+    expect(resolveApiConfig({ wayvroApi: { baseUrl: 'https://api.example.test', e2eLoopbackPort: 4120 } }, false)).toEqual({ kind: 'invalid' });
+  });
+});

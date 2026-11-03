@@ -33,3 +33,16 @@ export const newIdempotencyKey = (random: RandomBytes): string => base64Url(rand
 
 /** 96-bit request id: 16 base64url characters (contract `^[A-Za-z0-9_-]{8,64}$`). */
 export const newRequestId = (random: RandomBytes): string => base64Url(random(12));
+
+/** RFC 4122 version-4 UUID from 16 random bytes (per-field search session ids, quote attempts; never an identity). */
+export function newUuidV4(random: RandomBytes): string {
+  const bytes = random(16);
+  let hex = '';
+  for (let i = 0; i < 16; i += 1) {
+    let value = bytes[i] ?? 0;
+    if (i === 6) value = (value & 0x0f) | 0x40;
+    if (i === 8) value = (value & 0x3f) | 0x80;
+    hex += value.toString(16).padStart(2, '0');
+  }
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}

@@ -5,7 +5,8 @@
  *   2. value-based: free text is scrubbed for Pakistani CNICs, phone numbers, bearer/JWT tokens, card-like numbers,
  *      e-mail addresses, URL credentials and precise coordinates.
  * Redaction is lossy on purpose; observability must never become a second PII store. P2.1 adds OTP/nonce/challenge/
- * installation/idempotency/envelope keys, Wayvro session tokens and presigned-URL credentials (Q36).
+ * installation/idempotency/envelope keys, Wayvro session tokens and presigned-URL credentials (Q36). Phase 3 (P3.2) adds
+ * polyline/placeRef/search-text/pickup/dropoff/bbox/route-geometry keys and sealed `pr1.` placeRef tokens (T3-28).
  */
 
 export const REDACTED = '[REDACTED]';
@@ -54,6 +55,15 @@ const SENSITIVE_KEY = new RegExp(
     'geo(m|metry|location)?',
     'address',
     'attachment',
+    // Phase 3 P3.2 geo (docs/phase3/PHASE3_ARCHITECTURE.md §10; threat model T3-28): routes, sealed place references,
+    // search text, trip endpoints and bounding boxes
+    'polyline',
+    'place_?ref',
+    'search_?(text|query)',
+    'pickup',
+    'dropoff',
+    'bbox',
+    'route_?geometry',
   ]
     .map((k) => `^(?:.*[-_.])?(?:${k})(?:[-_.].*)?$`)
     .join('|'),
@@ -63,6 +73,8 @@ const SENSITIVE_KEY = new RegExp(
 const VALUE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
   // Wayvro opaque session tokens (access wva_ / refresh wvr_)
   [/\bwv[ar]_[A-Za-z0-9_-]{20,}/g, '[REDACTED_TOKEN]'],
+  // sealed placeRef tokens (Phase 3 P3.2): opaque, but account-bound and replayable until expiry
+  [/\bpr1\.[A-Za-z0-9_-]{20,}/g, '[REDACTED_PLACE_REF]'],
   // presigned-URL credentials
   [/(X-Amz-(?:Signature|Credential|Security-Token)=)[^&\s]+/gi, '$1[REDACTED]'],
   [/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 [REDACTED]'],

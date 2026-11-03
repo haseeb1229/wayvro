@@ -1,0 +1,58 @@
+# SP-08 #6 / NAV-04 (N) — V08: in-app intents of the Driver/Partner home go through the ONE intent router
+# (core/intents): for account G the expired-document row opens the renewal screen (OPEN_DOCUMENT_RENEWAL) and the profile
+# row the Driver/Partner status (OPEN_DRIVER_COMPLIANCE), both pushed on top of the Driver/Partner home — so back
+# returns to that home in Driver mode, never to Rider home. (The renewal screen itself is n-02 / #20.)
+appId: dev.wayvro.app
+name: n-18-intent-in-app
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_G}
+      PHONE_LOCAL: ${PHONE_LOCAL_G}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Documents: 1 expired'
+    direction: DOWN
+- tapOn: 'Documents: 1 expired'
+- extendedWaitUntil:
+    visible: 'Renew: .*'
+    timeout: 30000
+- takeScreenshot: n-18-renewal-from-intent
+- back
+# back lands on the Driver/Partner home (the intent pushed the target on top of it), not on Rider home
+- extendedWaitUntil:
+    visible: 'Documents: 1 expired'
+    timeout: 30000
+- assertNotVisible:
+    id: rider-home-where-to
+- scrollUntilVisible:
+    element: 'Profile: .*'
+    direction: UP
+- tapOn: 'Profile: .*'
+- extendedWaitUntil:
+    visible: 'Driver/Partner status'
+    timeout: 30000
+- takeScreenshot: n-18-compliance-from-intent
+- back
+- extendedWaitUntil:
+    visible: 'Profile: .*'
+    timeout: 30000
+- assertNotVisible:
+    id: rider-home-where-to
+- scrollUntilVisible:
+    element: 'Riding with Wayvro is not affected.'
+    direction: DOWN

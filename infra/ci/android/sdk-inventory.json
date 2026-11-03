@@ -1,0 +1,237 @@
+{
+  "$comment": "Machine-readable companion of docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md (U04), enforced by infra/ci/android/check-sdk-inventory.mjs (SDK-INV) and, for allowedVendorHosts, by check-bundle-secrets.mjs (BUNDLE-SECRETS). Every runtime dependency of apps/wayvro-mobile and every Android-autolinked native module needs a row with status APPROVED or APPROVED-EXISTING and its exact resolved version. A version change or a new package therefore changes this file in the same PR. Rows marked transitiveAddedP35 were not separate rows in the planning inventory (they arrive transitively through expo / expo-router and have shipped in every Phase-1/2 release AAB); they were added at P3.5 from the resolved autolinking output and need founder confirmation at the P3.10 inventory regeneration.",
+  "source": "docs/phase3/PHASE3_SDK_PRIVACY_INVENTORY.md",
+  "allowedVendorHosts": [],
+  "packages": {
+    "@expo/metro-runtime": {
+      "version": "57.0.16",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "@tanstack/react-query": {
+      "version": "5.103.3",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "@wayvro/contracts": {
+      "version": "workspace",
+      "status": "APPROVED-EXISTING",
+      "licence": "first-party",
+      "ref": "inventory §2"
+    },
+    "expo": {
+      "version": "57.0.27",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-modules-core": {
+      "version": "57.0.21",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2 (expo + expo-modules-core row)"
+    },
+    "expo-camera": {
+      "version": "57.0.6",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2; CAMERA allowlisted (P2.8)"
+    },
+    "expo-constants": {
+      "version": "57.0.21",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-crypto": {
+      "version": "57.0.3",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-dev-client": {
+      "version": "57.0.19",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2/§3 (F-P3-01); release links no launcher implementation and no URL scheme — check-release-purity.mjs + check-intent-filters.mjs"
+    },
+    "expo-dev-launcher": {
+      "version": "57.0.20",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "part of expo-dev-client (inventory §2); release variant: launcher implementation absent (check-release-purity.mjs); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-dev-menu": {
+      "version": "57.0.19",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "part of expo-dev-client (inventory §2); release variant: dev menu manager absent (check-release-purity.mjs); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-dev-menu-interface": {
+      "version": "57.0.0",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "part of expo-dev-client (inventory §2); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-file-system": {
+      "version": "57.0.7",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-image-picker": {
+      "version": "57.0.20",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-linking": {
+      "version": "57.0.12",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-location": {
+      "version": "57.0.20",
+      "status": "APPROVED",
+      "licence": "MIT",
+      "ref": "inventory §2/§4; FA-02 APPROVED 2026-10-12 (P3.5)"
+    },
+    "expo-router": {
+      "version": "57.0.25",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-secure-store": {
+      "version": "57.0.4",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "expo-status-bar": {
+      "version": "57.0.1",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "react": {
+      "version": "19.2.3",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "react-native": {
+      "version": "0.86.3",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "react-native-safe-area-context": {
+      "version": "5.7.0",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "react-native-screens": {
+      "version": "4.26.2",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "zod": {
+      "version": "4.6.6",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "inventory §2"
+    },
+    "wayvro-fully-drawn": {
+      "version": "local",
+      "status": "APPROVED",
+      "licence": "first-party",
+      "ref": "local Expo module apps/wayvro-mobile/modules/wayvro-fully-drawn (SP-02 §6.1 reportFullyDrawn marker; no data, no permission, no network); founder approval 2026-10-14"
+    },
+    "@expo/dom-webview": {
+      "version": "57.0.1",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo); no app import; founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "@expo/log-box": {
+      "version": "57.0.4",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo, expo-router); error overlay; founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "@expo/ui": {
+      "version": "57.0.22",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo-router); no app import; founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "@react-native-masked-view/masked-view": {
+      "version": "0.3.2",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo-router); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-asset": {
+      "version": "57.0.19",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-font": {
+      "version": "57.0.4",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-image-loader": {
+      "version": "57.0.1",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo-image-picker); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-json-utils": {
+      "version": "57.0.2",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo-dev-client / expo-manifests); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-keep-awake": {
+      "version": "57.0.2",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-manifests": {
+      "version": "57.0.2",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo-dev-client); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    },
+    "expo-updates-interface": {
+      "version": "57.0.2",
+      "status": "APPROVED-EXISTING",
+      "licence": "MIT",
+      "ref": "transitive (expo-dev-client); OTA disabled (updates.enabled=false); founder approval 2026-10-14 (exact version, already present in Phase 1/2 release AABs)",
+      "transitiveAddedP35": true
+    }
+  }
+}

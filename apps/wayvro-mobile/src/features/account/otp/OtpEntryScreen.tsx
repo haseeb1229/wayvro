@@ -8,6 +8,20 @@ import { Banner, Body, Button, ErrorBanner, Screen, TextField, Title } from '../
 import type { UiErrorView } from '../../../core/ui/view-state';
 import { otpModel, otpResendError, otpVerifyError, sanitizeCode } from './otp-entry';
 
+/**
+ * Signed in: hand over to the account gate on a FRESH stack (V08 back-stack rule, SP-08 #5). A plain redirect left the
+ * sign-in screens beneath the mode home, so hardware back on that home re-entered sign-in, which redirected straight
+ * back to the home and the app could never be left.
+ */
+function SignedInHandover() {
+  const router = useRouter();
+  useEffect(() => {
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/');
+  }, [router]);
+  return null;
+}
+
 export function OtpEntryScreen() {
   const { client, signInFlow, clock } = useServices();
   const { t } = useI18n();
@@ -72,7 +86,7 @@ export function OtpEntryScreen() {
     },
   });
 
-  if (session.status === 'signed-in') return <Redirect href="/" />;
+  if (session.status === 'signed-in') return <SignedInHandover />;
   if (challenge === null) return <Redirect href="/sign-in" />;
 
   const model = otpModel({
@@ -101,6 +115,7 @@ export function OtpEntryScreen() {
       {resent ? <Banner tone="info" text={t('otp.resent')} /> : null}
       {model.blocked === 'expired' && error === null ? <Banner tone="warning" text={t('otp.expired')} /> : null}
       <TextField
+        testID="otp-code"
         label={t('otp.label')}
         value={code}
         onChangeText={(value) => {
@@ -116,7 +131,7 @@ export function OtpEntryScreen() {
         autoFocus
       />
       {error === null ? null : <ErrorBanner error={error} />}
-      <Button label={t('otp.submit')} busyLabel={t('otp.verifying')} busy={verify.isPending} disabled={!model.canSubmit} onPress={submit} />
+      <Button testID="otp-submit" label={t('otp.submit')} busyLabel={t('otp.verifying')} busy={verify.isPending} disabled={!model.canSubmit} onPress={submit} />
       <Button
         variant="secondary"
         label={model.resendInSeconds > 0 ? t('otp.resendIn', { seconds: model.resendInSeconds }) : t('otp.resend')}

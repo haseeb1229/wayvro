@@ -1,0 +1,17 @@
+# SP-08 #21 SOFT / UPD-01, part 1 of 3 (N): a signed-in rider on Rider home with no update banner (no ACTIVE policy).
+# run-flows.mjs then activates an Android version policy the E2E build still satisfies (minimum 1) but is below
+# (recommended 2), with the seeded staff as maker and approver.
+appId: dev.wayvro.app
+name: n-20a-update-soft-sign-in
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible: 'A newer version of Wayvro is available.*'

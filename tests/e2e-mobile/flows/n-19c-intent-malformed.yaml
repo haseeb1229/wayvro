@@ -1,0 +1,12 @@
+# SP-08 #6 / NAV-04, part 3 of 5 (N) — V08, T3-17: a path outside the allowlist (unknown parameter) is rejected by the
+# bounded parser before the router sees anything; the app simply lands on the mode home (Rider home for A).
+appId: dev.wayvro.app
+name: n-19c-intent-malformed
+tags: [full]
+---
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible: 'Riding with Wayvro is not affected.'
+- takeScreenshot: n-19-malformed-mode-home

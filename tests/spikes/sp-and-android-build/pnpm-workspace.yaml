@@ -3,3 +3,6 @@
 nodeLinker: hoisted
 allowBuilds:
   esbuild: true
+# Security override (same entry and reason as the root pnpm-workspace.yaml, 2026-11-03): node-forge via @expo/cli.
+overrides:
+  'node-forge@<1.4.2': 1.4.2

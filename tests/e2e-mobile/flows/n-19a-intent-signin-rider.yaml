@@ -1,0 +1,15 @@
+# SP-08 #6 / NAV-04, part 1 of 5 (N): rider-only account A signed in on Rider home. run-flows.mjs then cold-starts the
+# app with the system path `/drive` (a Driver/Partner home intent) through the exported launcher activity.
+appId: dev.wayvro.app
+name: n-19a-intent-signin-rider
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000

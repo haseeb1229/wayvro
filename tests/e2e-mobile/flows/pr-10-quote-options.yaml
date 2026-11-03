@@ -1,0 +1,40 @@
+# SP-08 #14 / QUOTE-01 (PR, N) — B03, B04, B06: search (synthetic) → quote option cards (Economy priced; Comfort, not
+# ENABLED, never offered) → fare breakdown; there is no "Request ride" action in Phase 3.
+# REQUIRES ACTIVE synthetic rate cards (seeded by mobile-stack.mjs): run-flows.mjs reports NOT RUN with the reason
+# otherwise. Selectors follow the Phase-3 quote screens.
+appId: dev.wayvro.app
+name: pr-10-quote-options
+tags: [pr, full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Liberty'
+- tapOn: 'Liberty Market.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- extendedWaitUntil:
+    visible: '.*Economy.*'
+    timeout: 60000
+# COMFORT is CONFIGURED (not ENABLED) in the synthetic seed: the catalog does not offer it, so it is never priced or shown
+- assertNotVisible: '.*Comfort.*'
+- assertNotVisible: 'Request ride'
+- takeScreenshot: pr-10-quote-options
+- tapOn: '.*Economy.*'
+- extendedWaitUntil:
+    visible: '.*Total.*'
+    timeout: 30000
+- takeScreenshot: pr-10-fare-breakdown

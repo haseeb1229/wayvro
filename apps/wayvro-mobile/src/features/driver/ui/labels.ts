@@ -1,8 +1,15 @@
-import type { TranslationParams } from '../../../core/i18n/strings';
+import { isStringKey, type StringKey, type TranslationParams } from '../../../core/i18n/strings';
 import type { DriverStringKey } from '../i18n/driver-strings';
 import { documentNameKey } from '../onboarding/document-names';
 
 type Dt = (key: DriverStringKey, params?: TranslationParams) => string;
+type Tr = (key: StringKey, params?: TranslationParams) => string;
+
+/** A service product's name from the app catalogue (`product.<code>.name`); an unknown product shows its code. */
+export function productLabel(tr: Tr, productCode: string): string {
+  const key = `product.${productCode.toLowerCase()}.name`;
+  return isStringKey(key) ? tr(key) : productCode;
+}
 
 /** A document type's display name; unknown (future) types show their code instead of a guessed name. */
 export function documentLabel(dt: Dt, documentType: string): string {

@@ -5,7 +5,7 @@
  */
 const CLIENT_APPS = '^apps/(wayvro-mobile|web-public|web-ops)/';
 const SERVER_ONLY_WORKSPACE =
-  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|image-sanitiser)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|image-sanitiser)/)';
+  '^(packages/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|geo-adapters|image-sanitiser)/|node_modules/@wayvro/(db|server-runtime|observability|provider-interfaces|provider-test-doubles|test-support|config|field-crypto|identity-core|vault-adapters|geo-adapters|image-sanitiser)/)';
 // Development/test-only workspace packages (ADR-045): never reachable from production source.
 const DEV_ONLY_WORKSPACE = '(^packages/(provider-test-doubles|test-support)/|node_modules/@wayvro/(provider-test-doubles|test-support)/)';
 const SERVER_ONLY_NPM = 'node_modules/(pg|pg-pool|ioredis|drizzle-orm|fastify|@nestjs/[^/]+|socket\\.io|pino|@opentelemetry/[^/]+|@aws-sdk/[^/]+|sharp)/';
@@ -53,6 +53,29 @@ module.exports = {
       to: { path: '^apps/api/src/vault/' },
     },
     {
+      name: 'geo-adapters-composition-only',
+      severity: 'error',
+      comment:
+        'Phase 3 architecture §4 (E06/ADR-006): API modules depend on the vendor-neutral geo ports; only the API composition root/entry binds real geo adapters, and the worker never calls a geo provider.',
+      from: { path: '^apps/(api|worker)/src/', pathNot: '^apps/api/src/(composition|main)\\.ts$' },
+      to: { path: '(^packages/geo-adapters/|node_modules/@wayvro/geo-adapters/)' },
+    },
+    {
+      name: 'geo-bench-dev-only',
+      severity: 'error',
+      comment: 'The SP-04 benchmark harness (tools/geo-bench) is a dev-only tool: no app or package imports it (ADR-045 artefact isolation).',
+      from: { path: '^(apps|packages)/' },
+      to: { path: '(^tools/geo-bench/|node_modules/@wayvro/geo-bench/)' },
+    },
+    {
+      name: 'pricing-engine-purity',
+      severity: 'error',
+      comment:
+        'P3.3/ADR-013: the pricing engine is pure and deterministic (property P-05): it imports only Money and plain data — never the database, Valkey, crypto, time sources or another module (catalog, geo).',
+      from: { path: '^apps/api/src/pricing/engine\\.ts$' },
+      to: { pathNot: ['(^packages/domain/|node_modules/@wayvro/domain/)'] },
+    },
+    {
       name: 'sanitiser-only-in-its-container',
       severity: 'error',
       comment: 'ADR-041: the image decoder runs only inside the isolated sanitiser container; no app or other package imports it.',
@@ -77,7 +100,9 @@ module.exports = {
       name: 'not-to-dev-dep',
       severity: 'error',
       comment: 'Production code must not depend on devDependencies.',
-      from: { path: '^(apps|packages)/[^/]+/src/', pathNot: ['\\.test\\.tsx?$'] },
+      // `__mocks__/` holds test-only fixtures and helpers (never imported by app code; the mobile architecture test
+      // excludes it from production the same way), e.g. the P3.9 TypeScript-AST audit helper.
+      from: { path: '^(apps|packages)/[^/]+/src/', pathNot: ['\\.test\\.tsx?$', '/__mocks__/'] },
       to: { dependencyTypes: ['npm-dev'], dependencyTypesNot: ['type-only'], pathNot: ['node_modules/@types/'] },
     },
   ],

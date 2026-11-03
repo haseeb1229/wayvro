@@ -1,0 +1,93 @@
+# SP-08 #10 / LOC-04 (N, API 35 dialog taps) — A07, B02: the rider denies location twice (Android 11+ then records
+# "don't ask again"); the app shows the Settings link instead of asking again — "Use current location" is no longer
+# offered, so there is no dialog loop — and search keeps working. run-flows.mjs then checks that only the location
+# permissions were ever asked and none was granted.
+appId: dev.wayvro.app
+name: n-24-location-deny-permanent
+tags: [full, api35-dialogs]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element: 'Use current location'
+    direction: DOWN
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible: 'Use your location for pickup\?'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Continue'
+    direction: DOWN
+- tapOn: 'Continue'
+# first denial
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_deny_button'
+    timeout: 30000
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_deny_button'
+- extendedWaitUntil:
+    visible: 'Search for an address instead'
+    timeout: 30000
+# second explicit tap: the rationale was already shown this session, so the OS dialog follows directly; Android offers
+# "Don't allow" as its deny-and-don't-ask-again button on this second request
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_deny(_and_dont_ask_again)?_button'
+    timeout: 30000
+- takeScreenshot: n-24-second-dialog
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_deny(_and_dont_ask_again)?_button'
+# permanently denied: Settings link, no further dialog
+- extendedWaitUntil:
+    visible: 'Location is off for Wayvro. You can turn it on in Settings. Search still works.'
+    timeout: 30000
+- assertVisible: 'Open settings'
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- takeScreenshot: n-24-pin-blocked
+- back
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Open settings'
+    direction: DOWN
+- assertVisible: 'Location is off for Wayvro. You can turn it on in Settings. Search still works.'
+# no dialog loop: the current-location action is gone while the OS answer is "don't ask again"
+- assertNotVisible: 'Use current location'
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- takeScreenshot: n-24-home-blocked
+# the Settings link opens the system settings for the app
+- tapOn: 'Open settings'
+- extendedWaitUntil:
+    visible: 'App info'
+    timeout: 30000
+- takeScreenshot: n-24-system-settings
+- back
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+# search still works
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Liberty'
+- extendedWaitUntil:
+    visible: 'Liberty Market.*'
+    timeout: 30000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'

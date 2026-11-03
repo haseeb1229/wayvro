@@ -16,7 +16,7 @@ const adminUrl: string = ADMIN_URL;
 
 const bytes = (n: number): Buffer => randomBytes(n);
 /** Every application schema created by the migrations (grows additively with later micro-phases). */
-const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal', 'staff', 'catalog', 'compliance', 'vault'] as const;
+const APP_SCHEMAS = ['identity', 'profile', 'platform', 'audit', 'legal', 'staff', 'catalog', 'compliance', 'vault', 'pricing'] as const;
 const APP_SCHEMAS_SQL = APP_SCHEMAS.map((s) => `'${s}'`).join(',');
 const pgCode = async (p: Promise<unknown>): Promise<string | undefined> => {
   try {
@@ -118,15 +118,23 @@ describe('migration lifecycle (every migration)', () => {
 
   it('schema inventory: exactly the tables of the applied migrations (no table ahead of its micro-phase)', async () => {
     const tables = await owner.query<{ t: string }>(
-      `select table_schema || '.' || table_name t from information_schema.tables where table_schema in ('identity','profile','platform','audit','legal','compliance','vault','staff','catalog') order by 1`,
+      `select table_schema || '.' || table_name t from information_schema.tables where table_schema in ('identity','profile','platform','audit','legal','compliance','vault','staff','catalog','pricing') order by 1`,
     );
     expect(tables.rows.map((r) => r.t)).toEqual([
       'audit.audit_events',
       'audit.audit_seals',
       'audit.seal_verifications',
       'catalog.cities',
+      'catalog.city_service_products',
       'catalog.districts',
+      'catalog.pickup_points',
       'catalog.service_categories',
+      'catalog.service_hours',
+      'catalog.service_products',
+      'catalog.vehicle_eligibility_rules',
+      'catalog.zone_products',
+      'catalog.zone_sets',
+      'catalog.zones',
       'compliance.application_service_categories',
       'compliance.capture_challenges',
       'compliance.cnic_lookup_index',
@@ -164,11 +172,21 @@ describe('migration lifecycle (every migration)', () => {
       'identity.sessions',
       'legal.age_eligibility_policies',
       'legal.policy_documents',
+      'platform.app_blocked_builds',
+      'platform.app_version_policies',
       'platform.idempotency_records',
       'platform.jobs',
       'platform.key_rotations',
       'platform.outbox_events',
       'platform.processed_events',
+      'platform.runtime_switch_changes',
+      'platform.runtime_switches',
+      'pricing.quote_components',
+      'pricing.quotes',
+      'pricing.rate_card_components',
+      'pricing.rate_cards',
+      'pricing.route_snapshots',
+      'pricing.tax_policies',
       'profile.appeal_evidence',
       'profile.appeals',
       'profile.restriction_events',

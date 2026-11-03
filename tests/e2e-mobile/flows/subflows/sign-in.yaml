@@ -1,0 +1,39 @@
+# Signed-out cold start → real OTP sign-in (SP-08 §4). Inputs: PHONE (E.164), PHONE_LOCAL (what a person types), API.
+# clearState wipes app data (secure store, mode preference); `permissions: all: deny` revokes every runtime permission
+# without USER_SET/USER_FIXED flags = the never-asked OS default (verified on API 35 with `dumpsys package`). Maestro
+# would otherwise pre-grant ALL permissions, hiding permission-hygiene failures; `all: unset` dropped the emulator.
+#
+appId: dev.wayvro.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible:
+      id: phone-number
+    timeout: 90000
+# INV-07: no permission dialog of any kind on the signed-out start.
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
+- runScript:
+    file: ../scripts/otp-baseline.js
+- tapOn:
+    id: phone-number
+- inputText: ${PHONE_LOCAL}
+- tapOn:
+    id: phone-submit
+- extendedWaitUntil:
+    visible:
+      id: otp-code
+    timeout: 30000
+- retry:
+    maxRetries: 10
+    commands:
+      - runScript:
+          file: ../scripts/otp-code.js
+- tapOn:
+    id: otp-code
+- inputText: ${output.otp}
+- tapOn:
+    id: otp-submit

@@ -103,6 +103,31 @@ export function Shell({ me, initiallyLocked, children }: { readonly me: StaffMe;
                 <Link href="/support">{STRINGS.nav.support}</Link>
               </li>
             ) : null}
+            {can('catalog.view') ? (
+              <>
+                <li>
+                  <Link href="/catalog">{STRINGS.nav.catalog}</Link>
+                </li>
+                <li>
+                  <Link href="/zones">{STRINGS.nav.zones}</Link>
+                </li>
+              </>
+            ) : null}
+            {can('release.view') ? (
+              <li>
+                <Link href="/release">{STRINGS.nav.release}</Link>
+              </li>
+            ) : null}
+            {can('pricing.view') ? (
+              <li>
+                <Link href="/pricing">{STRINGS.nav.pricing}</Link>
+              </li>
+            ) : null}
+            {can('geo.usage.view') ? (
+              <li>
+                <Link href="/geo">{STRINGS.nav.geo}</Link>
+              </li>
+            ) : null}
             {can('breakglass.activate') || can('breakglass.review') ? (
               <li>
                 <Link href="/break-glass">{STRINGS.nav.breakGlass}</Link>

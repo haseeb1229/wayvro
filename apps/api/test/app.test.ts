@@ -16,6 +16,9 @@ import { API_CONTROLLERS, createApp, routeManifest } from '../src/app.js';
 type AppDependencies = Parameters<typeof createApp>[0];
 type IdentityServices = AppDependencies['identity'];
 import { ConsumerSession, Public, routePolicyProblems } from '../src/auth/policy.js';
+import { ReleaseEnforcement } from '../src/platform/release/enforcement.js';
+import { ReleaseStateCache } from '../src/platform/release/state.js';
+import { RuntimeSwitchStore } from '../src/platform/release/switches.js';
 
 @Controller()
 class ProbeController {
@@ -83,6 +86,19 @@ const compliance: AppDependencies['compliance'] = {
   admin: {} as AppDependencies['compliance']['admin'],
 };
 
+// Release controls: an empty store (no ACTIVE policy, registry defaults) — the gate lets every request through.
+const releaseState = new ReleaseStateCache({ query: () => Promise.resolve({ rows: [], rowCount: 0 }) } as unknown as IdentityServices['legalStore'], {
+  ttlMs: 10_000,
+  log,
+});
+const release: AppDependencies['release'] = {
+  enforcement: new ReleaseEnforcement(releaseState, new RuntimeSwitchStore(releaseState, 'test')),
+  appConfig: {} as AppDependencies['release']['appConfig'],
+  policies: {} as AppDependencies['release']['policies'],
+  switches: {} as AppDependencies['release']['switches'],
+  appConfigCacheSeconds: 60,
+};
+
 let app: NestFastifyApplication | undefined;
 afterEach(async () => {
   await app?.close();
@@ -99,7 +115,11 @@ async function boot(checks: ReadinessCheck[] = [check('database', true), check('
     compliance,
     evidence: null,
     review: {} as never,
+    catalog: {} as never,
     support: {} as never,
+    release,
+    geo: {} as never,
+    pricing: {} as never,
     extraControllers: extra,
   });
   await app.getHttpAdapter().getInstance().ready();

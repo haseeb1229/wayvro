@@ -17,3 +17,26 @@ export { databaseCheck, evaluateReadiness, redisCheck, type ReadinessCheck } fro
 export { sqlState, withTransaction, type Queryable } from './sql.js';
 export { uuidv7, uuidv7Timestamp } from './uuidv7.js';
 export { ACCOUNT_HINT_CHANNEL, parseAccountHint, type AccountHint } from './hints.js';
+export {
+  CircuitBreaker,
+  CircuitBreakerError,
+  DEFAULT_BREAKER_OPTIONS,
+  type BreakerAdmission,
+  type BreakerHintStore,
+  type BreakerKey,
+  type BreakerOutcome,
+  type BreakerState,
+  type BreakerTransition,
+  type CircuitBreakerDeps,
+  type CircuitBreakerOptions,
+} from './circuit-breaker.js';
+export {
+  GEO_USAGE_KEY_TTL_SECONDS,
+  GEO_USAGE_METRICS,
+  GeoUsageCounters,
+  hourBucket,
+  type GeoUsageCounts,
+  type GeoUsageHour,
+  type GeoUsageMetric,
+  type ValkeyClient,
+} from './geo-usage-counters.js';

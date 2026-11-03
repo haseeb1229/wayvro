@@ -16,6 +16,8 @@ type RequirementItem = RequirementChecklist['items'][number];
 export type EvidenceDisplay =
   | { readonly state: 'none' }
   | { readonly state: 'queued' | 'uploading' | 'processing'; readonly localId: string }
+  /** K19: an attempt failed and the queue retries automatically (bounded backoff) — "upload failed, will retry". */
+  | { readonly state: 'retrying'; readonly localId: string; readonly failure: FailureReason }
   | { readonly state: 'failed'; readonly localId: string; readonly failure: FailureReason; readonly canRetry: boolean }
   | { readonly state: 'accepted'; readonly uploadId: string }
   | { readonly state: 'rejected'; readonly uploadId: string | null; readonly rejection: RejectionReason };
@@ -82,10 +84,12 @@ export function evidenceDisplay(
     switch (local.state) {
       case 'queued':
       case 'slot':
-        return { state: 'queued', localId: local.id };
+        return local.failure === null ? { state: 'queued', localId: local.id } : { state: 'retrying', localId: local.id, failure: local.failure };
       case 'uploading':
-      case 'completing':
         return { state: 'uploading', localId: local.id };
+      case 'completing':
+        // a failed confirmation waits (bounded backoff) before it is asked again
+        return local.failure === null ? { state: 'uploading', localId: local.id } : { state: 'retrying', localId: local.id, failure: local.failure };
       case 'processing':
         return { state: 'processing', localId: local.id };
       case 'failed':

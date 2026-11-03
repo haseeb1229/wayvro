@@ -240,5 +240,10 @@ describe('upload runner', () => {
     expect(failureEvent(new ApiError('conflict'))).toEqual({ type: 'definitive-error', reason: 'conflict' });
     expect(failureEvent(new ApiError('validation'))).toEqual({ type: 'definitive-error', reason: 'unknown' });
     expect(failureEvent(new Error('boom'))).toEqual({ type: 'definitive-error', reason: 'unknown' });
+    // P3.5 (cross-mode regression): planned maintenance waits like an outage; a required update or a quote-only
+    // refusal is definitive (the app-policy gate handles the update).
+    expect(failureEvent(new ApiError('maintenance', { status: 503 }))).toEqual({ type: 'transient-error', reason: 'unavailable' });
+    expect(failureEvent(new ApiError('update-required', { status: 426 }))).toEqual({ type: 'definitive-error', reason: 'unknown' });
+    expect(failureEvent(new ApiError('service-area', { status: 422 }))).toEqual({ type: 'definitive-error', reason: 'unknown' });
   });
 });

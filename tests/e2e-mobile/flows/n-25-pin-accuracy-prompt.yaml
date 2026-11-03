@@ -1,0 +1,59 @@
+# PIN-02 (N, API 35 dialog taps) — B01, A07: with approximate location the text-first pin never offers the coarse
+# point as the pickup; it shows the accuracy prompt "Use precise location", whose tap asks the OS once more, and after
+# the upgrade the precise fix is offered as "Is this your pickup?" for the rider to confirm.
+appId: dev.wayvro.app
+name: n-25-pin-accuracy-prompt
+tags: [full, api35-dialogs]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- setLocation:
+    latitude: 31.5104
+    longitude: 74.3416
+- scrollUntilVisible:
+    element: 'Use current location'
+    direction: DOWN
+- tapOn: 'Use current location'
+- extendedWaitUntil:
+    visible: 'Use your location for pickup\?'
+    timeout: 30000
+- scrollUntilVisible:
+    element: 'Continue'
+    direction: DOWN
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_location_accuracy_radio_coarse'
+    timeout: 30000
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_location_accuracy_radio_coarse'
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_allow_foreground_only_button'
+- extendedWaitUntil:
+    visible: 'Wayvro has your approximate area only.*'
+    timeout: 60000
+# the coarse point is never offered as the pickup
+- assertNotVisible: 'Is this your pickup\?'
+- assertNotVisible: 'Use this point'
+- takeScreenshot: n-25-accuracy-prompt
+- tapOn: 'Use precise location'
+- extendedWaitUntil:
+    visible:
+      id: 'com\.android\.permissioncontroller:id/permission_allow_foreground_only_button'
+    timeout: 30000
+- takeScreenshot: n-25-upgrade-dialog
+- tapOn:
+    id: 'com\.android\.permissioncontroller:id/permission_allow_foreground_only_button'
+- extendedWaitUntil:
+    visible: 'Is this your pickup\?'
+    timeout: 60000
+- assertVisible: 'Liberty Market'
+- assertNotVisible: 'Wayvro has your approximate area only.*'
+- takeScreenshot: n-25-precise-confirm

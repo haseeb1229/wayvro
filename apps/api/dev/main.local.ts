@@ -6,11 +6,12 @@ import { isNonProductionLike } from '@wayvro/config';
 import { otpDeliveryJob } from '@wayvro/identity-core';
 import { createLogger } from '@wayvro/observability';
 import { bindProviders } from '@wayvro/provider-interfaces';
-import { createTestDoubleBindings } from '@wayvro/provider-test-doubles';
+import { createGeoTestDoubles, createTestDoubleBindings } from '@wayvro/provider-test-doubles';
 import { objectStorageFromSettings } from '@wayvro/vault-adapters';
 import { JobRunner } from '@wayvro/server-runtime';
 import { composeApi } from '../src/composition.js';
 import { loadApiConfig } from '../src/config.js';
+import { localGeoControl, parseGeoLatency } from './geo-control.js';
 import { localOtpInbox } from './otp-inbox.js';
 
 const config = loadApiConfig(process.env);
@@ -22,8 +23,20 @@ const doubles = createTestDoubleBindings();
 // Evidence uploads need a reachable store: the REAL S3 adapter against the local SeaweedFS when configured (ADR-041);
 // the in-memory double otherwise (its upload URLs are not reachable, so evidence then works only in unit tests).
 const storage = objectStorageFromSettings(config, config.EVIDENCE_UPLOAD_URL_SECONDS);
-const providers = bindProviders(config.WAYVRO_ENV, { ...doubles, ...(storage ? { objectStorage: storage } : {}) });
-const runtime = await composeApi(config, log, { providers, extraControllers: [localOtpInbox(doubles.otpDelivery)] });
+// Synthetic geo doubles (P3.2): fixed Lahore gazetteer and a straight-line router — local/test only, MOCK-branded.
+// The local load harness / FAULT-GEO soak (tools/load-harness) may add a synthetic per-SKU latency and the runtime
+// fault-control route; both are off unless their variables are set.
+const geo = createGeoTestDoubles({ latencyMs: parseGeoLatency(process.env['WAYVRO_LOCAL_GEO_LATENCY_MS']) });
+const geoControl = process.env['WAYVRO_LOCAL_GEO_CONTROL'] === '1' ? [localGeoControl(geo.control)] : [];
+const providers = bindProviders(config.WAYVRO_ENV, {
+  ...doubles,
+  placesAutocomplete: geo.placesAutocomplete,
+  geocoding: geo.geocoding,
+  reverseGeocoding: geo.reverseGeocoding,
+  routing: geo.routing,
+  ...(storage ? { objectStorage: storage } : {}),
+});
+const runtime = await composeApi(config, log, { providers, extraControllers: [localOtpInbox(doubles.otpDelivery), ...geoControl] });
 const delivery = new JobRunner(runtime.db.pool, [otpDeliveryJob({ db: runtime.db.pool, cipher: runtime.cipher, port: doubles.otpDelivery })], {
   workerId: `api-local-runner-${String(process.pid)}`,
   leaseMs: 30000,

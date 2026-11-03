@@ -1,0 +1,7 @@
+# SP-08 #26 / A11Y-01 capture at 200 % font scale (N; review M): the same captures as n-12, run after run-flows.mjs set
+# `font_scale 2.0` (the hook resets it to 1.0 afterwards, also on failure). Evidence for human review only.
+appId: dev.wayvro.app
+name: n-12b-screenshots-font-200
+tags: [full]
+---
+- runFlow: n-12-screenshots-urdu-font.yaml

@@ -4,15 +4,24 @@ import helmet from '@fastify/helmet';
 import { Module, type DynamicModule, type Type } from '@nestjs/common';
 import { APP_GUARD, NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { resolveRequestId, type Logger } from '@wayvro/observability';
+import { REQUEST_ID_HEADER } from '@wayvro/contracts';
+import { WayvroError, resolveRequestId, toErrorEnvelope, type Logger } from '@wayvro/observability';
 import type { Queryable, ReadinessCheck } from '@wayvro/server-runtime';
+import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { PolicyGuard, assertRoutePolicies } from './auth/policy.js';
+import { CatalogAdminController, CatalogController, type CatalogServices } from './catalog/catalog.controller.js';
 import type { ComplianceAdminService } from './compliance/compliance-admin.service.js';
 import { ComplianceAdminController, OnboardingController } from './compliance/compliance.controller.js';
 import type { OnboardingService } from './compliance/onboarding.service.js';
+import type { GeoAdminService } from './geo/geo-admin.service.js';
+import { GeoAdminController, GeoController } from './geo/geo.controller.js';
+import type { GeoGateway } from './geo/gateway.js';
 import { HealthController } from './health/health.controller.js';
 import { ErrorEnvelopeFilter } from './http/error-filter.js';
 import { registerHttpHooks } from './http/hooks.js';
+import type { ReleaseEnforcement } from './platform/release/enforcement.js';
+import { AppConfigController, ReleaseAdminController, type ReleaseServices } from './platform/release/release.controller.js';
+import { PricingAdminController, QuoteController, type PricingServices } from './pricing/pricing.controller.js';
 import type { AccountService } from './identity/account.service.js';
 import { AccountSecurityController } from './identity/account-security.controller.js';
 import type { AccountSecurityService } from './identity/account-security.service.js';
@@ -38,6 +47,7 @@ import { EvidenceController, EvidenceViewController, type EvidenceServices } fro
 import {
   ACCOUNT_SECURITY_SERVICE,
   ACCOUNT_SERVICE,
+  CATALOG_SERVICES,
   DELETION_SERVICE,
   OIDC_SERVICE,
   SUPPORT_SERVICE,
@@ -45,7 +55,11 @@ import {
   COMPLIANCE_ADMIN_SERVICE,
   CONSENT_SERVICE,
   EVIDENCE_SERVICES,
+  GEO_ADMIN_SERVICE,
+  GEO_GATEWAY,
+  PRICING_SERVICES,
   REVIEW_SERVICES,
+  RELEASE_SERVICES,
   LEGAL_DB,
   ONBOARDING_SERVICE,
   OTP_SERVICE,
@@ -62,6 +76,12 @@ import {
 interface ComplianceServices {
   readonly onboarding: OnboardingService;
   readonly admin: ComplianceAdminService;
+}
+
+/** Geo gateway (P3.2): consumer `/v1/geo/*` and staff `/v1/admin/geo/*`. */
+interface GeoServices {
+  readonly gateway: GeoGateway;
+  readonly admin: GeoAdminService;
 }
 
 /** Staff realm services (P2.4); separate from the consumer identity services. */
@@ -104,6 +124,14 @@ export interface AppDependencies {
   readonly evidence: EvidenceServices | null;
   /** Manual review, appeals and monitoring (P2.7). */
   readonly review: ReviewServices;
+  /** Phase 3 catalog (P3.1): read model (consumer products; cross-context reads) and staff maker-checker administration. */
+  readonly catalog: CatalogServices;
+  /** Release controls (P3.4): app config, version policies, runtime switches, and the 426/503 enforcement hook. */
+  readonly release: ReleaseServices & { readonly enforcement: ReleaseEnforcement };
+  /** Geo gateway and staff geo controls (P3.2). */
+  readonly geo: GeoServices;
+  /** Upfront quotes and staff pricing administration (P3.3). */
+  readonly pricing: PricingServices;
   /** Local-runner/test-only controllers (never passed by the production root). Subject to the same policy rules. */
   readonly extraControllers?: readonly Type[];
 }
@@ -139,6 +167,15 @@ export const API_CONTROLLERS: readonly Type[] = [
   ReviewController,
   AccountAppealsController,
   SupportController,
+  // Phase 3
+  CatalogController,
+  CatalogAdminController,
+  AppConfigController,
+  ReleaseAdminController,
+  GeoController,
+  GeoAdminController,
+  QuoteController,
+  PricingAdminController,
 ];
 
 @Module({})
@@ -167,6 +204,11 @@ class ApiModule {
         { provide: COMPLIANCE_ADMIN_SERVICE, useValue: deps.compliance.admin },
         { provide: EVIDENCE_SERVICES, useValue: deps.evidence },
         { provide: REVIEW_SERVICES, useValue: deps.review },
+        { provide: CATALOG_SERVICES, useValue: deps.catalog },
+        { provide: RELEASE_SERVICES, useValue: deps.release },
+        { provide: GEO_GATEWAY, useValue: deps.geo.gateway },
+        { provide: GEO_ADMIN_SERVICE, useValue: deps.geo.admin },
+        { provide: PRICING_SERVICES, useValue: deps.pricing },
         { provide: APP_GUARD, useValue: new PolicyGuard(deps.identity.sessionStore, deps.staff.policy) },
       ],
     };
@@ -183,6 +225,14 @@ export async function createApp(deps: AppDependencies): Promise<NestFastifyAppli
     genReqId: (req: IncomingMessage) => resolveRequestId(req.headers['x-request-id']),
     disableRequestLogging: true,
     return503OnClosing: true,
+    // P3.2: sealed placeRefs travel as a path parameter (`pr1.` + ≤ 512 chars, contracts PlaceRefSchema)
+    routerOptions: { maxParamLength: 600 },
+    // Router-level failures (malformed URL, over-long path parameter) answer with the standard envelope and NEVER echo
+    // the path: it can carry a placeRef or other identifiers (Fastify's default body repeats it verbatim).
+    frameworkErrors: (_error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
+      const { status, body } = toErrorEnvelope(new WayvroError('WAYVRO_E_VALIDATION'), request.id);
+      void reply.header(REQUEST_ID_HEADER, request.id).header('cache-control', 'no-store').status(status).send(body);
+    },
   });
   const app = await NestFactory.create<NestFastifyApplication>(ApiModule.register(deps, controllers), adapter, { logger: false, bufferLogs: false });
   // API responses are JSON only: the strictest CSP, no framing, no referrer, no MIME sniffing.
@@ -200,7 +250,7 @@ export async function createApp(deps: AppDependencies): Promise<NestFastifyAppli
       for (const method of [route.method].flat()) if (method !== 'HEAD') routes.push(`${method} ${route.url}`);
     });
   manifests.set(app, routes);
-  registerHttpHooks(app.getHttpAdapter().getInstance(), deps.log);
+  registerHttpHooks(app.getHttpAdapter().getInstance(), deps.log, deps.release.enforcement);
   app.useGlobalFilters(new ErrorEnvelopeFilter(deps.log));
   app.enableShutdownHooks();
   await app.init();

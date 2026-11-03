@@ -1,0 +1,36 @@
+# SP-08 #16 / QUOTE-02 (N) — E07, E08, CON-P3-08: an outside-area drop-off is refused with its own copy and no price or
+# ETA (synthetic gazetteer: the airport precinct / out-of-zone places of the synthetic zone set). REQUIRES ACTIVE
+# synthetic rate cards (NOT RUN with the reason otherwise). Outside-hours and routing-unavailable variants need
+# deterministic double inputs and are not built yet.
+appId: dev.wayvro.app
+name: n-09-quote-refusals
+tags: [full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Badshahi'
+- tapOn: 'Badshahi Mosque.*'
+# the pickup lies in the synthetic EXCLUSION zone: the reason-specific refusal (rider.area.*) is shown, never a price
+- extendedWaitUntil:
+    visible: "Wayvro doesn't serve this trip yet"
+    timeout: 60000
+- assertVisible: "Wayvro doesn't serve this pickup yet.*"
+- assertVisible: 'Change pickup'
+# no price card: the price format is "Rs <digits>" (a bare '.*Rs.*' also matched ordinary copy)
+- assertNotVisible: '.*Rs [0-9][0-9,]*.*'

@@ -80,6 +80,7 @@ Result per (vehicle, product): `ELIGIBLE` | `NOT_ELIGIBLE(reasons[])` | `UNKNOWN
 | Config history (zone sets, rate cards, tax policies, eligibility rules, budgets, version policies, switch changes) | indefinite (no personal data beyond staff ids) | never purged; RETIRED rows kept |
 | Idempotency record of a quote request | `QUOTE_IDEMPOTENCY_TTL_SECONDS` (900 s) | existing purge |
 | Aggregates kept after purge | none persisted in Phase 3 beyond `geo.provider_usage`; quote statistics are logs only | — |
+| Quotes, quote components and route snapshots of an account whose deletion completes | purged at deletion completion (not a retention exception of the Phase-2 deletion model) | `identity.deletion-processing` (worker), in the pseudonymisation transaction |
 
 Phase 4 adds ACCEPTED quotes, which inherit the trip retention class (not decided here).
 

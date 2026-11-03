@@ -1,0 +1,37 @@
+# SP-08 #15 (N) — B06, E05 (UI): with the stack's 60 s quote TTL the countdown reaches 0 ⇒ "Prices have been updated";
+# "Get new price" creates a new quote. REQUIRES ACTIVE synthetic rate cards (NOT RUN with the reason otherwise).
+appId: dev.wayvro.app
+name: n-08-quote-expiry
+tags: [full, pricing]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_A}
+      PHONE_LOCAL: ${PHONE_LOCAL_A}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Liberty'
+- tapOn: 'Liberty Market.*'
+- tapOn:
+    id: search-pickup
+- inputText: 'Emporium'
+- tapOn: 'Emporium Mall.*'
+- extendedWaitUntil:
+    visible: '.*Economy.*'
+    timeout: 60000
+# the server TTL is 60 s: the expired state must appear within the TTL plus a bounded margin
+- extendedWaitUntil:
+    visible: 'Prices have been updated\.'
+    timeout: 105000
+- tapOn: 'Get new price'
+- extendedWaitUntil:
+    visible: '.*Economy.*'
+    timeout: 60000

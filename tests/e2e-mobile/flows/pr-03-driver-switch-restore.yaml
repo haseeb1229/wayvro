@@ -1,0 +1,54 @@
+# SP-08 #4 (C) + #2 (C) + NAV-01 (PR, N) — V08: an approved Driver/Partner switches Rider → Driver/Partner (readiness
+# home, reset stack), the preference survives a force-stop (restore lands on /drive from server state), hardware back on
+# the mode home leaves the app, and switching back lands on Rider home.
+appId: dev.wayvro.app
+name: pr-03-driver-switch-restore
+tags: [pr, full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_C}
+      PHONE_LOCAL: ${PHONE_LOCAL_C}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+    timeout: 30000
+- assertNotVisible:
+    id: rider-home-where-to
+- takeScreenshot: pr-03-driver-home
+# restore after process death: the Driver/Partner preference is a hint the server state still allows
+- stopApp
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+    timeout: 60000
+- assertNotVisible:
+    id: rider-home-where-to
+# hardware back on a mode home exits (the stack was reset by the switch)
+- back
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+- launchApp
+- extendedWaitUntil:
+    visible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: mode-switch-rider
+    direction: DOWN
+- tapOn:
+    id: mode-switch-rider
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000

@@ -15,6 +15,8 @@ export class BffError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    /** Closed-catalogue reason codes of the refusal (`error.details.reasonCodes`), shown as codes, never as markup. */
+    readonly reasonCodes: readonly string[] = [],
   ) {
     super(code);
   }
@@ -38,8 +40,15 @@ async function raw(method: string, path: string, body: unknown, key: string): Pr
 
 async function parse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
-  const json = (await res.json()) as { error?: { code: string } };
-  if (!res.ok) throw new BffError(res.status, json.error?.code ?? 'WAYVRO_E_INTERNAL');
+  const json = (await res.json()) as { error?: { code: string; details?: { reasonCodes?: unknown } } };
+  const reasons = json.error?.details?.reasonCodes;
+  if (!res.ok) {
+    throw new BffError(
+      res.status,
+      json.error?.code ?? 'WAYVRO_E_INTERNAL',
+      Array.isArray(reasons) ? reasons.filter((r): r is string => typeof r === 'string') : [],
+    );
+  }
   return json as T;
 }
 

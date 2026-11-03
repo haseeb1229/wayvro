@@ -5,6 +5,7 @@ import {
   VehicleCreateRequestSchema,
   type OWNERSHIP_TYPES,
   type DriverApplication,
+  type VEHICLE_BODY_TYPES,
 } from '@wayvro/contracts';
 import { parseDateParts, toAsciiDigits, type DateParts } from '../../../core/input/digits';
 import type { ClaimsUpdate, DocumentClaim, RenewalClaim, VehicleCreate, VehicleUpdate } from '../api/driver-api';
@@ -83,6 +84,13 @@ export function claimsComplete(application: DriverApplication): boolean {
 // ── vehicle ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export type OwnershipType = (typeof OWNERSHIP_TYPES)[number];
+type BodyType = (typeof VEHICLE_BODY_TYPES)[number];
+/** Body types offered for a car (the only category open for applications); the contract's list also has bike/rickshaw types. */
+export const CAR_BODY_TYPES = ['HATCHBACK', 'SEDAN', 'SUV', 'CROSSOVER', 'MPV'] as const satisfies readonly BodyType[];
+export type CarBodyType = (typeof CAR_BODY_TYPES)[number];
+/** An optional claim choice: 'none' = not specified (nothing is sent). */
+export type AirConditioningChoice = 'yes' | 'no' | 'none';
+
 export interface VehicleForm {
   readonly plate: string;
   readonly make: string;
@@ -91,8 +99,12 @@ export interface VehicleForm {
   readonly colour: string;
   readonly ownershipType: OwnershipType;
   readonly registrationNumber: string;
+  /** Phase 3 optional claims (DM-OPEN-02): sent only when filled; they help match Comfort-type products (H10). */
+  readonly seats: string;
+  readonly bodyType: CarBodyType | 'none';
+  readonly airConditioned: AirConditioningChoice;
 }
-type VehicleField = 'plate' | 'make' | 'model' | 'year' | 'colour' | 'registrationNumber';
+export type VehicleField = 'plate' | 'make' | 'model' | 'year' | 'colour' | 'registrationNumber' | 'seats';
 
 export const emptyVehicleForm: VehicleForm = {
   plate: '',
@@ -102,7 +114,33 @@ export const emptyVehicleForm: VehicleForm = {
   colour: '',
   ownershipType: 'REGISTERED_OWNER',
   registrationNumber: '',
+  seats: '',
+  bodyType: 'none',
+  airConditioned: 'none',
 };
+
+const isCarBodyType = (value: BodyType | null | undefined): value is CarBodyType => (CAR_BODY_TYPES as readonly string[]).includes(value ?? '');
+
+interface VehicleClaims {
+  readonly seats?: number;
+  readonly bodyType?: CarBodyType;
+  readonly airConditioned?: boolean;
+}
+
+/** The optional claims the form holds (absent = not specified); `seats` is null when the text is not a valid count. */
+function claimsOf(form: VehicleForm): { readonly claims: VehicleClaims; readonly seatsValid: boolean } {
+  const seatsText = toAsciiDigits(form.seats).trim();
+  const seats = /^\d{1,2}$/.test(seatsText) ? Number(seatsText) : null;
+  const seatsValid = seatsText === '' || (seats !== null && seats >= 1 && seats <= 12);
+  return {
+    seatsValid,
+    claims: {
+      ...(seatsText === '' || seats === null || !seatsValid ? {} : { seats }),
+      ...(form.bodyType === 'none' ? {} : { bodyType: form.bodyType }),
+      ...(form.airConditioned === 'none' ? {} : { airConditioned: form.airConditioned === 'yes' }),
+    },
+  };
+}
 
 function vehicleFieldErrors(form: VehicleForm, todayIso: string, plateRequired: boolean): { errors: FieldErrors<VehicleField>; year: number | null } {
   const errors: FieldErrors<VehicleField> = {};
@@ -116,6 +154,7 @@ function vehicleFieldErrors(form: VehicleForm, todayIso: string, plateRequired: 
   const year = /^\d{4}$/.test(yearText) ? Number(yearText) : null;
   const latest = Number(todayIso.slice(0, 4)) + 1;
   if (year === null || year < 1950 || year > latest) errors.year = 'vehicle.invalid.year';
+  if (!claimsOf(form).seatsValid) errors.seats = 'vehicle.invalid.seats';
   return { errors, year };
 }
 
@@ -131,6 +170,7 @@ export function buildVehicleCreate(form: VehicleForm, todayIso: string): FormRes
     serviceCategory: 'CAR',
     ownershipType: form.ownershipType,
     ...(form.registrationNumber.trim() === '' ? {} : { registrationNumber: form.registrationNumber.trim() }),
+    ...claimsOf(form).claims,
   };
   return VehicleCreateRequestSchema.safeParse(request).success ? { ok: true, request } : { ok: false, errors: { plate: 'vehicle.invalid.plate' } };
 }
@@ -146,13 +186,25 @@ export function vehicleFormFrom(vehicle: VehicleView): VehicleForm {
     colour: vehicle.colour,
     ownershipType: vehicle.ownershipType,
     registrationNumber: '',
+    seats: vehicle.seats === null || vehicle.seats === undefined ? '' : String(vehicle.seats),
+    bodyType: isCarBodyType(vehicle.bodyType) ? vehicle.bodyType : 'none',
+    airConditioned: vehicle.airConditioned === true ? 'yes' : vehicle.airConditioned === false ? 'no' : 'none',
   };
 }
 
-/** Only changed fields (the plate cannot change), with the vehicle's version for optimistic concurrency. */
+/** Whether the vehicle already has any optional claim on file (the server keeps claims on update; they cannot be removed). */
+export function hasVehicleClaims(vehicle: VehicleView): boolean {
+  return (vehicle.seats ?? null) !== null || (vehicle.bodyType ?? null) !== null || (vehicle.airConditioned ?? null) !== null;
+}
+
+/**
+ * Only changed fields (the plate cannot change), with the vehicle's version for optimistic concurrency. An optional
+ * claim is sent only when filled and different from the one on file ("not specified" never clears a claim).
+ */
 export function buildVehicleUpdate(vehicle: VehicleView, form: VehicleForm, todayIso: string): FormResult<VehicleUpdate, VehicleField> {
   const { errors, year } = vehicleFieldErrors(form, todayIso, false);
   if (Object.keys(errors).length > 0 || year === null) return { ok: false, errors };
+  const { claims } = claimsOf(form);
   const request: VehicleUpdate = {
     expectedVersion: vehicle.version,
     ...(form.make.trim() === vehicle.make ? {} : { make: form.make.trim() }),
@@ -160,6 +212,9 @@ export function buildVehicleUpdate(vehicle: VehicleView, form: VehicleForm, toda
     ...(year === vehicle.modelYear ? {} : { modelYear: year }),
     ...(form.colour.trim() === vehicle.colour ? {} : { colour: form.colour.trim() }),
     ...(form.ownershipType === vehicle.ownershipType ? {} : { ownershipType: form.ownershipType }),
+    ...(claims.seats === undefined || claims.seats === vehicle.seats ? {} : { seats: claims.seats }),
+    ...(claims.bodyType === undefined || claims.bodyType === vehicle.bodyType ? {} : { bodyType: claims.bodyType }),
+    ...(claims.airConditioned === undefined || claims.airConditioned === vehicle.airConditioned ? {} : { airConditioned: claims.airConditioned }),
   };
   if (Object.keys(request).length === 1) return { ok: false, errors: {}, nothingToSave: true };
   return { ok: true, request };

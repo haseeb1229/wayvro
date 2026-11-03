@@ -10,7 +10,7 @@
  */
 import { randomInt } from 'node:crypto';
 import { isFlagEnabled, type WayvroEnv } from '@wayvro/config';
-import { CAPTURE_CHALLENGE_CODES, type DriverApplication, type DriverCompliance, type ErrorCode } from '@wayvro/contracts';
+import { CAPTURE_CHALLENGE_CODES, type DriverApplication, type DriverCompliance, type ErrorCode, type VEHICLE_BODY_TYPES } from '@wayvro/contracts';
 import type { FieldCipher, KeyedHasher } from '@wayvro/field-crypto';
 import { ENCRYPTED_FIELDS, fieldContext } from '@wayvro/identity-core';
 import { WayvroError } from '@wayvro/observability';
@@ -23,6 +23,7 @@ import { emitEvent } from '../platform/outbox.js';
 import { EDITABLE_APPLICATION_STATES, canTransition, type ApplicationState } from './application-state.js';
 import { evaluateEarningEligibility, inForce, type DocumentFact, type RequirementItemFact } from './eligibility.js';
 import { canonicalCnic, canonicalDocumentNumber, normalisePlate, plausibleBirthDate } from './normalise.js';
+import { productEligibilityView, type ProductEligibilityPort } from './product-eligibility.js';
 import { accountRestrictionsInForce, accountView, restrictionsForAccount } from './restrictions.js';
 
 export interface OnboardingPolicy {
@@ -48,6 +49,14 @@ export interface EvidenceState {
 
 export interface EvidenceSummaryPort {
   evidenceStates(applicationId: string): Promise<ReadonlyArray<EvidenceState>>;
+}
+
+type VehicleBodyType = (typeof VEHICLE_BODY_TYPES)[number];
+/** Phase 3 (P3.1, DM-OPEN-02): optional applicant claims on a vehicle; absent = not claimed (an update keeps the claim). */
+interface VehicleClaimInput {
+  readonly seats?: number | undefined;
+  readonly bodyType?: VehicleBodyType | undefined;
+  readonly airConditioned?: boolean | undefined;
 }
 
 interface CaptureChallenge {
@@ -100,6 +109,8 @@ export class OnboardingService {
     private readonly policy: OnboardingPolicy,
     /** Null when the vault is not configured: submission then answers 503 DEPENDENCY_UNAVAILABLE. */
     private readonly evidence: EvidenceSummaryPort | null = null,
+    /** P3.8: the catalog's vehicle-eligibility read (display only); null ⇒ the compliance view omits `productEligibility`. */
+    private readonly productCatalog: ProductEligibilityPort | null = null,
   ) {}
 
   get available(): boolean {
@@ -163,8 +174,12 @@ export class OnboardingService {
       ownership_type: DriverApplication['vehicles'][number]['ownershipType'];
       relation: 'OWNER' | 'AUTHORISED_USER';
       version: number;
+      seats: number | null;
+      body_type: VehicleBodyType | null;
+      air_conditioned: boolean | null;
     }>(
-      `select v.id, v.plate_display, v.make, v.model, v.model_year, v.colour, v.service_category, v.ownership_type, va.relation, v.version
+      `select v.id, v.plate_display, v.make, v.model, v.model_year, v.colour, v.service_category, v.ownership_type, va.relation, v.version,
+              v.seats, v.body_type, v.air_conditioned
          from compliance.vehicle_affiliations va join compliance.vehicles v on v.id = va.vehicle_id
         where va.driver_application_id = $1 and va.status <> 'ENDED' order by va.created_at`,
       [app.id],
@@ -205,6 +220,9 @@ export class OnboardingService {
         ownershipType: v.ownership_type,
         relation: v.relation,
         version: v.version,
+        seats: v.seats,
+        bodyType: v.body_type,
+        airConditioned: v.air_conditioned,
       })),
       documents: documents.rows.map((d) => ({
         id: d.id,
@@ -461,7 +479,7 @@ export class OnboardingService {
       serviceCategory: string;
       ownershipType: string;
       registrationNumber?: string | undefined;
-    },
+    } & VehicleClaimInput,
     key: string,
   ): Promise<IdempotentResult> {
     return this.run(principal, 'driver-onboarding.add-vehicle', key, { id, ...input }, async (tx) => {
@@ -486,8 +504,9 @@ export class OnboardingService {
                 fieldContext(ENCRYPTED_FIELDS.vehicleRegistrationNo, vehicleId),
               );
         await tx.query(
-          `insert into compliance.vehicles (id, plate_normalised, plate_display, registration_no_envelope, make, model, model_year, colour, service_category, ownership_type, status)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ACTIVE')`,
+          `insert into compliance.vehicles (id, plate_normalised, plate_display, registration_no_envelope, make, model, model_year, colour, service_category, ownership_type, status,
+                                            seats, body_type, air_conditioned)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ACTIVE', $11, $12, $13)`,
           [
             vehicleId,
             plate,
@@ -499,6 +518,9 @@ export class OnboardingService {
             input.colour,
             input.serviceCategory,
             input.ownershipType,
+            input.seats ?? null,
+            input.bodyType ?? null,
+            input.airConditioned ?? null,
           ],
         );
       } else {
@@ -553,7 +575,7 @@ export class OnboardingService {
       modelYear?: number | undefined;
       colour?: string | undefined;
       ownershipType?: string | undefined;
-    },
+    } & VehicleClaimInput,
     key: string,
   ): Promise<IdempotentResult> {
     return this.run(principal, 'driver-onboarding.update-vehicle', key, { id, vehicleId, ...input }, async (tx) => {
@@ -567,9 +589,21 @@ export class OnboardingService {
       if (!EDITABLE_APPLICATION_STATES.has(app.state)) return failure('WAYVRO_E_CONFLICT');
       const r = await tx.query(
         `update compliance.vehicles set make = coalesce($3, make), model = coalesce($4, model), model_year = coalesce($5, model_year), colour = coalesce($6, colour),
-                ownership_type = coalesce($7, ownership_type), version = version + 1
+                ownership_type = coalesce($7, ownership_type), seats = coalesce($8, seats), body_type = coalesce($9, body_type),
+                air_conditioned = coalesce($10, air_conditioned), version = version + 1
           where id = $1 and version = $2`,
-        [vehicleId, input.expectedVersion, input.make ?? null, input.model ?? null, input.modelYear ?? null, input.colour ?? null, input.ownershipType ?? null],
+        [
+          vehicleId,
+          input.expectedVersion,
+          input.make ?? null,
+          input.model ?? null,
+          input.modelYear ?? null,
+          input.colour ?? null,
+          input.ownershipType ?? null,
+          input.seats ?? null,
+          input.bodyType ?? null,
+          input.airConditioned ?? null,
+        ],
       );
       if (r.rowCount !== 1) return failure('WAYVRO_E_CONFLICT');
       await appendAudit(tx, {
@@ -932,8 +966,17 @@ export class OnboardingService {
     if (!profile) throw new WayvroError('WAYVRO_E_NOT_FOUND');
     const now = new Date();
     const restrictions = await restrictionsForAccount(this.db, principal.accountId);
-    const vehicles = await this.db.query<{ id: string; ownership_type: string; service_category: string }>(
-      `select v.id, v.ownership_type, v.service_category from compliance.vehicle_affiliations va join compliance.vehicles v on v.id = va.vehicle_id
+    const vehicles = await this.db.query<{
+      id: string;
+      ownership_type: string;
+      service_category: string;
+      model_year: number;
+      seats: number | null;
+      body_type: VehicleBodyType | null;
+      air_conditioned: boolean | null;
+    }>(
+      `select v.id, v.ownership_type, v.service_category, v.model_year, v.seats, v.body_type, v.air_conditioned
+         from compliance.vehicle_affiliations va join compliance.vehicles v on v.id = va.vehicle_id
         where (va.driver_profile_id = $1 or va.driver_application_id = $2) and va.status <> 'ENDED'`,
       [profile.id, profile.application_id],
     );
@@ -1051,8 +1094,27 @@ export class OnboardingService {
         blockers: [...result.blockers],
       });
     }
+    // P3.8 (display only): every product of the driver's city under its ACTIVE catalog rule, per affiliated vehicle
+    const catalog = this.productCatalog;
+    const productEligibility: DriverCompliance['productEligibility'] = catalog
+      ? (
+          await Promise.all(
+            vehicles.rows.map(async (v) =>
+              productEligibilityView(
+                v.id,
+                await catalog.eligibilityForVehicle(
+                  { serviceCategory: v.service_category, modelYear: v.model_year, seats: v.seats, bodyType: v.body_type, airConditioned: v.air_conditioned },
+                  profile.city_code,
+                  now,
+                ),
+              ),
+            ),
+          )
+        ).flat()
+      : undefined;
     const soon = new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10);
     return {
+      ...(productEligibility === undefined ? {} : { productEligibility }),
       profile: { id: profile.id, state: profile.state },
       eligibility,
       applicationId: profile.application_id,

@@ -1,0 +1,25 @@
+{
+  "name": "@wayvro/geo-bench",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DEV-ONLY SP-04 Lahore geo benchmark harness (Phase 3 P3.2): validates the founder's capture CSV, calls the candidate geo adapters under a free-allowance hard stop, keeps raw provider responses in a git-ignored local folder and writes aggregated, coordinate-free metrics. Never a dependency of any deployable app.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "bench": "tsc -p tsconfig.build.json && node dist/cli.js"
+  },
+  "dependencies": {
+    "@wayvro/geo-adapters": "workspace:*",
+    "@wayvro/provider-interfaces": "workspace:*",
+    "zod": "4.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

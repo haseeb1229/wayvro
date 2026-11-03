@@ -5,6 +5,10 @@
  * infra/ci/android/permission-allowlist.json. Any unlisted or explicitly forbidden permission fails.
  *
  * Usage: node infra/ci/android/check-permissions.mjs --aab app-release.aab --bundletool bundletool-all.jar [--report out.json]
+ *
+ * Optional `--policy <json>` replaces the default allowlist file with another one of the same shape. It exists ONLY for
+ * disposable spike artefacts (tests/spikes/sp-01-background-location/spike-permission-allowlist.json); the release AAB
+ * of the one Wayvro app is always checked with the default file (scripts/android-build.mjs and CI never pass it).
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -19,7 +23,9 @@ if (!args.aab || !args.bundletool) {
   process.exit(2);
 }
 
-const policy = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'permission-allowlist.json'), 'utf8'));
+const policyPath = args.policy ?? join(dirname(fileURLToPath(import.meta.url)), 'permission-allowlist.json');
+if (args.policy) console.log(`policy: ${args.policy}`);
+const policy = JSON.parse(readFileSync(policyPath, 'utf8'));
 const dump = (xpath) =>
   execFileSync('java', ['-jar', args.bundletool, 'dump', 'manifest', `--bundle=${args.aab}`, ...(xpath ? [`--xpath=${xpath}`] : [])], {
     encoding: 'utf8',

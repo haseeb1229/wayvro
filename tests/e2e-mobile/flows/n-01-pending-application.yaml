@@ -1,0 +1,32 @@
+# SP-08 #4 (F) / NAV-06 (N) — V08, K19: an application in MANUAL_REVIEW shows its status chip on Rider home; the
+# Driver/Partner entry opens the onboarding status ("being reviewed"), never a driver home; rider home is unaffected.
+appId: dev.wayvro.app
+name: n-01-pending-application
+tags: [full]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_F}
+      PHONE_LOCAL: ${PHONE_LOCAL_F}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertVisible:
+    id: rider-home-where-to
+    enabled: true
+- scrollUntilVisible:
+    element: 'Driver/Partner application: in review'
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: mode-switch-driver
+    direction: DOWN
+- tapOn:
+    id: mode-switch-driver
+- extendedWaitUntil:
+    visible: 'Your application is being reviewed'
+    timeout: 30000
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+- takeScreenshot: n-01-in-review

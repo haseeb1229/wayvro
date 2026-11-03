@@ -1,0 +1,59 @@
+# SP-08 #26 / RTL-01 / A11Y-01 capture (N; review is manual, M) — P18, A06, A08: screenshots of the sign-in screen and
+# Rider home in Urdu (RTL) and of Rider home / Driver/Partner readiness for a person to review (no clipped CTA). The
+# 200 % font-scale pass is n-12b (this flow again after run-flows.mjs sets `font_scale 2.0`); captures are evidence for
+# review, never an automated PASS of the layout.
+appId: dev.wayvro.app
+name: n-12-screenshots-urdu-font
+tags: [full]
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible:
+      id: phone-number
+    timeout: 90000
+- takeScreenshot: n-12-sign-in-en
+- scrollUntilVisible:
+    element: 'اردو'
+    direction: DOWN
+- tapOn: 'اردو'
+- scrollUntilVisible:
+    element:
+      id: phone-number
+    direction: UP
+- takeScreenshot: n-12-sign-in-ur
+- runScript:
+    file: scripts/otp-baseline.js
+    env:
+      PHONE: ${PHONE_A}
+- tapOn:
+    id: phone-number
+- inputText: ${PHONE_LOCAL_A}
+- tapOn:
+    id: phone-submit
+- extendedWaitUntil:
+    visible:
+      id: otp-code
+    timeout: 30000
+- retry:
+    maxRetries: 10
+    commands:
+      - runScript:
+          file: scripts/otp-code.js
+          env:
+            PHONE: ${PHONE_A}
+- tapOn:
+    id: otp-code
+- inputText: ${output.otp}
+- tapOn:
+    id: otp-submit
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- takeScreenshot: n-12-rider-home-ur
+- tapOn:
+    id: rider-home-where-to
+- takeScreenshot: n-12-search-ur

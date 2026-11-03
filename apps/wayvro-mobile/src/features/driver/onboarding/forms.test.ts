@@ -18,6 +18,7 @@ import {
   emptyDocumentForm,
   emptyVehicleForm,
   formatCnicInput,
+  hasVehicleClaims,
   isCnicFormat,
   vehicleFormFrom,
 } from './forms';
@@ -70,6 +71,7 @@ describe('applicant claims', () => {
 
 describe('vehicle', () => {
   const form = {
+    ...emptyVehicleForm,
     plate: ' test-001 ',
     make: 'Synthetic',
     model: 'Sedan',
@@ -105,6 +107,43 @@ describe('vehicle', () => {
       ok: true,
       request: { expectedVersion: 1, colour: 'Silver' },
     });
+  });
+
+  it('P3.8: optional seats / body type / AC claims are sent only when filled (they help match Comfort-type products)', () => {
+    expect(buildVehicleCreate({ ...form, seats: ' ٤ ', bodyType: 'SEDAN', airConditioned: 'yes' }, TODAY)).toMatchObject({
+      ok: true,
+      request: { seats: 4, bodyType: 'SEDAN', airConditioned: true },
+    });
+    expect(buildVehicleCreate({ ...form, airConditioned: 'no' }, TODAY)).toMatchObject({ ok: true, request: { airConditioned: false } });
+    const plain = buildVehicleCreate(form, TODAY);
+    expect(plain.ok && ('seats' in plain.request || 'bodyType' in plain.request || 'airConditioned' in plain.request)).toBe(false);
+    for (const seats of ['0', '99', 'four', '2.5'])
+      expect(buildVehicleCreate({ ...form, seats }, TODAY)).toMatchObject({ ok: false, errors: { seats: 'vehicle.invalid.seats' } });
+  });
+
+  it('P3.8: an update sends a claim only when it changed; "not specified" never clears a claim on file', () => {
+    const base = application().vehicles[0];
+    if (!base) throw new Error('fixture');
+    const claimed = { ...base, seats: 4, bodyType: 'SEDAN' as const, airConditioned: true };
+    expect(hasVehicleClaims(base)).toBe(false);
+    expect(hasVehicleClaims(claimed)).toBe(true);
+    expect(vehicleFormFrom(claimed)).toMatchObject({ seats: '4', bodyType: 'SEDAN', airConditioned: 'yes' });
+    expect(buildVehicleUpdate(claimed, vehicleFormFrom(claimed), TODAY)).toEqual({ ok: false, errors: {}, nothingToSave: true });
+    expect(buildVehicleUpdate(claimed, { ...vehicleFormFrom(claimed), bodyType: 'none', airConditioned: 'none', seats: '' }, TODAY)).toEqual({
+      ok: false,
+      errors: {},
+      nothingToSave: true,
+    });
+    expect(buildVehicleUpdate(claimed, { ...vehicleFormFrom(claimed), seats: '6', airConditioned: 'no' }, TODAY)).toEqual({
+      ok: true,
+      request: { expectedVersion: 1, seats: 6, airConditioned: false },
+    });
+    expect(buildVehicleUpdate(base, { ...vehicleFormFrom(base), bodyType: 'MPV' }, TODAY)).toEqual({
+      ok: true,
+      request: { expectedVersion: 1, bodyType: 'MPV' },
+    });
+    // a non-car body type on file is shown as "not specified" (and therefore never re-sent)
+    expect(vehicleFormFrom({ ...base, bodyType: 'MOTORCYCLE' }).bodyType).toBe('none');
   });
 });
 

@@ -1,0 +1,34 @@
+# SP-08 #12 / RIDER-HYGIENE-01 (PR, N, R) — INV-07, V05: an approved Driver/Partner who stays in Rider mode uses search
+# like any rider; no Driver/Partner screen, no camera and no permission dialog appear. run-flows.mjs then asserts on
+# `dumpsys package` / `appops` that no runtime permission was asked or granted and the camera was never used.
+appId: dev.wayvro.app
+name: pr-09-rider-hygiene-driver
+tags: [pr, full, inv-07]
+---
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      PHONE: ${PHONE_B}
+      PHONE_LOCAL: ${PHONE_LOCAL_B}
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 60000
+- assertNotVisible: '(Going online isn.t available yet|You.re ready for when driving opens|A few things need attention before driving opens).*'
+- tapOn:
+    id: rider-home-where-to
+- extendedWaitUntil:
+    visible: 'Drop-off'
+    timeout: 30000
+- inputText: 'Emporium'
+- extendedWaitUntil:
+    visible: 'Emporium Mall.*'
+    timeout: 30000
+- back
+- back
+- extendedWaitUntil:
+    visible:
+      id: rider-home-where-to
+    timeout: 30000
+- assertNotVisible:
+    id: 'com\.android\.permissioncontroller:id/.*'
